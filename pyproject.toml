@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chess-and-chains"
+version = "0.1.0.dev0"
+description = "Chess & Chains – planned offline-first desktop chess and puzzle experience"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MPL-2.0"
+authors = [{name = "n05a-design"}]
+keywords = ["chess", "offline", "desktop", "puzzles", "uci"]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+  "Topic :: Games/Entertainment :: Board Games",
+]
+
+[project.scripts]
+chess-and-chains = "chess_and_chains.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

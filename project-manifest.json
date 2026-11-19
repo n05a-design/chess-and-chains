@@ -1,0 +1,190 @@
+{
+  "schema_version": "1.0",
+  "project": "Chess & Chains",
+  "slug": "chess-and-chains",
+  "proposed_repository": "n05a-design/chess-and-chains",
+  "snapshot_date": "2026-11-19",
+  "foundation_version": "F0",
+  "product_status": "FOUNDATION_ONLY_NOT_PLAYABLE",
+  "language_policy": {
+    "public_readmes": [
+      "en",
+      "de"
+    ],
+    "operations": "de"
+  },
+  "license_target_for_original_code": "MPL-2.0",
+  "license_gate": "OPEN_BLOCKS_BUNDLED_GPL_RELEASE",
+  "official_pricing_policy": "free_of_charge_official_downloads",
+  "release_targets": [
+    "Windows-x64",
+    "macOS-arm64",
+    "macOS-x64",
+    "Linux-later"
+  ],
+  "canonical_docs": {
+    "manifest": "MANIFEST.md",
+    "product": "docs/product/PRODUCT_BRIEF.md",
+    "mvp": "docs/product/MVP_CONTRACT.md",
+    "questions": "docs/questions/OPEN_QUESTIONS.md",
+    "decisions": "docs/decisions/ADR_INDEX.md",
+    "architecture": "docs/architecture/ARCHITECTURE.md",
+    "legal": "docs/legal/LICENSE_STRATEGY.md",
+    "competitors": "docs/research/COMPETITOR_ANALYSIS.md",
+    "design": "docs/design/DESIGN_SYSTEM_BRIEF.md",
+    "asset_register": "docs/design/ASSET_REGISTER.csv",
+    "roadmap": "docs/roadmap/ROADMAP.md",
+    "work_packages": "docs/roadmap/WORK_PACKAGES.md",
+    "source_links": "docs/research/SOURCES.md",
+    "release": "docs/release/RELEASE_STRATEGY.md",
+    "handoff": "docs/governance/AGENT_HANDOFF_TEMPLATE.md"
+  },
+  "work_packages": [
+    {
+      "id": "W00",
+      "title": "Repo-/Starter-Inventar & Dokumentations-SSOT",
+      "prompt": "prompts/00_MASTER_BOOTSTRAP.md",
+      "depends_on": "keine",
+      "gate": "Clone/HEAD, F0-Struktur, README/MANIFEST/AGENTS, Link- und Manifestprüfung protokolliert",
+      "phase": "F0",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "W01",
+      "title": "Produktvertrag & offene Owner-Fragen",
+      "prompt": "prompts/01_PRODUCT_SCOPE.md",
+      "depends_on": "W00",
+      "gate": "Blick auf Nutzergruppen, MVP/Nicht-Ziele, Q-Register und ADR-000; Blocker markiert",
+      "phase": "F0",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "W02",
+      "title": "Legal, Engines und Rechte",
+      "prompt": "prompts/02_LICENSE_ENGINE_GATE.md",
+      "depends_on": "W00",
+      "gate": "Belegte, getrennte Rechte-/Engine-Matrix, ADR-001 als vorgeschlagene Entscheidung; keine verbotene Bündelung",
+      "phase": "F0",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "W03",
+      "title": "Glide-Shell-Audit und Modulreuse",
+      "prompt": "prompts/03_GLIDE_SHELL_AUDIT.md",
+      "depends_on": "W00",
+      "gate": "Aktuellster Referenz-Commit, isolierbare Komponenten, Lizenz-/Testplan, Rollback; keine Komplettkopie",
+      "phase": "F0",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "W04",
+      "title": "Wettbewerb, UX, Design & Assetinventar",
+      "prompt": "prompts/04_COMPETITOR_DESIGN_RESEARCH.md",
+      "depends_on": "W00",
+      "gate": "Quellenbasierte Konkurrenzmatrix, Designsystem-Vorschlag, Asset-Herkunft und Wireframe-Fragen",
+      "phase": "F0",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "W05",
+      "title": "Headless Chess Domain",
+      "prompt": "prompts/05_CHESS_CORE.md",
+      "depends_on": "W01/W02",
+      "gate": "Regelkonformer FEN/PGN-Zugablauf mit vollständigen Prüfungen, ohne GUI/Engine-Verflechtung",
+      "phase": "F1",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "W06",
+      "title": "Board, SVG, Interaktion",
+      "prompt": "prompts/06_BOARD_UI.md",
+      "depends_on": "W03/W05",
+      "gate": "Original-SVG-Rendering, Boardinteraktion, DPI/Keyboard, native UI-Gates",
+      "phase": "F1",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "W07",
+      "title": "Offline-UCI-Engines & Bots",
+      "prompt": "prompts/07_UCI_BOTS.md",
+      "depends_on": "W02/W05",
+      "gate": "UCI-Lifecycle, Fehlerbehandlung, dokumentierte Skills, physischer Offline-Test",
+      "phase": "F2",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "W08",
+      "title": "Puzzle Packs, Training",
+      "prompt": "prompts/08_PUZZLE_PIPELINE.md",
+      "depends_on": "W05",
+      "gate": "Rechtssicherer Import, erste UCI-Aktion, Ratingminimum, Datenqualitätsberichte",
+      "phase": "F3",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "W09",
+      "title": "Storage, Profile, Save/Load",
+      "prompt": "prompts/09_STORAGE_PROFILES.md",
+      "depends_on": "W05/W08",
+      "gate": "Getrennte Nutzerdaten, Migrations- und Restore-Proben, PGN/FEN-Roundtrip",
+      "phase": "F4",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "W10",
+      "title": "DE/EN, Accessibility und UX-Polish",
+      "prompt": "prompts/10_I18N_ACCESSIBILITY.md",
+      "depends_on": "W06/W09",
+      "gate": "DE/EN-Katalogparität, Keyboard-/Kontrast-/Scaling-Abnahmen",
+      "phase": "F4",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "W11",
+      "title": "QA, Sicherheit und Nachweiskette",
+      "prompt": "prompts/11_QA_CI_AUDIT.md",
+      "depends_on": "W05–W10",
+      "gate": "Echte CI/OS/Offline-/Lieferartefakt-Belege, offene Fehler, keine erfundenen Gates",
+      "phase": "F5",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "W12",
+      "title": "Releases, WinGet, Homebrew, Webseite",
+      "prompt": "prompts/12_RELEASE_HANDOFF.md",
+      "depends_on": "W02/W11",
+      "gate": "Signierte/validierte Installer nach Owner-Freigabe; Paketmanager nur nach realer Distribution",
+      "phase": "F5",
+      "status": "NOT_STARTED"
+    }
+  ],
+  "blocking_decision_ids": [
+    "ADR-001",
+    "ADR-005",
+    "ADR-006"
+  ],
+  "owner_questions_file": "docs/questions/OPEN_QUESTIONS.md",
+  "external_source_snapshots": [
+    {
+      "repository": "n05a-design/steps",
+      "ref": "main",
+      "sha": "3a5c5add70172318979cac6518a923372c5fd193"
+    },
+    {
+      "repository": "n05a-design/glide-to-do",
+      "ref": "main",
+      "sha": "a53e779026295d315983c421bfbc9f42124037f5"
+    }
+  ],
+  "not_included": [
+    "live_chess_game",
+    "stockfish_binary",
+    "chess_rules_dependency",
+    "puzzle_datasets",
+    "user_svg_assets",
+    "website",
+    "installers",
+    "winget_package",
+    "homebrew_cask"
+  ]
+}

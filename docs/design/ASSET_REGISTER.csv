@@ -1,0 +1,4 @@
+asset_id,category,logical_name,planned_path,author,original_source,license,status,publication_rights,modification_rights,source_hash,notes
+ASSET-TBD-PIECES,chess-pieces,Original-SVG-Figurensatz,assets/chess_pieces/source_svg/,OWNER_TO_CONFIRM,NOT_PROVIDED,NOT_DECIDED,AWAITING_INPUT,NOT_VERIFIED,NOT_VERIFIED,,Vorhandene eigene Dateien erst nach Rechtesichtung übernehmen
+ASSET-TBD-BOARD,board,Original-Brettdesign,assets/boards/source/,OWNER_TO_CONFIRM,NOT_PROVIDED,NOT_DECIDED,PLANNED,NOT_VERIFIED,NOT_VERIFIED,,Brettgestaltung wird noch erstellt
+ASSET-TBD-BRAND,branding,Chess & Chains Logo,assets/branding/,OWNER_TO_CONFIRM,NOT_PROVIDED,NOT_DECIDED,PLANNED,NOT_VERIFIED,NOT_VERIFIED,,Wort-/Bildmarke noch nicht entschieden
