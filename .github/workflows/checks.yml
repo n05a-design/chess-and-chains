@@ -1,0 +1,27 @@
+name: Foundation checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  foundation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run Foundation tests
+        run: python -m unittest discover -s tests -v
+      - name: Verify starter structure
+        run: python scripts/verify_starter.py
+      - name: Verify documentation links
+        run: python scripts/verify_document_links.py
+      - name: Compile Python sources
+        run: python -m compileall -q src app scripts tests

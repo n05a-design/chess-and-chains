@@ -13,4 +13,19 @@
 
 Sources: `docs/research/SOURCES.md`; decision: `docs/legal/LICENSE_STRATEGY.md`.
 
+## W02 source check (2026-11-20)
+
+These are versioned research references only; none is a dependency or bundled
+component in this repository:
+
+| Candidate | Verified upstream commit | License-file/source result |
+| --- | --- | --- |
+| Stockfish | `5d03b6e578a5eedc822e4563bdbb89e762fc2a59` | `Copying.txt`: GPLv3; upstream README lists NNUE files in distributions and describes source/license obligations |
+| python-chess | `0c6bdaccfcb3b09cdbe94b0f81e948cb2a356015` | `LICENSE.txt`: GPLv3 |
+| Chessnut | `8af90b93f8a10437495c65733c25cde94b615bb7` | `UNLICENSE.txt`: Unlicense; still only a rules-library candidate pending technical qualification |
+
+Do not treat this dated check as permission to redistribute, bundle or link
+these components. Re-check the exact versions and artifacts for any proposed
+release.
+
 Before release, generate a complete third-party component list with versions, hashes, license texts, downloadable source links, origin commit, and actual inventory of the exact distributable archive. **Do not guess SPDX IDs for unknown assets.**

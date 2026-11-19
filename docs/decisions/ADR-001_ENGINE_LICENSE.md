@@ -23,3 +23,20 @@ https://github.com/official-stockfish/Stockfish · https://www.mozilla.org/en-US
 ## Owner-Entscheid
 
 [OFFEN: A / B / C; Datum; Freigebender; konkreter Lieferumfang; Rechtsprüfung]
+
+## W02-Technikaufnahme (2026-11-20; nicht als Freigabe)
+
+- Geprüfte Quellstände und Lizenzdateien sind in
+  `docs/legal/LICENSE_STRATEGY.md` und `docs/research/SOURCES.md` datiert
+  dokumentiert.
+- Stockfish und `python-chess` führen die GPLv3; Stockfish dokumentiert NNUE
+  Dateien als Teil seiner Distribution. Kein Kandidat wurde übernommen.
+- Chessnut führt Unlicense und hat laut Upstream-README einfache FEN- und
+  Zugvalidierungsfunktionen. Die gesichteten Tests reichen nicht als Nachweis
+  vollständiger Remis-/Wiederholungsregeln oder als Freigabe für den
+  Chess-&-Chains-Regelkern.
+- Eine UCI-/Prozessgrenze ist eine Architekturinformation und entscheidet
+  nicht, ob eine konkrete Gesamtverteilung eine kombinierte Arbeit darstellt.
+
+**Status bleibt OPEN.** Keine Rechtsmeinung, Owner-Freigabe, Dependency oder
+Distribution wurde hierdurch erzeugt.

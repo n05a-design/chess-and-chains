@@ -37,3 +37,75 @@ Vier Testauflösungen inkl. Retina, 100/150/200% DPI, Farbsehschwäche/Kontrast,
 ## Fragen
 
 Siehe Q-003, Q-004, Q-005, Q-014, Q-020. Exakte Brandfarben, Logo und Schriften bleiben Owner-Entscheidungen.
+
+## Eigenständige Richtungen (W04-Vorschläge, nicht ausgewählt)
+
+1. **Minimal / präzise:** viel ruhige Fläche, klare Koordinaten, sparsame
+   Zustandsfarben und eine zurückhaltende Statuszeile. Der Brettfokus ist
+   wichtiger als Funktionsdichte.
+2. **Modern / expressiv:** eigenes Figuren-/Brettset steht sichtbar im Zentrum;
+   Akzent und Mikrofeedback werden erst mit den Owner-Assets und
+   Accessibility-Kontrastwerten bestimmt.
+3. **Chains / analytisch:** abstrakte Knoten-/Linienmetapher für Varianten,
+   Taktikmotive und Lernpfade; keine Kettenillustration oder fremde
+   Produktanordnung kopieren.
+
+Kein Farbwert, Logo, Font oder Stil ist damit entschieden.
+
+## Textuelle Wireframes (Vorschläge)
+
+### Play
+
+```text
+[Play] [Puzzle Lab] [Games] [Appearance]
+[Lokale Engine / Status] [Preset] [New game]
+[Zugstatus] [8×8 Brett mit Koordinaten] [Zugliste]
+[Undo] [Resign/Finish] [Save/Export]
+```
+
+Engine-Auswahl zeigt nur vorhandene lokale Engines; keine Auto-Installation
+oder Netzwerkannahme. Bei fehlender Engine darf kein Bot-Spiel-CTA so wirken,
+als sei es startbereit.
+
+### Puzzle Lab
+
+```text
+[Lokales Puzzle-Pack / Herkunft] [Rating >= 1000] [Thema] [Filter]
+[Aufgabenstatus] [8×8 Brett] [Hinweis] [Lösung / nächstes Puzzle]
+[Lokal gespeicherter Fortschritt]
+```
+
+Pack-Metadaten und Offline-Verfügbarkeit sichtbar halten. Das Brett zeigt die
+Position nach dem ersten Gegenzug der Puzzle-Zeile.
+
+### Appearance
+
+```text
+[Brettvorschau] [Figurensatz] [Brettstil] [Theme] [Scale]
+[Quelle/Rechte-Status] [Reset] [Preview / Apply]
+```
+
+Vorschau bleibt von Rechten freigegebener lokaler Assets abhängig. Ein leeres
+Assetverzeichnis wird nicht mit Fremd-/Dummy-Bildern kaschiert.
+
+### Settings
+
+```text
+[Language: DE/EN] [Data location: platform default]
+[Local engine path: choose / validate] [Network: no required services]
+[Accessibility: keyboard / contrast / motion] [About / Licenses]
+```
+
+Engine-Pfad und optionale Netzwerkfunktionen bleiben bis zu den jeweiligen
+Owner-/Lizenzentscheidungen Vorschläge.
+
+## Abnahmekriterien für spätere UI-Arbeit
+
+- Kernaktionen per Tastatur, sichtbarer und assistiver Fokus, Escape-Verhalten
+  bei Dialogen und klare Fehlermeldungen.
+- Inhalte und Brett bleiben bei 100/150/200 % Skalierung nutzbar; keine
+  kritischen Statusinformationen ausschließlich über Farbe vermitteln.
+- Systemmodus und Reduced Motion respektieren; Animationen dürfen die
+  Zuginteraktion nicht verzögern.
+- Tests auf den tatsächlich unterstützten Windows-/macOS-Versionen; Screenshots
+  nur von eigenen, realen Builds und mit dokumentiertem Datum.
