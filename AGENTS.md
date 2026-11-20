@@ -10,7 +10,7 @@
 6. **No premature framework.** `integrations/glide_shell/` is reserved. Glide Shell is not yet independently approved. Do not copy `app.pyw`, import Glide models or silently bring over vendor code.
 7. **Chess correctness.** Only legal moves, full game-state undo, verified FEN/PGN and draw rules. Engine computations must not block the UI event loop.
 8. **Puzzle integrity.** `Rating >= 1000` for published standard packs; official Lichess FEN is before the first opponent move; apply first UCI move before asking player to solve. Validate every imported line.
-9. **Assets.** Use user's own original SVGs when supplied. Store editable originals separately, track provenance and license of every bundled asset, font and screenshot. Never scrape copyrighted competitor assets.
+9. **Assets.** Use the owner's original SVGs when supplied. Prefer editable SVG or other vector masters wherever the format permits. Keep masters when a runtime raster fallback is needed. Store editable originals separately and track provenance and license of every bundled asset, font and screenshot. Never scrape copyrighted competitor assets.
 10. **Privacy.** Local-first. No analytics, telemetry, remote models, forced network access, auto-install or fetching engines without opt-in and owner decision.
 11. **Scope.** Follow the work order's acceptance gate and dependencies; log attractive extras to backlog. Ask or mark OPEN when an Owner decision blocks work. Never invent approvals.
 12. **PR discipline.** Small isolated changes, docs + tests in same PR, include tradeoffs and rollback. Do not merge without explicit user instruction.

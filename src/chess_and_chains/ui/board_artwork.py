@@ -1,0 +1,154 @@
+"""An opt-in preview of local SVG board designs in Tk."""
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+from __future__ import annotations
+
+import math
+import re
+import tkinter as tk
+import xml.etree.ElementTree as ET
+from dataclasses import dataclass
+from pathlib import Path
+
+MAX_BOARD_PREVIEW_SIZE = 2048
+_MAX_SVG_BYTES = 2 * 1024 * 1024
+_MAX_DESIGN_BYTES = 4 * 1024 * 1024
+_SVG_NAMESPACE = "{http://www.w3.org/2000/svg}"
+_BOARD_SQUARES = tuple(f"{file}{rank}" for rank in range(8, 0, -1) for file in "abcdefgh")
+_SVG_ELEMENTS = {
+    "svg", "g", "path", "rect", "circle", "ellipse", "polygon", "polyline", "line", "defs",
+    "title", "desc", "linearGradient", "radialGradient", "stop",
+}
+_LOCAL_ID = re.compile(r"#[A-Za-z_][\w.:-]*", re.ASCII)
+_CSS_URL = re.compile(r"url\s*\(\s*(['\"]?)([^)'\"]+)\1\s*\)", re.IGNORECASE)
+_CSS_URL_START = re.compile(r"url\s*\(", re.IGNORECASE)
+
+
+class BoardArtworkError(ValueError):
+    """A supplied board design could not be loaded or rendered."""
+
+
+@dataclass(frozen=True, slots=True)
+class BoardDesign:
+    """SVG bytes for the complete board or tiles in white's screen order."""
+
+    full: bytes | None = None
+    tiles: tuple[bytes, ...] = ()
+
+
+def load_board_design(path: Path) -> BoardDesign:
+    """Load a complete SVG, a light/dark pair with overrides, or all 64 tiles."""
+    full = path / "board.svg" if path.is_dir() else path
+    if full.is_file():
+        return BoardDesign(full=_read_svg(full))
+    if not path.is_dir():
+        raise BoardArtworkError(f"Board design not found: {path}")
+
+    overrides = {name: path / f"{name}.svg" for name in _BOARD_SQUARES if (path / f"{name}.svg").is_file()}
+    sources = (path / "light.svg", path / "dark.svg")
+    if len(overrides) != 64 and not all(source.is_file() for source in sources):
+        raise BoardArtworkError(f"Supply board.svg, light.svg and dark.svg, or all 64 square SVGs in {path}")
+
+    paths = [overrides.get(name, sources[(index // 8 + index % 8) % 2]) for index, name in enumerate(_BOARD_SQUARES)]
+    loaded = {}
+    total = 0
+    for source in dict.fromkeys(paths):
+        content = _read_svg(source)
+        total += len(content)
+        if total > _MAX_DESIGN_BYTES:
+            raise BoardArtworkError(f"Board SVGs exceed {_MAX_DESIGN_BYTES // 1024} KiB in total: {path}")
+        loaded[source] = content
+    return BoardDesign(tiles=tuple(loaded[source] for source in paths))
+
+
+def _read_svg(path: Path) -> bytes:
+    if path.suffix.lower() != ".svg":
+        raise BoardArtworkError(f"Expected an SVG file: {path}")
+    try:
+        with path.open("rb") as file:
+            data = file.read(_MAX_SVG_BYTES + 1)
+        if len(data) > _MAX_SVG_BYTES:
+            raise ValueError(f"SVG exceeds {_MAX_SVG_BYTES // 1024} KiB")
+        text = data.decode("utf-8-sig")
+        if any(marker in text.casefold() for marker in ("<!doctype", "<!entity", "<?xml-stylesheet")):
+            raise ValueError("SVG references to external definitions or stylesheets are unsupported")
+        root = ET.fromstring(text)
+        if root.tag != _SVG_NAMESPACE + "svg":
+            raise ValueError("expected an SVG document")
+        _square_viewbox(root)
+        for parent in root.iter():
+            for child in list(parent):
+                if child.tag == _SVG_NAMESPACE + "metadata":
+                    parent.remove(child)
+        for element in root.iter():
+            if not element.tag.startswith(_SVG_NAMESPACE) or element.tag.removeprefix(_SVG_NAMESPACE) not in _SVG_ELEMENTS:
+                raise ValueError(f"unsupported SVG element: {element.tag.split('}')[-1]}")
+            for name, value in element.attrib.items():
+                local_name = name.split("}")[-1].lower()
+                if local_name.startswith("on") or local_name in {"base", "href", "src"}:
+                    raise ValueError(f"unsupported SVG attribute: {local_name}")
+                if "@import" in value.casefold() or _CSS_URL_START.search(_CSS_URL.sub("", value)):
+                    raise ValueError("unsupported SVG style reference")
+                if any(not _LOCAL_ID.fullmatch(match[2].strip()) for match in _CSS_URL.finditer(value)):
+                    raise ValueError("SVG references must be within the same document")
+        return _svg_bytes(root)
+    except (OSError, ValueError, ET.ParseError) as error:
+        raise BoardArtworkError(f"{path}: {error}") from error
+
+
+def _square_viewbox(root: ET.Element) -> tuple[float, float, float]:
+    try:
+        x, y, width, height = map(float, re.split(r"[\s,]+", root.get("viewBox", "").strip()))
+    except ValueError as error:
+        raise ValueError("expected a square viewBox with four finite numbers") from error
+    if not all(math.isfinite(value) for value in (x, y, width, height)) or width <= 0 or width != height:
+        raise ValueError("expected a square viewBox with four finite numbers")
+    return x, y, width
+
+
+def _svg_bytes(root: ET.Element) -> bytes:
+    # NanoSVG expects unprefixed drawing elements.
+    ET.register_namespace("", _SVG_NAMESPACE[1:-1])
+    return ET.tostring(root, encoding="utf-8")
+
+
+class BoardArtwork:
+    """Cache the last rendered board background independently of game state."""
+
+    def __init__(self, design: BoardDesign) -> None:
+        self._design = design
+        self._image: tk.PhotoImage | None = None
+        self._key: tuple[int, bool] | None = None
+
+    def image(self, master: tk.Misc, tile_size: int, *, flipped: bool) -> tk.PhotoImage:
+        key = tile_size, flipped
+        if self._image is not None and self._key == key:
+            return self._image
+        size = tile_size * 8
+        if self._design.full is not None:
+            image = self._photo(master, self._design.full, size, flipped=flipped)
+        else:
+            image = tk.PhotoImage(master=master, width=size, height=size)
+            tiles = reversed(self._design.tiles) if flipped else self._design.tiles
+            decoded: dict[bytes, tk.PhotoImage] = {}
+            for position, source in enumerate(tiles):
+                if source not in decoded:
+                    decoded[source] = self._photo(master, source, tile_size)
+                row, column = divmod(position, 8)
+                master.tk.call(image, "copy", decoded[source], "-to", column * tile_size, row * tile_size)
+        self._image, self._key = image, key
+        return image
+
+    @staticmethod
+    def _photo(master: tk.Misc, content: bytes, size: int, *, flipped: bool = False) -> tk.PhotoImage:
+        root = ET.fromstring(content)
+        root.set("height", str(size))
+        root.set("width", str(size))
+        if flipped:
+            x, y, length = _square_viewbox(root)
+            group = ET.Element(_SVG_NAMESPACE + "g", {"transform": f"rotate(180 {x + length / 2} {y + length / 2})"})
+            group.extend(root)
+            root[:] = [group]
+        return tk.PhotoImage(master=master, data=_svg_bytes(root), format="svg")

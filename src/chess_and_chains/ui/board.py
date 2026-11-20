@@ -6,7 +6,8 @@ import tkinter as tk
 from typing import Callable, Literal, Sequence
 
 from ..chess import GameState, Move, Piece, PieceType
-from .pieces import GeometricTestPieces, PieceRenderer
+from .board_artwork import MAX_BOARD_PREVIEW_SIZE, BoardArtwork
+from .pieces import OwnerSvgPieces, PieceRenderer
 from .theme import (
     CHROME_YELLOW,
     FOCUS_INK,
@@ -66,7 +67,7 @@ def moves_between(
 
 
 class BoardCanvas(tk.Canvas):
-    """Resizable, keyboard-operable chessboard with temporary letter pieces."""
+    """Resizable, keyboard-operable chessboard with an exchangeable piece renderer."""
 
     def __init__(
         self,
@@ -74,6 +75,8 @@ class BoardCanvas(tk.Canvas):
         on_move_requested: MoveRequest,
         on_selection_changed: SelectionCallback | None = None,
         renderer: PieceRenderer | None = None,
+        *,
+        artwork: BoardArtwork | None = None,
     ) -> None:
         super().__init__(
             master,
@@ -84,7 +87,8 @@ class BoardCanvas(tk.Canvas):
         )
         self._on_move_requested = on_move_requested
         self._on_selection_changed = on_selection_changed
-        self.renderer: PieceRenderer = renderer or GeometricTestPieces()
+        self.renderer: PieceRenderer = OwnerSvgPieces() if renderer is None else renderer
+        self._artwork = artwork
         self._hint_square: int | None = None
         self._state: GameState | None = None
         self._legal_moves: tuple[Move, ...] = ()
@@ -159,6 +163,8 @@ class BoardCanvas(tk.Canvas):
         width = max(self.winfo_width(), 1)
         height = max(self.winfo_height(), 1)
         usable = max(0.0, min(width - 72, height - 72))
+        if self._artwork is not None:
+            usable = min(usable, MAX_BOARD_PREVIEW_SIZE) // 8 * 8
         if usable < 8:
             return
         self._square_size = usable / 8
@@ -180,13 +186,17 @@ class BoardCanvas(tk.Canvas):
 
     def _draw_board(self) -> None:
         size = self._square_size
+        artwork_item = None
+        if self._artwork is not None:
+            image = self._artwork.image(self, int(size), flipped=self._orientation == "black")
+            artwork_item = self.create_image(self._board_x, self._board_y, anchor="nw", image=image, tags=("board-artwork",))
         for row in range(8):
             for column in range(8):
                 x1 = self._board_x + column * size
                 y1 = self._board_y + row * size
                 fill = SQUARE_LIGHT if (row + column) % 2 == 0 else SQUARE_DARK
                 square = self._square_for_cell(column, row)
-                self.create_rectangle(
+                base = self.create_rectangle(
                     x1,
                     y1,
                     x1 + size,
@@ -194,6 +204,8 @@ class BoardCanvas(tk.Canvas):
                     fill=fill,
                     outline=fill,
                 )
+                if artwork_item is not None:
+                    self.tag_lower(base, artwork_item)
                 if self._last_move is not None and square in (
                     self._last_move.from_square,
                     self._last_move.to_square,
@@ -243,7 +255,8 @@ class BoardCanvas(tk.Canvas):
             if self._drag_active and square == self._press_square:
                 continue
             column, row = screen_cell(square, self._orientation)
-            self._draw_test_piece(
+            self.renderer.draw(
+                self,
                 self._board_x + (column + 0.5) * size,
                 self._board_y + (row + 0.5) * size,
                 size,
@@ -340,25 +353,14 @@ class BoardCanvas(tk.Canvas):
         if self._drag_active and self._drag_pointer and self._press_square is not None:
             piece = self._state.board[self._press_square]
             if piece is not None:
-                self._draw_test_piece(
+                self.renderer.draw(
+                    self,
                     self._drag_pointer[0],
                     self._drag_pointer[1],
                     size,
                     piece,
                     lifted=True,
                 )
-
-    def _draw_test_piece(
-        self,
-        center_x: float,
-        center_y: float,
-        square_size: float,
-        piece: Piece,
-        *,
-        lifted: bool = False,
-    ) -> None:
-        """Delegate to the exchangeable piece renderer (name kept for compatibility)."""
-        self.renderer.draw(self, center_x, center_y, square_size, piece, lifted=lifted)
 
     def _draw_last_move(self, x: float, y: float, size: float) -> None:
         self.create_rectangle(

@@ -4,3 +4,7 @@ src/chess_and_chains/puzzles/data/** -text
 # Source CSVs and fixtures feed reproducible import reports (input SHA-256).
 data/source/*.csv -text
 tests/fixtures/** -text
+# Asset-Register hashes must match checkout bytes.
+assets/chess_pieces/source_svg/masters/*.svg -text
+src/chess_and_chains/ui/brand_assets/*.svg text eol=lf
+src/chess_and_chains/ui/piece_assets/*.svg text eol=lf

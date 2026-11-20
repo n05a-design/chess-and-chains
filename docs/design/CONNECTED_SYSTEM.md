@@ -1,8 +1,8 @@
 # Chess & Chains · Connected System
 
-**Stand 20.11.2026 · Designkandidat für den lokalen Tk-Prototyp · KI-unterstützt**
+**Stand 20.11.2026 · Vom Inhaber bestätigte Markenrichtung · KI-unterstützt**
 
-Chess & Chains ist eine lokale Werkstatt für Schach und taktisches Training. „Think in connections.“ verbindet die Konzentration am Brett mit dem Blick auf die Zugfolge und den Lernfortschritt. Für die App-Vorschau wähle ich **Connected System**. Die Marke beginnt mit zwei ineinandergreifenden Gliedern und wird im Puzzle Lab als Route weitergeführt. Brett und Bedienflächen bleiben ruhig. Die kräftigsten Farben markieren die Marke, die aktive Ansicht, Primäraktionen und den Rätselstatus.
+Chess & Chains ist eine lokale Werkstatt für Schach und taktisches Training. „Think in connections.“ verbindet in den Entwürfen die Konzentration am Brett mit dem Blick auf die Zugfolge und den Lernfortschritt. Der Inhaber hat **Connected System** als Markenrichtung bestätigt. Die Marke beginnt mit zwei ineinandergreifenden Gliedern und wird im Puzzle Lab als Route weitergeführt. Die kräftigsten Farben markieren die Marke, die aktive Ansicht, Primäraktionen und den Rätselstatus. Die finalen Brettmotive kommen vom Inhaber.
 
 ## Synthese der Referenzen
 
@@ -36,7 +36,9 @@ Die [Vergleichstafel](../../design/concepts/connected-system-v01/00-variantenver
 
 ## Schrift und Farben
 
-Space Grotesk 700 trägt die Wortmarke und Headlines, 400 den Lesetext. IBM Plex Mono 400/700 trägt Nummern, Status und technische Labels. Überschriften verwenden bei engen Wortmarken `−0,5` SVG-Einheiten Laufweite, kleine Versalien in Brandboards `+1` bis `+3`. Beide Schriftprojekte nennen die SIL Open Font License 1.1. Der Render auf Windows verwendet lokale Fallbacks wie Segoe UI und Consolas. Die Tk-App verwendet ihre nativen Systemschriften `TkDefaultFont` und `TkFixedFont`. [Space Grotesk](https://floriankarsten.github.io/space-grotesk/), [IBM Plex](https://github.com/IBM/plex/blob/master/LICENSE.txt)
+**Manufacturing Consent Regular** ist die vom Inhaber festgelegte Fraktur für die Wortmarke und prägnante große Überschriften. Alle Wortmarken bleiben in der Masterbibliothek als editierbarer SVG-Text erhalten. Tk zeigt die Kopfzeile aus einem [Vektor-Pfadexport](../../src/chess_and_chains/ui/brand_assets/wordmark.svg) derselben Quelle. Bei einem älteren Tk ohne SVG-Leser ist ein PNG-Fallback vorhanden. [Schriftprojekt und OFL-1.1](https://github.com/googlefonts/manufacturing-consent-font/tree/80c3d822c2459ac0d76f8cb9d7ca1ca89a068f3b)
+
+Rubik als Leseschrift und DM Mono für technische Angaben sind Designreferenzen aus Glide. Die App verwendet für diese Rollen ihre nativen Systemschriften `TkDefaultFont` und `TkFixedFont`. Die Tafeln aus der ersten Erkundung `connected-system-v01` dokumentieren deren damalige Setzung mit Space Grotesk und IBM Plex Mono. [Glide-Schriftkatalog](https://github.com/n05a-design/glide-to-do/blob/bde7fa12ed048273f2916d21ad1e06b3a0426d0b/01_Repository/Glide/src/glide/font_catalog.py)
 
 Gold hebt Aktionen und das aktive Register hervor, ergänzt durch Unterstreichung. Blau steht für das Markenzeichen und abgeschlossene Stationen. Rot mit Kreuz markiert die aufgedeckte Lösung der aktuellen Station. Creme und Schwarz bilden die Grundflächen und Textrollen. Die geometrischen Marker des Bretts bleiben in der Canvas-Implementierung. Die [Runtime-Tokens](../../src/chess_and_chains/ui/theme.py) verwenden das vorhandene Tk-Theme-Modul. Die JSON-Datei dokumentiert den Entwurf für weitere Medien.
 
