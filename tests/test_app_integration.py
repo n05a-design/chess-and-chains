@@ -438,7 +438,9 @@ class StorageAndLocaleUiTests(AppTestCase):
         app = self.make_app(locale="de")
         self.root.deiconify()
         self.root.geometry("860x700")
-        app.bot_text.set("Bot-Status mit ausführlichem Hinweis. " * 12)
+        self.root.update()
+        # Ensure overflow even when the platform font needs little horizontal wrapping.
+        app.bot_text.set("\n".join(["Ausführlicher Bot-Hinweis"] * 64))
         self.root.update()
         canvas = app.play_canvas
         self.assertEqual(canvas.yview()[0], 0)

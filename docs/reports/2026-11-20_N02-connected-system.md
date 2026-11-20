@@ -47,6 +47,8 @@ Alle Befehle liefen im oben genannten Arbeitsbaum auf dem genannten Windows-Syst
 
 Die erste Sichtprüfung bei 150/200 % zeigte abgeschnittene Registertexte und bei 200 % übergroße Figurenbuchstaben. Größere Registerflächen, gemischte Schreibweise und feldbezogene Pixelgrößen wurden im Wiederholungslauf geprüft. [Spielansicht](../../design/concepts/connected-system-v01/previews/app-windows-spiel.png), [Atlas](../../design/concepts/connected-system-v01/previews/app-windows-atlas.png), [200-%-Vorschau](../../design/concepts/connected-system-v01/previews/app-windows-200.png)
 
+Der erste GitHub-Push und der erste PR-Lauf für `0b3419ed47d09329c750190987672f46a44ec123` waren im nativen macOS-Job mit Python 3.11.9 rot. Der Test `test_play_panel_scrolls_to_focused_engine_settings_in_small_window` beobachtete `canvas.yview()[1] == 1.0`. Der einzeilige Hinweis mit automatischem Umbruch erzeugte dort keinen Überlauf. Die Testdaten verwenden jetzt explizite Zeilenumbrüche, damit der Test eine überlaufende Ansicht unabhängig von Schriftmaßen überprüft. Die Assertions zum Fokus und Scrollen bleiben erhalten. [Push-Job](https://github.com/n05a-design/chess-and-chains/actions/runs/44790177465/job/136475465581), [PR-Job](https://github.com/n05a-design/chess-and-chains/actions/runs/44790362800/job/136476101455)
+
 ## SVG- und Kontrastprüfung
 
 - `python %TEMP%/chess-chains-brand-svg-qa.py` · Tk 9.0.4 und Chrome Headless 158.0.8127.37 · Exitcode 0 nach Korrektur der Screenshot-Pfade. Alle 23 SVGs als größenrichtige PNGs gerendert. XML, positive viewBoxes, eindeutige IDs je Datei, lokale Vektorgeometrie ohne Rastereinbettung und Textgrenzen geprüft. Sichtprüfung der Brandboards, kompakten Wortmarken, Atlas- und UI-Studien sowie Marketingmotive.
