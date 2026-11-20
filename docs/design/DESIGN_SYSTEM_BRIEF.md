@@ -1,6 +1,6 @@
 # Design System Brief – Chess & Chains
 
-**Status: PROPOSED.** [Connected System](CONNECTED_SYSTEM.md) ist der gewählte lokale Designkandidat. Die folgende W06-Exploration bleibt als Entstehungskontext erhalten. Die Rechte an den inventarisierten Figuren und die öffentliche Markenfreigabe stehen im [Owner-Review](OWNER_DESIGN_REVIEW.md).
+**Status: PARTIALLY DECIDED.** [Connected System](CONNECTED_SYSTEM.md) und Manufacturing Consent für Wortmarke und große Überschriften sind vom Inhaber festgelegt. Die Figuren sind für die App unter MPL-2.0 freigegeben. Die folgende W06-Exploration dokumentiert die Entstehung. Weitere Einzelfreigaben stehen im [Owner-Review](OWNER_DESIGN_REVIEW.md).
 
 ## Ziel
 

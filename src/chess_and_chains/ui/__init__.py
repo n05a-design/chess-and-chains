@@ -1,10 +1,17 @@
 """Tk desktop interface for the local Chess & Chains prototype."""
 
+from __future__ import annotations
 
-def launch() -> None:
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .board_artwork import BoardDesign
+
+
+def launch(*, board_design: BoardDesign | None = None) -> None:
     from .app import launch as run
 
-    run()
+    run(board_design=board_design)
 
 
 __all__ = ["launch"]

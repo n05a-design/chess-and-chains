@@ -8,12 +8,12 @@ from importlib.resources import files
 import tkinter as tk
 
 
-def brand_image(master: tk.Misc, name: str, size: int) -> tk.PhotoImage:
+def brand_image(master: tk.Misc, name: str, *, scale: float = 1) -> tk.PhotoImage:
     assets = files(__package__).joinpath("brand_assets")
     try:
         return tk.PhotoImage(
             master=master, data=assets.joinpath(f"{name}.svg").read_bytes(),
-            format=("svg", "-scale", size / 64),
+            format=("svg", "-scale", scale),
         )
     except tk.TclError:
         # Tk 8.6 has PNG support but no native SVG reader.

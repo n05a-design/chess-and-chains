@@ -31,9 +31,9 @@
     "revealed": "#B12729"
   },
   "typography": {
-    "display": {"family": "Space Grotesk", "weight": 700, "fallback": "Segoe UI, sans-serif"},
-    "body": {"family": "Space Grotesk", "weight": 400, "fallback": "Segoe UI, sans-serif"},
-    "mono": {"family": "IBM Plex Mono", "weights": [400, 700], "fallback": "Consolas, monospace"},
+    "display": {"family": "Manufacturing Consent", "weight": 400, "fallback": "Georgia, serif"},
+    "body": {"family": "Rubik", "weight": 400, "fallback": "Segoe UI, sans-serif"},
+    "mono": {"family": "DM Mono", "weights": [400, 500], "fallback": "Consolas, monospace"},
     "tkPointSizes": {"caption": 10, "body": 11, "section": 16, "title": 22}
   },
   "geometry": {

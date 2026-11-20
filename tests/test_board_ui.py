@@ -1,7 +1,9 @@
 """Focused geometry and legal-move tests for the board interaction layer."""
 import sys
+import tempfile
 import tkinter as tk
 import unittest
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -19,6 +21,7 @@ from chess_and_chains.chess import (  # noqa: E402
     parse_square,
 )
 from chess_and_chains.ui.app import ChessApp  # noqa: E402
+from chess_and_chains.ui.board_artwork import BoardArtwork, BoardArtworkError, load_board_design  # noqa: E402
 from tests.tk_support import create_root  # noqa: E402
 from chess_and_chains.ui.board import (  # noqa: E402
     BoardCanvas,
@@ -26,6 +29,94 @@ from chess_and_chains.ui.board import (  # noqa: E402
     screen_cell,
     square_at_point,
 )
+
+
+def _write_square(path: Path, color: str) -> None:
+    path.write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">'
+        f'<rect width="256" height="256" fill="{color}"/></svg>',
+        encoding="utf-8",
+    )
+
+
+class BoardArtworkInputTests(unittest.TestCase):
+    def test_full_board_accepts_the_editable_template(self):
+        design = load_board_design(ROOT / "assets" / "boards" / "source" / "board-template.svg")
+        self.assertIsNotNone(design.full)
+        self.assertEqual(design.tiles, ())
+
+    def test_light_dark_pair_with_an_algebraic_override(self):
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            for filename, color in (("light.svg", "#ffeecc"), ("dark.svg", "#504136"), ("e4.svg", "#00aa00")):
+                _write_square(folder / filename, color)
+            tiles = load_board_design(folder).tiles
+            self.assertEqual(len(tiles), 64)
+            self.assertIn(b"#ffeecc", tiles[0])  # a8
+            self.assertIn(b"#504136", tiles[1])  # b8
+            self.assertIn(b"#00aa00", tiles[36])  # e4
+            self.assertEqual(sum(b"#00aa00" in tile for tile in tiles), 1)
+
+    def test_all_64_labeled_svgs_work_without_the_pair(self):
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            for rank in range(1, 9):
+                for column, file in enumerate("abcdefgh"):
+                    _write_square(folder / f"{file}{rank}.svg", f"#{column}{rank}0000")
+            tiles = load_board_design(folder).tiles
+            self.assertIn(b"#080000", tiles[0])
+            self.assertIn(b"#710000", tiles[63])
+            self.assertEqual(len(set(tiles)), 64)
+            (folder / "a1.svg").unlink()
+            with self.assertRaisesRegex(BoardArtworkError, "all 64"):
+                load_board_design(folder)
+
+    def test_invalid_viewbox_and_external_svg_references_are_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            file = Path(directory) / "board.svg"
+            for viewbox, child, message in (
+                ("0 0 200 256", "<rect width='10' height='10'/>", "square viewBox"),
+                ("0 0 256 256", "<foreignObject/>", "unsupported SVG element"),
+                ("0 0 256 256", "<rect style='fill:url(https://example.invalid/a.svg)'/>", "same document"),
+            ):
+                with self.subTest(message=message):
+                    file.write_text(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{viewbox}">{child}</svg>',
+                                    encoding="utf-8")
+                    with self.assertRaisesRegex(BoardArtworkError, message):
+                        load_board_design(file)
+
+
+class BoardArtworkUiTests(unittest.TestCase):
+    def test_tile_background_tracks_the_named_square_and_keeps_marks_in_front(self):
+        root = create_root(self)
+        self.addCleanup(root.destroy)
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            for filename, color in (("light.svg", "#ffeecc"), ("dark.svg", "#504136"), ("a8.svg", "#00aa00")):
+                _write_square(folder / filename, color)
+            artwork = BoardArtwork(load_board_design(folder))
+
+        def render_square(master, content, size, *, flipped=False):
+            root_element = ET.fromstring(content)
+            color = root_element[0].get("fill")
+            photo = tk.PhotoImage(master=master, width=size, height=size)
+            photo.put(color, to=(0, 0, size, size))
+            return photo
+
+        with patch.object(artwork, "_photo", side_effect=render_square):
+            board = BoardCanvas(root, lambda _moves: None, artwork=artwork)
+            board._square_size = 24
+            board._last_move = Move.from_uci("e2e4")
+            with patch.object(board, "_draw_last_move", wraps=board._draw_last_move) as mark:
+                board._draw_board()
+                self.assertEqual(mark.call_count, 2)
+            background, = board.find_withtag("board-artwork")
+            self.assertEqual(board.find_all()[64], background)
+            self.assertEqual(artwork.image(board, 24, flipped=False).get(12, 12), (0, 170, 0))
+            board.set_orientation("black")
+            reversed_image = artwork.image(board, 24, flipped=True)
+            self.assertEqual(reversed_image.get(180, 180), (0, 170, 0))
+            self.assertIs(artwork.image(board, 24, flipped=True), reversed_image)
 
 
 class BoardGeometryTests(unittest.TestCase):

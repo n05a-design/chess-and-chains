@@ -29,6 +29,7 @@ from ..puzzles import PuzzlePack, PuzzleSession, Verdict, load_demo_pack
 from ..storage import Database, DataLayout, Settings, StorageError, load_settings, save_settings
 from .atlas import PuzzleAtlas
 from .board import BoardCanvas, Orientation
+from .board_artwork import BoardArtwork, BoardArtworkError, BoardDesign
 from .branding import brand_image
 from .theme import (
     ACETATE,
@@ -114,8 +115,10 @@ class ChessApp:
         provider_factory: ProviderFactory = default_provider_factory,
         locale: str | None = None,
         puzzle_pack: PuzzlePack | None = None,
+        board_artwork: BoardArtwork | None = None,
     ) -> None:
         self.root = root
+        self._board_artwork = board_artwork
         self.layout = data_layout
         self.settings_warning: str | None = None
         if data_layout is not None:
@@ -182,7 +185,7 @@ class ChessApp:
         # Child widgets can outlive the window while a worker is winding down.
         app = proxy(self)
         self.root.title(t("app.window_title"))
-        self._window_icon = brand_image(self.root, "app-icon", 64)
+        self._window_icon = brand_image(self.root, "app-icon")
         self.root.iconphoto(True, self._window_icon)
         self.root.configure(background=WINDOW)
         self.root.geometry("1180x820")
@@ -195,10 +198,11 @@ class ChessApp:
         header = tk.Frame(masthead, background=PAPER, padx=22, pady=12)
         header.pack(fill="x", pady=(4, 0))
         header.grid_columnconfigure(1, weight=1)
-        self._header_signet = brand_image(self.root, "signet", 40)
+        self._header_signet = brand_image(self.root, "signet", scale=40 / 64)
+        self._header_wordmark = brand_image(self.root, "wordmark")
         tk.Label(header, image=self._header_signet, background=PAPER, borderwidth=0).grid(row=0, column=0, sticky="w")
-        tk.Label(header, text=t("app.title"), background=PAPER, foreground=INK,
-                 font=("TkDefaultFont", FONT_SIZES["title"], "bold")).grid(row=0, column=1, sticky="w", padx=(10, 0))
+        tk.Label(header, text=t("app.title"), image=self._header_wordmark,
+                 background=PAPER, borderwidth=0).grid(row=0, column=1, sticky="w", padx=(10, 0))
         tk.Label(header, textvariable=self.header_mode_text, background=PAPER, foreground=MUTED_INK,
                  font=("TkFixedFont", FONT_SIZES["caption"], "bold"), justify="right", wraplength=350,
                  ).grid(row=0, column=2, sticky="e", padx=(12, 0))
@@ -212,11 +216,11 @@ class ChessApp:
         board_sheet = self._sheet(body, 0, padx=(0, 14))
         board_sheet.grid_rowconfigure(1, weight=1)
         board_sheet.grid_columnconfigure(0, weight=1)
-        tk.Label(board_sheet, text=t("board.test_pieces"), background=ACETATE, foreground=INK,
+        tk.Label(board_sheet, text=t("board.pieces"), background=ACETATE, foreground=INK,
                  font=("TkDefaultFont", FONT_SIZES["caption"], "bold"), anchor="w", padx=14, pady=9,
                  ).grid(row=0, column=0, sticky="ew")
         self.board = BoardCanvas(board_sheet, lambda moves: app._on_move_requested(moves),
-                                 lambda detail: app._on_selection_changed(detail))
+                                 lambda detail: app._on_selection_changed(detail), artwork=self._board_artwork)
         self.board.grid(row=1, column=0, sticky="nsew", padx=12, pady=(0, 10))
         tk.Label(board_sheet, textvariable=self.interaction_text, background=ACETATE, foreground=MUTED_INK,
                  font=("TkDefaultFont", FONT_SIZES["caption"]), anchor="w", padx=14, pady=8,
@@ -1187,7 +1191,15 @@ class EngineDialog:
         self.window.destroy()
 
 
-def launch() -> None:
+def launch(*, board_design: BoardDesign | None = None) -> None:
     root = tk.Tk()
-    ChessApp(root, data_layout=DataLayout.default())
+    artwork = None
+    if board_design is not None:
+        artwork = BoardArtwork(board_design)
+        try:
+            artwork.image(root, 8, flipped=False)
+        except tk.TclError as error:
+            root.destroy()
+            raise BoardArtworkError(f"SVG board preview needs an SVG-capable Tk renderer: {error}") from error
+    ChessApp(root, data_layout=DataLayout.default(), board_artwork=artwork)
     root.mainloop()

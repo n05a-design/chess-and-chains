@@ -1,3 +1,3 @@
-# README
+# SVG-Schachfiguren
 
-Hier gehören die **eigenen** zwölf (und ggf. zusätzliche) SVG-Figurensymbole hinein. Es wurden absichtlich keine fremden/erfundenen SVGs beigelegt. Dateikonvention/Normalisierung nach Erhalt des Sets prüfen.
+Die editierbare [SVG-Übersicht des Inhabers](masters/Schachfiguren.svg) ist als Master mit [Herkunft und Freigabe](masters/PROVENANCE.md) registriert. Sie enthält sechs Figurentypen in Vorder- und Draufsicht. Die abgeleiteten [zwölf SVG-Einzelgrafiken](../../../src/chess_and_chains/ui/piece_assets/) zeigen die Vorderansichten in heller und dunkler Fassung. Sie verwenden eine gemeinsame Zeichenfläche, einen einheitlichen Maßstab und dieselbe Grundlinie. Ihre Namen kombinieren `w` oder `b` mit `K`, `Q`, `R`, `B`, `N` oder `P`. Die App nutzt diese Dateien in Partie und Rätselmodus.

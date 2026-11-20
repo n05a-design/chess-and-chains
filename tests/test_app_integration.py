@@ -22,7 +22,12 @@ from chess_and_chains.game import BotStatus, GameSetup  # noqa: E402
 from chess_and_chains.storage import DataLayout, load_settings  # noqa: E402
 from chess_and_chains.ui.app import ChessApp  # noqa: E402
 from chess_and_chains.ui.branding import brand_image  # noqa: E402
-from chess_and_chains.ui.pieces import PIECE_FILE_NAMES, GeometricTestPieces, validate_svg_piece_set  # noqa: E402
+from chess_and_chains.ui.pieces import (  # noqa: E402
+    PIECE_FILE_NAMES,
+    GeometricTestPieces,
+    OwnerSvgPieces,
+    validate_svg_piece_set,
+)
 from tests.tk_support import create_root  # noqa: E402
 
 
@@ -67,6 +72,8 @@ class AppTestCase(unittest.TestCase):
             self.root.after_cancel(stop_job)
             if check_job is not None:
                 self.root.after_cancel(check_job)
+            # Break the recursive callback's cycle while still on the Tk thread.
+            del check
         self.assertTrue(reached, "condition not reached while pumping Tk events")
 
     def pump_for(self, seconds):
@@ -303,9 +310,11 @@ class BrandingUiTests(AppTestCase):
             return photo_image(*args, **kwargs)
 
         with patch("chess_and_chains.ui.branding.tk.PhotoImage", side_effect=without_svg):
-            for name, size in (("signet", 40), ("app-icon", 64)):
-                image = brand_image(root, name, size)
-                self.assertEqual((image.width(), image.height()), (size, size))
+            for name, scale, expected_size in (
+                ("signet", 40 / 64, (40, 40)), ("app-icon", 1, (64, 64)), ("wordmark", 1, (254, 40)),
+            ):
+                image = brand_image(root, name, scale=scale)
+                self.assertEqual((image.width(), image.height()), expected_size)
                 self.assertTrue(image.transparency_get(0, 0))
 
     def test_test_piece_letter_fits_its_disc_at_double_text_scale(self):
@@ -319,6 +328,56 @@ class BrandingUiTests(AppTestCase):
         disc, glyph = (canvas.bbox(item) for item in canvas.find_withtag("piece"))
         self.assertLessEqual(disc[0], glyph[0])
         self.assertLessEqual(glyph[2], disc[2])
+
+
+class OwnerPieceUiTests(AppTestCase):
+    def test_owner_pieces_render_and_are_reused_in_play_and_puzzles(self):
+        app = self.make_app()
+        self.root.geometry("860x700")
+        self.root.deiconify()
+        self.pump_until(lambda: len(app.board.find_withtag("piece")) == 32)
+        self.root.update()
+        board = app.board
+        self.assertIsInstance(board.renderer, OwnerSvgPieces)
+
+        def images():
+            return {board.itemcget(item, "image") for item in board.find_withtag("piece")}
+
+        initial_images = images()
+        self.assertEqual(len(initial_images), 12)
+        app._play_move(Move.from_uci("e2e4"))
+        board.set_orientation("black")
+        self.assertEqual(len(board.find_withtag("piece")), 32)
+        self.assertEqual(images(), initial_images)
+
+        app.tab_rail.set_active("puzzles")
+        self.assertIsNotNone(app.puzzle)
+        self.assertEqual(len(board.find_withtag("piece")), sum(piece is not None for piece in app.puzzle.state.board))
+        self.assertTrue(images())
+        self.assertTrue(images() <= initial_images)
+
+    def test_png_atlas_preserves_piece_color_and_reuses_the_same_size_band(self):
+        root = create_root(self)
+        canvas = tk.Canvas(root)
+        renderer = OwnerSvgPieces()
+        photo_image = tk.PhotoImage
+
+        def without_svg(*args, **kwargs):
+            if kwargs.get("format", ())[:1] == ("svg",):
+                raise tk.TclError("image format svg is not supported")
+            return photo_image(*args, **kwargs)
+
+        with patch("chess_and_chains.ui.pieces.tk.PhotoImage", side_effect=without_svg):
+            renderer.draw(canvas, 30, 30, 53, Piece(Color.WHITE, PieceType.KING))
+            renderer.draw(canvas, 90, 30, 54, Piece(Color.WHITE, PieceType.KING))
+            renderer.draw(canvas, 150, 30, 54, Piece(Color.BLACK, PieceType.KING))
+        white, another_white, black = (canvas.itemcget(item, "image") for item in canvas.find_withtag("piece"))
+        self.assertIsNotNone(renderer._atlas)
+        self.assertEqual(white, another_white)
+        self.assertEqual(root.tk.call("image", "width", white), 48)
+        self.assertTrue(root.tk.getboolean(root.tk.call(white, "transparency", "get", 0, 0)))
+        self.assertEqual(root.tk.call(white, "get", 24, 35), (250, 246, 236))
+        self.assertEqual(root.tk.call(black, "get", 24, 35), (23, 25, 32))
 
 
 class StorageAndLocaleUiTests(AppTestCase):
@@ -466,8 +525,10 @@ class StorageAndLocaleUiTests(AppTestCase):
 
 
 class PieceRendererContractTests(unittest.TestCase):
-    def test_geometric_renderer_is_the_default(self):
-        self.assertEqual(GeometricTestPieces.renderer_id, "geometric-test")
+    def test_bundled_owner_svg_set_meets_the_contract(self):
+        directory = ROOT / "src" / "chess_and_chains" / "ui" / "piece_assets"
+        report = validate_svg_piece_set(directory)
+        self.assertTrue(report.ok, report.problems)
 
     def test_svg_contract_accepts_clean_set_and_rejects_unsafe_files(self):
         clean = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><circle cx="22" cy="22" r="10"/></svg>'

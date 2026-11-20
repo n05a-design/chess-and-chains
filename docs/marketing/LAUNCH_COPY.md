@@ -1,6 +1,10 @@
-# Marketing / Landingpage / GitHub-Text – Vorabversion
+# GitHub-Projektseite und spätere Veröffentlichung
 
-**Nur für Vorabkommunikation; nicht behaupten, dass Features heute schon funktionieren.**
+## Entscheidung des Inhabers (20.11.2026)
+
+Auf GitHub wird entwickelt und erklärt, wie die fertige App funktionieren soll. [Englische README](../../README.md) und [deutsche README](../../README.de.md) zeigen Zielbild und aktuellen Entwicklungsstand. Nach Fertigstellung und Freigabe erscheint die App auf GitHub sowie im hauseigenen Software-Katalog kostenlos neben den anderen Programmen. Launch-Materialien werden erst zu einem späteren Zeitpunkt beauftragt. [Vertriebsentscheidung](../decisions/ADR-006_DISTRIBUTION.md)
+
+Die folgenden Vorabtexte und Claim-Optionen dokumentieren die früheren Entwürfe.
 
 ## GitHub About (EN) – ursprünglicher Vorschlag, für öffentliche Nutzung zu konkret
 

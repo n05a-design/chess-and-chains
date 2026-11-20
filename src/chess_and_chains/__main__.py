@@ -1,5 +1,6 @@
 """CLI entry point for the local desktop prototype."""
 import argparse
+from pathlib import Path
 
 from . import __version__
 
@@ -11,7 +12,17 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="report the installed version without opening the desktop window",
     )
+    parser.add_argument("--board-design", type=Path, metavar="SVG_OR_DIRECTORY",
+                        help="preview a local SVG board or a directory of square SVGs for this session")
     args = parser.parse_args(argv)
+    design = None
+    if args.board_design is not None:
+        from .ui.board_artwork import BoardArtworkError, load_board_design
+
+        try:
+            design = load_board_design(args.board_design)
+        except (OSError, BoardArtworkError) as error:
+            parser.error(str(error))
     if args.headless_check:
         print(
             f"Chess & Chains {__version__} — local GUI prototype available "
@@ -21,7 +32,13 @@ def main(argv: list[str] | None = None) -> int:
 
     from .ui import launch
 
-    launch()
+    if design is None:
+        launch()
+    else:
+        try:
+            launch(board_design=design)
+        except BoardArtworkError as error:
+            parser.error(str(error))
     return 0
 
 
