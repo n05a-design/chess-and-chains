@@ -225,12 +225,15 @@ class PuzzleUiTests(AppTestCase):
     def test_puzzle_filters_show_stored_progress_and_handle_empty_matches(self):
         with tempfile.TemporaryDirectory() as tmp:
             app = self.make_app(data_layout=DataLayout(Path(tmp) / "data"))
+            self.root.deiconify()
             app.db.record_puzzle_attempt("demo", "ccSC01", solved=True, mistakes=0, hints_used=0, duration_ms=500)
             app.tab_rail.set_active("puzzles")
+            self.root.update()
             self.assertEqual(app.puzzle_progress_text.get(), "Solved 1 of 5 in this selection.")
 
             app.puzzle_theme_filter.current(app.puzzle_theme_filter.cget("values").index("opening"))
-            app.puzzle_theme_filter.event_generate("<<ComboboxSelected>>")
+            app.puzzle_theme_filter.event_generate("<<ComboboxSelected>>", when="tail")
+            self.root.update()
             self.assertEqual(app.puzzle.puzzle.puzzle_id, "ccSC01")
             self.assertEqual(app.puzzle_progress_text.get(), "Solved 1 of 2 in this selection.")
             app._next_puzzle()
@@ -239,7 +242,8 @@ class PuzzleUiTests(AppTestCase):
             self.assertEqual(app.board.orientation, "black")
 
             app.puzzle_rating_filter.current(2)
-            app.puzzle_rating_filter.event_generate("<<ComboboxSelected>>")
+            app.puzzle_rating_filter.event_generate("<<ComboboxSelected>>", when="tail")
+            self.root.update()
             self.assertIsNone(app.puzzle)
             self.assertIsNone(app.board._state)
             self.assertEqual(app.panel_text.get(), "No puzzles match the filters.")
@@ -249,8 +253,10 @@ class PuzzleUiTests(AppTestCase):
             self.assertIs(app.board._state, app.game.state)
             self.assertEqual(app.board.orientation, "white")
             app.tab_rail.set_active("puzzles")
+            self.root.update()
             app.puzzle_theme_filter.current(0)
-            app.puzzle_theme_filter.event_generate("<<ComboboxSelected>>")
+            app.puzzle_theme_filter.event_generate("<<ComboboxSelected>>", when="tail")
+            self.root.update()
             self.assertEqual(app.puzzle.puzzle.puzzle_id, "ccSM02")
             self.assertEqual(app.puzzle_progress_text.get(), "Solved 0 of 1 in this selection.")
             app.close()
