@@ -1,18 +1,4 @@
-"""Accessible chessboard canvas and test-piece rendering."""
-
-# W06 direction contract:
-# THESIS: The board is a working position under a pale acetate-tint leaf; the
-# tabbed manual separates play controls from notation without hiding the game.
-# OWN-WORLD: Chrome yellow marks the current section and new-game action; calm
-# neutral surfaces, stepped tabs, punched focus marks, and offset shadows.
-# Colors are provisional; native fonts and original Tk code avoid unapproved
-# assets and Glide-shell reuse.
-# STORY: Two local players see whose turn it is, make a domain-validated move,
-# and follow the resulting position and notation without an engine or network.
-# FIRST VIEWPORT: A large 8x8 board fills the left sheet; an acetate side leaf
-# carries turn status, controls, and a tabbed move register on the right.
-# FORM: Tabbed-manual system; fixed live board workspace, with no staged
-# transit, verdict, or pipeline pattern because each would obscure play.
+"""Keyboard-operable chessboard canvas with a swappable piece renderer."""
 
 from __future__ import annotations
 
@@ -394,7 +380,7 @@ class BoardCanvas(tk.Canvas):
                 self._board_y + (row + 0.5) * size,
                 text=str(rank),
                 fill=INK,
-                font=("TkFixedFont", max(8, int(size * 0.15))),
+                font=("TkFixedFont", -max(8, int(size * 0.20))),
             )
         for column in range(8):
             file_index = column if self._orientation == "white" else 7 - column
@@ -403,7 +389,7 @@ class BoardCanvas(tk.Canvas):
                 self._board_y + 8 * size + 12,
                 text=chr(ord("a") + file_index),
                 fill=INK,
-                font=("TkFixedFont", max(8, int(size * 0.15))),
+                font=("TkFixedFont", -max(8, int(size * 0.20))),
             )
 
     def _on_configure(self, _event: tk.Event) -> None:

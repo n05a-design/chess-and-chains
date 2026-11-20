@@ -54,7 +54,7 @@ class GeometricTestPieces:
             center_x, center_y,
             text=piece.kind.value.upper(),
             fill=INK if white_piece else PAPER,
-            font=("TkDefaultFont", max(10, int(square_size * 0.42)), "bold"),
+            font=("TkDefaultFont", -max(8, int(square_size * 0.55)), "bold"),
             tags=("piece",),
         )
 

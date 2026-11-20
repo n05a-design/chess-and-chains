@@ -16,11 +16,12 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT))
 
-from chess_and_chains.chess import Color, DrawClaim, GameStatus, Move, parse_square  # noqa: E402
+from chess_and_chains.chess import Color, DrawClaim, GameStatus, Move, Piece, PieceType, parse_square  # noqa: E402
 from chess_and_chains.engines.bot import EngineConfig, UCIBot  # noqa: E402
 from chess_and_chains.game import BotStatus, GameSetup  # noqa: E402
 from chess_and_chains.storage import DataLayout, load_settings  # noqa: E402
 from chess_and_chains.ui.app import ChessApp  # noqa: E402
+from chess_and_chains.ui.branding import brand_image  # noqa: E402
 from chess_and_chains.ui.pieces import PIECE_FILE_NAMES, GeometricTestPieces, validate_svg_piece_set  # noqa: E402
 from tests.tk_support import create_root  # noqa: E402
 
@@ -223,17 +224,20 @@ class PuzzleUiTests(AppTestCase):
             app.tab_rail.set_active("puzzles")
             self.assertEqual(app.active_panel, "puzzles")
             self.assertIn("PUZZLE LAB", app.header_mode_text.get())
+            self.assertEqual(app.puzzle_atlas._stations[0], (1, "open", True))
             session = app.puzzle
             self.assertIs(app.board._state, session.state)
             app._play_move(Move.from_uci("a1a2"))  # not legal: board would never offer it
             app._play_move(session.expected_move)
             self.assertEqual(app.puzzle_feedback_text.get(), "Solved!")
             self.assertEqual(app.db.solved_puzzle_ids("demo"), {session.puzzle.puzzle_id})
+            self.assertEqual(app.puzzle_atlas._stations[0], (1, "solved", True))
             app._next_puzzle()
             app._puzzle_hint()
             self.assertEqual(app.board._hint_square, app.puzzle.expected_move.from_square)
             app._puzzle_reveal()
             self.assertIn("Solution:", app.puzzle_feedback_text.get())
+            self.assertEqual(app.puzzle_atlas._stations[:2], ((1, "solved", False), (2, "revealed", True)))
             self.assertEqual(app.db.statistics().puzzles_attempted, 2)
             app.tab_rail.set_active("play")
             self.assertIs(app.board._state, app.game.state)
@@ -265,6 +269,8 @@ class PuzzleUiTests(AppTestCase):
             self.assertIsNone(app.board._state)
             self.assertEqual(app.panel_text.get(), "No puzzles match the filters.")
             self.assertEqual(app.next_puzzle_button.cget("state"), tk.DISABLED)
+            self.assertEqual(app.puzzle_atlas._stations, ())
+            self.assertEqual(app.atlas_section.winfo_manager(), "")
 
             app.tab_rail.set_active("play")
             self.assertIs(app.board._state, app.game.state)
@@ -284,6 +290,35 @@ class PuzzleUiTests(AppTestCase):
         app.tab_rail.set_active("puzzles")
         app._undo()
         self.assertEqual(len(app.game.moves), 1)
+
+
+class BrandingUiTests(AppTestCase):
+    def test_packaged_brand_marks_load_when_tk_cannot_read_svg(self):
+        root = create_root(self)
+        photo_image = tk.PhotoImage
+
+        def without_svg(*args, **kwargs):
+            if kwargs.get("format", ())[0] == "svg":
+                raise tk.TclError("image format svg is not supported")
+            return photo_image(*args, **kwargs)
+
+        with patch("chess_and_chains.ui.branding.tk.PhotoImage", side_effect=without_svg):
+            for name, size in (("signet", 40), ("app-icon", 64)):
+                image = brand_image(root, name, size)
+                self.assertEqual((image.width(), image.height()), (size, size))
+                self.assertTrue(image.transparency_get(0, 0))
+
+    def test_test_piece_letter_fits_its_disc_at_double_text_scale(self):
+        root = create_root(self)
+        scale = root.tk.call("tk", "scaling")
+        self.addCleanup(root.tk.call, "tk", "scaling", scale)
+        root.tk.call("tk", "scaling", 8 / 3)
+        canvas = tk.Canvas(root)
+        queen = Piece(Color.WHITE, PieceType.QUEEN)
+        GeometricTestPieces().draw(canvas, 40, 40, 46, queen)
+        disc, glyph = (canvas.bbox(item) for item in canvas.find_withtag("piece"))
+        self.assertLessEqual(disc[0], glyph[0])
+        self.assertLessEqual(glyph[2], disc[2])
 
 
 class StorageAndLocaleUiTests(AppTestCase):
@@ -403,9 +438,12 @@ class StorageAndLocaleUiTests(AppTestCase):
         app = self.make_app(locale="de")
         self.root.deiconify()
         self.root.geometry("860x700")
-        app.bot_text.set("Bot-Status mit ausführlichem Hinweis. " * 12)
-        self.root.update()
         canvas = app.play_canvas
+        # Force a tall status area independently of the platform font.
+        app.play_panel.grid_rowconfigure(app.bot_label.grid_info()["row"], minsize=720)
+        self.pump_until(lambda: canvas.winfo_height() > 100 and app.play_panel.winfo_height() > canvas.winfo_height())
+        self.root.update()
+        self.assertEqual(int(canvas.cget("scrollregion").split()[-1]), app.play_panel.winfo_height())
         self.assertEqual(canvas.yview()[0], 0)
         self.assertLess(canvas.yview()[1], 1)
         app.engine_button.event_generate("<FocusIn>")

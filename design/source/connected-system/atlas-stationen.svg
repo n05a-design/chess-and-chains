@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="420" viewBox="0 0 840 420">
+<title>Atlas of Moves – Stationen und Zustände</title>
+<desc>Editierbarer Entwurf für Chess &amp; Chains. KI-unterstützt. Status PROPOSED.</desc>
+<rect x="0" y="0" width="840" height="420" rx="0" fill="#FAF6EC"/>
+<path d="M20 0V420 M40 0V420 M60 0V420 M80 0V420 M100 0V420 M120 0V420 M140 0V420 M160 0V420 M180 0V420 M200 0V420 M220 0V420 M240 0V420 M260 0V420 M280 0V420 M300 0V420 M320 0V420 M340 0V420 M360 0V420 M380 0V420 M400 0V420 M420 0V420 M440 0V420 M460 0V420 M480 0V420 M500 0V420 M520 0V420 M540 0V420 M560 0V420 M580 0V420 M600 0V420 M620 0V420 M640 0V420 M660 0V420 M680 0V420 M700 0V420 M720 0V420 M740 0V420 M760 0V420 M780 0V420 M800 0V420 M820 0V420 M840 0V420M0 20H840 M0 40H840 M0 60H840 M0 80H840 M0 100H840 M0 120H840 M0 140H840 M0 160H840 M0 180H840 M0 200H840 M0 220H840 M0 240H840 M0 260H840 M0 280H840 M0 300H840 M0 320H840 M0 340H840 M0 360H840 M0 380H840 M0 400H840 M0 420H840" fill="none" stroke="#171920" stroke-width="1" opacity=".065"/>
+<text x="33" y="51" fill="#171920" font-size="38" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif">Atlas of Moves</text>
+<text x="35" y="82" fill="#2447D8" font-size="13" font-weight="700" font-family="IBM Plex Mono, Consolas, monospace">ROUTE DURCH EINE RÄTSELAUSWAHL  /  BEISPIEL</text>
+<g id="route" transform="translate(31 108) scale(1)">
+<path d="M24 22H114.96000000000001Q118.96000000000001 22 118.96000000000001 26V42Q118.96000000000001 46 122.96000000000001 46H213.92000000000002 M213.92000000000002 46H293.96000000000004Q297.96000000000004 46 297.96000000000004 42V26Q297.96000000000004 22 301.96000000000004 22H382 M382 22H462.03999999999996Q466.03999999999996 22 466.03999999999996 26V42Q466.03999999999996 46 470.03999999999996 46H550.0799999999999 M550.0799999999999 46H641.04Q645.04 46 645.04 42V26Q645.04 22 649.04 22H740" fill="none" stroke="#8D7862" stroke-width="2"/>
+<circle cx="24" cy="22" r="7" fill="#2447D8" stroke="#171920" stroke-width="1.5"/>
+<path d="M21 22l2 2 4-5" fill="none" stroke="#FFFFFF" stroke-width="1.5"/>
+<text x="24" y="87" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace" text-anchor="middle">01</text>
+<circle cx="213.92000000000002" cy="46" r="12" fill="#FAF6EC" stroke="#171920" stroke-width="2"/>
+<circle cx="213.92000000000002" cy="46" r="7" fill="#F4C400" stroke="#171920" stroke-width="1.5"/>
+<text x="213.92000000000002" y="87" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace" text-anchor="middle">02</text>
+<circle cx="382" cy="22" r="7" fill="#FAF6EC" stroke="#171920" stroke-width="1.5"/>
+<text x="382" y="87" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace" text-anchor="middle">03</text>
+<circle cx="550.0799999999999" cy="46" r="7" fill="#FAF6EC" stroke="#B12729" stroke-width="1.5"/>
+<path d="M547.0799999999999 43l6 6m0-6-6 6" fill="none" stroke="#B12729" stroke-width="1.5"/>
+<text x="550.0799999999999" y="87" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace" text-anchor="middle">04</text>
+<circle cx="740" cy="22" r="7" fill="#FAF6EC" stroke="#171920" stroke-width="1.5"/>
+<text x="740" y="87" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace" text-anchor="middle">05</text>
+</g>
+<g id="legende">
+<text x="35" y="254" fill="#171920" font-size="16" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif">Gelöst</text>
+<text x="192" y="254" fill="#171920" font-size="16" font-weight="400" font-family="Space Grotesk, Segoe UI, sans-serif">Gefüllter Knoten mit Haken</text>
+<text x="35" y="288" fill="#171920" font-size="16" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif">Aktiv</text>
+<text x="192" y="288" fill="#171920" font-size="16" font-weight="400" font-family="Space Grotesk, Segoe UI, sans-serif">Doppelring auf der aktuellen Station</text>
+<text x="35" y="322" fill="#171920" font-size="16" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif">Offen</text>
+<text x="192" y="322" fill="#171920" font-size="16" font-weight="400" font-family="Space Grotesk, Segoe UI, sans-serif">Kontur ohne Symbol</text>
+<text x="35" y="356" fill="#171920" font-size="16" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif">Aufgedeckt</text>
+<text x="192" y="356" fill="#171920" font-size="16" font-weight="400" font-family="Space Grotesk, Segoe UI, sans-serif">Kreuz nach Anzeige der Lösung</text>
+</g>
+<text x="35" y="399" fill="#171920" font-size="13" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">Die Nummer bezieht sich auf den aktuellen Filter.</text>
+</svg>

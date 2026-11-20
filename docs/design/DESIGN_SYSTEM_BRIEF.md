@@ -1,6 +1,6 @@
 # Design System Brief – Chess & Chains
 
-**Status: IDEA / DESIGN DISCOVERY.** Vorhandene SVG-Schachfiguren des Owners und zukünftiges Brett sind ausdrücklich **noch nicht im Repository enthalten**.
+**Status: PROPOSED.** [Connected System](CONNECTED_SYSTEM.md) ist der gewählte lokale Designkandidat. Die folgende W06-Exploration bleibt als Entstehungskontext erhalten. Die Rechte an den inventarisierten Figuren und die öffentliche Markenfreigabe stehen im [Owner-Review](OWNER_DESIGN_REVIEW.md).
 
 ## Ziel
 

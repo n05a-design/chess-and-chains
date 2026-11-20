@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+<title>Connected System – Social Preview</title>
+<desc>Editierbarer Entwurf für Chess &amp; Chains. KI-unterstützt. Status PROPOSED.</desc>
+<rect x="0" y="0" width="1200" height="630" rx="0" fill="#171920"/>
+<path d="M25 0V630 M50 0V630 M75 0V630 M100 0V630 M125 0V630 M150 0V630 M175 0V630 M200 0V630 M225 0V630 M250 0V630 M275 0V630 M300 0V630 M325 0V630 M350 0V630 M375 0V630 M400 0V630 M425 0V630 M450 0V630 M475 0V630 M500 0V630 M525 0V630 M550 0V630 M575 0V630 M600 0V630 M625 0V630 M650 0V630 M675 0V630 M700 0V630 M725 0V630 M750 0V630 M775 0V630 M800 0V630 M825 0V630 M850 0V630 M875 0V630 M900 0V630 M925 0V630 M950 0V630 M975 0V630 M1000 0V630 M1025 0V630 M1050 0V630 M1075 0V630 M1100 0V630 M1125 0V630 M1150 0V630 M1175 0V630 M1200 0V630M0 25H1200 M0 50H1200 M0 75H1200 M0 100H1200 M0 125H1200 M0 150H1200 M0 175H1200 M0 200H1200 M0 225H1200 M0 250H1200 M0 275H1200 M0 300H1200 M0 325H1200 M0 350H1200 M0 375H1200 M0 400H1200 M0 425H1200 M0 450H1200 M0 475H1200 M0 500H1200 M0 525H1200 M0 550H1200 M0 575H1200 M0 600H1200 M0 625H1200" fill="none" stroke="#FAF6EC" stroke-width="1" opacity=".12"/>
+<text x="56" y="61" fill="#FAF6EC" font-size="16" font-weight="700" font-family="IBM Plex Mono, Consolas, monospace" letter-spacing="3">CHESS &amp; CHAINS</text>
+<text x="52" y="235" fill="#FAF6EC" font-size="108" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif" letter-spacing="-3">Think in</text>
+<text x="52" y="344" fill="#FAF6EC" font-size="108" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif" letter-spacing="-3">connections.</text>
+<path d="M56 392H587" fill="none" stroke="#F4C400" stroke-width="4"/>
+<text x="56" y="453" fill="#FAF6EC" font-size="25" font-weight="400" font-family="Space Grotesk, Segoe UI, sans-serif">Schach und taktisches Training am Desktop.</text>
+<g transform="translate(778 139) scale(4.8)">
+<path d="M40 31 Q46 31 46 37 V48 Q46 54 40 54 H12 Q6 54 6 48 V37 Q6 31 12 31 H25" fill="none" stroke="#FAF6EC" stroke-width="8"/>
+<path d="M39 44 Q33 44 33 38 V12 Q33 6 39 6 H52 Q58 6 58 12 V38 Q58 44 52 44" fill="none" stroke="#F4C400" stroke-width="8"/>
+</g>
+<path d="M1200 0H1040A160 160 0 0 0 1200 160Z" fill="#B12729"/>
+<path d="M1200 630H1020A180 180 0 0 1 1200 450Z" fill="#2447D8"/>
+<text x="56" y="579" fill="#FAF6EC" font-size="15" font-weight="700" font-family="IBM Plex Mono, Consolas, monospace" letter-spacing="2">LOKAL SPIELEN  /  RÄTSEL LÖSEN</text>
+</svg>

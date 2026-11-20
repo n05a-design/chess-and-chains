@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="568" height="244" viewBox="0 0 568 244">
+<title>Connected System – Kettenglied und Durchgänge</title>
+<desc>Editierbarer Entwurf für Chess &amp; Chains. KI-unterstützt. Status PROPOSED.</desc>
+<rect x="0" y="0" width="568" height="244" rx="0" fill="#FAF6EC"/>
+<g id="grid">
+<path d="M16 0V244 M32 0V244 M48 0V244 M64 0V244 M80 0V244 M96 0V244 M112 0V244 M128 0V244 M144 0V244 M160 0V244 M176 0V244 M192 0V244 M208 0V244 M224 0V244 M240 0V244 M256 0V244 M272 0V244 M288 0V244 M304 0V244 M320 0V244 M336 0V244 M352 0V244 M368 0V244 M384 0V244 M400 0V244 M416 0V244 M432 0V244 M448 0V244 M464 0V244 M480 0V244 M496 0V244 M512 0V244 M528 0V244 M544 0V244 M560 0V244M0 16H568 M0 32H568 M0 48H568 M0 64H568 M0 80H568 M0 96H568 M0 112H568 M0 128H568 M0 144H568 M0 160H568 M0 176H568 M0 192H568 M0 208H568 M0 224H568 M0 240H568" fill="none" stroke="#2447D8" stroke-width="1" opacity=".11"/>
+</g>
+<g transform="translate(35 59) scale(1.78)">
+<g id="link-master">
+<rect x="2" y="16" width="48" height="31" rx="10" fill="#2447D8"/>
+<rect x="10" y="24" width="32" height="15" rx="2" fill="#FAF6EC"/>
+</g>
+</g>
+<g id="interlock" transform="translate(179 50) scale(1.98)">
+<path d="M40 31 Q46 31 46 37 V48 Q46 54 40 54 H12 Q6 54 6 48 V37 Q6 31 12 31 H25" fill="none" stroke="#2447D8" stroke-width="8"/>
+<path d="M39 44 Q33 44 33 38 V12 Q33 6 39 6 H52 Q58 6 58 12 V38 Q58 44 52 44" fill="none" stroke="#F4C400" stroke-width="8"/>
+</g>
+<path d="M244 112H331L343 95H374 M270 136H341L353 142H374" fill="none" stroke="#171920" stroke-width="1"/>
+<text x="386" y="99" fill="#171920" font-size="14" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif">Vertikales Glied vorne</text>
+<text x="386" y="147" fill="#171920" font-size="14" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif">Horizontales Glied vorne</text>
+<text x="36" y="190" fill="#171920" font-size="14" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">48 × 31 · Steg 8</text>
+<text x="181" y="190" fill="#171920" font-size="14" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">64 × 64 · 2 Durchgänge</text>
+<text x="36" y="225" fill="#171920" font-size="13" font-weight="700" font-family="IBM Plex Mono, Consolas, monospace">Raster u = 2 · Außenradius 10 · Innenradius 2</text>
+</svg>

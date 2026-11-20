@@ -1,0 +1,262 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1260" height="780" viewBox="0 0 1260 780">
+<title>Connected System – Home, Play, Puzzle Lab und Appearance</title>
+<desc>Editierbarer Entwurf für Chess &amp; Chains. KI-unterstützt. Status PROPOSED.</desc>
+<rect x="0" y="0" width="1260" height="780" rx="0" fill="#FAF6EC"/>
+<path d="M20 0V780 M40 0V780 M60 0V780 M80 0V780 M100 0V780 M120 0V780 M140 0V780 M160 0V780 M180 0V780 M200 0V780 M220 0V780 M240 0V780 M260 0V780 M280 0V780 M300 0V780 M320 0V780 M340 0V780 M360 0V780 M380 0V780 M400 0V780 M420 0V780 M440 0V780 M460 0V780 M480 0V780 M500 0V780 M520 0V780 M540 0V780 M560 0V780 M580 0V780 M600 0V780 M620 0V780 M640 0V780 M660 0V780 M680 0V780 M700 0V780 M720 0V780 M740 0V780 M760 0V780 M780 0V780 M800 0V780 M820 0V780 M840 0V780 M860 0V780 M880 0V780 M900 0V780 M920 0V780 M940 0V780 M960 0V780 M980 0V780 M1000 0V780 M1020 0V780 M1040 0V780 M1060 0V780 M1080 0V780 M1100 0V780 M1120 0V780 M1140 0V780 M1160 0V780 M1180 0V780 M1200 0V780 M1220 0V780 M1240 0V780 M1260 0V780M0 20H1260 M0 40H1260 M0 60H1260 M0 80H1260 M0 100H1260 M0 120H1260 M0 140H1260 M0 160H1260 M0 180H1260 M0 200H1260 M0 220H1260 M0 240H1260 M0 260H1260 M0 280H1260 M0 300H1260 M0 320H1260 M0 340H1260 M0 360H1260 M0 380H1260 M0 400H1260 M0 420H1260 M0 440H1260 M0 460H1260 M0 480H1260 M0 500H1260 M0 520H1260 M0 540H1260 M0 560H1260 M0 580H1260 M0 600H1260 M0 620H1260 M0 640H1260 M0 660H1260 M0 680H1260 M0 700H1260 M0 720H1260 M0 740H1260 M0 760H1260 M0 780H1260" fill="none" stroke="#171920" stroke-width="1" opacity=".045"/>
+<text x="32" y="48" fill="#171920" font-size="34" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif">Vier Arbeitsbereiche</text>
+<text x="1228" y="48" fill="#171920" font-size="13" font-weight="700" font-family="IBM Plex Mono, Consolas, monospace" text-anchor="end">DESIGNSTUDIE  /  CONNECTED SYSTEM</text>
+<g id="view-0" transform="translate(32 87) scale(1)">
+<rect x="0" y="0" width="588" height="313" rx="4" fill="#FFFFFF" stroke="#171920"/>
+<rect x="0" y="0" width="588" height="40" rx="0" fill="#171920"/>
+<text x="14" y="25" fill="#FAF6EC" font-size="12" font-weight="700" font-family="IBM Plex Mono, Consolas, monospace" letter-spacing="1">HOME</text>
+<text x="572" y="25" fill="#FAF6EC" font-size="12" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif" text-anchor="end">Chess &amp; Chains</text>
+<g transform="translate(25 59) scale(0.82)">
+<path d="M40 31 Q46 31 46 37 V48 Q46 54 40 54 H12 Q6 54 6 48 V37 Q6 31 12 31 H25" fill="none" stroke="#2447D8" stroke-width="8"/>
+<path d="M39 44 Q33 44 33 38 V12 Q33 6 39 6 H52 Q58 6 58 12 V38 Q58 44 52 44" fill="none" stroke="#F4C400" stroke-width="8"/>
+</g>
+<text x="25" y="165" fill="#171920" font-size="32" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif">Think in connections.</text>
+<text x="26" y="195" fill="#171920" font-size="15" font-weight="400" font-family="Space Grotesk, Segoe UI, sans-serif">Lokale Partie oder taktisches Training</text>
+<rect x="26" y="222" width="150" height="39" rx="3" fill="#F4C400"/>
+<text x="36" y="247" fill="#171920" font-size="14" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif">Partie beginnen</text>
+<rect x="186" y="222" width="135" height="39" rx="3" fill="none" stroke="#171920"/>
+<text x="195" y="247" fill="#171920" font-size="14" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif">Rätsel öffnen</text>
+<g transform="translate(410 83) scale(0.5)">
+<rect x="0" y="0" width="290" height="310" rx="0" fill="#171920"/>
+<path d="M20 0V310 M40 0V310 M60 0V310 M80 0V310 M100 0V310 M120 0V310 M140 0V310 M160 0V310 M180 0V310 M200 0V310 M220 0V310 M240 0V310 M260 0V310 M280 0V310M0 20H290 M0 40H290 M0 60H290 M0 80H290 M0 100H290 M0 120H290 M0 140H290 M0 160H290 M0 180H290 M0 200H290 M0 220H290 M0 240H290 M0 260H290 M0 280H290 M0 300H290" fill="none" stroke="#FAF6EC" stroke-width="1" opacity=".17"/>
+<g transform="translate(30 20) scale(1.9)">
+<path d="M40 31 Q46 31 46 37 V48 Q46 54 40 54 H12 Q6 54 6 48 V37 Q6 31 12 31 H25" fill="none" stroke="#FAF6EC" stroke-width="8"/>
+<path d="M39 44 Q33 44 33 38 V12 Q33 6 39 6 H52 Q58 6 58 12 V38 Q58 44 52 44" fill="none" stroke="#F4C400" stroke-width="8"/>
+</g>
+<path d="M290 310H198A92 92 0 0 1 290 218Z" fill="#2447D8"/>
+<path d="M290 0H198A92 92 0 0 0 290 92Z" fill="#B12729"/>
+</g>
+</g>
+<g id="view-1" transform="translate(640 87) scale(1)">
+<rect x="0" y="0" width="588" height="313" rx="4" fill="#FFFFFF" stroke="#171920"/>
+<rect x="0" y="0" width="588" height="40" rx="0" fill="#171920"/>
+<text x="14" y="25" fill="#FAF6EC" font-size="12" font-weight="700" font-family="IBM Plex Mono, Consolas, monospace" letter-spacing="1">PLAY</text>
+<text x="572" y="25" fill="#FAF6EC" font-size="12" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif" text-anchor="end">Chess &amp; Chains</text>
+<g transform="translate(20 60) scale(1)">
+<g id="board">
+<rect x="0" y="0" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="29" y="0" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="58" y="0" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="87" y="0" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="116" y="0" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="145" y="0" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="174" y="0" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="203" y="0" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="0" y="29" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="29" y="29" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="58" y="29" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="87" y="29" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="116" y="29" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="145" y="29" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="174" y="29" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="203" y="29" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="0" y="58" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="29" y="58" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="58" y="58" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="87" y="58" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="116" y="58" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="145" y="58" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="174" y="58" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="203" y="58" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="0" y="87" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="29" y="87" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="58" y="87" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="87" y="87" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="116" y="87" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="145" y="87" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="174" y="87" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="203" y="87" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="0" y="116" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="29" y="116" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="58" y="116" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="87" y="116" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="116" y="116" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="145" y="116" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="174" y="116" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="203" y="116" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="0" y="145" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="29" y="145" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="58" y="145" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="87" y="145" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="116" y="145" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="145" y="145" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="174" y="145" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="203" y="145" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="0" y="174" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="29" y="174" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="58" y="174" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="87" y="174" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="116" y="174" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="145" y="174" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="174" y="174" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="203" y="174" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="0" y="203" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="29" y="203" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="58" y="203" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="87" y="203" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="116" y="203" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="145" y="203" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="174" y="203" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="203" y="203" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<circle cx="14.5" cy="14.5" r="9.28" fill="#171920" stroke="#FAF6EC" stroke-width="1"/>
+<text x="14.5" y="18.560000000000002" fill="#FAF6EC" font-size="12.18" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif" text-anchor="middle">T</text>
+<circle cx="101.5" cy="14.5" r="9.28" fill="#171920" stroke="#FAF6EC" stroke-width="1"/>
+<text x="101.5" y="18.560000000000002" fill="#FAF6EC" font-size="12.18" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif" text-anchor="middle">D</text>
+<circle cx="130.5" cy="14.5" r="9.28" fill="#171920" stroke="#FAF6EC" stroke-width="1"/>
+<text x="130.5" y="18.560000000000002" fill="#FAF6EC" font-size="12.18" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif" text-anchor="middle">K</text>
+<circle cx="217.5" cy="14.5" r="9.28" fill="#171920" stroke="#FAF6EC" stroke-width="1"/>
+<text x="217.5" y="18.560000000000002" fill="#FAF6EC" font-size="12.18" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif" text-anchor="middle">T</text>
+<circle cx="43.5" cy="43.5" r="9.28" fill="#171920" stroke="#FAF6EC" stroke-width="1"/>
+<text x="43.5" y="47.56" fill="#FAF6EC" font-size="12.18" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif" text-anchor="middle">B</text>
+<circle cx="72.5" cy="43.5" r="9.28" fill="#171920" stroke="#FAF6EC" stroke-width="1"/>
+<text x="72.5" y="47.56" fill="#FAF6EC" font-size="12.18" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif" text-anchor="middle">B</text>
+<circle cx="159.5" cy="43.5" r="9.28" fill="#171920" stroke="#FAF6EC" stroke-width="1"/>
+<text x="159.5" y="47.56" fill="#FAF6EC" font-size="12.18" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif" text-anchor="middle">B</text>
+<circle cx="188.5" cy="43.5" r="9.28" fill="#171920" stroke="#FAF6EC" stroke-width="1"/>
+<text x="188.5" y="47.56" fill="#FAF6EC" font-size="12.18" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif" text-anchor="middle">B</text>
+<circle cx="101.5" cy="72.5" r="9.28" fill="#171920" stroke="#FAF6EC" stroke-width="1"/>
+<text x="101.5" y="76.56" fill="#FAF6EC" font-size="12.18" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif" text-anchor="middle">S</text>
+<circle cx="130.5" cy="101.5" r="9.28" fill="#171920" stroke="#FAF6EC" stroke-width="1"/>
+<text x="130.5" y="105.56" fill="#FAF6EC" font-size="12.18" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif" text-anchor="middle">B</text>
+<circle cx="101.5" cy="130.5" r="9.28" fill="#FAF6EC" stroke="#171920" stroke-width="1"/>
+<text x="101.5" y="134.56" fill="#171920" font-size="12.18" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif" text-anchor="middle">B</text>
+<circle cx="72.5" cy="159.5" r="9.28" fill="#FAF6EC" stroke="#171920" stroke-width="1"/>
+<text x="72.5" y="163.56" fill="#171920" font-size="12.18" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif" text-anchor="middle">S</text>
+<circle cx="43.5" cy="188.5" r="9.28" fill="#FAF6EC" stroke="#171920" stroke-width="1"/>
+<text x="43.5" y="192.56" fill="#171920" font-size="12.18" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif" text-anchor="middle">B</text>
+<circle cx="72.5" cy="188.5" r="9.28" fill="#FAF6EC" stroke="#171920" stroke-width="1"/>
+<text x="72.5" y="192.56" fill="#171920" font-size="12.18" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif" text-anchor="middle">B</text>
+<circle cx="159.5" cy="188.5" r="9.28" fill="#FAF6EC" stroke="#171920" stroke-width="1"/>
+<text x="159.5" y="192.56" fill="#171920" font-size="12.18" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif" text-anchor="middle">B</text>
+<circle cx="188.5" cy="188.5" r="9.28" fill="#FAF6EC" stroke="#171920" stroke-width="1"/>
+<text x="188.5" y="192.56" fill="#171920" font-size="12.18" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif" text-anchor="middle">B</text>
+<circle cx="14.5" cy="217.5" r="9.28" fill="#FAF6EC" stroke="#171920" stroke-width="1"/>
+<text x="14.5" y="221.56" fill="#171920" font-size="12.18" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif" text-anchor="middle">T</text>
+<circle cx="101.5" cy="217.5" r="9.28" fill="#FAF6EC" stroke="#171920" stroke-width="1"/>
+<text x="101.5" y="221.56" fill="#171920" font-size="12.18" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif" text-anchor="middle">D</text>
+<circle cx="130.5" cy="217.5" r="9.28" fill="#FAF6EC" stroke="#171920" stroke-width="1"/>
+<text x="130.5" y="221.56" fill="#171920" font-size="12.18" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif" text-anchor="middle">K</text>
+<circle cx="217.5" cy="217.5" r="9.28" fill="#FAF6EC" stroke="#171920" stroke-width="1"/>
+<text x="217.5" y="221.56" fill="#171920" font-size="12.18" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif" text-anchor="middle">T</text>
+</g>
+</g>
+<text x="278" y="106" fill="#171920" font-size="25" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif">Weiß am Zug</text>
+<text x="278" y="132" fill="#171920" font-size="15" font-weight="400" font-family="Space Grotesk, Segoe UI, sans-serif">Zwei Personen · lokal</text>
+<rect x="278" y="156" width="244" height="40" rx="3" fill="#F4C400"/>
+<text x="294" y="182" fill="#171920" font-size="15" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif">Neues Spiel</text>
+<rect x="278" y="207" width="244" height="34" rx="3" fill="none" stroke="#171920"/>
+<text x="294" y="229" fill="#171920" font-size="15" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif">Brett drehen</text>
+</g>
+<g id="view-2" transform="translate(32 429) scale(1)">
+<rect x="0" y="0" width="588" height="313" rx="4" fill="#FFFFFF" stroke="#171920"/>
+<rect x="0" y="0" width="588" height="40" rx="0" fill="#171920"/>
+<text x="14" y="25" fill="#FAF6EC" font-size="12" font-weight="700" font-family="IBM Plex Mono, Consolas, monospace" letter-spacing="1">PUZZLE LAB</text>
+<text x="572" y="25" fill="#FAF6EC" font-size="12" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif" text-anchor="end">Chess &amp; Chains</text>
+<text x="22" y="88" fill="#171920" font-size="29" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif">Atlas of Moves</text>
+<text x="23" y="120" fill="#171920" font-size="14" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">Rätsel 2 von 5 · Beispieldaten</text>
+<rect x="20" y="145" width="548" height="92" rx="0" fill="#FAF6EC"/>
+<g transform="translate(32 151) scale(1)">
+<path d="M24 22H80.80000000000001Q84.80000000000001 22 84.80000000000001 26V42Q84.80000000000001 46 88.80000000000001 46H145.60000000000002 M145.60000000000002 46H198.8Q202.8 46 202.8 42V26Q202.8 22 206.8 22H260 M260 22H313.2Q317.2 22 317.2 26V42Q317.2 46 321.2 46H374.4 M374.4 46H431.2Q435.2 46 435.2 42V26Q435.2 22 439.2 22H496" fill="none" stroke="#8D7862" stroke-width="2"/>
+<circle cx="24" cy="22" r="7" fill="#2447D8" stroke="#171920" stroke-width="1.5"/>
+<path d="M21 22l2 2 4-5" fill="none" stroke="#FFFFFF" stroke-width="1.5"/>
+<text x="24" y="69" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace" text-anchor="middle">01</text>
+<circle cx="145.60000000000002" cy="46" r="12" fill="#FAF6EC" stroke="#171920" stroke-width="2"/>
+<circle cx="145.60000000000002" cy="46" r="7" fill="#F4C400" stroke="#171920" stroke-width="1.5"/>
+<text x="145.60000000000002" y="69" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace" text-anchor="middle">02</text>
+<circle cx="260" cy="22" r="7" fill="#FAF6EC" stroke="#171920" stroke-width="1.5"/>
+<text x="260" y="69" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace" text-anchor="middle">03</text>
+<circle cx="374.4" cy="46" r="7" fill="#FAF6EC" stroke="#B12729" stroke-width="1.5"/>
+<path d="M371.4 43l6 6m0-6-6 6" fill="none" stroke="#B12729" stroke-width="1.5"/>
+<text x="374.4" y="69" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace" text-anchor="middle">04</text>
+<circle cx="496" cy="22" r="7" fill="#FAF6EC" stroke="#171920" stroke-width="1.5"/>
+<text x="496" y="69" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace" text-anchor="middle">05</text>
+</g>
+<text x="23" y="271" fill="#171920" font-size="18" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif">Weiß am Zug. Finde den besten Zug.</text>
+</g>
+<g id="view-3" transform="translate(640 429) scale(1)">
+<rect x="0" y="0" width="588" height="313" rx="4" fill="#171920" stroke="#171920"/>
+<rect x="0" y="0" width="588" height="40" rx="0" fill="#232630"/>
+<text x="14" y="25" fill="#FAF6EC" font-size="12" font-weight="700" font-family="IBM Plex Mono, Consolas, monospace" letter-spacing="1">APPEARANCE</text>
+<text x="572" y="25" fill="#FAF6EC" font-size="12" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif" text-anchor="end">Chess &amp; Chains</text>
+<g transform="translate(20 60) scale(1)">
+<g>
+<rect x="0" y="0" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="29" y="0" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="58" y="0" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="87" y="0" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="116" y="0" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="145" y="0" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="174" y="0" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="203" y="0" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="0" y="29" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="29" y="29" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="58" y="29" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="87" y="29" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="116" y="29" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="145" y="29" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="174" y="29" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="203" y="29" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="0" y="58" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="29" y="58" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="58" y="58" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="87" y="58" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="116" y="58" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="145" y="58" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="174" y="58" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="203" y="58" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="0" y="87" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="29" y="87" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="58" y="87" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="87" y="87" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="116" y="87" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="145" y="87" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="174" y="87" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="203" y="87" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="0" y="116" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="29" y="116" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="58" y="116" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="87" y="116" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="116" y="116" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="145" y="116" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="174" y="116" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="203" y="116" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="0" y="145" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="29" y="145" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="58" y="145" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="87" y="145" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="116" y="145" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="145" y="145" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="174" y="145" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="203" y="145" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="0" y="174" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="29" y="174" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="58" y="174" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="87" y="174" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="116" y="174" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="145" y="174" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="174" y="174" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="203" y="174" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="0" y="203" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="29" y="203" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="58" y="203" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="87" y="203" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="116" y="203" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="145" y="203" width="29" height="29" rx="0" fill="#ECE2CA"/>
+<rect x="174" y="203" width="29" height="29" rx="0" fill="#8D7862"/>
+<rect x="203" y="203" width="29" height="29" rx="0" fill="#ECE2CA"/>
+</g>
+</g>
+<text x="277" y="93" fill="#FAF6EC" font-size="24" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif">Bretterscheinung</text>
+<text x="278" y="123" fill="#FAF6EC" font-size="14" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">Vorschau · Dunkler Modus</text>
+<rect x="278" y="151" width="245" height="36" rx="3" fill="#333844" stroke="#FAF6EC"/>
+<text x="290" y="174" fill="#FAF6EC" font-size="14" font-weight="400" font-family="Space Grotesk, Segoe UI, sans-serif">Brettton · Werkstatt</text>
+<rect x="278" y="198" width="245" height="36" rx="3" fill="#333844" stroke="#FAF6EC"/>
+<text x="290" y="221" fill="#FAF6EC" font-size="14" font-weight="400" font-family="Space Grotesk, Segoe UI, sans-serif">Skalierung · 150 %</text>
+<rect x="278" y="245" width="245" height="36" rx="3" fill="#F4C400"/>
+<text x="290" y="268" fill="#171920" font-size="14" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif">Übernehmen</text>
+</g>
+</svg>

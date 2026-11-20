@@ -1,0 +1,48 @@
+{
+  "name": "Connected System",
+  "status": "PROPOSED",
+  "brand": {
+    "primary": "#2447D8",
+    "secondary": "#F4C400",
+    "accent": "#B12729",
+    "background": "#FAF6EC",
+    "foreground": "#171920"
+  },
+  "surface": {
+    "primary": "#FFFCF4",
+    "secondary": "#EFE8D8",
+    "shadow": "#CFC4B0",
+    "mutedInk": "#514B44",
+    "disabledInk": "#6B645C"
+  },
+  "board": {
+    "light": "#ECE2CA",
+    "dark": "#8D7862",
+    "selected": "#F4C400",
+    "legalMove": "#171920",
+    "lastMove": "#FAF6EC",
+    "check": ["#171920", "#FAF6EC"]
+  },
+  "puzzle": {
+    "path": "#8D7862",
+    "node": "#FAF6EC",
+    "completed": "#2447D8",
+    "active": "#F4C400",
+    "revealed": "#B12729"
+  },
+  "typography": {
+    "display": {"family": "Space Grotesk", "weight": 700, "fallback": "Segoe UI, sans-serif"},
+    "body": {"family": "Space Grotesk", "weight": 400, "fallback": "Segoe UI, sans-serif"},
+    "mono": {"family": "IBM Plex Mono", "weights": [400, 700], "fallback": "Consolas, monospace"},
+    "tkPointSizes": {"caption": 10, "body": 11, "section": 16, "title": 22}
+  },
+  "geometry": {
+    "unit": 2,
+    "linkSize": [48, 31],
+    "linkRadius": 10,
+    "innerRadius": 2,
+    "linkStroke": 8,
+    "grid": [64, 64],
+    "signetClearSpace": 4
+  }
+}

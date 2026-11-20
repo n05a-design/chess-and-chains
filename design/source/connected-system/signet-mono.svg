@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+<title>Chess &amp; Chains – Einfarbiges Signet</title>
+<desc>Editierbarer Entwurf für Chess &amp; Chains. KI-unterstützt. Status PROPOSED.</desc>
+<path d="M40 31 Q46 31 46 37 V48 Q46 54 40 54 H12 Q6 54 6 48 V37 Q6 31 12 31 H25" fill="none" stroke="#171920" stroke-width="8"/>
+<path d="M39 44 Q33 44 33 38 V12 Q33 6 39 6 H52 Q58 6 58 12 V38 Q58 44 52 44" fill="none" stroke="#171920" stroke-width="8"/>
+</svg>

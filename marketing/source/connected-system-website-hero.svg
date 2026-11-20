@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="700" viewBox="0 0 1440 700">
+<title>Connected System – Website-Hero</title>
+<desc>Editierbarer Entwurf für Chess &amp; Chains. KI-unterstützt. Status PROPOSED.</desc>
+<rect x="0" y="0" width="1440" height="700" rx="0" fill="#FAF6EC"/>
+<path d="M24 0V700 M48 0V700 M72 0V700 M96 0V700 M120 0V700 M144 0V700 M168 0V700 M192 0V700 M216 0V700 M240 0V700 M264 0V700 M288 0V700 M312 0V700 M336 0V700 M360 0V700 M384 0V700 M408 0V700 M432 0V700 M456 0V700 M480 0V700 M504 0V700 M528 0V700 M552 0V700 M576 0V700 M600 0V700 M624 0V700 M648 0V700 M672 0V700 M696 0V700 M720 0V700 M744 0V700 M768 0V700 M792 0V700 M816 0V700 M840 0V700 M864 0V700 M888 0V700 M912 0V700 M936 0V700 M960 0V700 M984 0V700 M1008 0V700 M1032 0V700 M1056 0V700 M1080 0V700 M1104 0V700 M1128 0V700 M1152 0V700 M1176 0V700 M1200 0V700 M1224 0V700 M1248 0V700 M1272 0V700 M1296 0V700 M1320 0V700 M1344 0V700 M1368 0V700 M1392 0V700 M1416 0V700 M1440 0V700M0 24H1440 M0 48H1440 M0 72H1440 M0 96H1440 M0 120H1440 M0 144H1440 M0 168H1440 M0 192H1440 M0 216H1440 M0 240H1440 M0 264H1440 M0 288H1440 M0 312H1440 M0 336H1440 M0 360H1440 M0 384H1440 M0 408H1440 M0 432H1440 M0 456H1440 M0 480H1440 M0 504H1440 M0 528H1440 M0 552H1440 M0 576H1440 M0 600H1440 M0 624H1440 M0 648H1440 M0 672H1440 M0 696H1440" fill="none" stroke="#171920" stroke-width="1" opacity=".06"/>
+<path d="M44 88H1396" fill="none" stroke="#171920" stroke-width="1"/>
+<g transform="translate(41 19) scale(0.8)">
+<path d="M40 31 Q46 31 46 37 V48 Q46 54 40 54 H12 Q6 54 6 48 V37 Q6 31 12 31 H25" fill="none" stroke="#2447D8" stroke-width="8"/>
+<path d="M39 44 Q33 44 33 38 V12 Q33 6 39 6 H52 Q58 6 58 12 V38 Q58 44 52 44" fill="none" stroke="#F4C400" stroke-width="8"/>
+</g>
+<text x="104" y="54" fill="#171920" font-size="26" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif">Chess &amp; Chains</text>
+<text x="1396" y="52" fill="#171920" font-size="13" font-weight="700" font-family="IBM Plex Mono, Consolas, monospace" text-anchor="end" letter-spacing="2">WEBSITE  /  DESIGNSTUDIE</text>
+<text x="44" y="251" fill="#171920" font-size="96" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif" letter-spacing="-3">Think in</text>
+<text x="44" y="351" fill="#171920" font-size="96" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif" letter-spacing="-3">connections.</text>
+<text x="47" y="407" fill="#171920" font-size="22" font-weight="400" font-family="Space Grotesk, Segoe UI, sans-serif">Schach und taktisches Training am Desktop.</text>
+<text x="48" y="449" fill="#171920" font-size="19" font-weight="400" font-family="Space Grotesk, Segoe UI, sans-serif">Partie, Zugfolge und Rätsel in einer Werkstatt.</text>
+<rect x="48" y="493" width="247" height="47" rx="3" fill="#F4C400"/>
+<text x="67" y="523" fill="#171920" font-size="18" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif">Projekt ansehen</text>
+<g id="hero-kampagnenmotiv" transform="translate(793 126) scale(1.47)">
+<rect x="0" y="0" width="408" height="310" rx="0" fill="#171920"/>
+<path d="M20 0V310 M40 0V310 M60 0V310 M80 0V310 M100 0V310 M120 0V310 M140 0V310 M160 0V310 M180 0V310 M200 0V310 M220 0V310 M240 0V310 M260 0V310 M280 0V310 M300 0V310 M320 0V310 M340 0V310 M360 0V310 M380 0V310 M400 0V310M0 20H408 M0 40H408 M0 60H408 M0 80H408 M0 100H408 M0 120H408 M0 140H408 M0 160H408 M0 180H408 M0 200H408 M0 220H408 M0 240H408 M0 260H408 M0 280H408 M0 300H408" fill="none" stroke="#FAF6EC" stroke-width="1" opacity=".17"/>
+<g transform="translate(30 20) scale(1.9)">
+<path d="M40 31 Q46 31 46 37 V48 Q46 54 40 54 H12 Q6 54 6 48 V37 Q6 31 12 31 H25" fill="none" stroke="#FAF6EC" stroke-width="8"/>
+<path d="M39 44 Q33 44 33 38 V12 Q33 6 39 6 H52 Q58 6 58 12 V38 Q58 44 52 44" fill="none" stroke="#F4C400" stroke-width="8"/>
+</g>
+<path d="M408 310H316A92 92 0 0 1 408 218Z" fill="#2447D8"/>
+<path d="M408 0H316A92 92 0 0 0 408 92Z" fill="#B12729"/>
+</g>
+<path d="M48 617H1392" fill="none" stroke="#171920" stroke-width="1"/>
+<text x="49" y="654" fill="#171920" font-size="14" font-weight="700" font-family="IBM Plex Mono, Consolas, monospace" letter-spacing="2">LOKAL SPIELEN  /  RÄTSEL LÖSEN</text>
+</svg>

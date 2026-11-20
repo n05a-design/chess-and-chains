@@ -5,3 +5,11 @@
 Arbeitstitel Chess & Chains. Eigene SVG-Schachfiguren sind vorhanden, liegen **noch nicht** im Starterpaket. Brett und Wort-/Bildmarke werden erst ausgearbeitet. Originaldateien gehören nach `design/source/` und/oder `assets/chess_pieces/source_svg/`, Render-Exports in `marketing/exports/` (ignoriert).
 
 Vor Release: Urheberschaft, eventuelle Font-Lizenz, Farbpalette, Iconrechte, Markenkollision (DPMA/EUIPO), Favicon/App-ID, Bildnachweise, kommerzielle/derivative Nutzungsrechte festlegen. GPL/MPL-Lizenzierung des Codes erfasst nicht automatisch jede Marke oder grafische Quelldatei.
+
+## Integrierter Designkandidat (20.11.2026)
+
+Der direkte Arbeitsauftrag delegierte die Designauswahl für die lokale App-Vorschau. **Connected System** ist der gewählte Kandidat. Die geometrisch neu konstruierten SVGs für Signet und Fenster-Icon sowie ihre PNG-Exporte werden vom lokalen Tk-Prototyp geladen. Die bereitgestellten Vorlagen einschließlich der Figurenübersicht sind als Arbeitsquellen inventarisiert. Der Owner-Review und die Freigabe für öffentliche Asset-Nutzung bleiben OPEN.
+
+Der Owner hat am 20.11.2026 den Push und einen Pull Request für den KI-unterstützten Designkandidaten einschließlich SVG-Entwürfen und Vorschauen beauftragt. Die Originalvorlagen sind im Assetregister als Referenzen erfasst. Die Freigabe für die weitere Nutzung und Auslieferung der Markenassets bleibt Teil dieses ADRs.
+
+[Markenkonstruktion und Varianten](../design/CONNECTED_SYSTEM.md) · [Owner-Review](../design/OWNER_DESIGN_REVIEW.md) · [Assetregister](../design/ASSET_REGISTER.csv)
