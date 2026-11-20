@@ -2,7 +2,7 @@
 
 **Play. Think. Connect. – Schach offline spielen, verstehen und gestalten.**
 
-> **Status: Projektkonzeption und Repository-Grundgerüst.** Dies ist noch keine spielbare Anwendung; die Funktionen beschreiben Ziele und nicht bereits implementierte Features.
+> **Status: frühe Implementierung, noch nicht veröffentlichungsreif.** Das Repository enthält einen unabhängigen Schachregel-Kern und einen lokalen W06-Desktopprototyp für zwei Personen mit ausdrücklich provisorischen geometrischen Testfiguren. Engine, Rätselpaket und Installer fehlen.
 
 Chess & Chains soll eine **dauerhaft kostenlos angebotene, quelloffene und offlinefähige Desktop-Schach-App** werden: lokal spielbare Computergegner mit einstellbarer Schwierigkeit, anspruchsvolle Taktikaufgaben und ein eigenständiges Design auf Basis eigener SVG-Schachfiguren und Bretter.
 
@@ -19,7 +19,7 @@ Chess & Chains soll eine **dauerhaft kostenlos angebotene, quelloffene und offli
 
 ## Was bereits vorhanden ist
 
-Dokumentierte Projektbasis, Arbeitsaufträge, Ordnerstruktur, technische Vorentscheidungen, Rechte- und Quelllisten sowie ein **nicht spielbarer Python-Starter**. Engine, Brett, Puzzle-Datenbank und Installer sind noch nicht implementiert.
+Dokumentierte Projektbasis, Arbeitsaufträge, ein **GUI-freier Python-Regelkern** mit legalen Zügen, FEN/PGN und Spielhistorie sowie ein lokales Tk-Brett für zwei Personen. Der UI-Prototyp ist nicht release-fertig; Engine, Puzzle-Datenbank und Installer fehlen.
 
 ## Entwicklerstart
 
@@ -27,14 +27,15 @@ Dokumentierte Projektbasis, Arbeitsaufträge, Ordnerstruktur, technische Vorents
 python -m unittest discover -s tests -v
 python scripts/verify_starter.py
 python -m pip install -e .
+python -m chess_and_chains --headless-check
 python -m chess_and_chains
 ```
 
-Der letzte Aufruf zeigt momentan nur einen Hinweis zum Projektstatus. Keine Offline-Engine, keine Schachregeln und keine Rätsel werden dadurch bereitgestellt.
+Der Standardaufruf öffnet den lokalen Tk-Prototyp; `--headless-check` prüft die Verfügbarkeit ohne Fenster. Für Tk-Unterstützung muss die Python-Installation Tk enthalten. Der Regeldomänenkern hat keine Laufzeitabhängigkeit auf eine Schachbibliothek.
 
 ## Lizenz
 
-Eigene Quelltexte im Starter sind als **MPL-2.0** vorgesehen. **Stockfish ist GPLv3**, ebenso sind weitere Drittkomponenten separat zu prüfen. Eine vollständig gebündelte Offline-Distribution darf erst nach schriftlicher Lizenz- und Architekturentscheidung erfolgen. Die offiziellen Downloads sollen stets kostenlos bleiben; MPL/GPL verbieten Dritten jedoch keine entgeltliche Weitergabe.
+Eigene Quelltexte sind als **MPL-2.0** vorgesehen. Der W05-Regelkern wird eigenständig implementiert. **Stockfish ist GPLv3**, ebenso sind weitere Drittkomponenten separat zu prüfen. Eine vollständig gebündelte Offline-Distribution darf erst nach schriftlicher Lizenz- und Architekturentscheidung erfolgen. Die offiziellen Downloads sollen stets kostenlos bleiben; MPL/GPL verbieten Dritten jedoch keine entgeltliche Weitergabe.
 
 [Rechte- und Lizenzstrategie](docs/legal/LICENSE_STRATEGY.md) · [Dritthinweise](THIRD_PARTY_NOTICES.md) · [Design-/Asset-Verzeichnis](docs/design/ASSET_REGISTER.csv) · [Copilot-Aufträge](prompts/README.md)
 

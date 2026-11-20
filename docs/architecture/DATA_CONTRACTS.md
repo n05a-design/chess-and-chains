@@ -1,4 +1,20 @@
-# Datenvertrag (Entwurf, kein Schema implementiert)
+# Datenvertrag (W05-Regeldomäne implementiert; Produktpersistenz offen)
+
+Der `src/chess_and_chains/chess/`-Kern ist eine lokale, unveränderliche
+Positionsdomäne ohne GUI, UCI oder Dateisystem. `GameState` enthält ein
+64-Felder-Tupel, Zugfarbe, Rochaderechte, en-passant-Ziel und FEN-Zähler;
+`Move` enthält Quell-/Zielfeld und optionale Umwandlung. `RulesPort` bildet die
+typisierte Grenze für Initialposition, legale Züge, Zustandsübergang,
+FEN-Konvertierung, positionsidentitätsbasierte Wiederholung und Materialstatus.
+
+Die `ChessGame`-Historie hält Zugliste, Wiederholungszähler und
+Beendigungsstatus gemeinsam für Undo/Redo. Eine dreifache Wiederholung und die
+50-Züge-Regel sind beanspruchbar; fünffache Wiederholung und 75 Züge sind
+automatisch. Eine beanspruchte Remispartie ist von einem noch laufenden Spiel
+unterschieden. FEN und PGN werden über die Domainfunktionen geparst/serialisiert;
+PGN unterstützt die legale Hauptvariante sowie Tags, Kommentare/NAGs und
+übersprungene Varianten, aber keine dauerhafte Varianten-/Kommentar-Editor-
+Historie.
 
 ## Engine
 

@@ -5,7 +5,7 @@ Only the owner may change status from **PROPOSED** to **ACCEPTED**. Approved dec
 | ID | Gegenstand | Status | Gate |
 | --- | --- | --- | --- |
 | ADR-000 | Produktvision / Offline / dauerhaft kostenfrei | PROPOSED | W01 |
-| ADR-001 | Engine-, Schachregeln- und Vertriebslizenz | OPEN / RELEASE BLOCKER | W02/W07/W12 |
+| ADR-001 | Engine-, Schachregeln- und Vertriebslizenz | OPEN / RELEASE BLOCKER; Weg A wird geprüft | W02/W07/W12 |
 | ADR-002 | Python-/Tk-Shell und Glide-Reuse | PROPOSED | W03/W06 |
 | ADR-003 | Offline-Puzzle-Datenbank und >=1000 | PROPOSED | W08 |
 | ADR-004 | Datenhaltung, Backup und Nutzerpfade | PROPOSED | W09 |

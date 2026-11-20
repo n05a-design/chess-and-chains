@@ -8,9 +8,18 @@ Ein hochwertig gestalteter, individuell anpassbarer, dauerhaft kostenfrei angebo
 
 ## Primäre Zielgruppe
 
-- Schachinteressierte ab etwa 1000 persönlicher Spielstärke, die auch ohne Netz ernsthaft trainieren möchten.
-- Designaffine Desktop-Nutzer, denen konventionelle Schachoberflächen zu funktional, dicht oder austauschbar erscheinen.
-- Nutzer, die eigene Figuren/Bretter verwenden und Daten kontrollieren möchten.
+- Offline-Trainer, die Taktikaufgaben und Partien ohne Konto, Cloud oder
+  Pflichtverbindung nutzen möchten.
+- Bot-Spieler, die lokal gegen eine nachvollziehbar abgestufte Engine spielen
+  und ihre Partien analysieren möchten.
+- Designaffine Desktop-Nutzer, denen konventionelle Oberflächen zu dicht oder
+  austauschbar erscheinen und die eigene Figuren/Bretter verwenden möchten.
+- Datenschutzorientierte Nutzer, die lokale Spiel- und Trainingsdaten
+  kontrollieren und portabel exportieren möchten.
+
+Die genannten Gruppen sind Produkthypothesen. Die Schwelle für Rätsel bezieht
+sich auf das Puzzle-Rating der Datenquelle (mindestens 1000), nicht auf eine
+persönliche Spielstärke.
 
 ## Jobs-to-be-done
 
@@ -18,6 +27,26 @@ Ein hochwertig gestalteter, individuell anpassbarer, dauerhaft kostenfrei angebo
 2. Ich möchte anspruchsvolle Taktikaufgaben nach Schwierigkeit und Thema auswählen können.
 3. Ich möchte eine eigenständige, angenehm ruhige Schachoberfläche statt eines überladenen Portals.
 4. Ich möchte Partien/Training lokal behalten und portabel exportieren können.
+
+## Erste Nutzerabläufe
+
+Diese Abläufe beschreiben geplante Erfahrungen, nicht implementierte Funktionen.
+
+1. **Erster Offline-Start:** Nutzer startet die App ohne Konto oder
+   Netzwerkzugriff, sieht den Projekt-/Setup-Status und landet in einer lokalen
+   Hauptansicht. Ist keine freigegebene Engine vorhanden, wird kein Bot-Spiel
+   vorgetäuscht; der Zustand und die lokale Engine-Auswahl werden verständlich
+   erklärt. Ein Engine-Installationsweg bleibt bis ADR-001 offen.
+2. **Partie gegen Bot:** Nutzer wählt eine verfügbare lokale Engine und ein
+   Bot-Preset, startet eine Standardpartie, macht ausschließlich legale Züge
+   und kann nach der Partie pausieren, speichern oder exportieren. Engine-Fehler
+   blockieren die UI nicht und werden sichtbar gemeldet. Engine-Verteilung
+   bleibt durch ADR-001 gesperrt.
+3. **Puzzle ab Rating 1000:** Nutzer wählt ein lokal verfügbares, rechtlich
+   freigegebenes Puzzle-Pack und Filter. Die App richtet die Position vor dem
+   ersten Gegnerzug ein, spielt diesen Zug zuerst ab und fragt anschließend
+   nach der Lösung. Ungültige Züge werden abgewiesen; Ergebnis und Verlauf
+   bleiben lokal. Im Starter ist kein Puzzle-Datensatz enthalten.
 
 ## Kernprinzipien
 
@@ -33,9 +62,17 @@ Arbeitsname **Chess & Chains**. „Chains“ kann für Zug- und Denkketten, Takt
 
 ## Erfolgskriterien des MVP
 
-1. Vollständige, regelkorrekte lokale Standardpartie mit Engine; UI bleibt responsiv.
-2. Mindestens sechs unterscheidbare, getestete Bot-Konfigurationen, keine erfundenen Elo-Garantien.
-3. Lokal lösbare Rätsel mit Mindest-Puzzle-Rating 1000; Lieferkatalog nach Gate.
-4. Nachgewiesenes Speichern/Wiederöffnen; keine nicht angekündigte Netzwerkkommunikation.
-5. Basale Zugänglichkeit (Tastatur), DE/EN und dokumentierte Asset-/Lizenzherkunft.
-6. Paketbau Windows/macOS und Linux-Quellstart, jeweils mit expliziten Prüfgrenzen.
+1. Vollständige, regelkorrekte lokale Standardpartie mit freigegebener Engine;
+   UI bleibt während Engine-Arbeit bedienbar.
+2. Mindestens sechs reproduzierbare Bot-Konfigurationen; Stärke wird gemessen,
+   nicht als ungeprüfte Elo-Garantie behauptet.
+3. Lokal lösbare Rätsel mit Mindest-Puzzle-Rating 1000 und dokumentierter
+   Datenherkunft; Lieferkatalog erst nach Rechte- und Qualitätsgate.
+4. Nachgewiesenes Speichern/Wiederöffnen und keine ungefragte
+   Netzwerkkommunikation.
+5. Tastaturbedienung, DE/EN-Parität und dokumentierte Asset-/Lizenzherkunft.
+6. Geprüfter Paketbau für Windows/macOS und Linux-Quellstart mit expliziten
+   Plattformgrenzen.
+
+Die Metriken und Kriterien sind Vorschläge für spätere Abnahmen. Es gibt noch
+keine Messergebnisse, Plattformtests oder Owner-Freigabe.

@@ -2,17 +2,40 @@
 
 **Nur für Vorabkommunikation; nicht behaupten, dass Features heute schon funktionieren.**
 
-## GitHub About (EN)
+## GitHub About (EN) – ursprünglicher Vorschlag, für öffentliche Nutzung zu konkret
 
 `Chess & Chains — a planned free, offline-first desktop chess and tactical puzzle app with customizable SVG boards and local engines.`
 
-## GitHub Topics (Vorschlag)
+Dieser frühere Entwurf beschreibt Zielmerkmale, die noch nicht implementiert
+oder abgenommen sind; „free“ ist ebenfalls nicht als Vertriebsentscheidung
+bestätigt. Für den aktuellen Repository-Stand gilt der folgende vorsichtige
+W04-Vorschlag.
+
+## GitHub About, Topics und SEO (W04-Vorschlag)
+
+**GitHub About (EN):** `An early-stage Python desktop project exploring focused chess and tactical practice. No playable app or downloads yet.`
+
+**Topics:** `chess`, `python`, `desktop-app`, `game-development`. Keine
+Engine-, GUI-Toolkit- oder Offline-Funktions-Tags, bevor diese im Produkt
+implementiert und belegt sind.
+
+**SEO-Titel:** `Chess & Chains — Python Desktop Chess Project`
+
+**SEO-Beschreibung (EN):** `An early-stage project exploring focused desktop chess and tactical practice. The repository currently contains planning documents, not a playable app.`
+
+**SEO-Beschreibung (DE):** `Ein frühes Python-Desktop-Projekt für fokussiertes Schach und Taktiktraining. Das Repository enthält derzeit Planungsdokumente, noch keine spielbare App.`
+
+## Frühere Topics-Ideen (nicht als Produktfakten verwenden)
 
 `chess`, `offline-first`, `python`, `desktop-app`, `uci`, `stockfish`, `chess-puzzles`, `open-source`, `svg`, `tkinter` – `stockfish` / `tkinter` erst nach tatsächlicher Nutzung als aktives Feature ggf. setzen.
 
-## Kurzbeschreibung (DE)
+## Frühere Kurzbeschreibung (DE; noch zu konkret)
 
 **Chess & Chains** entsteht als kostenloses Open-Source-Schachprojekt: individuelle SVG-Gestaltung, lokale Computergegner und anspruchsvolle Offline-Schachrätsel. Die Entwicklung befindet sich noch in der Planungsphase.
+
+Auch diese Vorabfassung verspricht Verfügbarkeit/Vertriebsmerkmale, die
+Lizenz- und Umsetzungs-Gates vorerst offen lassen. Die neue W04-Kurzfassung
+steht im W04-Vorabtext unten.
 
 ## Claim-Optionen (noch offen)
 
@@ -25,3 +48,17 @@ Keine Claims als markenrechtlich freigegeben betrachten. Für Webseite vorbereit
 ## Launch-Gate
 
 Keine Downloadbuttons zu nicht vorhandenen Artefakten, keine 100%-Offline-/Rating-/Performance-Claims ohne Tests, keine Produktfotos als angebliche echte Anwendung solange nur Mockups vorliegen. AI-Unterstützung nach Transparenzpolitik dokumentieren.
+
+## W04-Vorabtext (2026-11-20; nur Vorschlag)
+
+**EN:** Chess & Chains is an early Python desktop project exploring focused
+chess, tactical practice and customizable boards. The repository currently
+contains a planning scaffold, not a playable app or a download.
+
+**DE:** Chess & Chains ist ein frühes Python-Desktop-Projekt für fokussiertes
+Schach, Taktiktraining und anpassbare Bretter. Das Repository enthält derzeit
+ein Planungs-Grundgerüst, noch keine spielbare App und keinen Download.
+
+Diese Formulierungen behaupten weder bereits verfügbare Offline-Funktionen noch
+Engine-/Ratingqualität oder Markenfreigabe. Erst nach realen Tests und
+Owner-Freigabe an den Implementierungsstand anpassen.
