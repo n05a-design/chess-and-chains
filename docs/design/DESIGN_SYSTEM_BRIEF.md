@@ -13,6 +13,12 @@ Eigenständige, hochwertige Desktop-UI zwischen konzentriertem Schachspiel und p
 - `motion.quick`, `motion.board`, `motion.reduced`; System-Reduce-Motion respektieren.
 - `spacing`, `radius`, `border`, `elevation`, `density`, `board.scale` als neutrale Settings.
 
+## W06-Prototyp (temporäre Richtung)
+
+- Für den lokalen Zwei-Personen-Prototyp wurde **Layered reference manual** gewählt: ein klar abgegrenztes Brett mit einem seitlichen, getönten Steuerblatt und festen Register-Tabs. Das ist eine W06-Arbeitsrichtung, keine finale Markenfreigabe; Q-003, Q-004 und Q-014 bleiben offen.
+- Als Gestaltungsgrundlage dienen außerdem die UX-/Designregeln aus [`n05a-design/glide-to-do`](https://github.com/n05a-design/glide-to-do/tree/d1708565cd9a2404354dd373c59fbf6f3c38ddbc/01_Repository/Glide/docs) am Commit `d1708565cd9a2404354dd373c59fbf6f3c38ddbc`: `DESIGN_RICHTLINIEN.md`, `01_PRODUCT_CONSTRAINTS.md`, `ARBEITSRICHTUNG.md` und der QA-Plan. Übernommen werden nur allgemeine Leitlinien wie Funktionshierarchie, semantische Farbrollen, sichtbarer Tastaturfokus und Mindestfenstergröße; **kein Glide-Code, keine Shell-Komponenten und keine Marken- oder Bildassets**.
+- Tk bietet hier keine echte Widget-Transparenz; die Acetat-Anmutung wird deshalb mit einer deckenden Tönung dargestellt. Farben und Systemschriften des Prototyps sind vorläufig und keine finalen Brand-Tokens.
+
 ## UI-Kernansichten
 
 1. **Play:** Brett + Bot-Schwierigkeit + Zugliste + Undo/Pause/Neustart (nur zulässig); minimaler Fokusmodus.
@@ -38,7 +44,7 @@ Vier Testauflösungen inkl. Retina, 100/150/200% DPI, Farbsehschwäche/Kontrast,
 
 Siehe Q-003, Q-004, Q-005, Q-014, Q-020. Exakte Brandfarben, Logo und Schriften bleiben Owner-Entscheidungen.
 
-## Eigenständige Richtungen (W04-Vorschläge, nicht ausgewählt)
+## Weitere eigenständige Richtungen (W04-Vorschläge, nicht ausgewählt)
 
 1. **Minimal / präzise:** viel ruhige Fläche, klare Koordinaten, sparsame
    Zustandsfarben und eine zurückhaltende Statuszeile. Der Brettfokus ist

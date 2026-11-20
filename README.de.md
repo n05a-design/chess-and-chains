@@ -2,7 +2,7 @@
 
 **Play. Think. Connect. – Schach offline spielen, verstehen und gestalten.**
 
-> **Status: frühe Implementierung, noch keine spielbare Desktop-App.** Das Repository enthält jetzt einen unabhängigen, GUI-freien Schachregel-Kern, aber noch kein Brett-UI, keine Engine, kein Rätselpaket und keinen Installer. Der übrige Funktionsumfang ist weiterhin Zielbild, sofern nicht ausdrücklich als implementiert markiert.
+> **Status: frühe Implementierung, noch nicht veröffentlichungsreif.** Das Repository enthält einen unabhängigen Schachregel-Kern und einen lokalen W06-Desktopprototyp für zwei Personen mit ausdrücklich provisorischen geometrischen Testfiguren. Engine, Rätselpaket und Installer fehlen.
 
 Chess & Chains soll eine **dauerhaft kostenlos angebotene, quelloffene und offlinefähige Desktop-Schach-App** werden: lokal spielbare Computergegner mit einstellbarer Schwierigkeit, anspruchsvolle Taktikaufgaben und ein eigenständiges Design auf Basis eigener SVG-Schachfiguren und Bretter.
 
@@ -19,7 +19,7 @@ Chess & Chains soll eine **dauerhaft kostenlos angebotene, quelloffene und offli
 
 ## Was bereits vorhanden ist
 
-Dokumentierte Projektbasis, Arbeitsaufträge und ein **GUI-freier Python-Regelkern** mit legalen Zügen, FEN/PGN und Spielhistorie (W05-Validierung läuft). Engine, Brett-UI, Puzzle-Datenbank und Installer sind noch nicht implementiert.
+Dokumentierte Projektbasis, Arbeitsaufträge, ein **GUI-freier Python-Regelkern** mit legalen Zügen, FEN/PGN und Spielhistorie sowie ein lokales Tk-Brett für zwei Personen. Der UI-Prototyp ist nicht release-fertig; Engine, Puzzle-Datenbank und Installer fehlen.
 
 ## Entwicklerstart
 
@@ -27,10 +27,11 @@ Dokumentierte Projektbasis, Arbeitsaufträge und ein **GUI-freier Python-Regelke
 python -m unittest discover -s tests -v
 python scripts/verify_starter.py
 python -m pip install -e .
+python -m chess_and_chains --headless-check
 python -m chess_and_chains
 ```
 
-Der letzte Aufruf zeigt nur einen Hinweis zum Projektstatus und startet keine Partie. Regeltests laufen mit `python -m unittest discover -s tests -v`; der Regeldomänenkern hat keine Laufzeitabhängigkeit auf eine Schachbibliothek.
+Der Standardaufruf öffnet den lokalen Tk-Prototyp; `--headless-check` prüft die Verfügbarkeit ohne Fenster. Für Tk-Unterstützung muss die Python-Installation Tk enthalten. Der Regeldomänenkern hat keine Laufzeitabhängigkeit auf eine Schachbibliothek.
 
 ## Lizenz
 

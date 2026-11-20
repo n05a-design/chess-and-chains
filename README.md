@@ -2,7 +2,7 @@
 
 **Play. Think. Connect.**
 
-> **Project status: early implementation, not playable as a desktop app.** The repository now contains an independent headless chess-rules domain; it does not yet include a board UI, engine, puzzle pack, or installer. Product claims below remain intended scope unless explicitly marked implemented.
+> **Project status: early implementation, not release-ready.** The repository contains an independent chess-rules domain and a W06 local two-player desktop prototype with explicitly temporary geometric test pieces. It has no engine, puzzle pack, or installer.
 
 **Chess & Chains** is a planned free, open-source, offline-first desktop chess experience featuring configurable local computer opponents, tactical puzzle training and a distinctive, customizable board designed around original SVG chess pieces.
 
@@ -23,7 +23,7 @@
 | --- | --- |
 | Product requirements, folder structure and initial documentation | Scaffolded / proposed |
 | Headless rules domain (legal moves, FEN/PGN, game history) | Implemented locally; W05 validation in progress |
-| Desktop board and user interface | Not implemented |
+| Desktop board and local two-player UI | W06 prototype implemented locally; not release-ready |
 | Offline bot engine connection | Not implemented |
 | Offline puzzle catalog | Not implemented |
 | Windows/macOS/Linux installers | Not implemented |
@@ -35,15 +35,16 @@ Python desktop project. An original MPL-2.0 headless rules domain is under W05 v
 
 ## Quick start for contributors
 
-Requires **Python 3.11+**. The chess rules domain is available to Python callers, but there is no playable desktop application yet.
+Requires **Python 3.11+** with Tk support for the desktop prototype.
 
 ```sh
 python -m unittest discover -s tests -v
 python scripts/verify_starter.py
+python -m chess_and_chains --headless-check
 python -m chess_and_chains
 ```
 
-For the last command, either install the package (`python -m pip install -e .`) or set `PYTHONPATH=src`; it prints a status message and does not launch a game. `python -m unittest discover -s tests -v` includes the headless rule/perft checks. The core has no runtime chess-library dependency.
+Install the package first with `python -m pip install -e .`, or set `PYTHONPATH=src` when running from a checkout. The default command opens the local Tk prototype; `--headless-check` reports its availability without opening a window. The chess domain has no runtime chess-library dependency.
 
 ## Licensing and third-party rights
 
