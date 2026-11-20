@@ -51,7 +51,7 @@
 | `python3 scripts/verify_starter.py && python3 scripts/verify_document_links.py && python3 scripts/check_policy.py && python3 -m compileall -q src app scripts tests && git diff --check && PYTHONPATH=src python3 -m chess_and_chains --headless-check` | macOS | 0 | alle PASS |
 | Native Sichtprüfung: App gestartet, Bot-Modus (e4/d4, Mock antwortet) und Puzzle-Modus (Qg8+ Rxg8) per Bildschirmaufnahme | macOS | – | Funktion sichtbar korrekt; eine macOS-Berechtigungsabfrage für Bildschirmaufnahme erschien, wurde **nicht** bestätigt; keine Screenshots eingecheckt |
 
-Während der Arbeit gefundene und per Regressionstest abgesicherte Fehler: (1) PGN-Import quadratisch langsam, (2) Ergebnis widerspricht Matt/Patt wurde akzeptiert, (3) Promotion ohne `=` abgelehnt, (4) Duplikat-ID wurde akzeptiert, wenn das erste Vorkommen durch den Ratingfilter fiel.
+Während der Arbeit gefundene und per Regressionstest abgesicherte Fehler: (1) PGN-Import quadratisch langsam, (2) Ergebnis widerspricht Matt/Patt wurde akzeptiert, (3) Promotion ohne `=` abgelehnt, (4) Duplikat-ID wurde akzeptiert, wenn das erste Vorkommen durch den Ratingfilter fiel. (5) Erster CI-Lauf von PR #2: alle Tk-Tests auf Windows scheiterten mit „Pack checksum mismatch“, weil Git beim Windows-Checkout `puzzles.jsonl` auf CRLF umschrieb; behoben per `.gitattributes` (`-text` für Pack-Daten, Quell-CSV, Fixtures), lokal mit `core.autocrlf=true`-Klon reproduziert und verifiziert, Regressionstest in `tests/test_puzzles.py`.
 
 Nicht geprüft: Python 3.11 lokal (nicht installiert; CI-Matrix vorgesehen), Windows/Linux nativ, High-DPI/Retina-Skalierung systematisch, Screenreader, echte UCI-Engine, realer Lichess-Export, CI-Lauf dieses Branches (nicht gepusht).
 
