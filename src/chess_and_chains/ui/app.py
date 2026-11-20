@@ -229,9 +229,11 @@ class ChessApp:
         side_sheet = self._sheet(body, 1)
         side_sheet.grid_rowconfigure(1, weight=1)
         side_sheet.grid_columnconfigure(0, weight=1)
-        tk.Label(side_sheet, textvariable=self.panel_text, background=ACETATE, foreground=INK,
-                 font=("TkDefaultFont", FONT_SIZES["section"], "bold"), anchor="w", justify="left",
-                 padx=16, pady=15).grid(row=0, column=0, columnspan=2, sticky="ew")
+        status = tk.Label(side_sheet, textvariable=self.panel_text, background=ACETATE, foreground=INK,
+                          font=("TkDefaultFont", FONT_SIZES["section"], "bold"), anchor="w", justify="left",
+                          padx=16, pady=15, wraplength=200)
+        status.grid(row=0, column=0, columnspan=2, sticky="ew")
+        status.bind("<Configure>", lambda event: status.configure(wraplength=max(1, event.width - 32)))
         self.panel = tk.Frame(side_sheet, background=ACETATE, padx=14, pady=10)
         self.panel.grid(row=1, column=0, sticky="nsew")
         self.panel.grid_columnconfigure(0, weight=1)
@@ -271,8 +273,21 @@ class ChessApp:
 
     def _build_play_panel(self) -> None:
         t = self.t
-        panel = self.play_panel = tk.Frame(self.panel, background=ACETATE)
-        panel.grid(row=0, column=0, sticky="nsew")
+        self.play_viewport = tk.Frame(self.panel, background=ACETATE)
+        self.play_viewport.grid(row=0, column=0, sticky="nsew")
+        self.play_viewport.grid_rowconfigure(0, weight=1)
+        self.play_viewport.grid_columnconfigure(0, weight=1)
+        canvas = self.play_canvas = tk.Canvas(
+            self.play_viewport, background=ACETATE, highlightthickness=0, borderwidth=0,
+        )
+        canvas.grid(row=0, column=0, sticky="nsew")
+        scrollbar = ttk.Scrollbar(self.play_viewport, orient=tk.VERTICAL, command=canvas.yview)
+        scrollbar.grid(row=0, column=1, sticky="ns")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        panel = self.play_panel = tk.Frame(canvas, background=ACETATE)
+        window = canvas.create_window(0, 0, window=panel, anchor="nw")
+        panel.bind("<Configure>", lambda _event: canvas.configure(scrollregion=canvas.bbox(window)))
         panel.grid_columnconfigure(0, weight=1)
         row = 0
         self._label(panel, text=t("play.description"), muted=True).grid(row=row, column=0, sticky="ew", pady=(0, 10))
@@ -337,6 +352,45 @@ class ChessApp:
         self.retry_bot_button.grid(row=0, column=0, sticky="ew", padx=(0, 3))
         self.engine_button = self._button(bot_controls, t("button.engine"), self._open_engine_dialog)
         self.engine_button.grid(row=0, column=1, sticky="ew", padx=(3, 0))
+
+        paired_buttons = (
+            self.undo_button, self.redo_button, self.flip_button, self.resign_button, self.save_button,
+            self.copy_pgn_button, self.claim_button, self.library_button, self.retry_bot_button, self.engine_button,
+        )
+
+        def resize_content(event: tk.Event) -> None:
+            canvas.itemconfigure(window, width=event.width)
+            for button in paired_buttons:
+                button.configure(wraplength=max(1, event.width // 2 - 32), justify="left")
+            for button in self.mode_buttons.values():
+                button.configure(wraplength=max(1, event.width - 35), justify="left")
+
+        canvas.bind("<Configure>", resize_content)
+        for widget in (*paired_buttons, *self.mode_buttons.values(), self.level_menu, self.new_game_button):
+            widget.bind("<FocusIn>", self._show_play_focus, add="+")
+        remaining = [canvas]
+        while remaining:
+            widget = remaining.pop()
+            remaining.extend(widget.winfo_children())
+            widget.bind("<MouseWheel>", self._scroll_play)
+            widget.bind("<Button-4>", self._scroll_play)
+            widget.bind("<Button-5>", self._scroll_play)
+
+    def _scroll_play(self, event: tk.Event) -> str:
+        up = event.num == 4 or event.delta > 0
+        self.play_canvas.yview_scroll(-1 if up else 1, "units")
+        return "break"
+
+    def _show_play_focus(self, event: tk.Event) -> None:
+        canvas, widget = self.play_canvas, event.widget
+        top = widget.winfo_rooty() - self.play_panel.winfo_rooty()
+        bottom = top + widget.winfo_height()
+        view_top = canvas.canvasy(0)
+        view_height = canvas.winfo_height()
+        if top < view_top:
+            canvas.yview_moveto(top / self.play_panel.winfo_height())
+        elif bottom > view_top + view_height:
+            canvas.yview_moveto((bottom - view_height) / self.play_panel.winfo_height())
 
     def _build_moves_panel(self) -> None:
         t = self.t
@@ -431,7 +485,7 @@ class ChessApp:
 
     # ----- panels / modes ----------------------------------------------
     def _show_panel(self, name: str) -> None:
-        panels = {"play": self.play_panel, "moves": self.moves_panel, "puzzles": self.puzzle_panel}
+        panels = {"play": self.play_viewport, "moves": self.moves_panel, "puzzles": self.puzzle_panel}
         if name not in panels:
             raise ValueError(f"Unknown game panel: {name}")
         for panel in panels.values():

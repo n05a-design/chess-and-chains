@@ -376,6 +376,25 @@ class StorageAndLocaleUiTests(AppTestCase):
         self.root.withdraw()
         self.assertEqual(app.game.moves, [])
 
+    def test_play_panel_scrolls_to_focused_engine_settings_in_small_window(self):
+        app = self.make_app(locale="de")
+        self.root.deiconify()
+        self.root.geometry("860x700")
+        app.bot_text.set("Bot-Status mit ausführlichem Hinweis. " * 12)
+        self.root.update()
+        canvas = app.play_canvas
+        self.assertEqual(canvas.yview()[0], 0)
+        self.assertLess(canvas.yview()[1], 1)
+        app.engine_button.event_generate("<FocusIn>")
+        self.root.update()
+        bottom = app.engine_button.winfo_rooty() + app.engine_button.winfo_height()
+        self.assertLessEqual(bottom, canvas.winfo_rooty() + canvas.winfo_height() + 1)
+        self.assertGreater(canvas.yview()[0], 0)
+        app.new_game_button.event_generate("<FocusIn>")
+        self.root.update()
+        self.assertGreaterEqual(app.new_game_button.winfo_rooty(), canvas.winfo_rooty() - 1)
+        self.assertGreater(app.board._square_size, 20)
+
     def test_small_window_keeps_board_usable(self):
         app = self.make_app()
         self.root.deiconify()
