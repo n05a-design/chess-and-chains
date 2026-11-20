@@ -213,6 +213,39 @@ class PuzzleUiTests(AppTestCase):
             self.assertIs(app.board._state, app.game.state)
             app.close()
 
+    def test_puzzle_filters_show_stored_progress_and_handle_empty_matches(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            app = self.make_app(data_layout=DataLayout(Path(tmp) / "data"))
+            app.db.record_puzzle_attempt("demo", "ccSC01", solved=True, mistakes=0, hints_used=0, duration_ms=500)
+            app.tab_rail.set_active("puzzles")
+            self.assertEqual(app.puzzle_progress_text.get(), "Solved 1 of 5 in this selection.")
+
+            app.puzzle_theme_filter.current(app.puzzle_theme_filter.cget("values").index("opening"))
+            app.puzzle_theme_filter.event_generate("<<ComboboxSelected>>")
+            self.assertEqual(app.puzzle.puzzle.puzzle_id, "ccSC01")
+            self.assertEqual(app.puzzle_progress_text.get(), "Solved 1 of 2 in this selection.")
+            app._next_puzzle()
+            app._play_move(app.puzzle.expected_move)
+            self.assertEqual(app.puzzle_progress_text.get(), "Solved 2 of 2 in this selection.")
+            self.assertEqual(app.board.orientation, "black")
+
+            app.puzzle_rating_filter.current(2)
+            app.puzzle_rating_filter.event_generate("<<ComboboxSelected>>")
+            self.assertIsNone(app.puzzle)
+            self.assertIsNone(app.board._state)
+            self.assertEqual(app.panel_text.get(), "No puzzles match the filters.")
+            self.assertEqual(app.next_puzzle_button.cget("state"), tk.DISABLED)
+
+            app.tab_rail.set_active("play")
+            self.assertIs(app.board._state, app.game.state)
+            self.assertEqual(app.board.orientation, "white")
+            app.tab_rail.set_active("puzzles")
+            app.puzzle_theme_filter.current(0)
+            app.puzzle_theme_filter.event_generate("<<ComboboxSelected>>")
+            self.assertEqual(app.puzzle.puzzle.puzzle_id, "ccSM02")
+            self.assertEqual(app.puzzle_progress_text.get(), "Solved 0 of 1 in this selection.")
+            app.close()
+
     def test_game_undo_is_ignored_in_puzzle_mode(self):
         app = self.make_app()
         app._play_move(Move.from_uci("e2e4"))

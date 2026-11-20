@@ -42,6 +42,9 @@ from .theme import (
 )
 
 POLL_MS = 40
+PUZZLE_RATING_RANGES: tuple[tuple[int, int | None], ...] = (
+    (1000, 1199), (1200, 1599), (1600, 1999), (2000, None),
+)
 ProviderFactory = Callable[[BotPreset, Settings], MoveProvider]
 
 
@@ -148,6 +151,8 @@ class ChessApp:
         self.orientation: Orientation = "white"
         self.active_panel = "play"
         self.pack = puzzle_pack or load_demo_pack()
+        self._puzzle_selection = self.pack.puzzles
+        self._puzzle_themes = sorted({theme for puzzle in self.pack.puzzles for theme in puzzle.themes})
         self.puzzle_index = 0
         self.puzzle: PuzzleSession | None = None
         self._puzzle_recorded = False
@@ -162,6 +167,7 @@ class ChessApp:
         self.puzzle_title_text = tk.StringVar(value="")
         self.puzzle_meta_text = tk.StringVar(value="")
         self.puzzle_feedback_text = tk.StringVar(value="")
+        self.puzzle_progress_text = tk.StringVar(value="")
         self.mode_var = tk.StringVar(value=self.settings.play_mode)
         preset_ids = [p.id for p in self.presets]
         initial_preset = self.settings.bot_preset_id if self.settings.bot_preset_id in preset_ids else preset_ids[2]
@@ -375,6 +381,29 @@ class ChessApp:
         self.solution_button.grid(row=5, column=0, sticky="ew", pady=3)
         self.next_puzzle_button = self._button(panel, t("button.next_puzzle"), self._next_puzzle, role="new")
         self.next_puzzle_button.grid(row=6, column=0, sticky="ew", pady=3)
+        filters = tk.Frame(panel, background=ACETATE)
+        filters.grid(row=7, column=0, sticky="ew", pady=(8, 0))
+        filters.grid_columnconfigure(1, weight=1)
+        self._label(filters, text=t("puzzle.filter_theme"), role="caption").grid(row=0, column=0, sticky="w")
+        self._label(filters, text=t("puzzle.filter_rating"), role="caption").grid(row=1, column=0, sticky="w")
+        rating_labels = [
+            t("puzzle.rating_from", rating=lower) if upper is None else f"{lower}–{upper}"
+            for lower, upper in PUZZLE_RATING_RANGES
+        ]
+        self.puzzle_theme_filter = ttk.Combobox(
+            filters, state="readonly", values=(t("puzzle.all_themes"), *self._puzzle_themes), width=12,
+        )
+        self.puzzle_rating_filter = ttk.Combobox(
+            filters, state="readonly", values=(t("puzzle.all_ratings"), *rating_labels), width=12,
+        )
+        for row, dropdown in enumerate((self.puzzle_theme_filter, self.puzzle_rating_filter)):
+            dropdown.grid(row=row, column=1, sticky="ew", padx=(8, 0), pady=2)
+            dropdown.current(0)
+            dropdown.bind("<<ComboboxSelected>>", self._apply_puzzle_filters)
+        if self.db is not None:
+            self._label(panel, var=self.puzzle_progress_text, role="caption", muted=True).grid(
+                row=8, column=0, sticky="ew", pady=(6, 0),
+            )
 
     def _bind_shortcuts(self) -> None:
         for modifier in ("Control", "Command"):
@@ -409,9 +438,13 @@ class ChessApp:
             panel.grid_remove()
         panels[name].grid()
         previous, self.active_panel = getattr(self, "active_panel", "play"), name
-        if name == "puzzles" and self.puzzle is None:
-            self._start_puzzle(self.puzzle_index)
-        if (previous == "puzzles") != (name == "puzzles"):
+        if name == "puzzles" and previous != "puzzles":
+            if self.puzzle is None:
+                self._start_puzzle(self.puzzle_index)
+            self._update_puzzle_progress()
+            self._refresh()
+        elif previous == "puzzles" and name != "puzzles":
+            self.board.set_orientation(self.orientation)
             self._refresh()
 
     def _preset_label(self, preset_id: str) -> str:
@@ -729,17 +762,51 @@ class ChessApp:
         self.interaction_text.set(self.t("pgn.copied"))
 
     # ----- puzzles --------------------------------------------------------
+    def _apply_puzzle_filters(self, _event: tk.Event | None = None) -> None:
+        theme_choice = self.puzzle_theme_filter.current()
+        theme = self._puzzle_themes[theme_choice - 1] if theme_choice > 0 else None
+        rating_choice = self.puzzle_rating_filter.current()
+        lower, upper = PUZZLE_RATING_RANGES[rating_choice - 1] if rating_choice > 0 else (0, None)
+        self._puzzle_selection = tuple(
+            puzzle for puzzle in self.pack.puzzles
+            if (not theme or theme in puzzle.themes)
+            and puzzle.rating >= lower and (upper is None or puzzle.rating <= upper)
+        )
+        if self.puzzle is not None and self.puzzle.puzzle in self._puzzle_selection:
+            self.puzzle_index = self._puzzle_selection.index(self.puzzle.puzzle)
+            self._refresh()
+        else:
+            self._start_puzzle(0)
+        self._update_puzzle_progress()
+
     def _start_puzzle(self, index: int) -> None:
-        self.puzzle_index = index % len(self.pack.puzzles)
-        self.puzzle = PuzzleSession(self.pack.puzzles[self.puzzle_index])
         self._puzzle_recorded = False
-        self.puzzle_feedback_text.set(self.t("puzzle.prompt", side=self._side(self.puzzle.player_color)))
-        self.orientation = "white" if self.puzzle.player_color is Color.WHITE else "black"
-        self.board.set_orientation(self.orientation)
+        if self._puzzle_selection:
+            self.puzzle_index = index % len(self._puzzle_selection)
+            self.puzzle = PuzzleSession(self._puzzle_selection[self.puzzle_index])
+            self.puzzle_feedback_text.set(self.t("puzzle.prompt", side=self._side(self.puzzle.player_color)))
+            self.board.set_orientation("white" if self.puzzle.player_color is Color.WHITE else "black")
+        else:
+            self.puzzle_index = 0
+            self.puzzle = None
+            self.puzzle_feedback_text.set("")
         self._refresh()
 
     def _next_puzzle(self) -> None:
         self._start_puzzle(self.puzzle_index + 1)
+
+    def _update_puzzle_progress(self) -> None:
+        if self.db is None:
+            return
+        try:
+            solved = self.db.solved_puzzle_ids(self.pack.manifest.pack_id)
+        except sqlite3.Error:
+            self.puzzle_progress_text.set(self.t("puzzle.progress_unavailable"))
+            return
+        count = sum(puzzle.puzzle_id in solved for puzzle in self._puzzle_selection)
+        self.puzzle_progress_text.set(
+            self.t("puzzle.progress", solved=count, count=len(self._puzzle_selection)) if self._puzzle_selection else ""
+        )
 
     def _puzzle_move(self, move: Move) -> None:
         session = self.puzzle
@@ -786,13 +853,17 @@ class ChessApp:
         session = self.puzzle
         if session is None or self._puzzle_recorded or self.db is None:
             return
-        self.db.record_puzzle_attempt(
-            self.pack.manifest.pack_id, session.puzzle.puzzle_id, solved=session.solved,
-            mistakes=session.mistakes, hints_used=session.hints_used, duration_ms=session.duration_ms,
-        )
+        try:
+            self.db.record_puzzle_attempt(
+                self.pack.manifest.pack_id, session.puzzle.puzzle_id, solved=session.solved,
+                mistakes=session.mistakes, hints_used=session.hints_used, duration_ms=session.duration_ms,
+            )
+        except sqlite3.Error:
+            self.puzzle_progress_text.set(self.t("puzzle.progress_unavailable"))
+            return
         self._puzzle_recorded = True
+        self._update_puzzle_progress()
 
-    # ----- engine settings dialog ------------------------------------
     def _open_engine_dialog(self) -> None:
         EngineDialog(self)
 
@@ -811,17 +882,24 @@ class ChessApp:
         self._poll_job = self.root.after(POLL_MS, self._poll)
 
     def _refresh(self) -> None:
-        if self.active_panel == "puzzles" and self.puzzle is not None:
+        if self.active_panel == "puzzles":
             self._refresh_puzzle()
         else:
             self._refresh_game(self.controller.view())
 
     def _refresh_puzzle(self) -> None:
         session = self.puzzle
-        assert session is not None
-        pack = self.pack
-        self.header_mode_text.set(self.t("header.mode.puzzle", pack=pack.manifest.pack_id.upper()))
-        self.panel_text.set(self.t("puzzle.title", index=self.puzzle_index + 1, count=len(pack.puzzles)))
+        self.header_mode_text.set(self.t("header.mode.puzzle", pack=self.pack.manifest.pack_id.upper()))
+        self.next_puzzle_button.configure(state=tk.NORMAL if session is not None else tk.DISABLED)
+        if session is None:
+            self.panel_text.set(self.t("puzzle.no_matches"))
+            self.puzzle_title_text.set("")
+            self.puzzle_meta_text.set("")
+            self.board.set_position(None, (), None, False)
+            self.hint_button.configure(state=tk.DISABLED)
+            self.solution_button.configure(state=tk.DISABLED)
+            return
+        self.panel_text.set(self.t("puzzle.title", index=self.puzzle_index + 1, count=len(self._puzzle_selection)))
         self.puzzle_title_text.set(self.t("puzzle.prompt", side=self._side(session.player_color)))
         self.puzzle_meta_text.set(self.t("puzzle.meta", id=session.puzzle.puzzle_id, rating=session.puzzle.rating,
                                          themes=", ".join(session.puzzle.themes[:3])))
