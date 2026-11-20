@@ -10,4 +10,6 @@ Aktueller Stand der [N02-Nacharbeit](2026-11-20_N02-follow-up.md). Historischer 
 
 [Originalfiguren – lokale Tk-Integration und Prüfnachweis](2026-11-20_W06-originalfiguren.md)
 
+[Figurenraster – gemeinsames Außenmaß je Ansicht](2026-11-21_W06-figurenraster.md)
+
 [SVG-Brettvorschau – lokale Formate und Prüfungen](2026-11-20_W06-svg-brettvorschau.md)

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>White Queen (top view)</title>
+  <desc>Tim von Trostorff's original top view, redrawn on a shared half-unit grid.</desc>
+  <metadata>Copyright Tim von Trostorff · MPL-2.0 · master SHA-256 1173cf1e6fd3747a56570cf3c088a398cecc8576a28b1ad43052b196c6bc6c59 · vector-0208</metadata>
+  <g stroke="#171920" stroke-width="2" stroke-linejoin="round">
+    <circle id="base" cx="32" cy="32" r="25" fill="#FAF6EC"/>
+    <circle id="inner-ring" cx="32" cy="32" r="10" fill="none"/>
+    <path id="segments" fill="none" d="M 42 32 L 57 32 M 40 38 L 52 46.5
+       M 35 41.5 L 39.5 56 M 29 41.5 L 24.5 56
+       M 24 38 L 12 46.5 M 22 32 L 7 32
+       M 24 26 L 12 17.5 M 29 22.5 L 24.5 8
+       M 35 22.5 L 39.5 8 M 40 26 L 52 17.5"/>
+  </g>
+</svg>

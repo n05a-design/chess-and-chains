@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>Black King (top view)</title>
+  <desc>Tim von Trostorff's original top view, redrawn on a shared half-unit grid.</desc>
+  <metadata>Copyright Tim von Trostorff · MPL-2.0 · master SHA-256 1173cf1e6fd3747a56570cf3c088a398cecc8576a28b1ad43052b196c6bc6c59 · vector-0241</metadata>
+  <g stroke="#FAF6EC" stroke-width="2" stroke-linejoin="round">
+    <circle id="base" cx="32" cy="32" r="25" fill="#171920"/>
+    <circle id="inner-ring" cx="32" cy="32" r="16" fill="none"/>
+    <path id="segments" fill="none" d="M 47 37 L 56 39.5 M 41.5 45 L 46.5 52
+       M 32 48 L 32 57 M 22.5 45 L 17.5 52
+       M 17 37 L 8 39.5 M 17 27 L 8 24.5
+       M 22.5 19 L 17.5 12 M 32 16 L 32 7
+       M 41.5 19 L 46.5 12 M 47 27 L 56 24.5"/>
+    <path id="cross" fill="none" d="M 32 28 L 37 23 Q 39 21 41 23 Q 43 25 41 27 L 36 32
+       L 41 37 Q 43 39 41 41 Q 39 43 37 41 L 32 36
+       L 27 41 Q 25 43 23 41 Q 21 39 23 37 L 28 32
+       L 23 27 Q 21 25 23 23 Q 25 21 27 23 Z"/>
+  </g>
+</svg>

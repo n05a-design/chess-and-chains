@@ -138,10 +138,11 @@
       "gate": "Original-SVG-Rendering, Boardinteraktion, DPI/Keyboard, native UI-Gates",
       "phase": "F1",
       "status": "IMPLEMENTED",
-      "scope": "Tk board with click/drag/keyboard input, original SVG piece exports, offline piece PNG fallback and an opt-in Tk 9 preview for local SVG boards",
+      "scope": "Tk board with click/drag/keyboard input, front and top original SVG piece sets with consistent dimensions per view and offline PNG fallbacks, and an opt-in Tk 9 preview for local SVG boards",
       "status_evidence": [
         "docs/reports/2026-11-20_W06_board-ui.md",
         "docs/reports/2026-11-20_W06-originalfiguren.md",
+        "docs/reports/2026-11-21_W06-figurenraster.md",
         "docs/reports/2026-11-20_W06-svg-brettvorschau.md",
         "src/chess_and_chains/ui/board.py",
         "tests/test_board_ui.py",

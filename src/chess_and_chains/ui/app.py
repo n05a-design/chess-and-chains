@@ -31,6 +31,7 @@ from .atlas import PuzzleAtlas
 from .board import BoardCanvas, Orientation
 from .board_artwork import BoardArtwork, BoardArtworkError, BoardDesign
 from .branding import brand_image
+from .pieces import OwnerSvgPieces, PieceRenderer
 from .theme import (
     ACETATE,
     BRAND_BLUE,
@@ -116,6 +117,7 @@ class ChessApp:
         locale: str | None = None,
         puzzle_pack: PuzzlePack | None = None,
         board_artwork: BoardArtwork | None = None,
+        piece_renderer: PieceRenderer | None = None,
     ) -> None:
         self.root = root
         self._board_artwork = board_artwork
@@ -162,7 +164,7 @@ class ChessApp:
         initial_preset = self.settings.bot_preset_id if self.settings.bot_preset_id in preset_ids else preset_ids[2]
         self.preset_var = tk.StringVar(value=self._preset_label(initial_preset))
         self._wrap_labels: list[tk.Label] = []
-        self._build()
+        self._build(piece_renderer)
         self._bind_shortcuts()
         self.root.protocol("WM_DELETE_WINDOW", self.close)
         self._refresh()
@@ -180,7 +182,7 @@ class ChessApp:
         return int(self.controller.view().can_redo)
 
     # ----- construction ------------------------------------------------
-    def _build(self) -> None:
+    def _build(self, piece_renderer: PieceRenderer | None) -> None:
         t = self.t
         # Child widgets can outlive the window while a worker is winding down.
         app = proxy(self)
@@ -220,7 +222,8 @@ class ChessApp:
                  font=("TkDefaultFont", FONT_SIZES["caption"], "bold"), anchor="w", padx=14, pady=9,
                  ).grid(row=0, column=0, sticky="ew")
         self.board = BoardCanvas(board_sheet, lambda moves: app._on_move_requested(moves),
-                                 lambda detail: app._on_selection_changed(detail), artwork=self._board_artwork)
+                                 lambda detail: app._on_selection_changed(detail),
+                                 artwork=self._board_artwork, renderer=piece_renderer)
         self.board.grid(row=1, column=0, sticky="nsew", padx=12, pady=(0, 10))
         tk.Label(board_sheet, textvariable=self.interaction_text, background=ACETATE, foreground=MUTED_INK,
                  font=("TkDefaultFont", FONT_SIZES["caption"]), anchor="w", padx=14, pady=8,
@@ -1191,7 +1194,7 @@ class EngineDialog:
         self.window.destroy()
 
 
-def launch(*, board_design: BoardDesign | None = None) -> None:
+def launch(*, board_design: BoardDesign | None = None, top_pieces: bool = False) -> None:
     root = tk.Tk()
     artwork = None
     if board_design is not None:
@@ -1201,5 +1204,6 @@ def launch(*, board_design: BoardDesign | None = None) -> None:
         except tk.TclError as error:
             root.destroy()
             raise BoardArtworkError(f"SVG board preview needs an SVG-capable Tk renderer: {error}") from error
-    ChessApp(root, data_layout=DataLayout.default(), board_artwork=artwork)
+    renderer = OwnerSvgPieces(top_view=True) if top_pieces else None
+    ChessApp(root, data_layout=DataLayout.default(), board_artwork=artwork, piece_renderer=renderer)
     root.mainloop()

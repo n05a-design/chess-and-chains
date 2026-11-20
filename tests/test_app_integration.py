@@ -23,6 +23,7 @@ from chess_and_chains.storage import DataLayout, load_settings  # noqa: E402
 from chess_and_chains.ui.app import ChessApp  # noqa: E402
 from chess_and_chains.ui.branding import brand_image  # noqa: E402
 from chess_and_chains.ui.pieces import (  # noqa: E402
+    PIECE_FALLBACK_SIZES,
     PIECE_FILE_NAMES,
     GeometricTestPieces,
     OwnerSvgPieces,
@@ -379,6 +380,46 @@ class OwnerPieceUiTests(AppTestCase):
         self.assertEqual(root.tk.call(white, "get", 24, 35), (250, 246, 236))
         self.assertEqual(root.tk.call(black, "get", 24, 35), (23, 25, 32))
 
+    def test_top_view_uses_its_own_artwork_in_play_and_puzzles(self):
+        renderer = OwnerSvgPieces(top_view=True)
+        app = self.make_app(piece_renderer=renderer)
+        self.root.geometry("860x700")
+        self.root.deiconify()
+        self.pump_until(lambda: len(app.board.find_withtag("piece")) == 32)
+        self.assertIs(app.board.renderer, renderer)
+
+        def images():
+            return {app.board.itemcget(item, "image") for item in app.board.find_withtag("piece")}
+
+        self.assertEqual(len(images()), 12)
+        app.tab_rail.set_active("puzzles")
+        self.assertIsNotNone(app.puzzle)
+        self.assertTrue(images())
+        self.assertEqual(len(app.board.find_withtag("piece")), sum(piece is not None for piece in app.puzzle.state.board))
+
+        # The bottom corner of the front-view foot lies outside the top-view disc.
+        front = OwnerSvgPieces()
+        band = PIECE_FALLBACK_SIZES.index(64)
+        self.assertFalse(front._copy_png_piece(app.board, "wK.svg", band).transparency_get(15, 54))
+        self.assertTrue(renderer._copy_png_piece(app.board, "wK.svg", band).transparency_get(15, 54))
+
+    def test_piece_images_share_the_visible_dimensions_within_each_view(self):
+        root = create_root(self)
+        canvas = tk.Canvas(root)
+        # Render at 2× so that the half-unit edges land on whole pixels.
+        size = 128
+        band = PIECE_FALLBACK_SIZES.index(size)
+        expected_bounds = {False: (25, 10, 102, 117), True: (12, 12, 115, 115)}
+        for top_view, bounds in expected_bounds.items():
+            renderer = OwnerSvgPieces(top_view=top_view)
+            for name in PIECE_FILE_NAMES:
+                with self.subTest(top_view=top_view, piece=name):
+                    tile = renderer._copy_png_piece(canvas, name, band)
+                    visible = [(x, y) for y in range(size) for x in range(size)
+                               if not tile.transparency_get(x, y)]
+                    xs, ys = zip(*visible)
+                    self.assertEqual((min(xs), min(ys), max(xs), max(ys)), bounds)
+
 
 class StorageAndLocaleUiTests(AppTestCase):
     def test_save_game_and_settings_persist_in_temp_layout(self):
@@ -527,8 +568,17 @@ class StorageAndLocaleUiTests(AppTestCase):
 class PieceRendererContractTests(unittest.TestCase):
     def test_bundled_owner_svg_set_meets_the_contract(self):
         directory = ROOT / "src" / "chess_and_chains" / "ui" / "piece_assets"
-        report = validate_svg_piece_set(directory)
-        self.assertTrue(report.ok, report.problems)
+        for assets in (directory, directory / "top"):
+            with self.subTest(assets=assets):
+                report = validate_svg_piece_set(assets)
+                self.assertTrue(report.ok, report.problems)
+
+    def test_cli_selects_top_view_for_the_session(self):
+        from chess_and_chains.__main__ import main
+
+        with patch("chess_and_chains.ui.launch") as launch:
+            self.assertEqual(main(["--piece-view", "top"]), 0)
+            launch.assert_called_once_with(board_design=None, top_pieces=True)
 
     def test_svg_contract_accepts_clean_set_and_rejects_unsafe_files(self):
         clean = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><circle cx="22" cy="22" r="10"/></svg>'

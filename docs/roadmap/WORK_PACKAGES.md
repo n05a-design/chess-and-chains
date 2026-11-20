@@ -9,7 +9,7 @@
 | W00 | TESTED | Struktur-/Statusprüfung; Owner-Abnahme offen |
 | W01–W04 | IN_PROGRESS | Berichte vorhanden; Owner-Fragen offen |
 | W05 | TESTED | Regelkern, Remisansprüche, Remis bei Aufgabe gegen den blanken König, Undo/Redo mit inkrementellen Wiederholungszählern und Perft/Golden-Tests. PGN-Import verarbeitet die Hauptvariante |
-| W06 | IMPLEMENTED | Tk-Brett mit Original-SVG-Figuren unter MPL-2.0 und PNG-Fallback, automatisierte Aktions-, Umwandlungs- und Scroll-/Fokustests. Lokale Tk-9-Vorschau für Gesamtbrett und Feld-SVGs. Konkrete Inhaber-Bretter, manuelle Plattform- und High-DPI-Abnahme offen. [Figurennachweis](../reports/2026-11-20_W06-originalfiguren.md) · [Brettvorschau](../reports/2026-11-20_W06-svg-brettvorschau.md) |
+| W06 | IMPLEMENTED | Tk-Brett mit Original-SVG-Figuren in Vorder- und Draufsicht unter MPL-2.0 samt PNG-Fallbacks, automatisierte Aktions-, Umwandlungs- und Scroll-/Fokustests. Lokale Tk-9-Vorschau für Gesamtbrett und Feld-SVGs. Konkrete Inhaber-Bretter, manuelle Plattform- und High-DPI-Abnahme offen. [Figurenraster](../reports/2026-11-21_W06-figurenraster.md) · [Brettvorschau](../reports/2026-11-20_W06-svg-brettvorschau.md) |
 | W07 | TESTED (Mock) | Adapter + Controller + Presets mit Mock-Engine; echte Engine/ADR-001/Kalibrierung offen |
 | W08 | TESTED (Fixtures) | Importer, Packs, Session, Themen-/Ratingfilter und Fortschrittsanzeige; realer Lichess-Import, Q-008/Q-009 offen |
 | W09 | TESTED | Lokale Bibliothek mit PGN-Dateiaustausch und lokalem Partieendgrund, Migration auf Schema 3, Sicherung und Wiederherstellung, Settings. Manuelle Plattformabnahme, Q-012 und ADR-004 offen |

@@ -25,7 +25,7 @@ The local Tk desktop prototype supports two-player play, a project-owned mock en
 | --- | --- |
 | Product requirements, folder structure and initial documentation | Scaffolded / proposed |
 | Headless rules domain (legal moves, FEN/SAN/PGN, draw rules, undo/redo) | Implemented and tested (perft + golden tests); owner acceptance open |
-| Desktop board and local two-player UI | Tk prototype with Connected System branding and twelve original SVG pieces |
+| Desktop board and local two-player UI | Tk prototype with Connected System branding and original SVG pieces in front and top views |
 | UCI process adapter | Implemented; tested only against a project-owned mock engine |
 | Game controller + asynchronous bot (play as White or Black) | Implemented; tested with the mock engine, which is **not a chess AI** |
 | Real engine (e.g. Stockfish) bot play | Not bundled, not tested; user-configured engine path supported but unverified (ADR-001 open) |
@@ -57,6 +57,8 @@ To try a locally installed UCI engine during development (never downloaded by th
 Install the package first with `python -m pip install -e .`, or set `PYTHONPATH=src` when running from a checkout. The default command opens the local Tk prototype; `--headless-check` reports its availability without opening a window. The chess domain has no runtime chess-library dependency.
 
 With Tk 9, preview a local vector board for one session with `python -m chess_and_chains --board-design assets/boards/source/board-template.svg`. The [SVG delivery guide](assets/boards/source/README.md) covers complete boards and collections of individual squares.
+
+Run `python -m chess_and_chains --piece-view top` to use the top-view pieces in play and puzzles. The usual launch uses the front view. Both sets use [editable individual SVGs with consistent dimensions within each view](assets/chess_pieces/source_svg/README.md) and a local PNG fallback for Tk without SVG support.
 
 ## Licensing and third-party rights
 

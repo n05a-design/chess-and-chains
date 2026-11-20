@@ -14,6 +14,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--board-design", type=Path, metavar="SVG_OR_DIRECTORY",
                         help="preview a local SVG board or a directory of square SVGs for this session")
+    parser.add_argument("--piece-view", choices=("front", "top"), default="front",
+                        help="choose the front or top view of the pieces for this session")
     args = parser.parse_args(argv)
     design = None
     if args.board_design is not None:
@@ -32,13 +34,12 @@ def main(argv: list[str] | None = None) -> int:
 
     from .ui import launch
 
-    if design is None:
-        launch()
-    else:
-        try:
-            launch(board_design=design)
-        except BoardArtworkError as error:
-            parser.error(str(error))
+    from .ui.board_artwork import BoardArtworkError
+
+    try:
+        launch(board_design=design, top_pieces=args.piece_view == "top")
+    except BoardArtworkError as error:
+        parser.error(str(error))
     return 0
 
 
