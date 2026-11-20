@@ -358,8 +358,8 @@ class ChessApp:
         canvas.configure(yscrollcommand=scrollbar.set)
         panel = tk.Frame(canvas, background=ACETATE)
         panel.grid_columnconfigure(0, weight=1)
-        window = canvas.create_window(0, 0, window=panel, anchor="nw", tags=("panel-content",))
-        panel.bind("<Configure>", lambda _event: canvas.configure(scrollregion=canvas.bbox(window)))
+        canvas.create_window(0, 0, window=panel, anchor="nw", tags=("panel-content",))
+        panel.bind("<Configure>", lambda event: canvas.configure(scrollregion=(0, 0, event.width, event.height)))
         return viewport, canvas, panel
 
     @staticmethod

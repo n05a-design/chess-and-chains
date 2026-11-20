@@ -438,11 +438,12 @@ class StorageAndLocaleUiTests(AppTestCase):
         app = self.make_app(locale="de")
         self.root.deiconify()
         self.root.geometry("860x700")
-        self.root.update()
-        # Ensure overflow even when the platform font needs little horizontal wrapping.
-        app.bot_text.set("\n".join(["Ausführlicher Bot-Hinweis"] * 64))
-        self.root.update()
         canvas = app.play_canvas
+        # Force a tall status area independently of the platform font.
+        app.play_panel.grid_rowconfigure(app.bot_label.grid_info()["row"], minsize=720)
+        self.pump_until(lambda: canvas.winfo_height() > 100 and app.play_panel.winfo_height() > canvas.winfo_height())
+        self.root.update()
+        self.assertEqual(int(canvas.cget("scrollregion").split()[-1]), app.play_panel.winfo_height())
         self.assertEqual(canvas.yview()[0], 0)
         self.assertLess(canvas.yview()[1], 1)
         app.engine_button.event_generate("<FocusIn>")
