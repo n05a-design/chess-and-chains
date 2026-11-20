@@ -105,4 +105,5 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - name: GUI tests
-        run: python -m unittest tests.test_board_ui tests.test_app_integration -v
+        timeout-minutes: 3
+        run: python -c "import faulthandler, unittest; faulthandler.dump_traceback_later(90, exit=True); unittest.main(module=None)" tests.test_board_ui tests.test_app_integration -v

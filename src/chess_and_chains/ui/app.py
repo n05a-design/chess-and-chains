@@ -233,7 +233,7 @@ class ChessApp:
                           font=("TkDefaultFont", FONT_SIZES["section"], "bold"), anchor="w", justify="left",
                           padx=16, pady=15, wraplength=200)
         status.grid(row=0, column=0, columnspan=2, sticky="ew")
-        status.bind("<Configure>", lambda event: status.configure(wraplength=max(1, event.width - 32)))
+        side_sheet.bind("<Configure>", lambda event: status.configure(wraplength=max(1, event.width - 96)))
         self.panel = tk.Frame(side_sheet, background=ACETATE, padx=14, pady=10)
         self.panel.grid(row=1, column=0, sticky="nsew")
         self.panel.grid_columnconfigure(0, weight=1)
@@ -359,6 +359,8 @@ class ChessApp:
         )
 
         def resize_content(event: tk.Event) -> None:
+            if int(canvas.itemcget(window, "width")) == event.width:
+                return
             canvas.itemconfigure(window, width=event.width)
             for button in paired_buttons:
                 button.configure(wraplength=max(1, event.width // 2 - 32), justify="left")
