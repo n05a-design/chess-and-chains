@@ -17,7 +17,7 @@ sys.path.insert(0, str(ROOT))
 
 from chess_and_chains.chess import Color, GameStatus, Move, parse_square  # noqa: E402
 from chess_and_chains.engines.bot import EngineConfig, UCIBot  # noqa: E402
-from chess_and_chains.game import BotStatus  # noqa: E402
+from chess_and_chains.game import BotStatus, GameSetup  # noqa: E402
 from chess_and_chains.storage import DataLayout, load_settings  # noqa: E402
 from chess_and_chains.ui.app import ChessApp  # noqa: E402
 from chess_and_chains.ui.pieces import PIECE_FILE_NAMES, GeometricTestPieces, validate_svg_piece_set  # noqa: E402
@@ -52,6 +52,35 @@ class AppTestCase(unittest.TestCase):
                 return
             time.sleep(0.005)
         self.fail("condition not reached while pumping Tk events")
+
+
+class PromotionUiTests(AppTestCase):
+    def test_promotion_dialog_applies_a_legal_underpromotion(self):
+        app = self.make_app()
+        app.controller.new_game(GameSetup(initial_fen="4k3/P7/8/8/8/8/8/4K3 w - - 0 1"))
+        choices = tuple(move for move in app.board._legal_moves if move.from_square == parse_square("a7"))
+        invoked = []
+
+        def choose_rook():
+            dialog = next(child for child in self.root.winfo_children() if isinstance(child, tk.Toplevel))
+            try:
+                rook = next(child for child in dialog.winfo_children()
+                            if isinstance(child, tk.Button) and child.cget("text") == "Rook")
+                rook.invoke()
+                invoked.append(True)
+            finally:
+                if dialog.winfo_exists():
+                    dialog.destroy()
+
+        self.root.after(0, choose_rook)
+        app._on_move_requested(choices)
+        self.assertTrue(invoked)
+        self.assertEqual(app.game.moves, [Move.from_uci("a7a8r")])
+        self.assertEqual(app.controller.view().san_moves, ("a8=R+",))
+        app._undo()
+        self.assertEqual(app.game.moves, [])
+        app._redo()
+        self.assertEqual(app.game.moves, [Move.from_uci("a7a8r")])
 
 
 class DrawClaimTests(AppTestCase):

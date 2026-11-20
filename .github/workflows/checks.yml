@@ -90,18 +90,19 @@ jobs:
         run: xvfb-run -a python -m unittest tests.test_board_ui tests.test_app_integration -v
 
   gui-native:
-    name: Tk GUI tests native (${{ matrix.os }})
+    name: Tk GUI tests native (${{ matrix.os }}, py${{ matrix.python }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [windows-latest, macos-latest]
+        python: ["3.11", "3.14"]
     env:
       CHESS_AND_CHAINS_REQUIRE_DISPLAY: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python }}
       - name: GUI tests
         run: python -m unittest tests.test_board_ui tests.test_app_integration -v
