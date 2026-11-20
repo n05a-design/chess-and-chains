@@ -1,0 +1,268 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="396" viewBox="0 0 960 396">
+<title>Chess &amp; Chains – Drei Brettstudien</title>
+<desc>Editierbarer Entwurf für Chess &amp; Chains. KI-unterstützt. Status PROPOSED.</desc>
+<rect x="0" y="0" width="960" height="396" rx="0" fill="#FAF6EC"/>
+<text x="28" y="51" fill="#171920" font-size="34" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif">Drei Bretter, ein Spielfeld</text>
+<g id="brett-0">
+<text x="28" y="92" fill="#171920" font-size="18" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif">Minimal</text>
+<g transform="translate(43 105) scale(1)">
+<g>
+<rect x="0" y="0" width="30" height="30" rx="0" fill="#E7E9E4"/>
+<rect x="30" y="0" width="30" height="30" rx="0" fill="#777A76"/>
+<rect x="60" y="0" width="30" height="30" rx="0" fill="#E7E9E4"/>
+<rect x="90" y="0" width="30" height="30" rx="0" fill="#777A76"/>
+<rect x="120" y="0" width="30" height="30" rx="0" fill="#E7E9E4"/>
+<rect x="150" y="0" width="30" height="30" rx="0" fill="#777A76"/>
+<rect x="180" y="0" width="30" height="30" rx="0" fill="#E7E9E4"/>
+<rect x="210" y="0" width="30" height="30" rx="0" fill="#777A76"/>
+<rect x="0" y="30" width="30" height="30" rx="0" fill="#777A76"/>
+<rect x="30" y="30" width="30" height="30" rx="0" fill="#E7E9E4"/>
+<rect x="60" y="30" width="30" height="30" rx="0" fill="#777A76"/>
+<rect x="90" y="30" width="30" height="30" rx="0" fill="#E7E9E4"/>
+<rect x="120" y="30" width="30" height="30" rx="0" fill="#777A76"/>
+<rect x="150" y="30" width="30" height="30" rx="0" fill="#E7E9E4"/>
+<rect x="180" y="30" width="30" height="30" rx="0" fill="#777A76"/>
+<rect x="210" y="30" width="30" height="30" rx="0" fill="#E7E9E4"/>
+<rect x="0" y="60" width="30" height="30" rx="0" fill="#E7E9E4"/>
+<rect x="30" y="60" width="30" height="30" rx="0" fill="#777A76"/>
+<rect x="60" y="60" width="30" height="30" rx="0" fill="#E7E9E4"/>
+<rect x="90" y="60" width="30" height="30" rx="0" fill="#777A76"/>
+<rect x="120" y="60" width="30" height="30" rx="0" fill="#E7E9E4"/>
+<rect x="150" y="60" width="30" height="30" rx="0" fill="#777A76"/>
+<rect x="180" y="60" width="30" height="30" rx="0" fill="#E7E9E4"/>
+<rect x="210" y="60" width="30" height="30" rx="0" fill="#777A76"/>
+<rect x="0" y="90" width="30" height="30" rx="0" fill="#777A76"/>
+<rect x="30" y="90" width="30" height="30" rx="0" fill="#E7E9E4"/>
+<rect x="60" y="90" width="30" height="30" rx="0" fill="#777A76"/>
+<rect x="90" y="90" width="30" height="30" rx="0" fill="#E7E9E4"/>
+<rect x="120" y="90" width="30" height="30" rx="0" fill="#777A76"/>
+<rect x="150" y="90" width="30" height="30" rx="0" fill="#E7E9E4"/>
+<rect x="180" y="90" width="30" height="30" rx="0" fill="#777A76"/>
+<rect x="210" y="90" width="30" height="30" rx="0" fill="#E7E9E4"/>
+<rect x="0" y="120" width="30" height="30" rx="0" fill="#E7E9E4"/>
+<rect x="30" y="120" width="30" height="30" rx="0" fill="#777A76"/>
+<rect x="60" y="120" width="30" height="30" rx="0" fill="#E7E9E4"/>
+<rect x="90" y="120" width="30" height="30" rx="0" fill="#777A76"/>
+<rect x="120" y="120" width="30" height="30" rx="0" fill="#E7E9E4"/>
+<rect x="150" y="120" width="30" height="30" rx="0" fill="#777A76"/>
+<rect x="180" y="120" width="30" height="30" rx="0" fill="#E7E9E4"/>
+<rect x="210" y="120" width="30" height="30" rx="0" fill="#777A76"/>
+<rect x="0" y="150" width="30" height="30" rx="0" fill="#777A76"/>
+<rect x="30" y="150" width="30" height="30" rx="0" fill="#E7E9E4"/>
+<rect x="60" y="150" width="30" height="30" rx="0" fill="#777A76"/>
+<rect x="90" y="150" width="30" height="30" rx="0" fill="#E7E9E4"/>
+<rect x="120" y="150" width="30" height="30" rx="0" fill="#777A76"/>
+<rect x="150" y="150" width="30" height="30" rx="0" fill="#E7E9E4"/>
+<rect x="180" y="150" width="30" height="30" rx="0" fill="#777A76"/>
+<rect x="210" y="150" width="30" height="30" rx="0" fill="#E7E9E4"/>
+<rect x="0" y="180" width="30" height="30" rx="0" fill="#E7E9E4"/>
+<rect x="30" y="180" width="30" height="30" rx="0" fill="#777A76"/>
+<rect x="60" y="180" width="30" height="30" rx="0" fill="#E7E9E4"/>
+<rect x="90" y="180" width="30" height="30" rx="0" fill="#777A76"/>
+<rect x="120" y="180" width="30" height="30" rx="0" fill="#E7E9E4"/>
+<rect x="150" y="180" width="30" height="30" rx="0" fill="#777A76"/>
+<rect x="180" y="180" width="30" height="30" rx="0" fill="#E7E9E4"/>
+<rect x="210" y="180" width="30" height="30" rx="0" fill="#777A76"/>
+<rect x="0" y="210" width="30" height="30" rx="0" fill="#777A76"/>
+<rect x="30" y="210" width="30" height="30" rx="0" fill="#E7E9E4"/>
+<rect x="60" y="210" width="30" height="30" rx="0" fill="#777A76"/>
+<rect x="90" y="210" width="30" height="30" rx="0" fill="#E7E9E4"/>
+<rect x="120" y="210" width="30" height="30" rx="0" fill="#777A76"/>
+<rect x="150" y="210" width="30" height="30" rx="0" fill="#E7E9E4"/>
+<rect x="180" y="210" width="30" height="30" rx="0" fill="#777A76"/>
+<rect x="210" y="210" width="30" height="30" rx="0" fill="#E7E9E4"/>
+</g>
+</g>
+<text x="54" y="364" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">a</text>
+<text x="28" y="125" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">8</text>
+<text x="84" y="364" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">b</text>
+<text x="28" y="155" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">7</text>
+<text x="114" y="364" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">c</text>
+<text x="28" y="185" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">6</text>
+<text x="144" y="364" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">d</text>
+<text x="28" y="215" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">5</text>
+<text x="174" y="364" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">e</text>
+<text x="28" y="245" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">4</text>
+<text x="204" y="364" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">f</text>
+<text x="28" y="275" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">3</text>
+<text x="234" y="364" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">g</text>
+<text x="28" y="305" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">2</text>
+<text x="264" y="364" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">h</text>
+<text x="28" y="335" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">1</text>
+</g>
+<g id="brett-1">
+<text x="338" y="92" fill="#171920" font-size="18" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif">Werkstatt</text>
+<g transform="translate(353 105) scale(1)">
+<g>
+<rect x="0" y="0" width="30" height="30" rx="0" fill="#ECE2CA"/>
+<rect x="30" y="0" width="30" height="30" rx="0" fill="#8D7862"/>
+<rect x="60" y="0" width="30" height="30" rx="0" fill="#ECE2CA"/>
+<rect x="90" y="0" width="30" height="30" rx="0" fill="#8D7862"/>
+<rect x="120" y="0" width="30" height="30" rx="0" fill="#ECE2CA"/>
+<rect x="150" y="0" width="30" height="30" rx="0" fill="#8D7862"/>
+<rect x="180" y="0" width="30" height="30" rx="0" fill="#ECE2CA"/>
+<rect x="210" y="0" width="30" height="30" rx="0" fill="#8D7862"/>
+<rect x="0" y="30" width="30" height="30" rx="0" fill="#8D7862"/>
+<rect x="30" y="30" width="30" height="30" rx="0" fill="#ECE2CA"/>
+<rect x="60" y="30" width="30" height="30" rx="0" fill="#8D7862"/>
+<rect x="90" y="30" width="30" height="30" rx="0" fill="#ECE2CA"/>
+<rect x="120" y="30" width="30" height="30" rx="0" fill="#8D7862"/>
+<rect x="150" y="30" width="30" height="30" rx="0" fill="#ECE2CA"/>
+<rect x="180" y="30" width="30" height="30" rx="0" fill="#8D7862"/>
+<rect x="210" y="30" width="30" height="30" rx="0" fill="#ECE2CA"/>
+<rect x="0" y="60" width="30" height="30" rx="0" fill="#ECE2CA"/>
+<rect x="30" y="60" width="30" height="30" rx="0" fill="#8D7862"/>
+<rect x="60" y="60" width="30" height="30" rx="0" fill="#ECE2CA"/>
+<rect x="90" y="60" width="30" height="30" rx="0" fill="#8D7862"/>
+<rect x="120" y="60" width="30" height="30" rx="0" fill="#ECE2CA"/>
+<rect x="150" y="60" width="30" height="30" rx="0" fill="#8D7862"/>
+<rect x="180" y="60" width="30" height="30" rx="0" fill="#ECE2CA"/>
+<rect x="210" y="60" width="30" height="30" rx="0" fill="#8D7862"/>
+<rect x="0" y="90" width="30" height="30" rx="0" fill="#8D7862"/>
+<rect x="30" y="90" width="30" height="30" rx="0" fill="#ECE2CA"/>
+<rect x="60" y="90" width="30" height="30" rx="0" fill="#8D7862"/>
+<rect x="90" y="90" width="30" height="30" rx="0" fill="#ECE2CA"/>
+<rect x="120" y="90" width="30" height="30" rx="0" fill="#8D7862"/>
+<rect x="150" y="90" width="30" height="30" rx="0" fill="#ECE2CA"/>
+<rect x="180" y="90" width="30" height="30" rx="0" fill="#8D7862"/>
+<rect x="210" y="90" width="30" height="30" rx="0" fill="#ECE2CA"/>
+<rect x="0" y="120" width="30" height="30" rx="0" fill="#ECE2CA"/>
+<rect x="30" y="120" width="30" height="30" rx="0" fill="#8D7862"/>
+<rect x="60" y="120" width="30" height="30" rx="0" fill="#ECE2CA"/>
+<rect x="90" y="120" width="30" height="30" rx="0" fill="#8D7862"/>
+<rect x="120" y="120" width="30" height="30" rx="0" fill="#ECE2CA"/>
+<rect x="150" y="120" width="30" height="30" rx="0" fill="#8D7862"/>
+<rect x="180" y="120" width="30" height="30" rx="0" fill="#ECE2CA"/>
+<rect x="210" y="120" width="30" height="30" rx="0" fill="#8D7862"/>
+<rect x="0" y="150" width="30" height="30" rx="0" fill="#8D7862"/>
+<rect x="30" y="150" width="30" height="30" rx="0" fill="#ECE2CA"/>
+<rect x="60" y="150" width="30" height="30" rx="0" fill="#8D7862"/>
+<rect x="90" y="150" width="30" height="30" rx="0" fill="#ECE2CA"/>
+<rect x="120" y="150" width="30" height="30" rx="0" fill="#8D7862"/>
+<rect x="150" y="150" width="30" height="30" rx="0" fill="#ECE2CA"/>
+<rect x="180" y="150" width="30" height="30" rx="0" fill="#8D7862"/>
+<rect x="210" y="150" width="30" height="30" rx="0" fill="#ECE2CA"/>
+<rect x="0" y="180" width="30" height="30" rx="0" fill="#ECE2CA"/>
+<rect x="30" y="180" width="30" height="30" rx="0" fill="#8D7862"/>
+<rect x="60" y="180" width="30" height="30" rx="0" fill="#ECE2CA"/>
+<rect x="90" y="180" width="30" height="30" rx="0" fill="#8D7862"/>
+<rect x="120" y="180" width="30" height="30" rx="0" fill="#ECE2CA"/>
+<rect x="150" y="180" width="30" height="30" rx="0" fill="#8D7862"/>
+<rect x="180" y="180" width="30" height="30" rx="0" fill="#ECE2CA"/>
+<rect x="210" y="180" width="30" height="30" rx="0" fill="#8D7862"/>
+<rect x="0" y="210" width="30" height="30" rx="0" fill="#8D7862"/>
+<rect x="30" y="210" width="30" height="30" rx="0" fill="#ECE2CA"/>
+<rect x="60" y="210" width="30" height="30" rx="0" fill="#8D7862"/>
+<rect x="90" y="210" width="30" height="30" rx="0" fill="#ECE2CA"/>
+<rect x="120" y="210" width="30" height="30" rx="0" fill="#8D7862"/>
+<rect x="150" y="210" width="30" height="30" rx="0" fill="#ECE2CA"/>
+<rect x="180" y="210" width="30" height="30" rx="0" fill="#8D7862"/>
+<rect x="210" y="210" width="30" height="30" rx="0" fill="#ECE2CA"/>
+</g>
+</g>
+<text x="364" y="364" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">a</text>
+<text x="338" y="125" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">8</text>
+<text x="394" y="364" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">b</text>
+<text x="338" y="155" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">7</text>
+<text x="424" y="364" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">c</text>
+<text x="338" y="185" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">6</text>
+<text x="454" y="364" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">d</text>
+<text x="338" y="215" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">5</text>
+<text x="484" y="364" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">e</text>
+<text x="338" y="245" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">4</text>
+<text x="514" y="364" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">f</text>
+<text x="338" y="275" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">3</text>
+<text x="544" y="364" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">g</text>
+<text x="338" y="305" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">2</text>
+<text x="574" y="364" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">h</text>
+<text x="338" y="335" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">1</text>
+<path d="M338 107h8 M601 345h7" fill="none" stroke="#2447D8" stroke-width="3"/>
+</g>
+<g id="brett-2">
+<text x="648" y="92" fill="#171920" font-size="18" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif">Editorial</text>
+<g transform="translate(663 105) scale(1)">
+<g>
+<rect x="0" y="0" width="30" height="30" rx="0" fill="#EADAC0"/>
+<rect x="30" y="0" width="30" height="30" rx="0" fill="#947666"/>
+<rect x="60" y="0" width="30" height="30" rx="0" fill="#EADAC0"/>
+<rect x="90" y="0" width="30" height="30" rx="0" fill="#947666"/>
+<rect x="120" y="0" width="30" height="30" rx="0" fill="#EADAC0"/>
+<rect x="150" y="0" width="30" height="30" rx="0" fill="#947666"/>
+<rect x="180" y="0" width="30" height="30" rx="0" fill="#EADAC0"/>
+<rect x="210" y="0" width="30" height="30" rx="0" fill="#947666"/>
+<rect x="0" y="30" width="30" height="30" rx="0" fill="#947666"/>
+<rect x="30" y="30" width="30" height="30" rx="0" fill="#EADAC0"/>
+<rect x="60" y="30" width="30" height="30" rx="0" fill="#947666"/>
+<rect x="90" y="30" width="30" height="30" rx="0" fill="#EADAC0"/>
+<rect x="120" y="30" width="30" height="30" rx="0" fill="#947666"/>
+<rect x="150" y="30" width="30" height="30" rx="0" fill="#EADAC0"/>
+<rect x="180" y="30" width="30" height="30" rx="0" fill="#947666"/>
+<rect x="210" y="30" width="30" height="30" rx="0" fill="#EADAC0"/>
+<rect x="0" y="60" width="30" height="30" rx="0" fill="#EADAC0"/>
+<rect x="30" y="60" width="30" height="30" rx="0" fill="#947666"/>
+<rect x="60" y="60" width="30" height="30" rx="0" fill="#EADAC0"/>
+<rect x="90" y="60" width="30" height="30" rx="0" fill="#947666"/>
+<rect x="120" y="60" width="30" height="30" rx="0" fill="#EADAC0"/>
+<rect x="150" y="60" width="30" height="30" rx="0" fill="#947666"/>
+<rect x="180" y="60" width="30" height="30" rx="0" fill="#EADAC0"/>
+<rect x="210" y="60" width="30" height="30" rx="0" fill="#947666"/>
+<rect x="0" y="90" width="30" height="30" rx="0" fill="#947666"/>
+<rect x="30" y="90" width="30" height="30" rx="0" fill="#EADAC0"/>
+<rect x="60" y="90" width="30" height="30" rx="0" fill="#947666"/>
+<rect x="90" y="90" width="30" height="30" rx="0" fill="#EADAC0"/>
+<rect x="120" y="90" width="30" height="30" rx="0" fill="#947666"/>
+<rect x="150" y="90" width="30" height="30" rx="0" fill="#EADAC0"/>
+<rect x="180" y="90" width="30" height="30" rx="0" fill="#947666"/>
+<rect x="210" y="90" width="30" height="30" rx="0" fill="#EADAC0"/>
+<rect x="0" y="120" width="30" height="30" rx="0" fill="#EADAC0"/>
+<rect x="30" y="120" width="30" height="30" rx="0" fill="#947666"/>
+<rect x="60" y="120" width="30" height="30" rx="0" fill="#EADAC0"/>
+<rect x="90" y="120" width="30" height="30" rx="0" fill="#947666"/>
+<rect x="120" y="120" width="30" height="30" rx="0" fill="#EADAC0"/>
+<rect x="150" y="120" width="30" height="30" rx="0" fill="#947666"/>
+<rect x="180" y="120" width="30" height="30" rx="0" fill="#EADAC0"/>
+<rect x="210" y="120" width="30" height="30" rx="0" fill="#947666"/>
+<rect x="0" y="150" width="30" height="30" rx="0" fill="#947666"/>
+<rect x="30" y="150" width="30" height="30" rx="0" fill="#EADAC0"/>
+<rect x="60" y="150" width="30" height="30" rx="0" fill="#947666"/>
+<rect x="90" y="150" width="30" height="30" rx="0" fill="#EADAC0"/>
+<rect x="120" y="150" width="30" height="30" rx="0" fill="#947666"/>
+<rect x="150" y="150" width="30" height="30" rx="0" fill="#EADAC0"/>
+<rect x="180" y="150" width="30" height="30" rx="0" fill="#947666"/>
+<rect x="210" y="150" width="30" height="30" rx="0" fill="#EADAC0"/>
+<rect x="0" y="180" width="30" height="30" rx="0" fill="#EADAC0"/>
+<rect x="30" y="180" width="30" height="30" rx="0" fill="#947666"/>
+<rect x="60" y="180" width="30" height="30" rx="0" fill="#EADAC0"/>
+<rect x="90" y="180" width="30" height="30" rx="0" fill="#947666"/>
+<rect x="120" y="180" width="30" height="30" rx="0" fill="#EADAC0"/>
+<rect x="150" y="180" width="30" height="30" rx="0" fill="#947666"/>
+<rect x="180" y="180" width="30" height="30" rx="0" fill="#EADAC0"/>
+<rect x="210" y="180" width="30" height="30" rx="0" fill="#947666"/>
+<rect x="0" y="210" width="30" height="30" rx="0" fill="#947666"/>
+<rect x="30" y="210" width="30" height="30" rx="0" fill="#EADAC0"/>
+<rect x="60" y="210" width="30" height="30" rx="0" fill="#947666"/>
+<rect x="90" y="210" width="30" height="30" rx="0" fill="#EADAC0"/>
+<rect x="120" y="210" width="30" height="30" rx="0" fill="#947666"/>
+<rect x="150" y="210" width="30" height="30" rx="0" fill="#EADAC0"/>
+<rect x="180" y="210" width="30" height="30" rx="0" fill="#947666"/>
+<rect x="210" y="210" width="30" height="30" rx="0" fill="#EADAC0"/>
+</g>
+</g>
+<text x="674" y="364" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">a</text>
+<text x="648" y="125" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">8</text>
+<text x="704" y="364" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">b</text>
+<text x="648" y="155" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">7</text>
+<text x="734" y="364" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">c</text>
+<text x="648" y="185" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">6</text>
+<text x="764" y="364" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">d</text>
+<text x="648" y="215" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">5</text>
+<text x="794" y="364" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">e</text>
+<text x="648" y="245" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">4</text>
+<text x="824" y="364" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">f</text>
+<text x="648" y="275" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">3</text>
+<text x="854" y="364" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">g</text>
+<text x="648" y="305" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">2</text>
+<text x="884" y="364" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">h</text>
+<text x="648" y="335" fill="#171920" font-size="11" font-weight="400" font-family="IBM Plex Mono, Consolas, monospace">1</text>
+</g>
+</svg>

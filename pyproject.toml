@@ -27,6 +27,7 @@ where = ["src"]
 [tool.setuptools.package-data]
 "chess_and_chains.engines" = ["*.json"]
 "chess_and_chains.puzzles" = ["data/demo/*.jsonl", "data/demo/*.json"]
+"chess_and_chains.ui" = ["brand_assets/*.svg", "brand_assets/*.png"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

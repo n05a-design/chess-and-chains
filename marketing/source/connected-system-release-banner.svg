@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300">
+<title>Connected System – Release-Banner-Studie</title>
+<desc>Editierbarer Entwurf für Chess &amp; Chains. KI-unterstützt. Status PROPOSED.</desc>
+<rect x="0" y="0" width="1200" height="300" rx="0" fill="#FAF6EC"/>
+<path d="M24 0V300 M48 0V300 M72 0V300 M96 0V300 M120 0V300 M144 0V300 M168 0V300 M192 0V300 M216 0V300 M240 0V300 M264 0V300 M288 0V300 M312 0V300 M336 0V300 M360 0V300 M384 0V300 M408 0V300 M432 0V300 M456 0V300 M480 0V300 M504 0V300 M528 0V300 M552 0V300 M576 0V300 M600 0V300 M624 0V300 M648 0V300 M672 0V300 M696 0V300 M720 0V300 M744 0V300 M768 0V300 M792 0V300 M816 0V300 M840 0V300 M864 0V300 M888 0V300 M912 0V300 M936 0V300 M960 0V300 M984 0V300 M1008 0V300 M1032 0V300 M1056 0V300 M1080 0V300 M1104 0V300 M1128 0V300 M1152 0V300 M1176 0V300 M1200 0V300M0 24H1200 M0 48H1200 M0 72H1200 M0 96H1200 M0 120H1200 M0 144H1200 M0 168H1200 M0 192H1200 M0 216H1200 M0 240H1200 M0 264H1200 M0 288H1200" fill="none" stroke="#171920" stroke-width="1" opacity=".05"/>
+<g transform="translate(40 56) scale(3)">
+<path d="M40 31 Q46 31 46 37 V48 Q46 54 40 54 H12 Q6 54 6 48 V37 Q6 31 12 31 H25" fill="none" stroke="#2447D8" stroke-width="8"/>
+<path d="M39 44 Q33 44 33 38 V12 Q33 6 39 6 H52 Q58 6 58 12 V38 Q58 44 52 44" fill="none" stroke="#F4C400" stroke-width="8"/>
+</g>
+<text x="274" y="137" fill="#171920" font-size="69" font-weight="700" font-family="Space Grotesk, Segoe UI, sans-serif">Chess &amp; Chains</text>
+<text x="277" y="192" fill="#171920" font-size="27" font-weight="400" font-family="Space Grotesk, Segoe UI, sans-serif">Schach. Rätsel. Verbindungen.</text>
+<path d="M1200 0H990A210 210 0 0 0 1200 210Z" fill="#2447D8"/>
+<path d="M1200 300H1110A90 90 0 0 1 1200 210Z" fill="#F4C400"/>
+</svg>

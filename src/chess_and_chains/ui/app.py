@@ -13,6 +13,7 @@ from __future__ import annotations
 import sqlite3
 import threading
 import tkinter as tk
+from weakref import proxy
 from dataclasses import replace
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
@@ -26,9 +27,12 @@ from ..game import BotStatus, GameController, GameSetup, GameView, PlayMode
 from ..i18n import Translator
 from ..puzzles import PuzzlePack, PuzzleSession, Verdict, load_demo_pack
 from ..storage import Database, DataLayout, Settings, StorageError, load_settings, save_settings
+from .atlas import PuzzleAtlas
 from .board import BoardCanvas, Orientation
+from .branding import brand_image
 from .theme import (
     ACETATE,
+    BRAND_BLUE,
     BUTTON_ROLES,
     CHROME_YELLOW,
     DISABLED_INK,
@@ -53,71 +57,52 @@ def default_provider_factory(preset: BotPreset, settings: Settings) -> MoveProvi
     return UCIBot(config, preset)
 
 
-class TabRail(tk.Canvas):
-    """Stepped, keyboard-operable tabs on the side leaf's fore edge."""
+class TabRail(tk.Frame):
+    """The three workspace views, with native keyboard-focusable controls."""
 
     def __init__(self, master: tk.Misc, on_change, tabs: Sequence[tuple[str, str]]) -> None:
-        super().__init__(
-            master, width=54, background=ACETATE, highlightthickness=1,
-            highlightbackground=ACETATE, highlightcolor=INK, takefocus=True, borderwidth=0,
-        )
+        super().__init__(master, background=ACETATE)
         self._on_change = on_change
         self._tabs = tuple(name for name, _ in tabs)
-        self._labels = dict(tabs)
         self._active = self._tabs[0]
-        self.bind("<Configure>", lambda _event: self.redraw())
-        self.bind("<Button-1>", self._on_click)
-        self.bind("<KeyPress>", self._on_key)
-        self.redraw()
+        for index, (name, label) in enumerate(tabs):
+            button = tk.Button(
+                self, name=name, text=label, command=lambda tab=name: self.set_active(tab),
+                foreground=INK, activeforeground=PAPER, activebackground=INK,
+                relief="flat", borderwidth=0, highlightthickness=2, highlightcolor=INK,
+                highlightbackground=ACETATE, padx=2, pady=8, takefocus=True,
+            )
+            self.grid_columnconfigure(index, weight=1)
+            button.grid(row=0, column=index, sticky="ew", padx=(0, 3))
+            button.bind("<Return>", lambda _event, tab=name: self._activate(tab))
+            for key, step in (("Left", -1), ("Right", 1), ("Up", -1), ("Down", 1)):
+                target = self._tabs[(index + step) % len(self._tabs)]
+                button.bind(f"<{key}>", lambda _event, tab=target: self._activate(tab))
+        self._paint()
 
     @property
     def active(self) -> str:
         return self._active
 
-    def _bounds(self) -> dict[str, tuple[int, int]]:
-        height = max(self.winfo_height(), 60 * len(self._tabs))
-        step = height / len(self._tabs)
-        return {tab: (int(i * step), int((i + 1) * step)) for i, tab in enumerate(self._tabs)}
-
-    def redraw(self) -> None:
-        self.delete("all")
-        for tab, (top, bottom) in self._bounds().items():
-            left = 0 if self._active == tab else 7
-            right = 49
-            fill = CHROME_YELLOW if self._active == tab else TAB_IDLE
-            self.create_polygon(
-                left, top + 8, left + 7, top, right, top, right, bottom, left + 7, bottom, left, bottom - 8,
-                fill=fill, outline=INK, width=1,
-            )
-            self.create_text(
-                (left + right) / 2, (top + bottom) / 2, text=self._labels[tab], angle=90, fill=INK,
-                font=("TkDefaultFont", FONT_SIZES["caption"], "bold"),
+    def _paint(self) -> None:
+        for name, button in self.children.items():
+            selected = name == self._active
+            button.configure(
+                background=CHROME_YELLOW if selected else TAB_IDLE,
+                font=("TkDefaultFont", FONT_SIZES["caption"], "bold underline" if selected else "normal"),
             )
 
     def set_active(self, tab: str) -> None:
         if tab not in self._tabs:
             raise ValueError(f"Unknown game panel: {tab}")
         self._active = tab
-        self.redraw()
+        self._paint()
         self._on_change(tab)
 
-    def _on_click(self, event: tk.Event) -> None:
-        self.focus_set()
-        for tab, (top, bottom) in self._bounds().items():
-            if top <= event.y < bottom:
-                self.set_active(tab)
-                return
-
-    def _on_key(self, event: tk.Event) -> str | None:
-        index = self._tabs.index(self._active)
-        if event.keysym in ("Up", "Down"):
-            step = -1 if event.keysym == "Up" else 1
-            self.set_active(self._tabs[(index + step) % len(self._tabs)])
-            return "break"
-        if event.keysym in ("Return", "KP_Enter", "space"):
-            self._on_change(self._active)
-            return "break"
-        return None
+    def _activate(self, tab: str) -> str:
+        self.children[tab].focus_set()
+        self.set_active(tab)
+        return "break"
 
 
 class ChessApp:
@@ -147,7 +132,7 @@ class ChessApp:
         self.presets = load_presets()
         self._provider_factory = provider_factory
         self.controller = GameController()
-        self.controller.subscribe(self._on_view)
+        self._unsubscribe_view = self.controller.subscribe(self._on_view)
         self.orientation: Orientation = "white"
         self.active_panel = "play"
         self.pack = puzzle_pack or load_demo_pack()
@@ -156,6 +141,7 @@ class ChessApp:
         self.puzzle_index = 0
         self.puzzle: PuzzleSession | None = None
         self._puzzle_recorded = False
+        self._solved_puzzle_ids: set[str] = set()
         self._provider_stale = False
         self._game_headers: dict[str, str] = {}
         self._closed = False
@@ -193,26 +179,35 @@ class ChessApp:
     # ----- construction ------------------------------------------------
     def _build(self) -> None:
         t = self.t
+        # Child widgets can outlive the window while a worker is winding down.
+        app = proxy(self)
         self.root.title(t("app.window_title"))
+        self._window_icon = brand_image(self.root, "app-icon", 64)
+        self.root.iconphoto(True, self._window_icon)
         self.root.configure(background=WINDOW)
         self.root.geometry("1180x820")
         self.root.minsize(860, 700)
         self.root.grid_rowconfigure(1, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
 
-        header = tk.Frame(self.root, background=WINDOW, padx=22, pady=14)
-        header.grid(row=0, column=0, sticky="ew")
-        header.grid_columnconfigure(0, weight=1)
-        tk.Label(header, text=t("app.title"), background=WINDOW, foreground=INK,
-                 font=("TkDefaultFont", FONT_SIZES["title"], "bold")).grid(row=0, column=0, sticky="w")
-        tk.Label(header, textvariable=self.header_mode_text, background=WINDOW, foreground=INK,
-                 font=("TkDefaultFont", FONT_SIZES["caption"], "bold")).grid(row=0, column=1, sticky="e", padx=(12, 0))
+        masthead = tk.Frame(self.root, background=BRAND_BLUE, pady=0)
+        masthead.grid(row=0, column=0, sticky="ew")
+        header = tk.Frame(masthead, background=PAPER, padx=22, pady=12)
+        header.pack(fill="x", pady=(4, 0))
+        header.grid_columnconfigure(1, weight=1)
+        self._header_signet = brand_image(self.root, "signet", 40)
+        tk.Label(header, image=self._header_signet, background=PAPER, borderwidth=0).grid(row=0, column=0, sticky="w")
+        tk.Label(header, text=t("app.title"), background=PAPER, foreground=INK,
+                 font=("TkDefaultFont", FONT_SIZES["title"], "bold")).grid(row=0, column=1, sticky="w", padx=(10, 0))
+        tk.Label(header, textvariable=self.header_mode_text, background=PAPER, foreground=MUTED_INK,
+                 font=("TkFixedFont", FONT_SIZES["caption"], "bold"), justify="right", wraplength=350,
+                 ).grid(row=0, column=2, sticky="e", padx=(12, 0))
 
         body = tk.Frame(self.root, background=WINDOW, padx=18)
         body.grid(row=1, column=0, sticky="nsew", pady=(4, 12))
         body.grid_rowconfigure(0, weight=1)
-        body.grid_columnconfigure(0, weight=7, minsize=490)
-        body.grid_columnconfigure(1, weight=3, minsize=300)
+        body.grid_columnconfigure(0, weight=7, minsize=450)
+        body.grid_columnconfigure(1, weight=3, minsize=328)
 
         board_sheet = self._sheet(body, 0, padx=(0, 14))
         board_sheet.grid_rowconfigure(1, weight=1)
@@ -220,32 +215,30 @@ class ChessApp:
         tk.Label(board_sheet, text=t("board.test_pieces"), background=ACETATE, foreground=INK,
                  font=("TkDefaultFont", FONT_SIZES["caption"], "bold"), anchor="w", padx=14, pady=9,
                  ).grid(row=0, column=0, sticky="ew")
-        self.board = BoardCanvas(board_sheet, self._on_move_requested, self._on_selection_changed)
+        self.board = BoardCanvas(board_sheet, lambda moves: app._on_move_requested(moves),
+                                 lambda detail: app._on_selection_changed(detail))
         self.board.grid(row=1, column=0, sticky="nsew", padx=12, pady=(0, 10))
         tk.Label(board_sheet, textvariable=self.interaction_text, background=ACETATE, foreground=MUTED_INK,
                  font=("TkDefaultFont", FONT_SIZES["caption"]), anchor="w", padx=14, pady=8,
                  ).grid(row=2, column=0, sticky="ew")
 
         side_sheet = self._sheet(body, 1)
-        side_sheet.grid_rowconfigure(1, weight=1)
+        side_sheet.grid_rowconfigure(2, weight=1)
         side_sheet.grid_columnconfigure(0, weight=1)
+        self.tab_rail = TabRail(
+            side_sheet, lambda name: app._show_panel(name),
+            (("play", t("tab.play")), ("moves", t("tab.moves")), ("puzzles", t("tab.puzzles"))),
+        )
+        self.tab_rail.grid(row=0, column=0, sticky="ew", padx=(12, 9), pady=(12, 0))
         status = tk.Label(side_sheet, textvariable=self.panel_text, background=ACETATE, foreground=INK,
                           font=("TkDefaultFont", FONT_SIZES["section"], "bold"), anchor="w", justify="left",
                           padx=16, pady=15, wraplength=200)
-        status.grid(row=0, column=0, columnspan=2, sticky="ew")
-        side_sheet.bind("<Configure>", lambda event: status.configure(wraplength=max(1, event.width - 96)))
+        status.grid(row=1, column=0, sticky="ew")
+        side_sheet.bind("<Configure>", lambda event: status.configure(wraplength=max(1, event.width - 32)))
         self.panel = tk.Frame(side_sheet, background=ACETATE, padx=14, pady=10)
-        self.panel.grid(row=1, column=0, sticky="nsew")
+        self.panel.grid(row=2, column=0, sticky="nsew")
         self.panel.grid_columnconfigure(0, weight=1)
         self.panel.grid_rowconfigure(0, weight=1)
-        self.tab_rail = TabRail(
-            side_sheet, self._show_panel,
-            (("play", t("tab.play")), ("moves", t("tab.moves")), ("puzzles", t("tab.puzzles"))),
-        )
-        self.tab_rail.grid(row=0, column=2, rowspan=2, sticky="ns")
-        side_sheet.grid_columnconfigure(1, minsize=8)
-        side_sheet.grid_columnconfigure(2, minsize=54)
-
         self._build_play_panel()
         self._build_moves_panel()
         self._build_puzzle_panel()
@@ -253,7 +246,7 @@ class ChessApp:
         self._show_panel("play")
 
     def _sheet(self, master: tk.Misc, column: int, padx=(0, 0)) -> tk.Frame:
-        slot = tk.Frame(master, background=CHROME_YELLOW)
+        slot = tk.Frame(master, background=WINDOW)
         slot.grid(row=0, column=column, sticky="nsew", padx=padx, pady=(4, 10))
         shadow = tk.Frame(slot, background=SHADOW)
         shadow.place(x=6, y=6, relwidth=1, relheight=1, width=-6, height=-6)
@@ -273,25 +266,9 @@ class ChessApp:
 
     def _build_play_panel(self) -> None:
         t = self.t
-        self.play_viewport = tk.Frame(self.panel, background=ACETATE)
-        self.play_viewport.grid(row=0, column=0, sticky="nsew")
-        self.play_viewport.grid_rowconfigure(0, weight=1)
-        self.play_viewport.grid_columnconfigure(0, weight=1)
-        canvas = self.play_canvas = tk.Canvas(
-            self.play_viewport, background=ACETATE, highlightthickness=0, borderwidth=0,
-        )
-        canvas.grid(row=0, column=0, sticky="nsew")
-        scrollbar = ttk.Scrollbar(self.play_viewport, orient=tk.VERTICAL, command=canvas.yview)
-        scrollbar.grid(row=0, column=1, sticky="ns")
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        panel = self.play_panel = tk.Frame(canvas, background=ACETATE)
-        window = canvas.create_window(0, 0, window=panel, anchor="nw")
-        panel.bind("<Configure>", lambda _event: canvas.configure(scrollregion=canvas.bbox(window)))
-        panel.grid_columnconfigure(0, weight=1)
+        self.play_viewport, self.play_canvas, self.play_panel = self._scrollable_panel()
+        canvas, panel = self.play_canvas, self.play_panel
         row = 0
-        self._label(panel, text=t("play.description"), muted=True).grid(row=row, column=0, sticky="ew", pady=(0, 10))
-        row += 1
         self._label(panel, text=t("play.mode_label"), role="caption", bold=True).grid(row=row, column=0, sticky="ew")
         row += 1
         self.mode_buttons: dict[str, tk.Radiobutton] = {}
@@ -358,41 +335,71 @@ class ChessApp:
             self.copy_pgn_button, self.claim_button, self.library_button, self.retry_bot_button, self.engine_button,
         )
 
-        def resize_content(event: tk.Event) -> None:
+        def resize_content(width: int) -> None:
+            for button in paired_buttons:
+                button.configure(wraplength=max(1, width // 2 - 32), justify="left")
+            for button in self.mode_buttons.values():
+                button.configure(wraplength=max(1, width - 35), justify="left")
+
+        self._bind_panel_scroll(
+            canvas, panel, (*paired_buttons, *self.mode_buttons.values(), self.level_menu, self.new_game_button),
+            resize_content,
+        )
+
+    def _scrollable_panel(self) -> tuple[tk.Frame, tk.Canvas, tk.Frame]:
+        viewport = tk.Frame(self.panel, background=ACETATE)
+        viewport.grid(row=0, column=0, sticky="nsew")
+        viewport.grid_rowconfigure(0, weight=1)
+        viewport.grid_columnconfigure(0, weight=1)
+        canvas = tk.Canvas(viewport, background=ACETATE, highlightthickness=0, borderwidth=0)
+        canvas.grid(row=0, column=0, sticky="nsew")
+        scrollbar = ttk.Scrollbar(viewport, orient=tk.VERTICAL, command=canvas.yview)
+        scrollbar.grid(row=0, column=1, sticky="ns")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        panel = tk.Frame(canvas, background=ACETATE)
+        panel.grid_columnconfigure(0, weight=1)
+        window = canvas.create_window(0, 0, window=panel, anchor="nw", tags=("panel-content",))
+        panel.bind("<Configure>", lambda _event: canvas.configure(scrollregion=canvas.bbox(window)))
+        return viewport, canvas, panel
+
+    @staticmethod
+    def _bind_panel_scroll(
+        canvas: tk.Canvas, panel: tk.Frame, controls: Sequence[tk.Widget], resize_content: Callable[[int], None],
+    ) -> None:
+        window, = canvas.find_withtag("panel-content")
+
+        def resize(event: tk.Event) -> None:
             if int(canvas.itemcget(window, "width")) == event.width:
                 return
             canvas.itemconfigure(window, width=event.width)
-            for button in paired_buttons:
-                button.configure(wraplength=max(1, event.width // 2 - 32), justify="left")
-            for button in self.mode_buttons.values():
-                button.configure(wraplength=max(1, event.width - 35), justify="left")
+            resize_content(event.width)
 
-        canvas.bind("<Configure>", resize_content)
-        for widget in (*paired_buttons, *self.mode_buttons.values(), self.level_menu, self.new_game_button):
-            widget.bind("<FocusIn>", self._show_play_focus, add="+")
+        canvas.bind("<Configure>", resize)
+
+        def scroll(event: tk.Event) -> str:
+            up = event.num == 4 or event.delta > 0
+            canvas.yview_scroll(-1 if up else 1, "units")
+            return "break"
+
+        def show_focus(event: tk.Event) -> None:
+            widget = event.widget
+            top = widget.winfo_rooty() - panel.winfo_rooty()
+            bottom = top + widget.winfo_height()
+            view_top = canvas.canvasy(0)
+            view_height = canvas.winfo_height()
+            if top < view_top:
+                canvas.yview_moveto(top / panel.winfo_height())
+            elif bottom > view_top + view_height:
+                canvas.yview_moveto((bottom - view_height) / panel.winfo_height())
+
+        for widget in controls:
+            widget.bind("<FocusIn>", show_focus, add="+")
         remaining = [canvas]
         while remaining:
             widget = remaining.pop()
             remaining.extend(widget.winfo_children())
-            widget.bind("<MouseWheel>", self._scroll_play)
-            widget.bind("<Button-4>", self._scroll_play)
-            widget.bind("<Button-5>", self._scroll_play)
-
-    def _scroll_play(self, event: tk.Event) -> str:
-        up = event.num == 4 or event.delta > 0
-        self.play_canvas.yview_scroll(-1 if up else 1, "units")
-        return "break"
-
-    def _show_play_focus(self, event: tk.Event) -> None:
-        canvas, widget = self.play_canvas, event.widget
-        top = widget.winfo_rooty() - self.play_panel.winfo_rooty()
-        bottom = top + widget.winfo_height()
-        view_top = canvas.canvasy(0)
-        view_height = canvas.winfo_height()
-        if top < view_top:
-            canvas.yview_moveto(top / self.play_panel.winfo_height())
-        elif bottom > view_top + view_height:
-            canvas.yview_moveto((bottom - view_height) / self.play_panel.winfo_height())
+            for sequence in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
+                widget.bind(sequence, scroll)
 
     def _build_moves_panel(self) -> None:
         t = self.t
@@ -422,9 +429,8 @@ class ChessApp:
 
     def _build_puzzle_panel(self) -> None:
         t = self.t
-        panel = self.puzzle_panel = tk.Frame(self.panel, background=ACETATE)
-        panel.grid(row=0, column=0, sticky="nsew")
-        panel.grid_columnconfigure(0, weight=1)
+        self.puzzle_viewport, canvas, self.puzzle_panel = self._scrollable_panel()
+        panel = self.puzzle_panel
         self._label(panel, var=self.puzzle_title_text, role="body", bold=True).grid(row=0, column=0, sticky="ew")
         self._label(panel, var=self.puzzle_meta_text, role="caption", muted=True).grid(row=1, column=0, sticky="ew", pady=(2, 8))
         if self.pack.manifest.demo:
@@ -456,10 +462,24 @@ class ChessApp:
             dropdown.grid(row=row, column=1, sticky="ew", padx=(8, 0), pady=2)
             dropdown.current(0)
             dropdown.bind("<<ComboboxSelected>>", self._apply_puzzle_filters)
+        self.atlas_section = tk.Frame(panel, background=PAPER, padx=6, pady=4)
+        self.atlas_section.grid(row=8, column=0, sticky="ew", pady=(12, 0))
+        tk.Label(self.atlas_section, text="Atlas of Moves", background=PAPER, foreground=INK, anchor="w",
+                 font=("TkDefaultFont", FONT_SIZES["caption"], "bold"), padx=6, pady=3).pack(fill="x")
+        self.puzzle_atlas = PuzzleAtlas(self.atlas_section)
+        self.puzzle_atlas.pack(fill="x")
         if self.db is not None:
             self._label(panel, var=self.puzzle_progress_text, role="caption", muted=True).grid(
-                row=8, column=0, sticky="ew", pady=(6, 0),
+                row=9, column=0, sticky="ew", pady=(6, 0),
             )
+        controls = (self.hint_button, self.solution_button, self.next_puzzle_button,
+                    self.puzzle_theme_filter, self.puzzle_rating_filter)
+
+        def resize_buttons(width: int) -> None:
+            for button in controls[:3]:
+                button.configure(wraplength=max(1, width - 32), justify="left")
+
+        self._bind_panel_scroll(canvas, panel, controls, resize_buttons)
 
     def _bind_shortcuts(self) -> None:
         for modifier in ("Control", "Command"):
@@ -487,7 +507,7 @@ class ChessApp:
 
     # ----- panels / modes ----------------------------------------------
     def _show_panel(self, name: str) -> None:
-        panels = {"play": self.play_viewport, "moves": self.moves_panel, "puzzles": self.puzzle_panel}
+        panels = {"play": self.play_viewport, "moves": self.moves_panel, "puzzles": self.puzzle_viewport}
         if name not in panels:
             raise ValueError(f"Unknown game panel: {name}")
         for panel in panels.values():
@@ -828,24 +848,23 @@ class ChessApp:
             if (not theme or theme in puzzle.themes)
             and puzzle.rating >= lower and (upper is None or puzzle.rating <= upper)
         )
+        self._update_puzzle_progress()
         if self.puzzle is not None and self.puzzle.puzzle in self._puzzle_selection:
             self.puzzle_index = self._puzzle_selection.index(self.puzzle.puzzle)
             self._refresh()
         else:
             self._start_puzzle(0)
-        self._update_puzzle_progress()
 
     def _start_puzzle(self, index: int) -> None:
         self._puzzle_recorded = False
+        self.puzzle_feedback_text.set("")
         if self._puzzle_selection:
             self.puzzle_index = index % len(self._puzzle_selection)
             self.puzzle = PuzzleSession(self._puzzle_selection[self.puzzle_index])
-            self.puzzle_feedback_text.set(self.t("puzzle.prompt", side=self._side(self.puzzle.player_color)))
             self.board.set_orientation("white" if self.puzzle.player_color is Color.WHITE else "black")
         else:
             self.puzzle_index = 0
             self.puzzle = None
-            self.puzzle_feedback_text.set("")
         self._refresh()
 
     def _next_puzzle(self) -> None:
@@ -857,8 +876,10 @@ class ChessApp:
         try:
             solved = self.db.solved_puzzle_ids(self.pack.manifest.pack_id)
         except sqlite3.Error:
+            self._solved_puzzle_ids.clear()
             self.puzzle_progress_text.set(self.t("puzzle.progress_unavailable"))
             return
+        self._solved_puzzle_ids = solved
         count = sum(puzzle.puzzle_id in solved for puzzle in self._puzzle_selection)
         self.puzzle_progress_text.set(
             self.t("puzzle.progress", solved=count, count=len(self._puzzle_selection)) if self._puzzle_selection else ""
@@ -947,7 +968,9 @@ class ChessApp:
         session = self.puzzle
         self.header_mode_text.set(self.t("header.mode.puzzle", pack=self.pack.manifest.pack_id.upper()))
         self.next_puzzle_button.configure(state=tk.NORMAL if session is not None else tk.DISABLED)
+        self.puzzle_atlas.update_route(self._puzzle_selection, self.puzzle_index, session, self._solved_puzzle_ids)
         if session is None:
+            self.atlas_section.grid_remove()
             self.panel_text.set(self.t("puzzle.no_matches"))
             self.puzzle_title_text.set("")
             self.puzzle_meta_text.set("")
@@ -955,6 +978,7 @@ class ChessApp:
             self.hint_button.configure(state=tk.DISABLED)
             self.solution_button.configure(state=tk.DISABLED)
             return
+        self.atlas_section.grid()
         self.panel_text.set(self.t("puzzle.title", index=self.puzzle_index + 1, count=len(self._puzzle_selection)))
         self.puzzle_title_text.set(self.t("puzzle.prompt", side=self._side(session.player_color)))
         self.puzzle_meta_text.set(self.t("puzzle.meta", id=session.puzzle.puzzle_id, rating=session.puzzle.rating,
@@ -1060,6 +1084,8 @@ class ChessApp:
         if self._closed:
             return
         self._closed = True
+        self._unsubscribe_view()
+        del self._unsubscribe_view
         try:
             self.root.after_cancel(self._poll_job)
         except (tk.TclError, ValueError):
