@@ -42,7 +42,9 @@ bot play must not be claimed until a real engine is tested (ADR-001).
 ## Capabilities and Constraints
 
 - The independent MPL-2.0 rules domain is implemented and locally tested;
-  details and test limits are in `docs/reports/2026-11-20_W05_chess-core.md`.
+  including current-position and declared-move draw claims. The local game library reopens
+  games for two-player play or review, preserving the recorded result. Evidence and limits
+  are in `docs/reports/2026-11-20_N02-follow-up.md`.
 - A local W06 board prototype is implemented with original Tk code only; Glide
   Shell and its code remain unapproved.
 - Stockfish/GPL distribution is unresolved. No automatic network access or

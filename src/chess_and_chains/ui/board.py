@@ -130,7 +130,7 @@ class BoardCanvas(tk.Canvas):
 
     def set_position(
         self,
-        state: GameState,
+        state: GameState | None,
         legal_moves: Sequence[Move],
         last_move: Move | None,
         in_check: bool,

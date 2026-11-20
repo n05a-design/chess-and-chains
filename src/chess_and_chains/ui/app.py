@@ -10,10 +10,12 @@ are applied by polling on the Tk main thread.
 
 from __future__ import annotations
 
+import sqlite3
 import threading
 import tkinter as tk
 from dataclasses import replace
-from tkinter import filedialog, messagebox
+from pathlib import Path
+from tkinter import filedialog, messagebox, ttk
 from typing import Callable, Sequence
 
 from ..chess import ChessError, ChessGame, Color, GameStatus, Move, export_pgn, square_name, to_san
@@ -40,6 +42,9 @@ from .theme import (
 )
 
 POLL_MS = 40
+PUZZLE_RATING_RANGES: tuple[tuple[int, int | None], ...] = (
+    (1000, 1199), (1200, 1599), (1600, 1999), (2000, None),
+)
 ProviderFactory = Callable[[BotPreset, Settings], MoveProvider]
 
 
@@ -146,10 +151,13 @@ class ChessApp:
         self.orientation: Orientation = "white"
         self.active_panel = "play"
         self.pack = puzzle_pack or load_demo_pack()
+        self._puzzle_selection = self.pack.puzzles
+        self._puzzle_themes = sorted({theme for puzzle in self.pack.puzzles for theme in puzzle.themes})
         self.puzzle_index = 0
         self.puzzle: PuzzleSession | None = None
         self._puzzle_recorded = False
         self._provider_stale = False
+        self._game_headers: dict[str, str] = {}
         self._closed = False
         self.interaction_text = tk.StringVar(value="")
         self.panel_text = tk.StringVar(value="")
@@ -159,6 +167,7 @@ class ChessApp:
         self.puzzle_title_text = tk.StringVar(value="")
         self.puzzle_meta_text = tk.StringVar(value="")
         self.puzzle_feedback_text = tk.StringVar(value="")
+        self.puzzle_progress_text = tk.StringVar(value="")
         self.mode_var = tk.StringVar(value=self.settings.play_mode)
         preset_ids = [p.id for p in self.presets]
         initial_preset = self.settings.bot_preset_id if self.settings.bot_preset_id in preset_ids else preset_ids[2]
@@ -220,9 +229,11 @@ class ChessApp:
         side_sheet = self._sheet(body, 1)
         side_sheet.grid_rowconfigure(1, weight=1)
         side_sheet.grid_columnconfigure(0, weight=1)
-        tk.Label(side_sheet, textvariable=self.panel_text, background=ACETATE, foreground=INK,
-                 font=("TkDefaultFont", FONT_SIZES["section"], "bold"), anchor="w", justify="left",
-                 padx=16, pady=15).grid(row=0, column=0, columnspan=2, sticky="ew")
+        status = tk.Label(side_sheet, textvariable=self.panel_text, background=ACETATE, foreground=INK,
+                          font=("TkDefaultFont", FONT_SIZES["section"], "bold"), anchor="w", justify="left",
+                          padx=16, pady=15, wraplength=200)
+        status.grid(row=0, column=0, columnspan=2, sticky="ew")
+        side_sheet.bind("<Configure>", lambda event: status.configure(wraplength=max(1, event.width - 96)))
         self.panel = tk.Frame(side_sheet, background=ACETATE, padx=14, pady=10)
         self.panel.grid(row=1, column=0, sticky="nsew")
         self.panel.grid_columnconfigure(0, weight=1)
@@ -262,8 +273,21 @@ class ChessApp:
 
     def _build_play_panel(self) -> None:
         t = self.t
-        panel = self.play_panel = tk.Frame(self.panel, background=ACETATE)
-        panel.grid(row=0, column=0, sticky="nsew")
+        self.play_viewport = tk.Frame(self.panel, background=ACETATE)
+        self.play_viewport.grid(row=0, column=0, sticky="nsew")
+        self.play_viewport.grid_rowconfigure(0, weight=1)
+        self.play_viewport.grid_columnconfigure(0, weight=1)
+        canvas = self.play_canvas = tk.Canvas(
+            self.play_viewport, background=ACETATE, highlightthickness=0, borderwidth=0,
+        )
+        canvas.grid(row=0, column=0, sticky="nsew")
+        scrollbar = ttk.Scrollbar(self.play_viewport, orient=tk.VERTICAL, command=canvas.yview)
+        scrollbar.grid(row=0, column=1, sticky="ns")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        panel = self.play_panel = tk.Frame(canvas, background=ACETATE)
+        window = canvas.create_window(0, 0, window=panel, anchor="nw")
+        panel.bind("<Configure>", lambda _event: canvas.configure(scrollregion=canvas.bbox(window)))
         panel.grid_columnconfigure(0, weight=1)
         row = 0
         self._label(panel, text=t("play.description"), muted=True).grid(row=row, column=0, sticky="ew", pady=(0, 10))
@@ -309,6 +333,10 @@ class ChessApp:
         self.save_button.grid(row=2, column=0, sticky="ew", pady=3, padx=(0, 3))
         self.copy_pgn_button = self._button(controls, t("button.copy_pgn"), self._copy_pgn)
         self.copy_pgn_button.grid(row=2, column=1, sticky="ew", pady=3, padx=(3, 0))
+        self.claim_button = self._button(controls, t("button.claim_draw"), self._claim_draw)
+        self.claim_button.grid(row=3, column=0, sticky="ew", pady=3, padx=(0, 3))
+        self.library_button = self._button(controls, t("button.library"), self._open_library)
+        self.library_button.grid(row=3, column=1, sticky="ew", pady=3, padx=(3, 0))
         row += 1
         self._label(panel, var=self.action_state_text, role="caption", muted=True).grid(row=row, column=0, sticky="ew", pady=(6, 0))
         row += 1
@@ -324,6 +352,47 @@ class ChessApp:
         self.retry_bot_button.grid(row=0, column=0, sticky="ew", padx=(0, 3))
         self.engine_button = self._button(bot_controls, t("button.engine"), self._open_engine_dialog)
         self.engine_button.grid(row=0, column=1, sticky="ew", padx=(3, 0))
+
+        paired_buttons = (
+            self.undo_button, self.redo_button, self.flip_button, self.resign_button, self.save_button,
+            self.copy_pgn_button, self.claim_button, self.library_button, self.retry_bot_button, self.engine_button,
+        )
+
+        def resize_content(event: tk.Event) -> None:
+            if int(canvas.itemcget(window, "width")) == event.width:
+                return
+            canvas.itemconfigure(window, width=event.width)
+            for button in paired_buttons:
+                button.configure(wraplength=max(1, event.width // 2 - 32), justify="left")
+            for button in self.mode_buttons.values():
+                button.configure(wraplength=max(1, event.width - 35), justify="left")
+
+        canvas.bind("<Configure>", resize_content)
+        for widget in (*paired_buttons, *self.mode_buttons.values(), self.level_menu, self.new_game_button):
+            widget.bind("<FocusIn>", self._show_play_focus, add="+")
+        remaining = [canvas]
+        while remaining:
+            widget = remaining.pop()
+            remaining.extend(widget.winfo_children())
+            widget.bind("<MouseWheel>", self._scroll_play)
+            widget.bind("<Button-4>", self._scroll_play)
+            widget.bind("<Button-5>", self._scroll_play)
+
+    def _scroll_play(self, event: tk.Event) -> str:
+        up = event.num == 4 or event.delta > 0
+        self.play_canvas.yview_scroll(-1 if up else 1, "units")
+        return "break"
+
+    def _show_play_focus(self, event: tk.Event) -> None:
+        canvas, widget = self.play_canvas, event.widget
+        top = widget.winfo_rooty() - self.play_panel.winfo_rooty()
+        bottom = top + widget.winfo_height()
+        view_top = canvas.canvasy(0)
+        view_height = canvas.winfo_height()
+        if top < view_top:
+            canvas.yview_moveto(top / self.play_panel.winfo_height())
+        elif bottom > view_top + view_height:
+            canvas.yview_moveto((bottom - view_height) / self.play_panel.winfo_height())
 
     def _build_moves_panel(self) -> None:
         t = self.t
@@ -368,6 +437,29 @@ class ChessApp:
         self.solution_button.grid(row=5, column=0, sticky="ew", pady=3)
         self.next_puzzle_button = self._button(panel, t("button.next_puzzle"), self._next_puzzle, role="new")
         self.next_puzzle_button.grid(row=6, column=0, sticky="ew", pady=3)
+        filters = tk.Frame(panel, background=ACETATE)
+        filters.grid(row=7, column=0, sticky="ew", pady=(8, 0))
+        filters.grid_columnconfigure(1, weight=1)
+        self._label(filters, text=t("puzzle.filter_theme"), role="caption").grid(row=0, column=0, sticky="w")
+        self._label(filters, text=t("puzzle.filter_rating"), role="caption").grid(row=1, column=0, sticky="w")
+        rating_labels = [
+            t("puzzle.rating_from", rating=lower) if upper is None else f"{lower}–{upper}"
+            for lower, upper in PUZZLE_RATING_RANGES
+        ]
+        self.puzzle_theme_filter = ttk.Combobox(
+            filters, state="readonly", values=(t("puzzle.all_themes"), *self._puzzle_themes), width=12,
+        )
+        self.puzzle_rating_filter = ttk.Combobox(
+            filters, state="readonly", values=(t("puzzle.all_ratings"), *rating_labels), width=12,
+        )
+        for row, dropdown in enumerate((self.puzzle_theme_filter, self.puzzle_rating_filter)):
+            dropdown.grid(row=row, column=1, sticky="ew", padx=(8, 0), pady=2)
+            dropdown.current(0)
+            dropdown.bind("<<ComboboxSelected>>", self._apply_puzzle_filters)
+        if self.db is not None:
+            self._label(panel, var=self.puzzle_progress_text, role="caption", muted=True).grid(
+                row=8, column=0, sticky="ew", pady=(6, 0),
+            )
 
     def _bind_shortcuts(self) -> None:
         for modifier in ("Control", "Command"):
@@ -395,16 +487,20 @@ class ChessApp:
 
     # ----- panels / modes ----------------------------------------------
     def _show_panel(self, name: str) -> None:
-        panels = {"play": self.play_panel, "moves": self.moves_panel, "puzzles": self.puzzle_panel}
+        panels = {"play": self.play_viewport, "moves": self.moves_panel, "puzzles": self.puzzle_panel}
         if name not in panels:
             raise ValueError(f"Unknown game panel: {name}")
         for panel in panels.values():
             panel.grid_remove()
         panels[name].grid()
         previous, self.active_panel = getattr(self, "active_panel", "play"), name
-        if name == "puzzles" and self.puzzle is None:
-            self._start_puzzle(self.puzzle_index)
-        if (previous == "puzzles") != (name == "puzzles"):
+        if name == "puzzles" and previous != "puzzles":
+            if self.puzzle is None:
+                self._start_puzzle(self.puzzle_index)
+            self._update_puzzle_progress()
+            self._refresh()
+        elif previous == "puzzles" and name != "puzzles":
+            self.board.set_orientation(self.orientation)
             self._refresh()
 
     def _preset_label(self, preset_id: str) -> str:
@@ -461,6 +557,7 @@ class ChessApp:
             self.board.set_orientation(self.orientation)
         self.mode_var.set(mode)
         self._store_settings(play_mode=mode)
+        self._game_headers.clear()
         self.controller.new_game(setup)
 
     def _on_move_requested(self, candidates: tuple[Move, ...]) -> None:
@@ -534,6 +631,79 @@ class ChessApp:
         except ChessError as error:
             self.interaction_text.set(str(error))
 
+    def _choose_item(
+        self,
+        title: str,
+        labels: Sequence[str],
+        confirm: str,
+        *,
+        empty: str = "",
+        actions: Sequence[tuple[str, Callable[[int | None], None], bool]] = (),
+    ) -> int | None:
+        dialog = tk.Toplevel(self.root)
+        dialog.title(title)
+        dialog.transient(self.root)
+        content = ttk.Frame(dialog, padding=12)
+        content.grid(sticky="nsew")
+        selection = ttk.Combobox(content, values=labels, state="readonly" if labels else "disabled", width=46)
+        selection.grid(row=0, column=0, columnspan=len(actions) + 2, sticky="ew", pady=(0, 10))
+        if labels:
+            selection.current(0)
+        else:
+            selection.set(empty)
+        chosen = None
+        action = None
+
+        def accept(callback: Callable[[int | None], None] | None = None) -> None:
+            nonlocal chosen, action
+            index = selection.current()
+            chosen = index if index >= 0 else None
+            action = callback
+            dialog.destroy()
+
+        confirm_button = ttk.Button(content, text=confirm, command=accept, state="normal" if labels else "disabled")
+        confirm_button.grid(row=1, column=0, padx=4)
+        for column, (label, callback, requires_selection) in enumerate(actions, 1):
+            state = "disabled" if requires_selection and not labels else "normal"
+            button = ttk.Button(content, text=label, command=lambda callback=callback: accept(callback), state=state)
+            button.grid(row=1, column=column, padx=4)
+            if not labels and not requires_selection:
+                button.focus_set()
+        ttk.Button(content, text=self.t("button.cancel"), command=dialog.destroy).grid(
+            row=1, column=len(actions) + 1, padx=4,
+        )
+        dialog.bind("<Escape>", lambda _event: dialog.destroy())
+        if labels:
+            selection.bind("<Return>", lambda _event: accept())
+            selection.focus_set()
+        dialog.grab_set()
+        self.root.wait_window(dialog)
+        if action is not None:
+            action(chosen)
+            return None
+        return chosen
+
+    def _claim_draw(self) -> None:
+        view = self.controller.view()
+        if not view.human_to_move:
+            return
+        options = self.game.draw_claim_options()
+        if not options:
+            return
+        labels = []
+        for reason, move in options:
+            label = self.t(f"claim.{reason.name.lower()}")
+            if move is not None:
+                label = self.t("claim.by_move", rule=label, move=to_san(view.state, move))
+            labels.append(label)
+        chosen = self._choose_item(self.t("button.claim_draw"), labels, self.t("button.claim_draw"))
+        if chosen is None or self.controller.view().state is not view.state:
+            return
+        try:
+            self.controller.claim_draw(*options[chosen])
+        except ChessError as error:
+            self.interaction_text.set(str(error))
+
     def _retry_bot(self) -> None:
         self.controller.retry_bot()
 
@@ -542,15 +712,15 @@ class ChessApp:
         self.board.set_orientation(self.orientation)
         self.interaction_text.set(self.t("board.black_bottom" if self.orientation == "black" else "board.white_bottom"))
 
-    def _current_pgn(self) -> str:
+    def _pgn_headers(self) -> dict[str, str]:
         view = self.controller.view()
-        headers = {"Event": "Chess & Chains local game"}
+        headers = {"Event": "Chess & Chains local game", **self._game_headers}
         if view.setup.mode is PlayMode.HUMAN_VS_BOT and view.bot_name:
             if view.setup.bot_color is Color.WHITE:
                 headers.update(White=view.bot_name, Black="Human")
             else:
                 headers.update(White="Human", Black=view.bot_name)
-        return export_pgn(self.game, headers)
+        return headers
 
     def _save_game(self) -> int | None:
         if self.db is None:
@@ -558,15 +728,89 @@ class ChessApp:
             return None
         view = self.controller.view()
         provider = self.controller.provider
-        game_id = self.db.save_game(
-            self.game,
-            mode=self.mode_var.get(),
-            bot_color=view.setup.bot_color.value if view.setup.bot_color else None,
-            bot_name=view.bot_name if view.setup.mode is PlayMode.HUMAN_VS_BOT else None,
-            bot_preset=provider.preset.id if isinstance(provider, UCIBot) else None,
-        )
+        mode = view.setup.mode.value
+        if view.setup.bot_color is not None:
+            mode += f"-{view.setup.bot_color.opposite.name.lower()}"
+        try:
+            game_id = self.db.save_game(
+                self.game,
+                mode=mode,
+                bot_color=view.setup.bot_color.value if view.setup.bot_color else None,
+                bot_name=view.bot_name if view.setup.mode is PlayMode.HUMAN_VS_BOT else None,
+                bot_preset=provider.preset.id if view.setup.bot_color and isinstance(provider, UCIBot) else None,
+                headers=self._pgn_headers(),
+            )
+        except (StorageError, sqlite3.Error, ChessError) as error:
+            self.interaction_text.set(self.t("library.error", error=error))
+            return None
         self.interaction_text.set(self.t("save.done", id=game_id))
         return game_id
+
+    def _open_library(self) -> None:
+        if self.db is None:
+            return
+        try:
+            rows = self.db.list_games()
+            labels = [self.t("library.entry", id=game_id, date=created, result=result)
+                      for game_id, created, result, _mode in rows]
+            chosen = self._choose_item(
+                self.t("button.library"), labels, self.t("library.open"), empty=self.t("library.empty"),
+                actions=(
+                    (self.t("library.import"), lambda _index: self._import_pgn_file(), False),
+                    (self.t("library.export"), lambda index: self._export_pgn_file(rows[index][0])
+                     if index is not None else None, True),
+                ),
+            )
+            if chosen is None:
+                return
+            saved = self.db.load_game(rows[chosen][0])
+            game = saved.to_game()
+            if (self.game.can_undo or self.game.can_redo) and not messagebox.askyesno(
+                self.t("library.open"), self.t("library.replace"), parent=self.root,
+            ):
+                return
+            self._game_headers = dict(saved.pgn_tags)
+            self.mode_var.set("human-vs-human")
+            self.controller.load_game(game)
+            self.interaction_text.set(self.t("library.loaded", id=saved.id))
+        except (StorageError, sqlite3.Error, ChessError) as error:
+            self.interaction_text.set(self.t("library.error", error=error))
+
+    def _import_pgn_file(self) -> None:
+        if self.db is None:
+            return
+        title = self.t("library.import")
+        names = [(self.t("library.pgn_files"), "*.pgn")]
+        source = filedialog.askopenfilename(parent=self.root, title=title, filetypes=names)
+        if not source:
+            return
+        try:
+            game_id = self.db.import_pgn_file(Path(source))
+        except (OSError, ValueError, StorageError, sqlite3.Error) as error:
+            messagebox.showerror(title, self.t("library.error", error=error), parent=self.root)
+            return
+        self.interaction_text.set(self.t("library.imported", id=game_id))
+
+    def _export_pgn_file(self, game_id: int) -> None:
+        if self.db is None:
+            return
+        title = self.t("library.export")
+        names = [(self.t("library.pgn_files"), "*.pgn")]
+        target = filedialog.asksaveasfilename(
+            parent=self.root, title=title, filetypes=names, defaultextension=".pgn",
+            initialfile=f"chess-and-chains-{game_id}.pgn",
+        )
+        if not target:
+            return
+        try:
+            self.db.export_pgn_file(game_id, Path(target))
+        except (OSError, ValueError, StorageError, sqlite3.Error) as error:
+            messagebox.showerror(title, self.t("library.error", error=error), parent=self.root)
+            return
+        self.interaction_text.set(self.t("library.exported", id=game_id))
+
+    def _current_pgn(self) -> str:
+        return export_pgn(self.game, self._pgn_headers())
 
     def _copy_pgn(self) -> None:
         self.root.clipboard_clear()
@@ -574,17 +818,51 @@ class ChessApp:
         self.interaction_text.set(self.t("pgn.copied"))
 
     # ----- puzzles --------------------------------------------------------
+    def _apply_puzzle_filters(self, _event: tk.Event | None = None) -> None:
+        theme_choice = self.puzzle_theme_filter.current()
+        theme = self._puzzle_themes[theme_choice - 1] if theme_choice > 0 else None
+        rating_choice = self.puzzle_rating_filter.current()
+        lower, upper = PUZZLE_RATING_RANGES[rating_choice - 1] if rating_choice > 0 else (0, None)
+        self._puzzle_selection = tuple(
+            puzzle for puzzle in self.pack.puzzles
+            if (not theme or theme in puzzle.themes)
+            and puzzle.rating >= lower and (upper is None or puzzle.rating <= upper)
+        )
+        if self.puzzle is not None and self.puzzle.puzzle in self._puzzle_selection:
+            self.puzzle_index = self._puzzle_selection.index(self.puzzle.puzzle)
+            self._refresh()
+        else:
+            self._start_puzzle(0)
+        self._update_puzzle_progress()
+
     def _start_puzzle(self, index: int) -> None:
-        self.puzzle_index = index % len(self.pack.puzzles)
-        self.puzzle = PuzzleSession(self.pack.puzzles[self.puzzle_index])
         self._puzzle_recorded = False
-        self.puzzle_feedback_text.set(self.t("puzzle.prompt", side=self._side(self.puzzle.player_color)))
-        self.orientation = "white" if self.puzzle.player_color is Color.WHITE else "black"
-        self.board.set_orientation(self.orientation)
+        if self._puzzle_selection:
+            self.puzzle_index = index % len(self._puzzle_selection)
+            self.puzzle = PuzzleSession(self._puzzle_selection[self.puzzle_index])
+            self.puzzle_feedback_text.set(self.t("puzzle.prompt", side=self._side(self.puzzle.player_color)))
+            self.board.set_orientation("white" if self.puzzle.player_color is Color.WHITE else "black")
+        else:
+            self.puzzle_index = 0
+            self.puzzle = None
+            self.puzzle_feedback_text.set("")
         self._refresh()
 
     def _next_puzzle(self) -> None:
         self._start_puzzle(self.puzzle_index + 1)
+
+    def _update_puzzle_progress(self) -> None:
+        if self.db is None:
+            return
+        try:
+            solved = self.db.solved_puzzle_ids(self.pack.manifest.pack_id)
+        except sqlite3.Error:
+            self.puzzle_progress_text.set(self.t("puzzle.progress_unavailable"))
+            return
+        count = sum(puzzle.puzzle_id in solved for puzzle in self._puzzle_selection)
+        self.puzzle_progress_text.set(
+            self.t("puzzle.progress", solved=count, count=len(self._puzzle_selection)) if self._puzzle_selection else ""
+        )
 
     def _puzzle_move(self, move: Move) -> None:
         session = self.puzzle
@@ -631,13 +909,17 @@ class ChessApp:
         session = self.puzzle
         if session is None or self._puzzle_recorded or self.db is None:
             return
-        self.db.record_puzzle_attempt(
-            self.pack.manifest.pack_id, session.puzzle.puzzle_id, solved=session.solved,
-            mistakes=session.mistakes, hints_used=session.hints_used, duration_ms=session.duration_ms,
-        )
+        try:
+            self.db.record_puzzle_attempt(
+                self.pack.manifest.pack_id, session.puzzle.puzzle_id, solved=session.solved,
+                mistakes=session.mistakes, hints_used=session.hints_used, duration_ms=session.duration_ms,
+            )
+        except sqlite3.Error:
+            self.puzzle_progress_text.set(self.t("puzzle.progress_unavailable"))
+            return
         self._puzzle_recorded = True
+        self._update_puzzle_progress()
 
-    # ----- engine settings dialog ------------------------------------
     def _open_engine_dialog(self) -> None:
         EngineDialog(self)
 
@@ -656,17 +938,24 @@ class ChessApp:
         self._poll_job = self.root.after(POLL_MS, self._poll)
 
     def _refresh(self) -> None:
-        if self.active_panel == "puzzles" and self.puzzle is not None:
+        if self.active_panel == "puzzles":
             self._refresh_puzzle()
         else:
             self._refresh_game(self.controller.view())
 
     def _refresh_puzzle(self) -> None:
         session = self.puzzle
-        assert session is not None
-        pack = self.pack
-        self.header_mode_text.set(self.t("header.mode.puzzle", pack=pack.manifest.pack_id.upper()))
-        self.panel_text.set(self.t("puzzle.title", index=self.puzzle_index + 1, count=len(pack.puzzles)))
+        self.header_mode_text.set(self.t("header.mode.puzzle", pack=self.pack.manifest.pack_id.upper()))
+        self.next_puzzle_button.configure(state=tk.NORMAL if session is not None else tk.DISABLED)
+        if session is None:
+            self.panel_text.set(self.t("puzzle.no_matches"))
+            self.puzzle_title_text.set("")
+            self.puzzle_meta_text.set("")
+            self.board.set_position(None, (), None, False)
+            self.hint_button.configure(state=tk.DISABLED)
+            self.solution_button.configure(state=tk.DISABLED)
+            return
+        self.panel_text.set(self.t("puzzle.title", index=self.puzzle_index + 1, count=len(self._puzzle_selection)))
         self.puzzle_title_text.set(self.t("puzzle.prompt", side=self._side(session.player_color)))
         self.puzzle_meta_text.set(self.t("puzzle.meta", id=session.puzzle.puzzle_id, rating=session.puzzle.rating,
                                          themes=", ".join(session.puzzle.themes[:3])))
@@ -708,9 +997,13 @@ class ChessApp:
         self._update_move_list(view.san_moves)
         self.undo_button.configure(state=tk.NORMAL if view.can_undo else tk.DISABLED)
         self.redo_button.configure(state=tk.NORMAL if view.can_redo else tk.DISABLED)
+        can_claim = view.human_to_move and bool(self.game.draw_claim_options())
+        self.claim_button.configure(state=tk.NORMAL if can_claim else tk.DISABLED)
         active = view.outcome.status is GameStatus.ACTIVE
         self.resign_button.configure(state=tk.NORMAL if active and self.game.moves else tk.DISABLED)
-        self.save_button.configure(state=tk.NORMAL if self.db is not None and self.game.moves else tk.DISABLED)
+        can_save = self.db is not None and (self.game.moves or not active)
+        self.save_button.configure(state=tk.NORMAL if can_save else tk.DISABLED)
+        self.library_button.configure(state=tk.NORMAL if self.db is not None else tk.DISABLED)
 
     def _status_label(self, view: GameView) -> str:
         t = self.t
@@ -720,8 +1013,15 @@ class ChessApp:
             return t(key, side=self._side(view.state.turn))
         if status is GameStatus.CHECKMATE and winner:
             return t("status.checkmate", side=self._side(winner))
-        if status is GameStatus.RESIGNED and winner:
-            return t("status.resigned", side=self._side(winner))
+        if status is GameStatus.RESIGNED:
+            return t("status.resigned", side=self._side(winner)) if winner else t("status.resigned_draw")
+        if status is GameStatus.DRAW_CLAIMED and view.outcome.claimed_draw:
+            reason = t(f"claim.{view.outcome.claimed_draw.name.lower()}")
+            if view.outcome.declared_move is not None:
+                reason = t("claim.by_move", rule=reason, move=to_san(view.state, view.outcome.declared_move))
+            return t("status.claimed_reason", reason=reason)
+        if status is GameStatus.RECORDED_RESULT:
+            return t("status.recorded_win", side=self._side(winner)) if winner else t("status.recorded_draw")
         return t({
             GameStatus.STALEMATE: "status.stalemate",
             GameStatus.DRAW_INSUFFICIENT_MATERIAL: "status.insufficient",

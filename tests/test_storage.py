@@ -5,11 +5,12 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from chess_and_chains.chess import ChessGame, DrawClaim, Move, parse_fen  # noqa: E402
+from chess_and_chains.chess import ChessGame, Color, DrawClaim, GameStatus, Move, PGNError, parse_fen  # noqa: E402
 from chess_and_chains.storage import (  # noqa: E402
     SCHEMA_VERSION,
     DataLayout,
@@ -23,7 +24,7 @@ from chess_and_chains.storage import (  # noqa: E402
     save_settings,
     update_settings,
 )
-from chess_and_chains.storage.database import MIGRATIONS  # noqa: E402
+from chess_and_chains.storage.database import MAX_PGN_FILE_BYTES, MIGRATIONS  # noqa: E402
 
 
 class TempDirTestCase(unittest.TestCase):
@@ -82,6 +83,38 @@ class DatabaseTests(TempDirTestCase):
         self.assertEqual(backup.execute("PRAGMA user_version").fetchone()[0], 1)
         backup.close()
 
+    def test_v2_games_and_backup_keep_generic_results(self):
+        path = self.tmp / "v2.sqlite3"
+        conn = sqlite3.connect(path)
+        for version, script in MIGRATIONS[:2]:
+            conn.executescript(script)
+            conn.execute(f"PRAGMA user_version = {version}")
+        conn.execute(
+            "INSERT INTO games (created_utc, initial_fen, moves_uci, pgn, result, mode)"
+            " VALUES (?, ?, ?, ?, ?, ?)",
+            ("2026-01-01", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+             "e2e4", "1. e4 0-1", "0-1", "human-vs-human"),
+        )
+        conn.commit()
+        conn.close()
+        db = self.open_db(path.name)
+        untouched = db.migration_backup
+        with sqlite3.connect(untouched) as backup:
+            self.assertEqual(backup.execute("PRAGMA user_version").fetchone()[0], 2)
+        backup.close()
+        self.assertEqual(db.schema_version, 3)
+        db.restore(untouched)
+        self.assertEqual(db.schema_version, 3)
+        game = db.load_game(1).to_game()
+        self.assertEqual(game.outcome().status, GameStatus.RECORDED_RESULT)
+        self.assertEqual(game.outcome().winner, Color.BLACK)
+        self.assertIsNone(game.outcome().resigned_by)
+
+    def test_rechecking_schema_after_lock_skips_an_applied_migration(self):
+        db = self.open_db()
+        Database._migrate(db._conn, 2)
+        self.assertEqual(db.schema_version, 3)
+
     def test_newer_schema_is_refused_without_modification(self):
         path = self.tmp / "future.sqlite3"
         conn = sqlite3.connect(path)
@@ -122,12 +155,28 @@ class DatabaseTests(TempDirTestCase):
         with self.assertRaises(StorageError):
             db.load_game(game_id)
 
+    def test_load_rejects_mismatched_fen_result_and_invalid_uci(self):
+        db = self.open_db()
+        for column, value in (
+            ("initial_fen", "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1"),
+            ("result", "1/2-1/2"),
+            ("moves_uci", "e2"),
+        ):
+            with self.subTest(column=column):
+                game_id = db.import_pgn("1. e4 *")
+                db._conn.execute(f"UPDATE games SET {column} = ? WHERE id = ?", (value, game_id))
+                with self.assertRaises(StorageError):
+                    db.load_game(game_id)
+
     def test_pgn_import_export_keeps_result(self):
         db = self.open_db()
         game_id = db.import_pgn('[White "A"]\n[Result "1-0"]\n\n1. e4 e5 2. Qh5 Nc6 1-0')
         saved = db.load_game(game_id)
         self.assertEqual(saved.result, "1-0")
         self.assertIn('[White "A"]', saved.pgn)
+        self.assertEqual(saved.to_game().outcome().status, GameStatus.RECORDED_RESULT)
+        self.assertIn(("White", "A"), saved.pgn_tags)
+        self.assertEqual(db.export_pgn([]), "")
         claimed = ChessGame()
         for uci in ("g1f3", "g8f6", "f3g1", "f6g8", "g1f3", "g8f6", "f3g1", "f6g8"):
             claimed.play(Move.from_uci(uci))
@@ -138,6 +187,90 @@ class DatabaseTests(TempDirTestCase):
         self.assertIn("1/2-1/2", exported)
         with self.assertRaises(Exception):
             db.import_pgn("1. e5 *")
+
+    def test_termination_metadata_round_trips_without_adding_the_declared_move(self):
+        db = self.open_db()
+        repetition = ChessGame()
+        for uci in ("g1f3", "g8f6", "f3g1", "f6g8", "g1f3", "g8f6", "f3g1"):
+            repetition.play_uci(uci)
+        repetition.claim_draw(DrawClaim.THREEFOLD_REPETITION, Move.from_uci("f6g8"))
+        fifty = ChessGame(parse_fen("4k3/8/8/8/8/8/8/R3K3 w - - 100 51"))
+        fifty.claim_draw(DrawClaim.FIFTY_MOVE_RULE)
+        resignation = ChessGame(parse_fen("4k3/8/8/8/8/8/4P3/4K3 b - - 0 1"))
+        resignation.resign(Color.WHITE)
+        for game in (repetition, fifty, resignation):
+            with self.subTest(outcome=game.outcome()):
+                game_id = db.save_game(game, mode="human-vs-human")
+                reopened = db.load_game(game_id).to_game()
+                self.assertEqual(reopened.outcome(), game.outcome())
+                self.assertEqual(reopened.moves, game.moves)
+                reopened.undo()
+                self.assertIs(reopened.outcome().status, GameStatus.ACTIVE)
+                reopened.redo()
+                self.assertEqual(reopened.outcome(), game.outcome())
+
+    def test_load_rejects_claim_or_resignation_that_conflicts_with_the_record(self):
+        db = self.open_db()
+        claimed = ChessGame(parse_fen("4k3/8/8/8/8/8/8/R3K3 w - - 100 51"))
+        claimed.claim_draw(DrawClaim.FIFTY_MOVE_RULE)
+        claimed_id = db.save_game(claimed, mode="human-vs-human")
+        db._conn.execute("UPDATE games SET draw_claim = 'THREEFOLD_REPETITION' WHERE id = ?", (claimed_id,))
+        with self.assertRaisesRegex(StorageError, "not claimable"):
+            db.load_game(claimed_id)
+
+        resigned = ChessGame()
+        resigned.resign(Color.WHITE)
+        with self.assertRaisesRegex(ValueError, "contradicts"):
+            db.save_game(resigned, mode="human-vs-human", result="1-0")
+        resigned_id = db.save_game(resigned, mode="human-vs-human")
+        db._conn.execute("UPDATE games SET resigned_by = 'b' WHERE id = ?", (resigned_id,))
+        with self.assertRaisesRegex(StorageError, "contradicts"):
+            db.load_game(resigned_id)
+
+    def test_pgn_file_round_trip_preserves_utf8_tags_fen_and_result(self):
+        db = self.open_db()
+        source, target = self.tmp / "Quelle.pgn", self.tmp / "kopie.pgn"
+        source.write_text(
+            '[Event "Frühling"]\n[SetUp "1"]\n[FEN "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1"]\n\n1. e4 1/2-1/2',
+            encoding="utf-8-sig",
+        )
+        game_id = db.import_pgn_file(source)
+        db.export_pgn_file(game_id, target)
+        copied = db.load_game(db.import_pgn_file(target))
+        original = db.load_game(game_id)
+        self.assertEqual(copied.pgn_tags, original.pgn_tags)
+        self.assertEqual(copied.moves, original.moves)
+        self.assertEqual(copied.result, "1/2-1/2")
+
+    def test_pgn_file_rejects_bad_input_without_inserting(self):
+        db = self.open_db()
+        source = self.tmp / "invalid.pgn"
+        for payload, error in (
+            (b"", StorageError),
+            (b"\xff", UnicodeDecodeError),
+            (b"1. e5 *", PGNError),
+            (b"1. e4 *\n\n1. d4 *", PGNError),
+            (b" " * (MAX_PGN_FILE_BYTES + 1), StorageError),
+        ):
+            with self.subTest(error=error), self.assertRaises(error):
+                source.write_bytes(payload)
+                db.import_pgn_file(source)
+        source.write_bytes(b"1. e4 e5 *")
+        with patch("chess_and_chains.storage.database.MAX_PGN_FILE_PLIES", 1):
+            with self.assertRaisesRegex(PGNError, "1 half-moves"):
+                db.import_pgn_file(source)
+        self.assertEqual(db.list_games(), [])
+
+    def test_pgn_export_failure_keeps_existing_file(self):
+        db = self.open_db()
+        game_id = db.import_pgn("1. e4 *")
+        target = self.tmp / "saved.pgn"
+        target.write_text("Keep this", encoding="utf-8")
+        with patch.object(Path, "replace", side_effect=PermissionError("test rename failure")):
+            with self.assertRaises(PermissionError):
+                db.export_pgn_file(game_id, target)
+        self.assertEqual(target.read_text(encoding="utf-8"), "Keep this")
+        self.assertEqual(list(self.tmp.glob(".pgn-*")), [])
 
     def test_backup_and_restore_round_trip(self):
         db = self.open_db()
@@ -153,6 +286,36 @@ class DatabaseTests(TempDirTestCase):
         with self.assertRaises(StorageError):
             db.restore(self.tmp / "junk.sqlite3")
         self.assertEqual(db.puzzle_progress("demo", "a").attempts, 1, "failed restore must not lose data")
+
+    def test_restore_rejects_missing_foreign_or_malformed_backup_without_touching_live_data(self):
+        db = self.open_db()
+        game_id = db.import_pgn("1. e4 *")
+        missing = self.tmp / "missing.sqlite3"
+        foreign = self.tmp / "foreign.sqlite3"
+        malformed = self.tmp / "malformed.sqlite3"
+        for path, sql in ((foreign, "CREATE TABLE notes (text)"), (malformed, f"PRAGMA user_version={SCHEMA_VERSION}")):
+            with sqlite3.connect(path) as connection:
+                connection.execute(sql)
+            connection.close()
+        for path in (missing, foreign, malformed):
+            with self.subTest(path=path), self.assertRaises(StorageError):
+                db.restore(path)
+        self.assertFalse(missing.exists())
+        self.assertEqual(db.load_game(game_id).moves, (Move.from_uci("e2e4"),))
+        with self.assertRaises(StorageError):
+            db.backup(db.path)
+        self.assertEqual(db.statistics().games_saved, 1)
+
+    def test_open_does_not_quarantine_on_transient_database_error(self):
+        path = self.tmp / "untouched.sqlite3"
+        with Database.open(path):
+            pass
+        before = path.read_bytes()
+        with patch.object(Database, "_connect_checked", side_effect=sqlite3.OperationalError("database is locked")):
+            with self.assertRaisesRegex(StorageError, "database is locked"):
+                Database.open(path)
+        self.assertEqual(path.read_bytes(), before)
+        self.assertEqual(list(path.parent.glob("*.corrupt-*")), [])
 
     def test_puzzle_progress_and_statistics(self):
         db = self.open_db()

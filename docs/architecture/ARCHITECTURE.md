@@ -28,7 +28,7 @@ integrations/glide_shell/ (ONLY when individually cleared)
 | `i18n/` | DE/EN-Kataloge | stdlib |
 | `ui/` | Tk-App, Brett, Renderer, Dialoge | alle obigen |
 
-Abweichung vom Zielbild: `application/` heißt `game/`, `persistence/`+`settings/` sind in `storage/` zusammengefasst.
+Im aktuellen Code trägt die Anwendungsschicht den Paketnamen `game/`. `storage/` bündelt Datenbank und Einstellungen. Die Partiebibliothek reicht eine validierte `ChessGame` an den Controller. Ein Partiewechsel invalidiert dort ausstehende Bot-Aufträge.
 
 ## Vertragsgrenzen
 

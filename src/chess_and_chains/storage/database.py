@@ -16,12 +16,18 @@ Safety rules
 
 from __future__ import annotations
 
+import os
 import sqlite3
+import tempfile
+from contextlib import closing
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from ..chess import ChessError, ChessGame, Move, export_pgn, parse_fen, parse_pgn, to_fen
+from ..chess import ChessError, ChessGame, Color, DrawClaim, Move, export_pgn, parse_fen, parse_pgn, to_fen
+
+MAX_PGN_FILE_BYTES = 256 * 1024
+MAX_PGN_FILE_PLIES = 512
 
 MIGRATIONS: tuple[tuple[int, str], ...] = (
     (1, """
@@ -59,12 +65,23 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
                    MAX(attempted_utc) AS last_attempt_utc
             FROM puzzle_attempts GROUP BY pack_id, puzzle_id;
     """),
+    (3, """
+        ALTER TABLE games ADD COLUMN resigned_by TEXT CHECK (resigned_by IN ('w', 'b'));
+        ALTER TABLE games ADD COLUMN draw_claim TEXT CHECK (
+            draw_claim IS NULL OR (resigned_by IS NULL AND draw_claim IN ('THREEFOLD_REPETITION', 'FIFTY_MOVE_RULE'))
+        );
+        ALTER TABLE games ADD COLUMN declared_move TEXT CHECK (declared_move IS NULL OR draw_claim IS NOT NULL);
+    """),
 )
 SCHEMA_VERSION = MIGRATIONS[-1][0]
 
 
 class StorageError(RuntimeError):
     """The database cannot be used safely."""
+
+
+class _CorruptDatabase(sqlite3.DatabaseError):
+    """An integrity check found damaged database data."""
 
 
 def _now() -> str:
@@ -87,11 +104,20 @@ class SavedGame:
     bot_color: str | None
     bot_name: str | None
     bot_preset: str | None
+    pgn_tags: tuple[tuple[str, str], ...] = ()
+    resigned_by: Color | None = None
+    draw_claim: DrawClaim | None = None
+    declared_move: Move | None = None
 
     def to_game(self) -> ChessGame:
         game = ChessGame(parse_fen(self.initial_fen))
         for move in self.moves:
             game.play(move)
+        if self.resigned_by is not None:
+            game.resign(self.resigned_by)
+        elif self.draw_claim is not None:
+            game.claim_draw(self.draw_claim, self.declared_move)
+        game.record_result(self.result)
         return game
 
 
@@ -125,13 +151,24 @@ class Database:
     # ----- lifecycle ---------------------------------------------------
     @classmethod
     def open(cls, path: Path) -> Database:
-        path = Path(path)
+        try:
+            return cls._open(Path(path))
+        except (OSError, sqlite3.Error) as error:
+            raise StorageError(f"Cannot open database {path}: {error}") from error
+
+    @classmethod
+    def _open(cls, path: Path) -> Database:
         path.parent.mkdir(parents=True, exist_ok=True)
         recovered_from: Path | None = None
         existed = path.exists() and path.stat().st_size > 0
         try:
             conn = cls._connect_checked(path)
-        except sqlite3.DatabaseError:
+        except sqlite3.DatabaseError as error:
+            code = getattr(error, "sqlite_errorcode", 0)
+            if not isinstance(error, _CorruptDatabase) and (code & 0xFF) not in (
+                sqlite3.SQLITE_CORRUPT, sqlite3.SQLITE_NOTADB,
+            ):
+                raise
             recovered_from = path.with_name(f"{path.name}.corrupt-{_stamp()}")
             path.rename(recovered_from)
             for suffix in ("-journal", "-wal", "-shm"):
@@ -140,27 +177,31 @@ class Database:
                     side.rename(recovered_from.with_name(recovered_from.name + suffix))
             existed = False
             conn = cls._connect_checked(path)
-        version = conn.execute("PRAGMA user_version").fetchone()[0]
-        if version > SCHEMA_VERSION:
+        try:
+            version = conn.execute("PRAGMA user_version").fetchone()[0]
+            if version > SCHEMA_VERSION:
+                raise StorageError(
+                    f"Database schema v{version} is newer than this app supports (v{SCHEMA_VERSION})."
+                )
+            backup_path = None
+            if existed and version < SCHEMA_VERSION:
+                backup_path = path.with_name(f"{path.name}.pre-v{SCHEMA_VERSION}-{_stamp()}.bak")
+                cls._copy(conn, backup_path)
+            cls._migrate(conn, version)
+        except BaseException:
             conn.close()
-            raise StorageError(
-                f"Database schema v{version} is newer than this app supports (v{SCHEMA_VERSION}); it was not modified."
-            )
-        backup_path = None
-        if existed and version < SCHEMA_VERSION:
-            backup_path = path.with_name(f"{path.name}.pre-v{SCHEMA_VERSION}-{_stamp()}.bak")
-            cls._copy(conn, backup_path)
-        cls._migrate(conn, version)
+            raise
         return cls(conn, path, recovered_from, backup_path)
 
     @staticmethod
-    def _connect_checked(path: Path) -> sqlite3.Connection:
-        conn = sqlite3.connect(path, isolation_level=None)
+    def _connect_checked(path: Path, *, read_only: bool = False) -> sqlite3.Connection:
+        target = f"{path.resolve().as_uri()}?mode=ro" if read_only else path
+        conn = sqlite3.connect(target, uri=read_only, isolation_level=None)
         try:
             conn.execute("PRAGMA foreign_keys = ON")
             status = conn.execute("PRAGMA quick_check").fetchone()[0]
             if status != "ok":
-                raise sqlite3.DatabaseError(f"quick_check failed: {status}")
+                raise _CorruptDatabase(f"quick_check failed: {status}")
         except sqlite3.DatabaseError:
             conn.close()
             raise
@@ -174,9 +215,10 @@ class Database:
             statements = [s.strip() for s in script.split(";") if s.strip()]
             conn.execute("BEGIN IMMEDIATE")
             try:
-                for statement in statements:
-                    conn.execute(statement)
-                conn.execute(f"PRAGMA user_version = {int(version)}")
+                if conn.execute("PRAGMA user_version").fetchone()[0] < version:
+                    for statement in statements:
+                        conn.execute(statement)
+                    conn.execute(f"PRAGMA user_version = {int(version)}")
                 conn.execute("COMMIT")
             except BaseException:
                 conn.execute("ROLLBACK")
@@ -185,13 +227,14 @@ class Database:
     @staticmethod
     def _copy(conn: sqlite3.Connection, destination: Path) -> None:
         destination.parent.mkdir(parents=True, exist_ok=True)
-        tmp = destination.with_name(destination.name + ".tmp")
-        target = sqlite3.connect(tmp)
+        with tempfile.NamedTemporaryFile(dir=destination.parent, prefix=f".{destination.name}.", delete=False) as handle:
+            tmp = Path(handle.name)
         try:
-            conn.backup(target)
+            with closing(sqlite3.connect(tmp)) as target:
+                conn.backup(target)
+            tmp.replace(destination)
         finally:
-            target.close()
-        tmp.replace(destination)
+            tmp.unlink(missing_ok=True)
 
     @property
     def schema_version(self) -> int:
@@ -208,26 +251,35 @@ class Database:
 
     def backup(self, destination: Path) -> Path:
         """Consistent online copy via the SQLite backup API (atomic rename)."""
-        self._copy(self._conn, Path(destination))
-        return Path(destination)
+        destination = Path(destination)
+        if destination.exists() and destination.samefile(self.path):
+            raise StorageError("The active database cannot be its own backup.")
+        self._copy(self._conn, destination)
+        return destination
 
     def restore(self, source: Path) -> Path:
-        """Replace contents with a validated backup; current data is backed up first."""
+        """Validate and migrate a backup before replacing live data."""
         source = Path(source)
         try:
-            candidate = self._connect_checked(source)
-        except sqlite3.DatabaseError as error:
-            raise StorageError(f"Backup {source} is not a valid database: {error}") from error
-        try:
-            version = candidate.execute("PRAGMA user_version").fetchone()[0]
-            if version > SCHEMA_VERSION:
-                raise StorageError("Backup was written by a newer app version.")
-            safety = self.path.with_name(f"{self.path.name}.pre-restore-{_stamp()}.bak")
-            self._copy(self._conn, safety)
-            candidate.backup(self._conn)
-        finally:
-            candidate.close()
-        self._migrate(self._conn, self.schema_version)
+            with closing(self._connect_checked(source, read_only=True)) as candidate:
+                version = candidate.execute("PRAGMA user_version").fetchone()[0]
+                if not 1 <= version <= SCHEMA_VERSION:
+                    raise StorageError(f"Backup {source} has unsupported schema v{version}.")
+                with tempfile.TemporaryDirectory(prefix=".restore-", dir=self.path.parent) as directory:
+                    with closing(sqlite3.connect(Path(directory) / "staged.sqlite3", isolation_level=None)) as staged:
+                        candidate.backup(staged)
+                        self._migrate(staged, version)
+                        staged.execute("SELECT id, created_utc, initial_fen, moves_uci, pgn, result, mode, "
+                                       "bot_color, bot_name, bot_preset, resigned_by, draw_claim, declared_move FROM games LIMIT 0")
+                        staged.execute("SELECT id, pack_id, puzzle_id, attempted_utc, solved, mistakes, "
+                                       "hints_used, duration_ms FROM puzzle_attempts LIMIT 0")
+                        staged.execute("SELECT pack_id, puzzle_id, attempts, solved, clean_solves, "
+                                       "best_duration_ms, last_attempt_utc FROM puzzle_progress LIMIT 0")
+                        safety = self.path.with_name(f"{self.path.name}.pre-restore-{_stamp()}.bak")
+                        self._copy(self._conn, safety)
+                        staged.backup(self._conn)
+        except (OSError, sqlite3.Error) as error:
+            raise StorageError(f"Cannot restore backup {source}: {error}") from error
         return safety
 
     # ----- games -------------------------------------------------------
@@ -242,29 +294,51 @@ class Database:
         headers: dict[str, str] | None = None,
         result: str | None = None,
     ) -> int:
+        outcome = game.outcome()
+        has_termination = outcome.resigned_by is not None or outcome.claimed_draw is not None
+        if has_termination and result is not None:
+            if result == "*":
+                raise ChessError("An explicit termination requires a final PGN result.")
+            game.record_result(result)
         pgn = export_pgn(game, headers, result)
-        result = pgn.rsplit(" ", 1)[-1]
+        result = pgn.rsplit(maxsplit=1)[-1]
         cursor = self._conn.execute(
-            "INSERT INTO games (created_utc, initial_fen, moves_uci, pgn, result, mode, bot_color, bot_name, bot_preset)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO games (created_utc, initial_fen, moves_uci, pgn, result, mode, bot_color, bot_name, bot_preset,"
+            " resigned_by, draw_claim, declared_move) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (_now(), to_fen(game.initial_state), " ".join(m.to_uci() for m in game.moves), pgn, result,
-             mode, bot_color, bot_name, bot_preset),
+             mode, bot_color, bot_name, bot_preset, outcome.resigned_by.value if outcome.resigned_by else None,
+             outcome.claimed_draw.name if outcome.claimed_draw else None,
+             outcome.declared_move.to_uci() if outcome.declared_move else None),
         )
         return int(cursor.lastrowid)
 
     def load_game(self, game_id: int) -> SavedGame:
         row = self._conn.execute(
-            "SELECT id, created_utc, initial_fen, moves_uci, pgn, result, mode, bot_color, bot_name, bot_preset"
-            " FROM games WHERE id = ?", (game_id,)
+            "SELECT id, created_utc, initial_fen, moves_uci, pgn, result, mode, bot_color, bot_name, bot_preset,"
+            " resigned_by, draw_claim, declared_move FROM games WHERE id = ?", (game_id,)
         ).fetchone()
         if row is None:
             raise StorageError(f"No saved game with id {game_id}.")
-        saved = SavedGame(row[0], row[1], row[2], tuple(Move.from_uci(t) for t in row[3].split()), *row[4:])
         try:
-            replay = saved.to_game()
-            if parse_pgn(saved.pgn).moves != tuple(replay.moves):
-                raise StorageError(f"Saved game {game_id}: PGN and move list disagree.")
-        except ChessError as error:
+            moves = tuple(Move.from_uci(token) for token in row[3].split())
+            pgn = parse_pgn(row[4])
+            resigned_by, draw_claim, declared_move = row[10:]
+            saved = SavedGame(
+                row[0], row[1], row[2], moves, *row[4:10], pgn_tags=pgn.tags,
+                resigned_by=Color(resigned_by) if resigned_by is not None else None,
+                draw_claim=DrawClaim[draw_claim] if draw_claim is not None else None,
+                declared_move=Move.from_uci(declared_move) if declared_move is not None else None,
+            )
+            if (pgn.moves != saved.moves or pgn.initial_state != parse_fen(saved.initial_fen)
+                    or pgn.result != saved.result):
+                raise StorageError(f"Saved game {game_id}: PGN and stored game data disagree.")
+            if (saved.resigned_by and saved.draw_claim) or (saved.declared_move and saved.draw_claim is None):
+                raise StorageError(f"Saved game {game_id}: invalid termination metadata.")
+            if saved.resigned_by or saved.draw_claim:
+                if saved.result == "*":
+                    raise StorageError(f"Saved game {game_id}: termination requires a final result.")
+                saved.to_game()
+        except (ValueError, KeyError, AttributeError, TypeError) as error:
             raise StorageError(f"Saved game {game_id} failed validation: {error}") from error
         return saved
 
@@ -276,14 +350,45 @@ class Database:
     def delete_game(self, game_id: int) -> None:
         self._conn.execute("DELETE FROM games WHERE id = ?", (game_id,))
 
-    def import_pgn(self, text: str, *, mode: str = "imported") -> int:
-        document = parse_pgn(text)  # validates every move
+    def import_pgn(self, text: str, *, mode: str = "imported", max_plies: int | None = None) -> int:
+        document = parse_pgn(text, max_plies=max_plies)
         tags = {k: v for k, v in document.tags if k not in ("SetUp", "FEN", "Result")}
         return self.save_game(document.new_game(), mode=mode, headers=tags, result=document.result)
 
+    def import_pgn_file(self, source: Path) -> int:
+        """Import one UTF-8 PGN game after size, text and move validation."""
+        if not source.is_file():
+            raise StorageError("Choose a regular PGN file.")
+        with source.open("rb") as handle:
+            data = handle.read(MAX_PGN_FILE_BYTES + 1)
+        if len(data) > MAX_PGN_FILE_BYTES:
+            raise StorageError(f"PGN file exceeds {MAX_PGN_FILE_BYTES // 1024} KiB.")
+        text = data.decode("utf-8-sig")
+        if not text.strip() or any(ord(char) < 32 and char not in "\t\n\r" for char in text):
+            raise StorageError("PGN file is empty or contains invalid control characters.")
+        return self.import_pgn(text, max_plies=MAX_PGN_FILE_PLIES)
+
+    def export_pgn_file(self, game_id: int, destination: Path) -> None:
+        """Export one validated game and replace the destination atomically."""
+        if destination.suffix.lower() != ".pgn":
+            raise StorageError("Choose a destination with the .pgn extension.")
+        if destination.exists() and destination.samefile(self.path):
+            raise StorageError("The active database cannot be overwritten.")
+        data = self.export_pgn([game_id]).encode("utf-8")
+        fd, name = tempfile.mkstemp(dir=destination.parent, prefix=".pgn-")
+        pending = Path(name)
+        try:
+            with os.fdopen(fd, "wb") as handle:
+                handle.write(data)
+                handle.flush()
+                os.fsync(handle.fileno())
+            pending.replace(destination)
+        finally:
+            pending.unlink(missing_ok=True)
+
     def export_pgn(self, game_ids: list[int] | None = None) -> str:
-        ids = game_ids or [r[0] for r in reversed(self.list_games())]
-        return "\n\n".join(self.load_game(i).pgn for i in ids) + "\n"
+        ids = game_ids if game_ids is not None else [r[0] for r in reversed(self.list_games())]
+        return "\n\n".join(self.load_game(i).pgn for i in ids) + ("\n" if ids else "")
 
     # ----- puzzles -----------------------------------------------------
     def record_puzzle_attempt(

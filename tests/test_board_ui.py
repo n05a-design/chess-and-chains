@@ -163,8 +163,8 @@ class ChessAppActionTests(unittest.TestCase):
         self.app = ChessApp(self.root)
 
     def tearDown(self):
-        if hasattr(self, "root"):
-            self.root.destroy()
+        if hasattr(self, "app"):
+            self.app.close()
 
     def test_undo_and_redo_controls_follow_the_game_timeline(self):
         move = Move(parse_square("e2"), parse_square("e4"))

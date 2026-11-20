@@ -8,13 +8,13 @@
 | --- | --- | --- |
 | W00 | TESTED | Struktur-/Statusprüfung; Owner-Abnahme offen |
 | W01–W04 | IN_PROGRESS | Berichte vorhanden; Owner-Fragen offen |
-| W05 | TESTED | Regelkern, Perft/Golden-Tests; PGN-Varianten werden übersprungen |
-| W06 | IMPLEMENTED | Tk-Brett mit Testfiguren; Original-SVG, native Win/Linux-, High-DPI-Abnahme offen |
+| W05 | TESTED | Regelkern, Remisansprüche, Remis bei Aufgabe gegen den blanken König, Undo/Redo mit inkrementellen Wiederholungszählern und Perft/Golden-Tests. PGN-Import verarbeitet die Hauptvariante |
+| W06 | IMPLEMENTED | Tk-Brett mit Testfiguren, automatisierte Aktions-, Umwandlungs- und Scroll-/Fokustests. Original-SVG, manuelle Plattform- und High-DPI-Abnahme offen |
 | W07 | TESTED (Mock) | Adapter + Controller + Presets mit Mock-Engine; echte Engine/ADR-001/Kalibrierung offen |
-| W08 | TESTED (Fixtures) | Importer, Packs, Session; realer Lichess-Import, Q-008/Q-009 offen |
-| W09 | IMPLEMENTED | SQLite/Settings; Save/Load-UI, Q-012, ADR-004 offen |
+| W08 | TESTED (Fixtures) | Importer, Packs, Session, Themen-/Ratingfilter und Fortschrittsanzeige; realer Lichess-Import, Q-008/Q-009 offen |
+| W09 | TESTED | Lokale Bibliothek mit PGN-Dateiaustausch und lokalem Partieendgrund, Migration auf Schema 3, Sicherung und Wiederherstellung, Settings. Manuelle Plattformabnahme, Q-012 und ADR-004 offen |
 | W10 | IN_PROGRESS | DE/EN-Kataloge; Accessibility-Abnahmen offen |
-| W11 | IN_PROGRESS | CI-Matrix erweitert; CI-Lauf nach Push ausstehend |
+| W11 | IN_PROGRESS | 12 CI-Jobs auf gemergter Basis erfolgreich. Erweiterte native Matrix für lokalen Folgebranch ausstehend |
 | W12 | NOT_STARTED | – |
 
 | ID | Workstream | Prompt | Prerequisite | Verbindliches Gate | Zielphase |

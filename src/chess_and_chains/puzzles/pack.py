@@ -113,7 +113,7 @@ def _parse_pack(manifest_text: str, body: bytes, revalidate: bool) -> PuzzlePack
         raw = json.loads(manifest_text)
     except json.JSONDecodeError as error:
         raise PackError(f"Pack manifest is not JSON: {error}") from error
-    if raw.get("schema") != PACK_SCHEMA:
+    if not isinstance(raw, dict) or raw.get("schema") != PACK_SCHEMA:
         raise PackError("Unsupported pack schema.")
     try:
         manifest = PackManifest(**{k: raw[k] for k in PackManifest.__slots__ if k in raw})
@@ -123,20 +123,33 @@ def _parse_pack(manifest_text: str, body: bytes, revalidate: bool) -> PuzzlePack
         raise PackError("Pack checksum mismatch; the pack is corrupt or modified.")
     rules = ChessRules()
     puzzles = []
-    for line_no, line in enumerate(body.decode("utf-8").splitlines(), 1):
+    seen: set[str] = set()
+    try:
+        text = body.decode("utf-8")
+    except UnicodeDecodeError as error:
+        raise PackError("Pack body must be UTF-8.") from error
+    validation = ValidationStatus.VALID if revalidate else ValidationStatus.UNVALIDATED
+    for line_no, line in enumerate(text.splitlines(), 1):
         try:
-            puzzle = Puzzle.from_record(json.loads(line), ValidationStatus.UNVALIDATED)
-        except (KeyError, ValueError, json.JSONDecodeError) as error:
+            puzzle = Puzzle.from_record(json.loads(line), validation)
+            if not puzzle.solution or len(puzzle.solution) % 2 == 0:
+                raise PackError("The solution must end with a player move.")
+            if revalidate:
+                state = puzzle.initial_state()
+                for move in (puzzle.setup_move, *puzzle.solution):
+                    state = rules.apply(state, move)
+        except (IndexError, KeyError, TypeError, ValueError) as error:
             raise PackError(f"Pack line {line_no} is invalid: {error}") from error
         if puzzle.rating < MIN_PUBLISHED_RATING:
             raise PackError(f"Puzzle {puzzle.puzzle_id} is below the rating minimum.")
-        if revalidate:
-            state = puzzle.initial_state()
-            for move in (puzzle.setup_move, *puzzle.solution):
-                state = rules.apply(state, move)  # raises on illegal move
+        if puzzle.puzzle_id in seen:
+            raise PackError(f"Duplicate puzzle id {puzzle.puzzle_id}.")
+        seen.add(puzzle.puzzle_id)
         puzzles.append(puzzle)
     if len(puzzles) != manifest.count:
         raise PackError("Pack count does not match its manifest.")
+    if min((puzzle.rating for puzzle in puzzles), default=MIN_PUBLISHED_RATING) != manifest.min_rating:
+        raise PackError("Pack minimum rating does not match its manifest.")
     return PuzzlePack(manifest, tuple(puzzles))
 
 
@@ -144,7 +157,7 @@ def read_pack(directory: Path, *, revalidate: bool = True) -> PuzzlePack:
     try:
         manifest_text = (directory / "manifest.json").read_text(encoding="utf-8")
         body = (directory / "puzzles.jsonl").read_bytes()
-    except OSError as error:
+    except (OSError, UnicodeDecodeError) as error:
         raise PackError(f"Cannot read pack in {directory}: {error}") from error
     return _parse_pack(manifest_text, body, revalidate)
 

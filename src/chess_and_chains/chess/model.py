@@ -62,6 +62,7 @@ class GameStatus(Enum):
     DRAW_SEVENTY_FIVE_MOVE = auto()
     DRAW_CLAIMED = auto()
     RESIGNED = auto()
+    RECORDED_RESULT = auto()
 
 
 class DrawClaim(Enum):
@@ -191,3 +192,5 @@ class MoveOutcome:
     in_check: bool = False
     claimable_draws: frozenset[DrawClaim] = frozenset()
     claimed_draw: DrawClaim | None = None
+    declared_move: Move | None = None
+    resigned_by: Color | None = None

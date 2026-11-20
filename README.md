@@ -28,8 +28,9 @@
 | Game controller + asynchronous bot (play as White or Black) | Implemented; tested with the mock engine, which is **not a chess AI** |
 | Real engine (e.g. Stockfish) bot play | Not bundled, not tested; user-configured engine path supported but unverified (ADR-001 open) |
 | Bot difficulty presets | Six data-driven presets; options only sent if the engine advertises them; strengths **not calibrated** |
-| Puzzle Lab (importer, packs, solving) | Implemented; Rating ≥ 1000 enforced; ships only 5 project-authored demo puzzles |
-| Local storage (SQLite games, puzzle progress, settings) | Implemented and tested in temp dirs; save/load UI minimal |
+| Draw claims | Claim threefold repetition or the 50-move rule in the current position or by declaring a legal move. |
+| Puzzle Lab (importer, packs, solving) | Five project-authored demo puzzles. Filter by theme and rating and see progress for the selection. Import enforces Rating ≥ 1000. |
+| Local storage (SQLite games, puzzle progress, settings) | Save and reopen games in two-player mode, including local resignation and draw-claim details. Import or export one UTF-8 PGN file per action in the local library. |
 | English/German UI | Implemented catalogues with parity tests |
 | Windows/macOS/Linux installers | Not implemented |
 | WinGet / Homebrew distribution | Not published |

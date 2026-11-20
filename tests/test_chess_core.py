@@ -196,6 +196,45 @@ class ChessCoreTests(unittest.TestCase):
         custom_pgn = export_pgn(custom)
         self.assertEqual(parse_pgn(custom_pgn).moves, tuple(custom.moves))
 
+    def test_two_knights_can_mate_a_lone_king(self):
+        game = ChessGame(parse_fen("k7/2K5/2N5/3N4/8/8/8/8 w - - 0 1"))
+        self.assertIs(game.outcome().status, GameStatus.ACTIVE)
+        game.play_uci("d5b6")
+        self.assertIs(game.outcome().status, GameStatus.CHECKMATE)
+        self.assertIs(game.outcome().winner, Color.WHITE)
+
+    def test_repetition_after_undo_redo_and_branch_keeps_the_current_line_only(self):
+        game = ChessGame()
+        cycle = ("g1f3", "g8f6", "f3g1", "f6g8")
+        for uci in cycle * 4:
+            game.play_uci(uci)
+        ending = game.state
+        self.assertIs(game.outcome().status, GameStatus.DRAW_FIVEFOLD_REPETITION)
+        game.undo()
+        self.assertIs(game.outcome().status, GameStatus.ACTIVE)
+        game.redo()
+        self.assertEqual(game.state, ending)
+        self.assertIs(game.outcome().status, GameStatus.DRAW_FIVEFOLD_REPETITION)
+        for _ in range(12):
+            game.undo()
+        self.assertNotIn(DrawClaim.THREEFOLD_REPETITION, game.outcome().claimable_draws)
+        game.play_uci("e2e4")
+        self.assertFalse(game.can_redo)
+        self.assertEqual([move.to_uci() for move in game.moves], [*cycle, "e2e4"])
+        game.undo()
+        self.assertNotIn(DrawClaim.THREEFOLD_REPETITION, game.outcome().claimable_draws)
+
+    def test_resignation_against_lone_king_draws_and_survives_undo_redo(self):
+        game = ChessGame(parse_fen("4k3/8/8/8/8/8/4P3/4K3 w - - 0 1"))
+        outcome = game.resign(Color.WHITE)
+        self.assertIs(outcome.status, GameStatus.RESIGNED)
+        self.assertIsNone(outcome.winner)
+        self.assertEqual(parse_pgn(export_pgn(game)).result, "1/2-1/2")
+        game.undo()
+        self.assertIs(game.outcome().status, GameStatus.ACTIVE)
+        game.redo()
+        self.assertEqual(game.outcome(), outcome)
+
     def test_resignation_is_undoable(self):
         game = ChessGame()
         game.resign(Color.WHITE)

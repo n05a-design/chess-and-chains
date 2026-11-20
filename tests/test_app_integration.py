@@ -9,14 +9,16 @@ import time
 import tkinter as tk
 import unittest
 from pathlib import Path
+from tkinter import ttk
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT))
 
-from chess_and_chains.chess import Color, GameStatus, Move, parse_square  # noqa: E402
+from chess_and_chains.chess import Color, DrawClaim, GameStatus, Move, parse_square  # noqa: E402
 from chess_and_chains.engines.bot import EngineConfig, UCIBot  # noqa: E402
-from chess_and_chains.game import BotStatus  # noqa: E402
+from chess_and_chains.game import BotStatus, GameSetup  # noqa: E402
 from chess_and_chains.storage import DataLayout, load_settings  # noqa: E402
 from chess_and_chains.ui.app import ChessApp  # noqa: E402
 from chess_and_chains.ui.pieces import PIECE_FILE_NAMES, GeometricTestPieces, validate_svg_piece_set  # noqa: E402
@@ -51,6 +53,55 @@ class AppTestCase(unittest.TestCase):
                 return
             time.sleep(0.005)
         self.fail("condition not reached while pumping Tk events")
+
+
+class PromotionUiTests(AppTestCase):
+    def test_promotion_dialog_applies_a_legal_underpromotion(self):
+        app = self.make_app()
+        app.controller.new_game(GameSetup(initial_fen="4k3/P7/8/8/8/8/8/4K3 w - - 0 1"))
+        choices = tuple(move for move in app.board._legal_moves if move.from_square == parse_square("a7"))
+        invoked = []
+
+        def choose_rook():
+            dialog = next(child for child in self.root.winfo_children() if isinstance(child, tk.Toplevel))
+            try:
+                rook = next(child for child in dialog.winfo_children()
+                            if isinstance(child, tk.Button) and child.cget("text") == "Rook")
+                rook.invoke()
+                invoked.append(True)
+            finally:
+                if dialog.winfo_exists():
+                    dialog.destroy()
+
+        self.root.after(0, choose_rook)
+        app._on_move_requested(choices)
+        self.assertTrue(invoked)
+        self.assertEqual(app.game.moves, [Move.from_uci("a7a8r")])
+        self.assertEqual(app.controller.view().san_moves, ("a8=R+",))
+        app._undo()
+        self.assertEqual(app.game.moves, [])
+        app._redo()
+        self.assertEqual(app.game.moves, [Move.from_uci("a7a8r")])
+
+
+class DrawClaimTests(AppTestCase):
+    def test_claim_by_declared_move_preserves_position_and_supports_undo(self):
+        app = self.make_app()
+        for uci in ("g1f3", "g8f6", "f3g1", "f6g8", "g1f3", "g8f6", "f3g1"):
+            app._play_move(Move.from_uci(uci))
+        before = app.game.state
+        self.assertFalse(app.game.outcome().claimable_draws)
+        self.assertEqual(app.claim_button.cget("state"), tk.NORMAL)
+        with patch.object(app, "_choose_item", return_value=0) as chooser:
+            app.claim_button.invoke()
+        self.assertEqual(chooser.call_args.args[1], ["Threefold repetition by declaring Ng8"])
+        self.assertIs(app.game.state, before)
+        self.assertEqual(len(app.game.moves), 7)
+        self.assertEqual(app.game.outcome().status, GameStatus.DRAW_CLAIMED)
+        app._undo()
+        self.assertEqual(app.game.outcome().status, GameStatus.ACTIVE)
+        app._redo()
+        self.assertEqual(app.game.outcome().status, GameStatus.DRAW_CLAIMED)
 
 
 class BotVerticalSliceTests(AppTestCase):
@@ -139,6 +190,14 @@ class BotVerticalSliceTests(AppTestCase):
         self.assertIs(app.game.outcome().status, GameStatus.RESIGNED)
         self.assertIn("wins by resignation", app.panel_text.get())
 
+    def test_resigning_to_lone_king_displays_draw(self):
+        app = self.make_app()
+        app.controller.new_game(GameSetup(initial_fen="4k3/8/8/8/8/8/4P3/4K3 b - - 0 1"))
+        app._play_move(Move.from_uci("e8d7"))
+        app.resign_button.invoke()
+        self.assertIn("Draw after resignation", app.panel_text.get())
+        self.assertTrue(app._current_pgn().endswith("1/2-1/2"))
+
 
 class PuzzleUiTests(AppTestCase):
     def test_puzzle_tab_uses_same_board_and_records_progress(self):
@@ -163,6 +222,45 @@ class PuzzleUiTests(AppTestCase):
             self.assertIs(app.board._state, app.game.state)
             app.close()
 
+    def test_puzzle_filters_show_stored_progress_and_handle_empty_matches(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            app = self.make_app(data_layout=DataLayout(Path(tmp) / "data"))
+            self.root.deiconify()
+            app.db.record_puzzle_attempt("demo", "ccSC01", solved=True, mistakes=0, hints_used=0, duration_ms=500)
+            app.tab_rail.set_active("puzzles")
+            self.root.update()
+            self.assertEqual(app.puzzle_progress_text.get(), "Solved 1 of 5 in this selection.")
+
+            app.puzzle_theme_filter.current(app.puzzle_theme_filter.cget("values").index("opening"))
+            app.puzzle_theme_filter.event_generate("<<ComboboxSelected>>", when="tail")
+            self.root.update()
+            self.assertEqual(app.puzzle.puzzle.puzzle_id, "ccSC01")
+            self.assertEqual(app.puzzle_progress_text.get(), "Solved 1 of 2 in this selection.")
+            app._next_puzzle()
+            app._play_move(app.puzzle.expected_move)
+            self.assertEqual(app.puzzle_progress_text.get(), "Solved 2 of 2 in this selection.")
+            self.assertEqual(app.board.orientation, "black")
+
+            app.puzzle_rating_filter.current(2)
+            app.puzzle_rating_filter.event_generate("<<ComboboxSelected>>", when="tail")
+            self.root.update()
+            self.assertIsNone(app.puzzle)
+            self.assertIsNone(app.board._state)
+            self.assertEqual(app.panel_text.get(), "No puzzles match the filters.")
+            self.assertEqual(app.next_puzzle_button.cget("state"), tk.DISABLED)
+
+            app.tab_rail.set_active("play")
+            self.assertIs(app.board._state, app.game.state)
+            self.assertEqual(app.board.orientation, "white")
+            app.tab_rail.set_active("puzzles")
+            self.root.update()
+            app.puzzle_theme_filter.current(0)
+            app.puzzle_theme_filter.event_generate("<<ComboboxSelected>>", when="tail")
+            self.root.update()
+            self.assertEqual(app.puzzle.puzzle.puzzle_id, "ccSM02")
+            self.assertEqual(app.puzzle_progress_text.get(), "Solved 0 of 1 in this selection.")
+            app.close()
+
     def test_game_undo_is_ignored_in_puzzle_mode(self):
         app = self.make_app()
         app._play_move(Move.from_uci("e2e4"))
@@ -184,6 +282,74 @@ class StorageAndLocaleUiTests(AppTestCase):
             app._on_preset_changed()
             settings, _ = load_settings(layout.settings)
             self.assertEqual(settings.bot_preset_id, "level-5")
+            app.close()
+
+    def test_open_saved_game_to_continue_and_keep_recorded_results(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            app = self.make_app(data_layout=DataLayout(Path(tmp) / "data"))
+            ongoing = app.db.import_pgn('[Event "Club game"]\n\n1. e4 *')
+            ended = app.db.import_pgn("1. d4 d5 1/2-1/2")
+            with patch.object(app, "_choose_item", return_value=1):
+                app.library_button.invoke()
+            self.assertIn(f"#{ongoing}", app.interaction_text.get())
+            self.assertIn('[Event "Club game"]', app._current_pgn())
+            app._play_move(Move.from_uci("e7e5"))
+            self.assertEqual(len(app.game.moves), 2)
+            with patch.object(app, "_choose_item", return_value=0), patch(
+                "chess_and_chains.ui.app.messagebox.askyesno", side_effect=[False, True],
+            ):
+                app.library_button.invoke()
+                self.assertEqual(app.game.moves[0], Move.from_uci("e2e4"))
+                app.library_button.invoke()
+            self.assertIn(f"#{ended}", app.interaction_text.get())
+            self.assertEqual(app.game.outcome().status, GameStatus.RECORDED_RESULT)
+            self.assertEqual(app.board._legal_moves, ())
+            self.assertEqual(app.panel_text.get(), "Recorded result: draw")
+            self.assertTrue(app._current_pgn().endswith("1/2-1/2"))
+            app.close()
+
+    def test_library_reopens_claim_with_reason_and_declared_move(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            app = self.make_app(data_layout=DataLayout(Path(tmp) / "data"))
+            app.controller.new_game(GameSetup(initial_fen="4k3/8/8/8/8/8/8/R3K3 w - - 99 51"))
+            app.controller.claim_draw(DrawClaim.FIFTY_MOVE_RULE, Move.from_uci("a1a2"))
+            self.assertIsNotNone(app._save_game())
+            app.start_game("human-vs-human")
+            with patch.object(app, "_choose_item", return_value=0):
+                app.library_button.invoke()
+            self.assertEqual(app.panel_text.get(), "Draw claimed: 50-move rule by declaring Ra2")
+            self.assertEqual(app.game.moves, [])
+            self.assertTrue(app._current_pgn().endswith("1/2-1/2"))
+            app.close()
+
+    def test_library_imports_into_an_empty_collection_and_exports_selected_game(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            app = self.make_app(data_layout=DataLayout(directory / "data"))
+            source, target = directory / "game.pgn", directory / "saved.pgn"
+            source.write_text("1. e4 e5 *", encoding="utf-8")
+
+            def invoke_action(label):
+                dialog = next(child for child in self.root.winfo_children() if isinstance(child, tk.Toplevel))
+                try:
+                    content = dialog.winfo_children()[0]
+                    button = next(child for child in content.winfo_children()
+                                  if isinstance(child, ttk.Button) and child.cget("text") == label)
+                    button.invoke()
+                finally:
+                    if dialog.winfo_exists():
+                        dialog.destroy()
+
+            with patch("chess_and_chains.ui.app.filedialog.askopenfilename", return_value=str(source)):
+                self.root.after(0, invoke_action, "Import PGN…")
+                app.library_button.invoke()
+            self.assertEqual(app.game.moves, [])
+            self.assertIn("Imported game #1", app.interaction_text.get())
+
+            with patch("chess_and_chains.ui.app.filedialog.asksaveasfilename", return_value=str(target)):
+                self.root.after(0, invoke_action, "Export PGN…")
+                app.library_button.invoke()
+            self.assertIn("1. e4 e5 *", target.read_text(encoding="utf-8"))
             app.close()
 
     def test_without_data_layout_nothing_is_written(self):
@@ -215,6 +381,25 @@ class StorageAndLocaleUiTests(AppTestCase):
         self.root.update()
         self.root.withdraw()
         self.assertEqual(app.game.moves, [])
+
+    def test_play_panel_scrolls_to_focused_engine_settings_in_small_window(self):
+        app = self.make_app(locale="de")
+        self.root.deiconify()
+        self.root.geometry("860x700")
+        app.bot_text.set("Bot-Status mit ausführlichem Hinweis. " * 12)
+        self.root.update()
+        canvas = app.play_canvas
+        self.assertEqual(canvas.yview()[0], 0)
+        self.assertLess(canvas.yview()[1], 1)
+        app.engine_button.event_generate("<FocusIn>")
+        self.root.update()
+        bottom = app.engine_button.winfo_rooty() + app.engine_button.winfo_height()
+        self.assertLessEqual(bottom, canvas.winfo_rooty() + canvas.winfo_height() + 1)
+        self.assertGreater(canvas.yview()[0], 0)
+        app.new_game_button.event_generate("<FocusIn>")
+        self.root.update()
+        self.assertGreaterEqual(app.new_game_button.winfo_rooty(), canvas.winfo_rooty() - 1)
+        self.assertGreater(app.board._square_size, 20)
 
     def test_small_window_keeps_board_usable(self):
         app = self.make_app()

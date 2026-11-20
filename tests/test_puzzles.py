@@ -66,6 +66,15 @@ class ImporterTests(unittest.TestCase):
         # Regression: a duplicate id stays a duplicate even if its first row was filtered.
         self.assertEqual(report.rejected["duplicate_id"], 1)
 
+    def test_normalized_duplicate_id_and_optional_lichess_column(self):
+        row = "ccBR01,6k1/p4ppp/8/8/8/8/5PPP/3R2K1 b - - 0 1,a7a6 d1d8,1000,0,0,0,mate,,,"
+        puzzles, report = parse(HEADER.rstrip() + ",DailyDate\n " + row + "\n" + row + "\n")
+        self.assertEqual([p.puzzle_id for p in puzzles], ["ccBR01"])
+        self.assertEqual(report.rejected["duplicate_id"], 1)
+        for filters in ({"min_rating": 999}, {"max_rating": 999}, {"limit": 0}):
+            with self.subTest(filters=filters), self.assertRaises(PuzzleImportError):
+                parse(HEADER, **filters)
+
     def test_max_rating_and_limit_stop_streaming_early(self):
         _, report = import_lichess_file(FIXTURE, max_rating=1000)
         self.assertEqual(report.accepted, 3)
@@ -219,6 +228,28 @@ class PackTests(unittest.TestCase):
             (directory / "puzzles.jsonl").write_text(body)
             with self.assertRaises(PackError):
                 read_pack(directory)
+
+    def test_revalidated_pack_detects_semantic_damage_even_with_matching_checksum(self):
+        puzzles, _ = import_lichess_file(FIXTURE)
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            manifest = write_pack(directory, puzzles[:2], pack_id="test-pack", version="1",
+                                  source="fixture", license_note="test")
+            self.assertIs(read_pack(directory).puzzles[0].validation, ValidationStatus.VALID)
+            self.assertIs(read_pack(directory, revalidate=False).puzzles[0].validation, ValidationStatus.UNVALIDATED)
+            first, second = (puzzle.to_record() for puzzle in puzzles[:2])
+            for record, error in (
+                ({**second, "id": first["id"]}, "Duplicate puzzle id"),
+                ({**second, "moves": []}, "Pack line 2"),
+                ({**second, "moves": ["a2a3", "a7a6"]}, "Pack line 2"),
+            ):
+                with self.subTest(error=error, record=record):
+                    body = "".join(json.dumps(row) + "\n" for row in (first, record)).encode()
+                    (directory / "puzzles.jsonl").write_bytes(body)
+                    meta = {**manifest.to_dict(), "sha256": hashlib.sha256(body).hexdigest()}
+                    (directory / "manifest.json").write_text(json.dumps(meta), encoding="utf-8")
+                    with self.assertRaisesRegex(PackError, error):
+                        read_pack(directory)
 
     def test_pack_contract_rejects_bad_input(self):
         puzzles, _ = import_lichess_file(FIXTURE)

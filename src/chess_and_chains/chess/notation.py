@@ -53,6 +53,7 @@ class PGNDocument:
         game = ChessGame(self.initial_state, rules=rules)
         for move in self.moves:
             game.play(move)
+        game.record_result(self.result)
         return game
 
 
@@ -289,9 +290,9 @@ def parse_san(state: GameState, text: str, rules: ChessRules | None = None) -> M
     return matches[0]
 
 
-def parse_pgn(text: str, rules: ChessRules | None = None) -> PGNDocument:
+def parse_pgn(text: str, rules: ChessRules | None = None, *, max_plies: int | None = None) -> PGNDocument:
     chess_rules = rules or ChessRules()
-    tags: list[tuple[str, str]] = []
+    tag_map: dict[str, str] = {}
     lines = text.splitlines()
     movetext_lines: list[str] = []
     in_movetext = False
@@ -304,13 +305,12 @@ def parse_pgn(text: str, rules: ChessRules | None = None) -> PGNDocument:
             if match:
                 key, raw_value = match.groups()
                 value = re.sub(r'\\(["\\])', r"\1", raw_value)
-                if any(existing_key == key for existing_key, _ in tags):
+                if key in tag_map:
                     raise PGNError(f"Duplicate PGN tag: {key}")
-                tags.append((key, value))
+                tag_map[key] = value
                 continue
             in_movetext = True
         movetext_lines.append(line)
-    tag_map = dict(tags)
     if "SetUp" in tag_map and tag_map["SetUp"] != "1":
         raise PGNError("PGN SetUp tag must be 1 when present.")
     if tag_map.get("SetUp") == "1" and "FEN" not in tag_map:
@@ -337,6 +337,8 @@ def parse_pgn(text: str, rules: ChessRules | None = None) -> PGNDocument:
             if any(re.sub(r"^\d+\.(?:\.\.)?", "", trailing) for trailing in tokens[token_index + 1 :]):
                 raise PGNError("Unexpected movetext after the game result.")
             break
+        if max_plies is not None and len(game.moves) >= max_plies:
+            raise PGNError(f"PGN exceeds the limit of {max_plies} half-moves.")
         try:
             game.play(parse_san(game.state, token, chess_rules))
         except ChessError as exc:
@@ -359,7 +361,7 @@ def parse_pgn(text: str, rules: ChessRules | None = None) -> PGNDocument:
             raise PGNError(
                 f"PGN result {result} contradicts the final position ({final.status.name.lower()})."
             )
-    return PGNDocument(tuple(tags), initial, tuple(game.moves), result)
+    return PGNDocument(tuple(tag_map.items()), initial, tuple(game.moves), result)
 
 
 def export_pgn(

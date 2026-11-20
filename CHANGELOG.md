@@ -1,6 +1,28 @@
 # Changelog
 
-## Unreleased – N02 Functional Core (2026-11-20, local commits, not pushed)
+## Unreleased – Saved game endings and history (2026-11-20)
+
+- Keep local resignation and draw-claim details when reopening a game. SQLite v3 migrates existing libraries after creating a backup.
+- Fix saving games that ended before the first move.
+- Store individual history entries for undo and redo instead of copying the entire move list and repetition table.
+- Keep the play controls reachable in small windows with vertical scrolling and automatic focus visibility.
+
+## Unreleased – PGN exchange and puzzle filters (2026-11-20)
+
+- Import and export a single UTF-8 PGN game from the local library. Bound input size and move count and replace export files atomically.
+- Filter Puzzle Lab by theme and rating and show saved solves in the current selection.
+- Score resignation against a lone king as a draw, preserving the outcome through undo and redo.
+
+## Unreleased – N02 follow-up (2026-11-20)
+
+- Added draw claims in the Tk app for the current position and for a declared legal move.
+- Reset the UCI engine once per game and skip cancelled searches before they can reach the engine.
+- Reopen stored games and recorded PGN results in the local two-player interface.
+- Validate and, if needed, migrate a backup before restoring it. Preserve the active database on invalid input.
+- Reject normalized duplicate puzzle IDs and validate loaded packs beyond their checksum.
+- Added external Perft fixtures and a Tk underpromotion regression. Run native Tk CI on Python 3.11 and 3.14.
+
+## Unreleased – N02 Functional Core (2026-11-20, merged in PR #2)
 
 - Evidence-based work-package status model; F0 baseline preserved.
 - Chess core: structural SAN parser (PGN import ~14× faster), PGN result
