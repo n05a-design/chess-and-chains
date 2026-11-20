@@ -1,0 +1,96 @@
+"""Validated, atomically written JSON user preferences."""
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+from __future__ import annotations
+
+import json
+import os
+import tempfile
+from dataclasses import asdict, dataclass, fields, replace
+from datetime import datetime, timezone
+from pathlib import Path
+
+SETTINGS_SCHEMA = 1
+LOCALES = (None, "en", "de")
+ORIENTATIONS = ("white", "black", "auto")
+PLAY_MODES = ("human-vs-human", "human-vs-bot-white", "human-vs-bot-black")
+
+
+class SettingsError(ValueError):
+    """A settings value is invalid."""
+
+
+@dataclass(frozen=True, slots=True)
+class Settings:
+    schema_version: int = SETTINGS_SCHEMA
+    locale: str | None = None            # None = follow the operating system
+    theme_id: str = "w06-provisional"
+    piece_set_id: str = "geometric-test"
+    board_orientation: str = "auto"
+    engine_path: str | None = None
+    bot_preset_id: str = "level-3"
+    play_mode: str = "human-vs-human"
+    last_pack_id: str | None = None
+
+    def validate(self) -> Settings:
+        if self.schema_version != SETTINGS_SCHEMA:
+            raise SettingsError("Unsupported settings schema.")
+        if self.locale not in LOCALES:
+            raise SettingsError(f"Unsupported locale {self.locale!r}.")
+        if self.board_orientation not in ORIENTATIONS:
+            raise SettingsError(f"Unsupported orientation {self.board_orientation!r}.")
+        if self.play_mode not in PLAY_MODES:
+            raise SettingsError(f"Unsupported play mode {self.play_mode!r}.")
+        for name in ("theme_id", "piece_set_id", "bot_preset_id"):
+            value = getattr(self, name)
+            if not isinstance(value, str) or not value or len(value) > 64:
+                raise SettingsError(f"Invalid {name}.")
+        if self.engine_path is not None and (not isinstance(self.engine_path, str) or "\n" in self.engine_path):
+            raise SettingsError("Invalid engine path.")
+        return self
+
+
+def load_settings(path: Path) -> tuple[Settings, str | None]:
+    """Return settings plus an optional warning. A broken file is quarantined, never deleted."""
+    if not path.exists():
+        return Settings(), None
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(raw, dict):
+            raise SettingsError("Settings root must be an object.")
+        known = {f.name for f in fields(Settings)}
+        settings = Settings(**{k: v for k, v in raw.items() if k in known}).validate()
+        return settings, None
+    except (OSError, ValueError, TypeError) as error:
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        quarantine = path.with_name(f"{path.name}.invalid-{stamp}")
+        try:
+            path.rename(quarantine)
+        except OSError:
+            quarantine = path
+        return Settings(), f"Settings were invalid ({error}); defaults loaded, original kept at {quarantine.name}."
+
+
+def save_settings(path: Path, settings: Settings) -> None:
+    settings.validate()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    data = json.dumps(asdict(settings), indent=2, sort_keys=True).encode("utf-8")
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "wb") as handle:
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp, path)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
+
+
+def update_settings(path: Path, **changes) -> Settings:
+    current, _ = load_settings(path)
+    updated = replace(current, **changes).validate()
+    save_settings(path, updated)
+    return updated
