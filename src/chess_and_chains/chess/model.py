@@ -192,3 +192,5 @@ class MoveOutcome:
     in_check: bool = False
     claimable_draws: frozenset[DrawClaim] = frozenset()
     claimed_draw: DrawClaim | None = None
+    declared_move: Move | None = None
+    resigned_by: Color | None = None

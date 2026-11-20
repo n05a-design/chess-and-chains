@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT))
 
-from chess_and_chains.chess import Color, GameStatus, Move, parse_square  # noqa: E402
+from chess_and_chains.chess import Color, DrawClaim, GameStatus, Move, parse_square  # noqa: E402
 from chess_and_chains.engines.bot import EngineConfig, UCIBot  # noqa: E402
 from chess_and_chains.game import BotStatus, GameSetup  # noqa: E402
 from chess_and_chains.storage import DataLayout, load_settings  # noqa: E402
@@ -299,6 +299,20 @@ class StorageAndLocaleUiTests(AppTestCase):
             self.assertEqual(app.game.outcome().status, GameStatus.RECORDED_RESULT)
             self.assertEqual(app.board._legal_moves, ())
             self.assertEqual(app.panel_text.get(), "Recorded result: draw")
+            self.assertTrue(app._current_pgn().endswith("1/2-1/2"))
+            app.close()
+
+    def test_library_reopens_claim_with_reason_and_declared_move(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            app = self.make_app(data_layout=DataLayout(Path(tmp) / "data"))
+            app.controller.new_game(GameSetup(initial_fen="4k3/8/8/8/8/8/8/R3K3 w - - 99 51"))
+            app.controller.claim_draw(DrawClaim.FIFTY_MOVE_RULE, Move.from_uci("a1a2"))
+            self.assertIsNotNone(app._save_game())
+            app.start_game("human-vs-human")
+            with patch.object(app, "_choose_item", return_value=0):
+                app.library_button.invoke()
+            self.assertEqual(app.panel_text.get(), "Draw claimed: 50-move rule by declaring Ra2")
+            self.assertEqual(app.game.moves, [])
             self.assertTrue(app._current_pgn().endswith("1/2-1/2"))
             app.close()
 

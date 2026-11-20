@@ -959,6 +959,11 @@ class ChessApp:
             return t("status.checkmate", side=self._side(winner))
         if status is GameStatus.RESIGNED:
             return t("status.resigned", side=self._side(winner)) if winner else t("status.resigned_draw")
+        if status is GameStatus.DRAW_CLAIMED and view.outcome.claimed_draw:
+            reason = t(f"claim.{view.outcome.claimed_draw.name.lower()}")
+            if view.outcome.declared_move is not None:
+                reason = t("claim.by_move", rule=reason, move=to_san(view.state, view.outcome.declared_move))
+            return t("status.claimed_reason", reason=reason)
         if status is GameStatus.RECORDED_RESULT:
             return t("status.recorded_win", side=self._side(winner)) if winner else t("status.recorded_draw")
         return t({

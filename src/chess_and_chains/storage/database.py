@@ -24,7 +24,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from ..chess import ChessError, ChessGame, Move, export_pgn, parse_fen, parse_pgn, to_fen
+from ..chess import ChessError, ChessGame, Color, DrawClaim, Move, export_pgn, parse_fen, parse_pgn, to_fen
 
 MAX_PGN_FILE_BYTES = 256 * 1024
 MAX_PGN_FILE_PLIES = 512
@@ -65,6 +65,13 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
                    MAX(attempted_utc) AS last_attempt_utc
             FROM puzzle_attempts GROUP BY pack_id, puzzle_id;
     """),
+    (3, """
+        ALTER TABLE games ADD COLUMN resigned_by TEXT CHECK (resigned_by IN ('w', 'b'));
+        ALTER TABLE games ADD COLUMN draw_claim TEXT CHECK (
+            draw_claim IS NULL OR (resigned_by IS NULL AND draw_claim IN ('THREEFOLD_REPETITION', 'FIFTY_MOVE_RULE'))
+        );
+        ALTER TABLE games ADD COLUMN declared_move TEXT CHECK (declared_move IS NULL OR draw_claim IS NOT NULL);
+    """),
 )
 SCHEMA_VERSION = MIGRATIONS[-1][0]
 
@@ -98,11 +105,18 @@ class SavedGame:
     bot_name: str | None
     bot_preset: str | None
     pgn_tags: tuple[tuple[str, str], ...] = ()
+    resigned_by: Color | None = None
+    draw_claim: DrawClaim | None = None
+    declared_move: Move | None = None
 
     def to_game(self) -> ChessGame:
         game = ChessGame(parse_fen(self.initial_fen))
         for move in self.moves:
             game.play(move)
+        if self.resigned_by is not None:
+            game.resign(self.resigned_by)
+        elif self.draw_claim is not None:
+            game.claim_draw(self.draw_claim, self.declared_move)
         game.record_result(self.result)
         return game
 
@@ -201,9 +215,10 @@ class Database:
             statements = [s.strip() for s in script.split(";") if s.strip()]
             conn.execute("BEGIN IMMEDIATE")
             try:
-                for statement in statements:
-                    conn.execute(statement)
-                conn.execute(f"PRAGMA user_version = {int(version)}")
+                if conn.execute("PRAGMA user_version").fetchone()[0] < version:
+                    for statement in statements:
+                        conn.execute(statement)
+                    conn.execute(f"PRAGMA user_version = {int(version)}")
                 conn.execute("COMMIT")
             except BaseException:
                 conn.execute("ROLLBACK")
@@ -255,7 +270,7 @@ class Database:
                         candidate.backup(staged)
                         self._migrate(staged, version)
                         staged.execute("SELECT id, created_utc, initial_fen, moves_uci, pgn, result, mode, "
-                                       "bot_color, bot_name, bot_preset FROM games LIMIT 0")
+                                       "bot_color, bot_name, bot_preset, resigned_by, draw_claim, declared_move FROM games LIMIT 0")
                         staged.execute("SELECT id, pack_id, puzzle_id, attempted_utc, solved, mistakes, "
                                        "hints_used, duration_ms FROM puzzle_attempts LIMIT 0")
                         staged.execute("SELECT pack_id, puzzle_id, attempts, solved, clean_solves, "
@@ -279,31 +294,51 @@ class Database:
         headers: dict[str, str] | None = None,
         result: str | None = None,
     ) -> int:
+        outcome = game.outcome()
+        has_termination = outcome.resigned_by is not None or outcome.claimed_draw is not None
+        if has_termination and result is not None:
+            if result == "*":
+                raise ChessError("An explicit termination requires a final PGN result.")
+            game.record_result(result)
         pgn = export_pgn(game, headers, result)
-        result = pgn.rsplit(" ", 1)[-1]
+        result = pgn.rsplit(maxsplit=1)[-1]
         cursor = self._conn.execute(
-            "INSERT INTO games (created_utc, initial_fen, moves_uci, pgn, result, mode, bot_color, bot_name, bot_preset)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO games (created_utc, initial_fen, moves_uci, pgn, result, mode, bot_color, bot_name, bot_preset,"
+            " resigned_by, draw_claim, declared_move) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (_now(), to_fen(game.initial_state), " ".join(m.to_uci() for m in game.moves), pgn, result,
-             mode, bot_color, bot_name, bot_preset),
+             mode, bot_color, bot_name, bot_preset, outcome.resigned_by.value if outcome.resigned_by else None,
+             outcome.claimed_draw.name if outcome.claimed_draw else None,
+             outcome.declared_move.to_uci() if outcome.declared_move else None),
         )
         return int(cursor.lastrowid)
 
     def load_game(self, game_id: int) -> SavedGame:
         row = self._conn.execute(
-            "SELECT id, created_utc, initial_fen, moves_uci, pgn, result, mode, bot_color, bot_name, bot_preset"
-            " FROM games WHERE id = ?", (game_id,)
+            "SELECT id, created_utc, initial_fen, moves_uci, pgn, result, mode, bot_color, bot_name, bot_preset,"
+            " resigned_by, draw_claim, declared_move FROM games WHERE id = ?", (game_id,)
         ).fetchone()
         if row is None:
             raise StorageError(f"No saved game with id {game_id}.")
         try:
             moves = tuple(Move.from_uci(token) for token in row[3].split())
             pgn = parse_pgn(row[4])
-            saved = SavedGame(row[0], row[1], row[2], moves, *row[4:], pgn_tags=pgn.tags)
+            resigned_by, draw_claim, declared_move = row[10:]
+            saved = SavedGame(
+                row[0], row[1], row[2], moves, *row[4:10], pgn_tags=pgn.tags,
+                resigned_by=Color(resigned_by) if resigned_by is not None else None,
+                draw_claim=DrawClaim[draw_claim] if draw_claim is not None else None,
+                declared_move=Move.from_uci(declared_move) if declared_move is not None else None,
+            )
             if (pgn.moves != saved.moves or pgn.initial_state != parse_fen(saved.initial_fen)
                     or pgn.result != saved.result):
                 raise StorageError(f"Saved game {game_id}: PGN and stored game data disagree.")
-        except (ChessError, AttributeError, TypeError) as error:
+            if (saved.resigned_by and saved.draw_claim) or (saved.declared_move and saved.draw_claim is None):
+                raise StorageError(f"Saved game {game_id}: invalid termination metadata.")
+            if saved.resigned_by or saved.draw_claim:
+                if saved.result == "*":
+                    raise StorageError(f"Saved game {game_id}: termination requires a final result.")
+                saved.to_game()
+        except (ValueError, KeyError, AttributeError, TypeError) as error:
             raise StorageError(f"Saved game {game_id} failed validation: {error}") from error
         return saved
 

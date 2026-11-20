@@ -26,6 +26,8 @@ class _Termination:
     status: GameStatus
     winner: Color | None = None
     claim: DrawClaim | None = None
+    declared_move: Move | None = None
+    resigned_by: Color | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,7 +93,7 @@ class ChessGame:
         if not valid:
             raise ChessError(f"The {reason.name.lower().replace('_', ' ')} is not claimable.")
         self._push_undo()
-        self._termination = _Termination(GameStatus.DRAW_CLAIMED, claim=reason)
+        self._termination = _Termination(GameStatus.DRAW_CLAIMED, claim=reason, declared_move=move)
         self._redo.clear()
         return self.outcome()
 
@@ -117,13 +119,16 @@ class ChessGame:
     def resign(self, color: Color | None = None) -> MoveOutcome:
         if self._termination is not None or self.outcome().status is not GameStatus.ACTIVE:
             raise ChessError("A resignation cannot end a game that has already ended.")
-        opponent = (color or self.state.turn).opposite
+        resigning = color or self.state.turn
+        opponent = resigning.opposite
         has_piece_besides_king = any(
             piece is not None and piece.color is opponent and piece.kind is not PieceType.KING
             for piece in self.state.board
         )
         self._push_undo()
-        self._termination = _Termination(GameStatus.RESIGNED, winner=opponent if has_piece_besides_king else None)
+        self._termination = _Termination(
+            GameStatus.RESIGNED, winner=opponent if has_piece_besides_king else None, resigned_by=resigning,
+        )
         self._redo.clear()
         return self.outcome()
 
@@ -149,6 +154,8 @@ class ChessGame:
                 self._termination.status,
                 self._termination.winner,
                 claimed_draw=self._termination.claim,
+                declared_move=self._termination.declared_move,
+                resigned_by=self._termination.resigned_by,
             )
         in_check = self.rules.is_in_check(self.state)
         legal = self.rules.legal_moves(self.state)
