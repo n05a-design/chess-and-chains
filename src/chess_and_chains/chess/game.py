@@ -122,6 +122,22 @@ class ChessGame:
         self._redo.clear()
         return self.outcome()
 
+    def record_result(self, result: str) -> None:
+        """Apply a result from a validated record when the board alone has no outcome."""
+        winners = {"1-0": Color.WHITE, "0-1": Color.BLACK, "1/2-1/2": None}
+        if result == "*":
+            return
+        if result not in winners:
+            raise ChessError(f"Invalid game result: {result!r}.")
+        outcome = self.outcome()
+        if outcome.status is not GameStatus.ACTIVE:
+            if winners[result] is not outcome.winner:
+                raise ChessError("The declared result contradicts the game outcome.")
+            return
+        self._push_undo()
+        self._termination = _Termination(GameStatus.RECORDED_RESULT, winner=winners[result])
+        self._redo.clear()
+
     def outcome(self) -> MoveOutcome:
         if self._termination is not None:
             return MoveOutcome(

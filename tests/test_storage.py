@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from chess_and_chains.chess import ChessGame, DrawClaim, Move, parse_fen  # noqa: E402
+from chess_and_chains.chess import ChessGame, DrawClaim, GameStatus, Move, parse_fen  # noqa: E402
 from chess_and_chains.storage import (  # noqa: E402
     SCHEMA_VERSION,
     DataLayout,
@@ -122,12 +122,28 @@ class DatabaseTests(TempDirTestCase):
         with self.assertRaises(StorageError):
             db.load_game(game_id)
 
+    def test_load_rejects_mismatched_fen_result_and_invalid_uci(self):
+        db = self.open_db()
+        for column, value in (
+            ("initial_fen", "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1"),
+            ("result", "1/2-1/2"),
+            ("moves_uci", "e2"),
+        ):
+            with self.subTest(column=column):
+                game_id = db.import_pgn("1. e4 *")
+                db._conn.execute(f"UPDATE games SET {column} = ? WHERE id = ?", (value, game_id))
+                with self.assertRaises(StorageError):
+                    db.load_game(game_id)
+
     def test_pgn_import_export_keeps_result(self):
         db = self.open_db()
         game_id = db.import_pgn('[White "A"]\n[Result "1-0"]\n\n1. e4 e5 2. Qh5 Nc6 1-0')
         saved = db.load_game(game_id)
         self.assertEqual(saved.result, "1-0")
         self.assertIn('[White "A"]', saved.pgn)
+        self.assertEqual(saved.to_game().outcome().status, GameStatus.RECORDED_RESULT)
+        self.assertIn(("White", "A"), saved.pgn_tags)
+        self.assertEqual(db.export_pgn([]), "")
         claimed = ChessGame()
         for uci in ("g1f3", "g8f6", "f3g1", "f6g8", "g1f3", "g8f6", "f3g1", "f6g8"):
             claimed.play(Move.from_uci(uci))

@@ -53,6 +53,7 @@ class PGNDocument:
         game = ChessGame(self.initial_state, rules=rules)
         for move in self.moves:
             game.play(move)
+        game.record_result(self.result)
         return game
 
 

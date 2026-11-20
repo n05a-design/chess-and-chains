@@ -87,11 +87,13 @@ class SavedGame:
     bot_color: str | None
     bot_name: str | None
     bot_preset: str | None
+    pgn_tags: tuple[tuple[str, str], ...] = ()
 
     def to_game(self) -> ChessGame:
         game = ChessGame(parse_fen(self.initial_fen))
         for move in self.moves:
             game.play(move)
+        game.record_result(self.result)
         return game
 
 
@@ -259,12 +261,14 @@ class Database:
         ).fetchone()
         if row is None:
             raise StorageError(f"No saved game with id {game_id}.")
-        saved = SavedGame(row[0], row[1], row[2], tuple(Move.from_uci(t) for t in row[3].split()), *row[4:])
         try:
-            replay = saved.to_game()
-            if parse_pgn(saved.pgn).moves != tuple(replay.moves):
-                raise StorageError(f"Saved game {game_id}: PGN and move list disagree.")
-        except ChessError as error:
+            moves = tuple(Move.from_uci(token) for token in row[3].split())
+            pgn = parse_pgn(row[4])
+            saved = SavedGame(row[0], row[1], row[2], moves, *row[4:], pgn_tags=pgn.tags)
+            if (pgn.moves != saved.moves or pgn.initial_state != parse_fen(saved.initial_fen)
+                    or pgn.result != saved.result):
+                raise StorageError(f"Saved game {game_id}: PGN and stored game data disagree.")
+        except (ChessError, AttributeError, TypeError) as error:
             raise StorageError(f"Saved game {game_id} failed validation: {error}") from error
         return saved
 
@@ -282,8 +286,8 @@ class Database:
         return self.save_game(document.new_game(), mode=mode, headers=tags, result=document.result)
 
     def export_pgn(self, game_ids: list[int] | None = None) -> str:
-        ids = game_ids or [r[0] for r in reversed(self.list_games())]
-        return "\n\n".join(self.load_game(i).pgn for i in ids) + "\n"
+        ids = game_ids if game_ids is not None else [r[0] for r in reversed(self.list_games())]
+        return "\n\n".join(self.load_game(i).pgn for i in ids) + ("\n" if ids else "")
 
     # ----- puzzles -----------------------------------------------------
     def record_puzzle_attempt(

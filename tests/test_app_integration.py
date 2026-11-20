@@ -207,6 +207,30 @@ class StorageAndLocaleUiTests(AppTestCase):
             self.assertEqual(settings.bot_preset_id, "level-5")
             app.close()
 
+    def test_open_saved_game_to_continue_and_keep_recorded_results(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            app = self.make_app(data_layout=DataLayout(Path(tmp) / "data"))
+            ongoing = app.db.import_pgn('[Event "Club game"]\n\n1. e4 *')
+            ended = app.db.import_pgn("1. d4 d5 1/2-1/2")
+            with patch.object(app, "_choose_item", return_value=1):
+                app.library_button.invoke()
+            self.assertIn(f"#{ongoing}", app.interaction_text.get())
+            self.assertIn('[Event "Club game"]', app._current_pgn())
+            app._play_move(Move.from_uci("e7e5"))
+            self.assertEqual(len(app.game.moves), 2)
+            with patch.object(app, "_choose_item", return_value=0), patch(
+                "chess_and_chains.ui.app.messagebox.askyesno", side_effect=[False, True],
+            ):
+                app.library_button.invoke()
+                self.assertEqual(app.game.moves[0], Move.from_uci("e2e4"))
+                app.library_button.invoke()
+            self.assertIn(f"#{ended}", app.interaction_text.get())
+            self.assertEqual(app.game.outcome().status, GameStatus.RECORDED_RESULT)
+            self.assertEqual(app.board._legal_moves, ())
+            self.assertEqual(app.panel_text.get(), "Recorded result: draw")
+            self.assertTrue(app._current_pgn().endswith("1/2-1/2"))
+            app.close()
+
     def test_without_data_layout_nothing_is_written(self):
         app = self.make_app()
         app._play_move(Move.from_uci("e2e4"))

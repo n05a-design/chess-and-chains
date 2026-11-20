@@ -10,6 +10,7 @@ are applied by polling on the Tk main thread.
 
 from __future__ import annotations
 
+import sqlite3
 import threading
 import tkinter as tk
 from dataclasses import replace
@@ -150,6 +151,7 @@ class ChessApp:
         self.puzzle: PuzzleSession | None = None
         self._puzzle_recorded = False
         self._provider_stale = False
+        self._game_headers: dict[str, str] = {}
         self._closed = False
         self.interaction_text = tk.StringVar(value="")
         self.panel_text = tk.StringVar(value="")
@@ -311,6 +313,8 @@ class ChessApp:
         self.copy_pgn_button.grid(row=2, column=1, sticky="ew", pady=3, padx=(3, 0))
         self.claim_button = self._button(controls, t("button.claim_draw"), self._claim_draw)
         self.claim_button.grid(row=3, column=0, sticky="ew", pady=3, padx=(0, 3))
+        self.library_button = self._button(controls, t("button.library"), self._open_library)
+        self.library_button.grid(row=3, column=1, sticky="ew", pady=3, padx=(3, 0))
         row += 1
         self._label(panel, var=self.action_state_text, role="caption", muted=True).grid(row=row, column=0, sticky="ew", pady=(6, 0))
         row += 1
@@ -463,6 +467,7 @@ class ChessApp:
             self.board.set_orientation(self.orientation)
         self.mode_var.set(mode)
         self._store_settings(play_mode=mode)
+        self._game_headers.clear()
         self.controller.new_game(setup)
 
     def _on_move_requested(self, candidates: tuple[Move, ...]) -> None:
@@ -590,15 +595,15 @@ class ChessApp:
         self.board.set_orientation(self.orientation)
         self.interaction_text.set(self.t("board.black_bottom" if self.orientation == "black" else "board.white_bottom"))
 
-    def _current_pgn(self) -> str:
+    def _pgn_headers(self) -> dict[str, str]:
         view = self.controller.view()
-        headers = {"Event": "Chess & Chains local game"}
+        headers = {"Event": "Chess & Chains local game", **self._game_headers}
         if view.setup.mode is PlayMode.HUMAN_VS_BOT and view.bot_name:
             if view.setup.bot_color is Color.WHITE:
                 headers.update(White=view.bot_name, Black="Human")
             else:
                 headers.update(White="Human", Black=view.bot_name)
-        return export_pgn(self.game, headers)
+        return headers
 
     def _save_game(self) -> int | None:
         if self.db is None:
@@ -606,15 +611,52 @@ class ChessApp:
             return None
         view = self.controller.view()
         provider = self.controller.provider
-        game_id = self.db.save_game(
-            self.game,
-            mode=self.mode_var.get(),
-            bot_color=view.setup.bot_color.value if view.setup.bot_color else None,
-            bot_name=view.bot_name if view.setup.mode is PlayMode.HUMAN_VS_BOT else None,
-            bot_preset=provider.preset.id if isinstance(provider, UCIBot) else None,
-        )
+        mode = view.setup.mode.value
+        if view.setup.bot_color is not None:
+            mode += f"-{view.setup.bot_color.opposite.name.lower()}"
+        try:
+            game_id = self.db.save_game(
+                self.game,
+                mode=mode,
+                bot_color=view.setup.bot_color.value if view.setup.bot_color else None,
+                bot_name=view.bot_name if view.setup.mode is PlayMode.HUMAN_VS_BOT else None,
+                bot_preset=provider.preset.id if view.setup.bot_color and isinstance(provider, UCIBot) else None,
+                headers=self._pgn_headers(),
+            )
+        except (StorageError, sqlite3.Error, ChessError) as error:
+            self.interaction_text.set(self.t("library.error", error=error))
+            return None
         self.interaction_text.set(self.t("save.done", id=game_id))
         return game_id
+
+    def _open_library(self) -> None:
+        if self.db is None:
+            return
+        try:
+            rows = self.db.list_games()
+            if not rows:
+                self.interaction_text.set(self.t("library.empty"))
+                return
+            labels = [self.t("library.entry", id=game_id, date=created, result=result)
+                      for game_id, created, result, _mode in rows]
+            chosen = self._choose_item(self.t("button.library"), labels, self.t("library.open"))
+            if chosen is None:
+                return
+            saved = self.db.load_game(rows[chosen][0])
+            game = saved.to_game()
+            if (self.game.can_undo or self.game.can_redo) and not messagebox.askyesno(
+                self.t("library.open"), self.t("library.replace"), parent=self.root,
+            ):
+                return
+            self._game_headers = dict(saved.pgn_tags)
+            self.mode_var.set("human-vs-human")
+            self.controller.load_game(game)
+            self.interaction_text.set(self.t("library.loaded", id=saved.id))
+        except (StorageError, sqlite3.Error, ChessError) as error:
+            self.interaction_text.set(self.t("library.error", error=error))
+
+    def _current_pgn(self) -> str:
+        return export_pgn(self.game, self._pgn_headers())
 
     def _copy_pgn(self) -> None:
         self.root.clipboard_clear()
@@ -760,7 +802,9 @@ class ChessApp:
         self.claim_button.configure(state=tk.NORMAL if can_claim else tk.DISABLED)
         active = view.outcome.status is GameStatus.ACTIVE
         self.resign_button.configure(state=tk.NORMAL if active and self.game.moves else tk.DISABLED)
-        self.save_button.configure(state=tk.NORMAL if self.db is not None and self.game.moves else tk.DISABLED)
+        can_save = self.db is not None and (self.game.moves or not active)
+        self.save_button.configure(state=tk.NORMAL if can_save else tk.DISABLED)
+        self.library_button.configure(state=tk.NORMAL if self.db is not None else tk.DISABLED)
 
     def _status_label(self, view: GameView) -> str:
         t = self.t
@@ -772,6 +816,8 @@ class ChessApp:
             return t("status.checkmate", side=self._side(winner))
         if status is GameStatus.RESIGNED and winner:
             return t("status.resigned", side=self._side(winner))
+        if status is GameStatus.RECORDED_RESULT:
+            return t("status.recorded_win", side=self._side(winner)) if winner else t("status.recorded_draw")
         return t({
             GameStatus.STALEMATE: "status.stalemate",
             GameStatus.DRAW_INSUFFICIENT_MATERIAL: "status.insufficient",

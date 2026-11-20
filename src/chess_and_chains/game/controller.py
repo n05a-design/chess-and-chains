@@ -222,10 +222,18 @@ class GameController:
         if setup.mode is PlayMode.HUMAN_VS_BOT and self._provider is None:
             raise ChessError("No bot provider is configured.")
         initial = parse_fen(setup.initial_fen) if setup.initial_fen else None
+        self._replace_game(ChessGame(initial), setup)
+
+    def load_game(self, game: ChessGame) -> None:
+        """Open a validated record for local two-player play or review."""
+        self._ensure_open()
+        self._replace_game(game, GameSetup.two_players())
+
+    def _replace_game(self, game: ChessGame, setup: GameSetup) -> None:
         self._invalidate()
         self._game_id += 1
         self._setup = setup
-        self._game = ChessGame(initial)
+        self._game = game
         self._initial_fen = to_fen(self._game.initial_state)
         self._san.clear()
         self._san_moves.clear()

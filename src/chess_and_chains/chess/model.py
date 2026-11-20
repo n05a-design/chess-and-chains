@@ -62,6 +62,7 @@ class GameStatus(Enum):
     DRAW_SEVENTY_FIVE_MOVE = auto()
     DRAW_CLAIMED = auto()
     RESIGNED = auto()
+    RECORDED_RESULT = auto()
 
 
 class DrawClaim(Enum):
