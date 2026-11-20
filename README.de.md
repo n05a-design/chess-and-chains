@@ -43,6 +43,8 @@ python -m chess_and_chains
 
 Eine bereits lokal installierte UCI-Engine kann zur Entwicklung über `CHESS_AND_CHAINS_ENGINE=/pfad/zur/engine` oder *Engine-Einstellungen…* genutzt werden; die App lädt niemals Engines herunter. Der Standardaufruf öffnet den lokalen Tk-Prototyp; `--headless-check` prüft die Verfügbarkeit ohne Fenster. Für Tk-Unterstützung muss die Python-Installation Tk enthalten. Der Regeldomänenkern hat keine Laufzeitabhängigkeit auf eine Schachbibliothek.
 
+*Engine testen* prüft den UCI-Handshake und wartet auf `readyok`. Bei Erfolg zeigt der Dialog den Namen und die Zahl der gemeldeten Optionen. Der Testlauf beendet seinen Prozess. Die Schaltfläche *Speichern* übernimmt den Pfad.
+
 Mit Tk 9 lässt sich ein lokaler Brettentwurf für einen Programmaufruf in der App anzeigen. Beispiel: `python -m chess_and_chains --board-design assets/boards/source/board-template.svg`. Die [SVG-Lieferanleitung](assets/boards/source/README.md) beschreibt die Formate für Gesamtbretter und einzelne Felder.
 
 `python -m chess_and_chains --piece-view top` zeigt die Draufsicht der Figuren in Partie und Rätsel. Beim normalen Start erscheint die Vorderansicht. Beide Ansichten verwenden [editierbare Einzel-SVGs mit einem gemeinsamen Figurenmaß pro Ansicht](assets/chess_pieces/source_svg/README.md) und einen lokalen PNG-Fallback für Tk ohne SVG-Unterstützung.

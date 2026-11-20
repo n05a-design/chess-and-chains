@@ -23,7 +23,7 @@ import time
 from ..chess import INITIAL_FEN, ChessRules, Move, parse_fen
 
 ENGINE_NAME = "Chess & Chains Mock Engine (test only, not a chess AI)"
-MODES = ("normal", "crash", "stall", "illegal", "garbage", "crash-on-start")
+MODES = ("normal", "crash", "stall", "illegal", "garbage", "crash-on-start", "crash-on-ready")
 
 OPTIONS = (
     "option name Threads type spin default 1 min 1 max 8",
@@ -81,6 +81,8 @@ def run(mode: str, seed: int, delay_ms: int, stdin=sys.stdin, stdout=sys.stdout)
                 say(line)
             say("uciok")
         elif command == "isready":
+            if mode == "crash-on-ready":
+                return 5
             say("readyok")
         elif command == "ucinewgame":
             fen, moves = INITIAL_FEN, []

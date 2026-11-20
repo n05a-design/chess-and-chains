@@ -13,6 +13,7 @@ from __future__ import annotations
 import sqlite3
 import threading
 import tkinter as tk
+from queue import Empty, SimpleQueue
 from weakref import proxy
 from dataclasses import replace
 from pathlib import Path
@@ -20,9 +21,9 @@ from tkinter import filedialog, messagebox, ttk
 from typing import Callable, Sequence
 
 from ..chess import ChessError, ChessGame, Color, GameStatus, Move, export_pgn, square_name, to_san
-from ..engines.bot import EngineConfig, EngineConfigError, MoveProvider, UCIBot, resolve_engine_config
+from ..engines.bot import EngineConfig, EngineConfigError, MoveProvider, UCIBot, probe_engine, resolve_engine_config
 from ..engines.presets import BotPreset, load_presets
-from ..engines.uci import UCIEngine, UCIEngineError
+from ..engines.uci import UCIEngineError
 from ..game import BotStatus, GameController, GameSetup, GameView, PlayMode
 from ..i18n import Translator
 from ..puzzles import PuzzlePack, PuzzleSession, Verdict, load_demo_pack
@@ -1106,6 +1107,13 @@ class ChessApp:
             pass
 
 
+def _probe_connection(config: EngineConfig, results: SimpleQueue[tuple[str, int] | str]) -> None:
+    try:
+        results.put(probe_engine(config))
+    except (UCIEngineError, ValueError) as error:
+        results.put(str(error))
+
+
 class EngineDialog:
     """Configure a locally installed UCI engine; tests run on a worker thread."""
 
@@ -1118,7 +1126,8 @@ class EngineDialog:
         self.window.configure(background=ACETATE, padx=16, pady=14)
         self.path_var = tk.StringVar(self.window, value=app.settings.engine_path or "")
         self.status_var = tk.StringVar(self.window, value="" if app.settings.engine_path else t("engine.missing"))
-        self._result: tuple[str, str] | None = None
+        self._results: SimpleQueue[tuple[str, int] | str] = SimpleQueue()
+        self._probe_job: str | None = None
         tk.Label(self.window, text=t("engine.explain"), background=ACETATE, foreground=INK, wraplength=420,
                  justify="left", font=("TkDefaultFont", FONT_SIZES["body"])).grid(row=0, column=0, columnspan=3, sticky="ew")
         tk.Label(self.window, text=t("engine.path_label"), background=ACETATE, foreground=INK,
@@ -1136,6 +1145,7 @@ class EngineDialog:
         app._button(buttons, t("button.save"), self.save, role="new").grid(row=0, column=2, padx=3)
         app._button(buttons, t("button.cancel"), self.window.destroy).grid(row=0, column=3, padx=3)
         self.window.bind("<Escape>", lambda _e: self.window.destroy())
+        self.window.bind("<Destroy>", self._cancel_probe_poll)
         self.entry.focus_set()
 
     def _browse(self) -> None:
@@ -1152,29 +1162,28 @@ class EngineDialog:
         self.status_var.set(self.app.t("engine.testing"))
         self.test_button.configure(state=tk.DISABLED)
 
-        def work() -> None:
-            try:
-                with UCIEngine(config.command, startup_timeout=5) as engine:
-                    name = config.display_name
-                    self._result = ("ok", f"{name}|{len(engine.options)}")
-            except (UCIEngineError, ValueError) as error:
-                self._result = ("error", str(error))
-
-        threading.Thread(target=work, name="engine-test", daemon=True).start()
-        self.window.after(50, self._check)
+        threading.Thread(target=_probe_connection, args=(config, self._results),
+                         name="engine-test", daemon=True).start()
+        self._probe_job = self.window.after(50, self._check)
 
     def _check(self) -> None:
-        if self._result is None:
-            self.window.after(50, self._check)
+        self._probe_job = None
+        try:
+            result = self._results.get_nowait()
+        except Empty:
+            self._probe_job = self.window.after(50, self._check)
             return
-        kind, payload = self._result
-        self._result = None
         self.test_button.configure(state=tk.NORMAL)
-        if kind == "ok":
-            name, count = payload.split("|")
-            self.status_var.set(self.app.t("engine.test_ok", name=name, count=count))
+        if isinstance(result, str):
+            self.status_var.set(self.app.t("engine.test_failed", error=result))
         else:
-            self.status_var.set(self.app.t("engine.test_failed", error=payload))
+            name, count = result
+            self.status_var.set(self.app.t("engine.test_ok", name=name, count=count))
+
+    def _cancel_probe_poll(self, event: tk.Event) -> None:
+        if event.widget is self.window and self._probe_job is not None:
+            self.window.after_cancel(self._probe_job)
+            self._probe_job = None
 
     def use_mock(self) -> None:
         self.path_var.set("")

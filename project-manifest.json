@@ -165,9 +165,10 @@
       "gate": "UCI-Lifecycle, Fehlerbehandlung, dokumentierte Skills, physischer Offline-Test",
       "phase": "F2",
       "status": "TESTED",
-      "scope": "UCI adapter + GameController + async worker + bot presets, tested with the project-owned mock engine; no real engine tested",
+      "scope": "UCI adapter, GameController, async worker, bot presets and the local engine readiness probe, tested with the project-owned mock engine; no real engine tested",
       "status_evidence": [
         "docs/reports/2026-11-20_W07_uci.md",
+        "docs/reports/2026-11-21_W07-uci-verbindungstest.md",
         "docs/reports/2026-11-20_N02_functional-core.md",
         "src/chess_and_chains/game/controller.py",
         "src/chess_and_chains/engines/presets.py",

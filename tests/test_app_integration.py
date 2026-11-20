@@ -18,9 +18,10 @@ sys.path.insert(0, str(ROOT))
 
 from chess_and_chains.chess import Color, DrawClaim, GameStatus, Move, Piece, PieceType, parse_square  # noqa: E402
 from chess_and_chains.engines.bot import EngineConfig, UCIBot  # noqa: E402
+from chess_and_chains.engines.mock_engine import ENGINE_NAME  # noqa: E402
 from chess_and_chains.game import BotStatus, GameSetup  # noqa: E402
 from chess_and_chains.storage import DataLayout, load_settings  # noqa: E402
-from chess_and_chains.ui.app import ChessApp  # noqa: E402
+from chess_and_chains.ui.app import ChessApp, EngineDialog  # noqa: E402
 from chess_and_chains.ui.branding import brand_image  # noqa: E402
 from chess_and_chains.ui.pieces import (  # noqa: E402
     PIECE_FALLBACK_SIZES,
@@ -132,6 +133,32 @@ class DrawClaimTests(AppTestCase):
 
 
 class BotVerticalSliceTests(AppTestCase):
+    def test_closing_engine_dialog_cancels_pending_tk_poll(self):
+        app = self.make_app()
+        dialog = EngineDialog(app)
+        with patch.object(EngineConfig, "from_path", return_value=EngineConfig.mock()):
+            with patch("chess_and_chains.ui.app.threading.Thread"):
+                dialog.test()
+        pending = dialog._probe_job
+        self.assertIsNotNone(pending)
+        dialog.window.destroy()
+        self.assertIsNone(dialog._probe_job)
+        with self.assertRaises(tk.TclError):
+            self.root.tk.call("after", "info", pending)
+
+    def test_engine_dialog_reports_readiness_and_handles_exit_after_uciok(self):
+        app = self.make_app()
+        for mode, expected in (("normal", ENGINE_NAME), ("crash-on-ready", "Engine test failed")):
+            with self.subTest(mode=mode):
+                dialog = EngineDialog(app)
+                with patch.object(EngineConfig, "from_path", return_value=EngineConfig.mock(mode)):
+                    dialog.test()
+                self.assertEqual(dialog.test_button.cget("state"), tk.DISABLED)
+                self.pump_until(lambda: dialog.test_button.cget("state") == tk.NORMAL)
+                self.assertIn(expected, dialog.status_var.get())
+                dialog.window.destroy()
+        self.assertIsNone(app.settings.engine_path)
+
     def test_user_move_bot_reply_and_ui_update(self):
         factory = mock_factory()
         app = self.make_app(provider_factory=factory)
