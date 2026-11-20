@@ -189,6 +189,14 @@ class BotVerticalSliceTests(AppTestCase):
         self.assertIs(app.game.outcome().status, GameStatus.RESIGNED)
         self.assertIn("wins by resignation", app.panel_text.get())
 
+    def test_resigning_to_lone_king_displays_draw(self):
+        app = self.make_app()
+        app.controller.new_game(GameSetup(initial_fen="4k3/8/8/8/8/8/4P3/4K3 b - - 0 1"))
+        app._play_move(Move.from_uci("e8d7"))
+        app.resign_button.invoke()
+        self.assertIn("Draw after resignation", app.panel_text.get())
+        self.assertTrue(app._current_pgn().endswith("1/2-1/2"))
+
 
 class PuzzleUiTests(AppTestCase):
     def test_puzzle_tab_uses_same_board_and_records_progress(self):

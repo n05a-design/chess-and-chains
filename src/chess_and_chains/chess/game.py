@@ -16,6 +16,7 @@ from .model import (
     IllegalMoveError,
     Move,
     MoveOutcome,
+    PieceType,
 )
 from .rules import ChessRules, RulesPort
 
@@ -116,9 +117,13 @@ class ChessGame:
     def resign(self, color: Color | None = None) -> MoveOutcome:
         if self._termination is not None or self.outcome().status is not GameStatus.ACTIVE:
             raise ChessError("A resignation cannot end a game that has already ended.")
-        resigning = color or self.state.turn
+        opponent = (color or self.state.turn).opposite
+        has_piece_besides_king = any(
+            piece is not None and piece.color is opponent and piece.kind is not PieceType.KING
+            for piece in self.state.board
+        )
         self._push_undo()
-        self._termination = _Termination(GameStatus.RESIGNED, winner=resigning.opposite)
+        self._termination = _Termination(GameStatus.RESIGNED, winner=opponent if has_piece_besides_king else None)
         self._redo.clear()
         return self.outcome()
 

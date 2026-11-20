@@ -957,8 +957,8 @@ class ChessApp:
             return t(key, side=self._side(view.state.turn))
         if status is GameStatus.CHECKMATE and winner:
             return t("status.checkmate", side=self._side(winner))
-        if status is GameStatus.RESIGNED and winner:
-            return t("status.resigned", side=self._side(winner))
+        if status is GameStatus.RESIGNED:
+            return t("status.resigned", side=self._side(winner)) if winner else t("status.resigned_draw")
         if status is GameStatus.RECORDED_RESULT:
             return t("status.recorded_win", side=self._side(winner)) if winner else t("status.recorded_draw")
         return t({

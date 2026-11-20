@@ -196,6 +196,17 @@ class ChessCoreTests(unittest.TestCase):
         custom_pgn = export_pgn(custom)
         self.assertEqual(parse_pgn(custom_pgn).moves, tuple(custom.moves))
 
+    def test_resignation_against_lone_king_draws_and_survives_undo_redo(self):
+        game = ChessGame(parse_fen("4k3/8/8/8/8/8/4P3/4K3 w - - 0 1"))
+        outcome = game.resign(Color.WHITE)
+        self.assertIs(outcome.status, GameStatus.RESIGNED)
+        self.assertIsNone(outcome.winner)
+        self.assertEqual(parse_pgn(export_pgn(game)).result, "1/2-1/2")
+        game.undo()
+        self.assertIs(game.outcome().status, GameStatus.ACTIVE)
+        game.redo()
+        self.assertEqual(game.outcome(), outcome)
+
     def test_resignation_is_undoable(self):
         game = ChessGame()
         game.resign(Color.WHITE)
