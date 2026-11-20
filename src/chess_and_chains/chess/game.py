@@ -54,6 +54,14 @@ class ChessGame:
         self._undo: list[_Snapshot] = []
         self._redo: list[_Snapshot] = []
 
+    @property
+    def can_undo(self) -> bool:
+        return bool(self._undo)
+
+    @property
+    def can_redo(self) -> bool:
+        return bool(self._redo)
+
     def play(self, move: Move) -> GameState:
         if self._termination is not None or self.outcome().status is not GameStatus.ACTIVE:
             raise IllegalMoveError("The game has already ended.")
