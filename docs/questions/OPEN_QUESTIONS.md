@@ -27,7 +27,7 @@
 | Q-021 | HIGH | Darf der klar gekennzeichnete **Mock-Bot** (keine Schach-KI) in Entwicklungs-/Vorschau-Builds als Standard-Gegner erscheinen, solange ADR-001 offen ist, oder soll der Bot-Modus ohne echte Engine ausgeblendet werden? | Nur in Entwicklungsbuilds sichtbar, deutlich gekennzeichnet; in Releases ausblenden bis echte Engine geprüft ist. | ADR-001 / W07 / OPEN (N02) |
 | Q-022 | MEDIUM | Darf ein Agent den **offiziellen Lichess-Puzzle-Export (CC0)** lokal herunterladen, um den Importer mit Realdaten zu prüfen (Pack außerhalb des Repos)? | Erst nach ausdrücklichem Owner-Opt-in; Download nicht im Repo, nur Prüfsumme und Importbericht versionieren. | ADR-003 / W08 / OPEN (N02) |
 | Q-023 | MEDIUM | Sollen die sechs Bot-Stufen (Level 1–6) nach Kalibrierung mit **gemessenen Elo-Spannen** beschriftet werden oder dauerhaft neutral bleiben? | Neutral bis ein reproduzierbarer Benchmark (`docs/qa/BOT_CALIBRATION_PLAN.md`) vorliegt. | ADR-007 / OPEN (N02) |
-| Q-024 | MEDIUM | Darf der Agent den Entwicklungsbranch **pushen und einen PR** nach `main` erstellen (Konkretisierung von Q-019 für N02)? | Nur nach ausdrücklicher Freigabe im Chat; kein Merge. | Governance / Freigabe galt PR #2. Für den lokalen Folgebranch offen. |
+| Q-024 | MEDIUM | Darf der Agent den Entwicklungsbranch **pushen und einen PR** nach `main` erstellen (Konkretisierung von Q-019 für N02)? | Nur nach ausdrücklicher Freigabe im Chat; kein Merge. | Governance / CLOSED am 20.11.2026 für Push und PR des N02-Folgebranches. Freigabe im Projektchat. |
 
 ## Antwort-Format
 
