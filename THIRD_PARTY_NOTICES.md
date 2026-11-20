@@ -10,6 +10,9 @@
 | Lichess puzzle CSV | Candidate; NOT downloaded | CC0 | Preserve dataset source/date and apply rules carefully |
 | Glide Shell modules | Proposed only; NOT copied | Original files often MPL-2.0, dependencies may differ | Verify source/version/third-party assets individually |
 | User SVG pieces | NOT delivered in ZIP | OWNER TO CONFIRM | Register file-level rights before publication |
+| CairoSVG 2.9.1 | Research candidate; not a project dependency; temporary evaluation only | LGPL-3.0-or-later per PyPI | Runtime adoption requires dependency/license inventory and native Cairo packaging review |
+| cairocffi 1.7.1 | Research candidate; not a project dependency; temporary evaluation only | BSD per PyPI | Native Cairo is separately required; verify exact bundled versions and notices |
+| CairoSVG transitive Python dependencies | Temporary research environment only; not project dependencies | Not yet individually inventoried | Verify licenses and versions before any runtime integration |
 
 Sources: `docs/research/SOURCES.md`; decision: `docs/legal/LICENSE_STRATEGY.md`.
 

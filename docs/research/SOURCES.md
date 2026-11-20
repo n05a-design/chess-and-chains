@@ -96,3 +96,19 @@ Nicht-Verifikationen und Designhypothesen sind in
 Es wurden keine fremden Regelimplementierungen, Tests, Bibliotheken oder
 Schachpartien kopiert. Die Referenzwerte werden nicht als Beleg für
 Plattform-/GUI-/Engine- oder Release-Reife ausgegeben.
+
+## W06-SVG-Rendererquellen am 2026-11-20
+
+| Quelle | Geprüfter Stand | Verwendet für / Grenze |
+| --- | --- | --- |
+| [CairoSVG auf PyPI](https://pypi.org/project/CairoSVG/) und [Dokumentation](https://cairosvg.org/documentation/) | CairoSVG 2.9.1; PyPI-Metadaten nennen LGPL-3.0-or-later und Abhängigkeiten `cairocffi`, `cssselect2`, `defusedxml`, Pillow und `tinycss2` | SVG-zu-PNG-PoC und Prüfhinweis, dass Cairo-/FFI-Bibliotheken je Plattform installiert oder paketiert werden müssen. Keine Runtime-Freigabe. |
+| [cairocffi auf PyPI](https://pypi.org/project/cairocffi/) und [Installationsdokumentation](https://doc.courtbouillon.org/cairocffi/stable/overview.html) | cairocffi 1.7.1, BSD; Dokumentation nennt dynamisches Laden von Cairo, `LD_LIBRARY_PATH` auf Linux und `CAIROCFFI_DLL_DIRECTORIES`/PATH auf Windows | Plattformpfad der nativen Cairo-Abhängigkeit; konkrete Bundle-/Launcher-Integration noch offen. |
+| [PySide6-Essentials auf PyPI](https://pypi.org/project/PySide6-Essentials/) | PySide6-Essentials 6.12.0; PyPI nennt QtSvg/QtSvgWidgets und Lizenz-Auswahl LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only | QtSvg-Prototyp und installierter Größenvergleich; keine Lizenz- oder Distributionfreigabe. |
+| [Qt OSS-Lizenzpflichten](https://www.qt.io/development/open-source-lgpl-obligations) | abgerufen 2026-11-20 | Offizielle Herstellerhinweise zu LGPL-/GPL-Modulen, korrespondierenden Quellen, Nutzerhinweisen und Relinking/Installation; keine konkrete Rechtsprüfung für das Produkt. |
+| [Qt 6 Drittkomponenten](https://doc.qt.io/qt-6/licenses-used-in-qt.html) | Qt-Dokumentation 6.12.0, abgerufen 2026-11-20 | Hinweis, dass tatsächlich ausgelieferte Module und enthaltene Drittkomponenten getrennt inventarisiert werden müssen. |
+| [PyInstaller auf PyPI](https://pypi.org/project/pyinstaller/) und [Dokumentation](https://pyinstaller.org/en/stable/operating-mode.html) | PyInstaller 6.22.3; Dokumentation sagt, Builds seien an aktives OS/Python/Wortbreite gebunden und Systembibliotheken aus `/lib` bzw. `/usr/lib` würden nicht mitgebündelt; PyPI nennt GPLv2-or-later mit besonderer Ausnahme für erzeugte Programme | Temporärer macOS-Einordner-Smoke-Test; Build-Tool, nicht als Produkt-Runtime aufgenommen. Keine Release- oder Installerwahl. |
+
+Der lokale Messaufbau, seine exakten Laufzeitdaten und Grenzen stehen in
+`scripts/benchmark_svg_backends.py` und
+`docs/reports/2026-11-20_W06_board-ui.md`. Verwendet wurde ausschließlich
+eine neu geschriebene SVG-Geometrie-Fixture; keine Owner- oder Fremdassets.

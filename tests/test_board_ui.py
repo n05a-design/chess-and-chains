@@ -11,11 +11,13 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from chess_and_chains.chess import (  # noqa: E402
     ChessRules,
+    GameStatus,
     Move,
     PieceType,
     parse_fen,
     parse_square,
 )
+from chess_and_chains.ui.app import ChessApp  # noqa: E402
 from chess_and_chains.ui.board import (  # noqa: E402
     BoardCanvas,
     moves_between,
@@ -124,6 +126,49 @@ class BoardInputTests(unittest.TestCase):
             self.board._on_drag(SimpleNamespace(x=end_x, y=end_y))
             self.board._on_button_release(SimpleNamespace(x=end_x, y=end_y))
         self.assertEqual(self.requested, [(Move(source, destination),)])
+
+
+class ChessAppActionTests(unittest.TestCase):
+    def setUp(self):
+        try:
+            self.root = tk.Tk()
+        except tk.TclError as error:
+            self.skipTest(f"Tk display unavailable: {error}")
+        self.root.withdraw()
+        self.app = ChessApp(self.root)
+
+    def tearDown(self):
+        if hasattr(self, "root"):
+            self.root.destroy()
+
+    def test_undo_and_redo_controls_follow_the_game_timeline(self):
+        move = Move(parse_square("e2"), parse_square("e4"))
+        self.assertEqual(self.app.undo_button.cget("state"), tk.DISABLED)
+        self.assertEqual(self.app.redo_button.cget("state"), tk.DISABLED)
+
+        self.app._play_move(move)
+        self.assertEqual(self.app.game.state.board[parse_square("e4")].kind, PieceType.PAWN)
+        self.assertEqual(self.app.undo_button.cget("state"), tk.NORMAL)
+
+        self.app._undo()
+        self.assertEqual(self.app.game.outcome().status, GameStatus.ACTIVE)
+        self.assertIsNone(self.app.game.state.board[parse_square("e4")])
+        self.assertEqual(self.app.undo_button.cget("state"), tk.DISABLED)
+        self.assertEqual(self.app.redo_button.cget("state"), tk.NORMAL)
+
+        self.app._redo()
+        self.assertEqual(self.app.game.state.board[parse_square("e4")].kind, PieceType.PAWN)
+        self.assertEqual(self.app.undo_button.cget("state"), tk.NORMAL)
+        self.assertEqual(self.app.redo_button.cget("state"), tk.DISABLED)
+
+    def test_flip_action_updates_app_and_board_orientation(self):
+        self.assertEqual(self.app.orientation, "white")
+        self.app._flip_board()
+        self.assertEqual(self.app.orientation, "black")
+        self.assertEqual(self.app.board._orientation, "black")
+        self.app._flip_board()
+        self.assertEqual(self.app.orientation, "white")
+        self.assertEqual(self.app.board._orientation, "white")
 
 
 if __name__ == "__main__":

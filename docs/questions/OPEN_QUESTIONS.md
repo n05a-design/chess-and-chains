@@ -1,6 +1,6 @@
 # Offene Rückfragen & Entscheidungsregister
 
-**Single Source of Truth für offene Owner-Fragen.** Stand: 19.11.2026. Fragen zuerst sammeln, nicht durch Copilot als beschlossene Fakten ausgeben. Entscheidung nach Owner-Antwort in passendes ADR übertragen, danach hier als `CLOSED` mit Link markieren.
+**Single Source of Truth für offene Owner-Fragen.** Stand: 20.11.2026. Fragen zuerst sammeln, nicht durch Copilot als beschlossene Fakten ausgeben. Entscheidung nach Owner-Antwort in passendes ADR übertragen, danach hier als `CLOSED` mit Link markieren.
 
 | ID | Priorität | Rückfrage an Owner | Vorgeschlagene Default-Richtung | Gate/Status |
 | --- | --- | --- | --- | --- |
@@ -8,7 +8,7 @@
 | Q-002 | BLOCKER | Ist **sofort gegen Bots spielen nach Erstinstallation** zwingend oder wäre eine separat zu installierende Engine akzeptabel? | Offline-Nutzbarkeit als Ziel beibehalten; falls Engine fehlt, keine Netzinstallation/Downloads voraussetzen und lokale Bereitstellung verständlich machen. Erststart-Komfort nach Rechtsprüfung entscheiden. | ADR-001 / OPEN |
 | Q-003 | HIGH | Können deine bestehenden **SVG-Schachfiguren** samt grafischen Masterdateien öffentlich unter einer benannten Lizenz bereitgestellt werden? | Nicht verwenden oder veröffentlichen, bis Autor, Quelle und Änderungs-/Weitergaberechte je Datei bestätigt sind; Originale getrennt registrieren. | ADR-005 / OPEN |
 | Q-004 | HIGH | Gibt es bereits **Brett-Design, Logo, Farbwerte, Schriftstile oder Brand-Guides**? | Zuerst Owner-Masterdateien inventarisieren; bis dahin neutrale austauschbare Tokens statt erfundener Markenwerte/Fonts. | ADR-005 / OPEN |
-| Q-005 | HIGH | Tk/Tk9 strikt beibehalten oder bei klaren SVG-/DPI-Nachteilen nach prototypischem Vergleich Qt zulassen? | Tk-Prototyp und Messung | ADR-002 / OPEN |
+| Q-005 | HIGH | Tk/Tk9 strikt beibehalten oder bei klaren SVG-/DPI-Nachteilen nach prototypischem Vergleich Qt zulassen? | Owner wählte am 20.11.2026 Tk als W06-Basis und beauftragte die CairoSVG-Plattform-/Offline-Paketierungsprüfung; Qt wurde nicht gewählt. Die CairoSVG-Runtime bleibt bis zu vollständiger Paketierungs-, Plattform- und Lizenzprüfung ungeprüft. | ADR-002 / CLOSED für W06-Stackrichtung; CairoSVG-Integration weiterhin gesperrt bis Prüfung |
 | Q-006 | HIGH | Soll die Glide-Shell später **eigenes Repository/Paket** werden oder aus Glide in Einzelmodulen übernommen werden? | Paket-Bridge ohne Kopie | ADR-002 / OPEN |
 | Q-007 | MEDIUM | Welche Plattformen haben **Release-Priorität**: Windows x64, Mac ARM64, Mac Intel, Linux? | Windows + Mac zuerst | ADR-006 / OPEN |
 | Q-008 | MEDIUM | Welche **Ratingspanne** oberhalb 1000 bevorzugst du (1000–2000 oder offen bis 3000+)? | Filter bis 3000+ | ADR-003 / OPEN |

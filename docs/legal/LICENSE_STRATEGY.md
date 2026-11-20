@@ -72,3 +72,22 @@ Projektabhängigkeiten. Die `THIRD_PARTY_NOTICES.md`-Kandidatenliste ist kein
 Nachweis einer Freigabe.
 
 **Quellen:** https://www.mozilla.org/en-US/MPL/2.0/FAQ/ ; https://www.mozilla.org/en-US/MPL/2.0/combining-mpl-and-gpl/ ; https://github.com/official-stockfish/Stockfish ; https://github.com/niklasf/python-chess ; https://www.gnu.org/licenses/gpl-faq.en.html
+
+## W06-SVG-Renderer-Kandidat (2026-11-20; keine Runtime-Freigabe)
+
+CairoSVG 2.9.1 wurde für einen isolierten Renderer-/Paketierungs-PoC
+evaluiert. PyPI nennt LGPL-3.0-or-later; die Laufzeit zieht u. a. cairocffi,
+Pillow, cssselect2, tinycss2 und defusedxml ein. PyPI nennt für cairocffi
+1.7.1 BSD. Die genaue Lizenz-/Versionsinventarisierung der gesamten
+transitiven Kette und der gebündelten nativen Cairo-/Font-/Bildbibliotheken
+ist **nicht abgeschlossen**. Für eine Veröffentlichung reicht die
+Laufzeit-Metadatenangabe einzelner PyPI-Seiten nicht als vollständiger
+Notice-/Source-/Binary-Nachweis.
+
+Es wurde keine Abhängigkeit in `pyproject.toml` aufgenommen. CairoSVG und
+cairocffi sind lokale Evaluationskandidaten; ihre temporäre Installation
+erfolgte außerhalb des Repositories. Eine Integration benötigt vorher eine
+vollständige Drittkomponenten-BOM, Lizenztexte/Notices, native
+Bibliotheksversionen sowie echte Paketierungsprüfungen für alle freigegebenen
+Zielsysteme. Details und Grenzen: `docs/reports/2026-11-20_W06_board-ui.md`,
+Quellen: `docs/research/SOURCES.md`.
