@@ -1,6 +1,6 @@
 # Zielarchitektur – Chess & Chains
 
-**PROPOSED / ARCHITECTURE-GATE REQUIRED**
+**PROPOSED / ARCHITECTURE-GATE REQUIRED** – Ist-Stand N02 siehe Abschnitt „Implementierte Schichten (N02)“.
 
 ```text
 app/ (Desktop host; UI, Navigation, Board)
@@ -15,6 +15,20 @@ src/chess_and_chains/application/ (commands, controller)
    ▲
 integrations/glide_shell/ (ONLY when individually cleared)
 ```
+
+## Implementierte Schichten (N02)
+
+| Paket | Verantwortung | Darf importieren |
+| --- | --- | --- |
+| `chess/` | Regeln, FEN/SAN/PGN, Historie | nur stdlib |
+| `engines/` | UCI-Prozess, Mock-Engine, Presets, MoveProvider | `chess` |
+| `game/` | GameController, Worker, Spielmodi | `chess`, `engines` |
+| `puzzles/` | Modell, Importer, Packs, Session | `chess` |
+| `storage/` | Pfade, SQLite, Settings | `chess` |
+| `i18n/` | DE/EN-Kataloge | stdlib |
+| `ui/` | Tk-App, Brett, Renderer, Dialoge | alle obigen |
+
+Abweichung vom Zielbild: `application/` heißt `game/`, `persistence/`+`settings/` sind in `storage/` zusammengefasst.
 
 ## Vertragsgrenzen
 

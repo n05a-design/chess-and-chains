@@ -24,5 +24,9 @@ chess-and-chains = "chess_and_chains.__main__:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+"chess_and_chains.engines" = ["*.json"]
+"chess_and_chains.puzzles" = ["data/demo/*.jsonl", "data/demo/*.json"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

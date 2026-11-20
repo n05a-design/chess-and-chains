@@ -229,17 +229,61 @@ def to_san(state: GameState, move: Move, rules: ChessRules | None = None) -> str
     return san
 
 
+_SAN = re.compile(
+    r"^(?P<piece>[KQRBN])?(?P<file>[a-h])?(?P<rank>[1-8])?(?P<capture>x)?"
+    r"(?P<to>[a-h][1-8])(?:=?(?P<promotion>[QRBN]))?$"
+)
+
+
 def parse_san(state: GameState, text: str, rules: ChessRules | None = None) -> Move:
+    """Parse one SAN token structurally against the legal moves of ``state``.
+
+    Accepts check/annotation suffixes, ``0-0`` castling, ``e.p.`` and
+    promotion without ``=`` (``e8Q``). Captures must be marked with ``x``.
+    """
     chess_rules = rules or ChessRules()
-    token = text.strip().replace("0", "O")
+    token = text.strip()
     token = re.sub(r"[!?]+$", "", token)
     token = re.sub(r"[+#]+$", "", token)
     token = re.sub(r"\s*e\.p\.$", "", token)
-    matches = [
-        move
-        for move in chess_rules.legal_moves(state)
-        if re.sub(r"[+#]+$", "", to_san(state, move, chess_rules)) == token
-    ]
+    legal = chess_rules.legal_moves(state)
+    castle = token.replace("0", "O")
+    if castle in ("O-O", "O-O-O"):
+        king = state.king_square(state.turn)
+        target_file = 6 if castle == "O-O" else 2
+        matches = [
+            move for move in legal
+            if move.from_square == king
+            and abs(move.to_square - move.from_square) == 2
+            and move.to_square % 8 == target_file
+        ]
+    else:
+        parsed = _SAN.match(token)
+        if parsed is None:
+            raise PGNError(f"Invalid or ambiguous SAN move: {text!r}")
+        kind = _PIECES[parsed["piece"].lower()] if parsed["piece"] else PieceType.PAWN
+        to_square = parse_square(parsed["to"])
+        promotion = _PIECES[parsed["promotion"].lower()] if parsed["promotion"] else None
+        wants_capture = parsed["capture"] is not None
+        matches = []
+        for move in legal:
+            piece = state.board[move.from_square]
+            if piece is None or piece.kind is not kind or move.to_square != to_square:
+                continue
+            if move.promotion is not promotion:
+                continue
+            if parsed["file"] and move.from_square % 8 != ord(parsed["file"]) - ord("a"):
+                continue
+            if parsed["rank"] and move.from_square // 8 != int(parsed["rank"]) - 1:
+                continue
+            is_capture = state.board[to_square] is not None or (
+                kind is PieceType.PAWN and move.from_square % 8 != to_square % 8
+            )
+            if is_capture != wants_capture:
+                continue
+            if kind is PieceType.PAWN and is_capture and not parsed["file"]:
+                continue
+            matches.append(move)
     if len(matches) != 1:
         raise PGNError(f"Invalid or ambiguous SAN move: {text!r}")
     return matches[0]
@@ -305,6 +349,16 @@ def parse_pgn(text: str, rules: ChessRules | None = None) -> PGNDocument:
     result = result_token or tag_result or "*"
     if result_token is None and not tokens:
         result = tag_result or "*"
+    final = game.outcome()
+    if result != "*" and final.status is not GameStatus.ACTIVE and final.status not in (
+        GameStatus.DRAW_CLAIMED,
+        GameStatus.RESIGNED,
+    ):
+        expected = _game_result(game)
+        if result != expected:
+            raise PGNError(
+                f"PGN result {result} contradicts the final position ({final.status.name.lower()})."
+            )
     return PGNDocument(tuple(tags), initial, tuple(game.moves), result)
 
 

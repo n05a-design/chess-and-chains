@@ -1,0 +1,249 @@
+"""DE/EN UI string catalogues.
+
+UI language is independent of chess notation: SAN/PGN/UCI always stay in the
+international English letters (K, Q, R, B, N) regardless of the UI locale.
+"""
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+from __future__ import annotations
+
+import locale as _locale
+import os
+import string
+from typing import Mapping
+
+DEFAULT_LOCALE = "en"
+SUPPORTED_LOCALES = ("en", "de")
+
+CATALOGS: dict[str, dict[str, str]] = {
+    "en": {
+        "app.title": "Chess & Chains",
+        "app.window_title": "Chess & Chains — Local Prototype",
+        "header.mode.human": "LOCAL GAME  ·  TWO PLAYERS",
+        "header.mode.bot_white": "YOU PLAY WHITE  ·  VS {bot}",
+        "header.mode.bot_black": "YOU PLAY BLACK  ·  VS {bot}",
+        "header.mode.puzzle": "PUZZLE LAB  ·  {pack}",
+        "board.test_pieces": "TEST PIECES  ·  TEMPORARY GEOMETRIC PLACEHOLDERS",
+        "tab.play": "PLAY",
+        "tab.moves": "MOVES",
+        "tab.puzzles": "PUZZLES",
+        "play.lead": "One game, one shared board.",
+        "play.description": "Choose a mode and start a new game. Every move is checked by the local rules domain.",
+        "play.mode_label": "Mode for the next game",
+        "mode.human": "Two players on this computer",
+        "mode.bot_white": "Play White against the bot",
+        "mode.bot_black": "Play Black against the bot",
+        "play.level_label": "Bot level",
+        "button.new_game": "New game",
+        "button.undo": "Undo move",
+        "button.redo": "Redo move",
+        "button.flip": "Flip board",
+        "button.resign": "Resign",
+        "button.retry_bot": "Retry bot",
+        "button.engine": "Engine settings…",
+        "button.save_game": "Save game",
+        "button.copy_pgn": "Copy PGN",
+        "button.hint": "Hint",
+        "button.solution": "Show solution",
+        "button.next_puzzle": "Next puzzle",
+        "button.cancel": "Cancel",
+        "button.save": "Save",
+        "button.test_engine": "Test engine",
+        "button.browse": "Browse…",
+        "button.use_mock": "Use mock bot",
+        "action.undo_unavailable": "Undo is unavailable before the first move.",
+        "action.redo_unavailable": "Redo is unavailable until a move has been undone.",
+        "action.redo_only": "No earlier move to undo; redo is available.",
+        "status.to_move": "{side} to move",
+        "status.check_to_move": "Check — {side} to move",
+        "status.checkmate": "{side} wins by checkmate",
+        "status.stalemate": "Draw by stalemate",
+        "status.insufficient": "Draw by insufficient material",
+        "status.fivefold": "Draw by fivefold repetition",
+        "status.seventyfive": "Draw by the 75-move rule",
+        "status.claimed": "Draw claimed",
+        "status.resigned": "{side} wins by resignation",
+        "status.finished": "Game finished",
+        "side.white": "White",
+        "side.black": "Black",
+        "bot.none": "NO BOT  ·  NO NETWORK  ·  NO CLOCK",
+        "bot.idle": "Bot ready: {bot}",
+        "bot.thinking": "{bot} is thinking…",
+        "bot.error": "Bot problem: {error}",
+        "bot.mock_notice": "Mock bot: a test engine that picks simple legal moves. It is not a real chess AI.",
+        "bot.level.1": "Level 1",
+        "bot.level.2": "Level 2",
+        "bot.level.3": "Level 3",
+        "bot.level.4": "Level 4",
+        "bot.level.5": "Level 5",
+        "bot.level.6": "Level 6",
+        "moves.title": "Move record",
+        "moves.empty": "No moves yet. The record begins with the first legal move.",
+        "new_game.confirm_title": "Start a new game?",
+        "new_game.confirm_body": "The current game, including undone moves, will be replaced.",
+        "promotion.title": "Choose promotion",
+        "promotion.prompt": "Choose the piece for promotion",
+        "piece.queen": "Queen",
+        "piece.rook": "Rook",
+        "piece.bishop": "Bishop",
+        "piece.knight": "Knight",
+        "move.rejected": "Move rejected: {error}",
+        "move.ambiguous": "Move choice is ambiguous; select a square again.",
+        "board.white_bottom": "White's side is at the bottom.",
+        "board.black_bottom": "Black's side is at the bottom.",
+        "save.done": "Game saved to the local library (#{id}).",
+        "save.unavailable": "Saving is unavailable in this session.",
+        "pgn.copied": "PGN copied to the clipboard.",
+        "puzzle.title": "Puzzle {index} of {count}",
+        "puzzle.meta": "{id}  ·  rating {rating}  ·  {themes}",
+        "puzzle.demo_notice": "Demo pack: project-authored positions with fixture ratings, not Lichess data.",
+        "puzzle.prompt": "{side} to move. Find the best move.",
+        "puzzle.correct": "Correct. Opponent replied {reply}. Keep going.",
+        "puzzle.solved": "Solved!",
+        "puzzle.solved_alternative": "Solved with an equally valid mate!",
+        "puzzle.wrong": "Not the solution. Try again.",
+        "puzzle.illegal": "That move is not legal here.",
+        "puzzle.revealed": "Solution: {line}",
+        "puzzle.hint": "Hint: move the piece on {square}.",
+        "puzzle.progress": "Solved {solved} of {count} in this pack.",
+        "engine.title": "Engine settings",
+        "engine.explain": "Choose a UCI engine executable that is already installed on this computer. Chess & Chains never downloads or installs engines.",
+        "engine.path_label": "Engine executable",
+        "engine.testing": "Testing engine…",
+        "engine.test_ok": "Engine answered: {name} ({count} options).",
+        "engine.test_failed": "Engine test failed: {error}",
+        "engine.saved": "Engine setting saved. It is used for the next bot game.",
+        "engine.missing": "No engine configured; the mock bot will be used.",
+    },
+    "de": {
+        "app.title": "Chess & Chains",
+        "app.window_title": "Chess & Chains — Lokaler Prototyp",
+        "header.mode.human": "LOKALE PARTIE  ·  ZWEI PERSONEN",
+        "header.mode.bot_white": "DU SPIELST WEISS  ·  GEGEN {bot}",
+        "header.mode.bot_black": "DU SPIELST SCHWARZ  ·  GEGEN {bot}",
+        "header.mode.puzzle": "PUZZLE LAB  ·  {pack}",
+        "board.test_pieces": "TESTFIGUREN  ·  PROVISORISCHE GEOMETRISCHE PLATZHALTER",
+        "tab.play": "SPIEL",
+        "tab.moves": "ZÜGE",
+        "tab.puzzles": "RÄTSEL",
+        "play.lead": "Eine Partie, ein gemeinsames Brett.",
+        "play.description": "Modus wählen und neue Partie starten. Jeder Zug wird von der lokalen Regeldomäne geprüft.",
+        "play.mode_label": "Modus für die nächste Partie",
+        "mode.human": "Zwei Personen an diesem Computer",
+        "mode.bot_white": "Mit Weiß gegen den Bot",
+        "mode.bot_black": "Mit Schwarz gegen den Bot",
+        "play.level_label": "Bot-Stufe",
+        "button.new_game": "Neue Partie",
+        "button.undo": "Zug zurück",
+        "button.redo": "Zug wiederholen",
+        "button.flip": "Brett drehen",
+        "button.resign": "Aufgeben",
+        "button.retry_bot": "Bot erneut versuchen",
+        "button.engine": "Engine-Einstellungen…",
+        "button.save_game": "Partie speichern",
+        "button.copy_pgn": "PGN kopieren",
+        "button.hint": "Hinweis",
+        "button.solution": "Lösung zeigen",
+        "button.next_puzzle": "Nächstes Rätsel",
+        "button.cancel": "Abbrechen",
+        "button.save": "Speichern",
+        "button.test_engine": "Engine testen",
+        "button.browse": "Durchsuchen…",
+        "button.use_mock": "Mock-Bot verwenden",
+        "action.undo_unavailable": "Vor dem ersten Zug ist kein Zurücknehmen möglich.",
+        "action.redo_unavailable": "Wiederholen ist erst nach einem zurückgenommenen Zug möglich.",
+        "action.redo_only": "Kein früherer Zug zum Zurücknehmen; Wiederholen ist möglich.",
+        "status.to_move": "{side} am Zug",
+        "status.check_to_move": "Schach — {side} am Zug",
+        "status.checkmate": "{side} gewinnt durch Schachmatt",
+        "status.stalemate": "Remis durch Patt",
+        "status.insufficient": "Remis durch ungenügendes Material",
+        "status.fivefold": "Remis durch fünffache Wiederholung",
+        "status.seventyfive": "Remis durch die 75-Züge-Regel",
+        "status.claimed": "Remis beansprucht",
+        "status.resigned": "{side} gewinnt durch Aufgabe",
+        "status.finished": "Partie beendet",
+        "side.white": "Weiß",
+        "side.black": "Schwarz",
+        "bot.none": "KEIN BOT  ·  KEIN NETZWERK  ·  KEINE UHR",
+        "bot.idle": "Bot bereit: {bot}",
+        "bot.thinking": "{bot} rechnet…",
+        "bot.error": "Bot-Problem: {error}",
+        "bot.mock_notice": "Mock-Bot: eine Test-Engine, die einfache legale Züge wählt. Keine echte Schach-KI.",
+        "bot.level.1": "Stufe 1",
+        "bot.level.2": "Stufe 2",
+        "bot.level.3": "Stufe 3",
+        "bot.level.4": "Stufe 4",
+        "bot.level.5": "Stufe 5",
+        "bot.level.6": "Stufe 6",
+        "moves.title": "Zugliste",
+        "moves.empty": "Noch keine Züge. Die Liste beginnt mit dem ersten legalen Zug.",
+        "new_game.confirm_title": "Neue Partie starten?",
+        "new_game.confirm_body": "Die aktuelle Partie einschließlich zurückgenommener Züge wird ersetzt.",
+        "promotion.title": "Umwandlung wählen",
+        "promotion.prompt": "Figur für die Umwandlung wählen",
+        "piece.queen": "Dame",
+        "piece.rook": "Turm",
+        "piece.bishop": "Läufer",
+        "piece.knight": "Springer",
+        "move.rejected": "Zug abgelehnt: {error}",
+        "move.ambiguous": "Zugwahl ist mehrdeutig; bitte erneut ein Feld wählen.",
+        "board.white_bottom": "Weiß spielt von unten.",
+        "board.black_bottom": "Schwarz spielt von unten.",
+        "save.done": "Partie in der lokalen Bibliothek gespeichert (#{id}).",
+        "save.unavailable": "Speichern ist in dieser Sitzung nicht verfügbar.",
+        "pgn.copied": "PGN in die Zwischenablage kopiert.",
+        "puzzle.title": "Rätsel {index} von {count}",
+        "puzzle.meta": "{id}  ·  Wertung {rating}  ·  {themes}",
+        "puzzle.demo_notice": "Demo-Paket: projekteigene Stellungen mit Test-Wertungen, keine Lichess-Daten.",
+        "puzzle.prompt": "{side} am Zug. Finde den besten Zug.",
+        "puzzle.correct": "Richtig. Antwort des Gegners: {reply}. Weiter so.",
+        "puzzle.solved": "Gelöst!",
+        "puzzle.solved_alternative": "Gelöst mit einem gleichwertigen Matt!",
+        "puzzle.wrong": "Nicht die Lösung. Versuche es noch einmal.",
+        "puzzle.illegal": "Dieser Zug ist hier nicht legal.",
+        "puzzle.revealed": "Lösung: {line}",
+        "puzzle.hint": "Hinweis: Ziehe die Figur auf {square}.",
+        "puzzle.progress": "{solved} von {count} Rätseln dieses Pakets gelöst.",
+        "engine.title": "Engine-Einstellungen",
+        "engine.explain": "Wähle eine bereits auf diesem Computer installierte UCI-Engine. Chess & Chains lädt oder installiert niemals Engines.",
+        "engine.path_label": "Engine-Programmdatei",
+        "engine.testing": "Engine wird getestet…",
+        "engine.test_ok": "Engine antwortet: {name} ({count} Optionen).",
+        "engine.test_failed": "Engine-Test fehlgeschlagen: {error}",
+        "engine.saved": "Engine-Einstellung gespeichert. Sie gilt ab der nächsten Bot-Partie.",
+        "engine.missing": "Keine Engine konfiguriert; der Mock-Bot wird verwendet.",
+    },
+}
+
+
+def placeholders(text: str) -> set[str]:
+    return {name for _, name, _, _ in string.Formatter().parse(text) if name}
+
+
+def system_locale(environ: Mapping[str, str] | None = None) -> str:
+    env = os.environ if environ is None else environ
+    candidates = [env.get(k) for k in ("LC_ALL", "LC_MESSAGES", "LANG")]
+    try:
+        candidates.append(_locale.getlocale()[0])
+    except ValueError:
+        pass
+    for value in candidates:
+        if value:
+            code = value.split(".")[0].split("_")[0].lower()
+            if code in SUPPORTED_LOCALES:
+                return code
+    return DEFAULT_LOCALE
+
+
+class Translator:
+    def __init__(self, locale: str | None = None) -> None:
+        self.locale = locale if locale in SUPPORTED_LOCALES else system_locale()
+
+    def __call__(self, key: str, **values: object) -> str:
+        text = CATALOGS[self.locale].get(key) or CATALOGS[DEFAULT_LOCALE].get(key)
+        if text is None:
+            raise KeyError(f"Missing translation key {key!r}")
+        return text.format(**values) if values else text

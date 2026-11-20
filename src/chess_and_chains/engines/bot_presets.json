@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "note": "Requested engine option values only. They are NOT measured playing strengths; see docs/qa/BOT_CALIBRATION_PLAN.md.",
+  "presets": [
+    {"id": "level-1", "label_key": "bot.level.1", "movetime_ms": 50,   "skill_level": 0,  "limit_elo": null, "threads": 1, "hash_mb": 16},
+    {"id": "level-2", "label_key": "bot.level.2", "movetime_ms": 100,  "skill_level": 3,  "limit_elo": null, "threads": 1, "hash_mb": 16},
+    {"id": "level-3", "label_key": "bot.level.3", "movetime_ms": 200,  "skill_level": 6,  "limit_elo": null, "threads": 1, "hash_mb": 16},
+    {"id": "level-4", "label_key": "bot.level.4", "movetime_ms": 400,  "skill_level": 10, "limit_elo": null, "threads": 1, "hash_mb": 32},
+    {"id": "level-5", "label_key": "bot.level.5", "movetime_ms": 800,  "skill_level": 15, "limit_elo": null, "threads": 2, "hash_mb": 64},
+    {"id": "level-6", "label_key": "bot.level.6", "movetime_ms": 1500, "skill_level": 20, "limit_elo": null, "threads": 2, "hash_mb": 128}
+  ]
+}

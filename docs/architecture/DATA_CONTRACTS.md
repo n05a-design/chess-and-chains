@@ -32,4 +32,4 @@ Historie.
 
 `Settings {schema_version, locale, theme_id, piece_set_id, board_id, engine_profile_id, data_path}`. App-interne Pfade müssen portabel/migrierbar sein.
 
-**Noch KEINE Datenbank-/JSON-Schemaversion beschlossen.** Vor Implementierung mit Tests und ADR-004 festlegen.
+**Implementierungsvorschlag N02 (ADR-004 weiterhin PROPOSED):** SQLite `PRAGMA user_version` = 2 (`storage/database.py`: Tabellen `games`, `puzzle_attempts`, View `puzzle_progress`), Settings-JSON `schema_version` 1 (`storage/settings.py`), Puzzle-Packs `schema` 1 (`puzzles/pack.py`: `manifest.json` mit SHA-256 + `puzzles.jsonl` + `import_report.json`). Migrationen sichern bestehende DBs vorher (`*.pre-vN-*.bak`); neuere Schemata werden nicht verändert; beschädigte Dateien werden umbenannt, nie gelöscht. Endgültige Festlegung durch Owner über ADR-004.

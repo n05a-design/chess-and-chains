@@ -1,0 +1,16 @@
+{
+  "source_name": "demo_puzzles.csv",
+  "filters": {
+    "min_rating": 1000,
+    "max_rating": null
+  },
+  "started_utc": "2026-11-20T12:35:15+00:00",
+  "finished_utc": "2026-11-20T12:35:15+00:00",
+  "rows_read": 5,
+  "accepted": 5,
+  "rejected": {},
+  "rejected_examples": {},
+  "input_sha256": "1d6d5d96818f933ad08d8e6d2f82be5f70831b84de9b325856ebc77f0f7311e3",
+  "input_bytes": 663,
+  "complete": true
+}

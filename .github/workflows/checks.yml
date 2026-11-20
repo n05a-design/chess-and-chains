@@ -1,4 +1,4 @@
-name: Foundation checks
+name: Checks
 
 on:
   push:
@@ -7,21 +7,101 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONPATH: src
+  PYTHONWARNINGS: error::ResourceWarning
+
 jobs:
-  foundation:
+  foundation-docs:
+    name: Foundation, status model and documentation
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Run Foundation tests
-        run: python -m unittest discover -s tests -v
-      - name: Verify starter structure
+      - name: Status model and structure
         run: python scripts/verify_starter.py
-      - name: Verify documentation links
+      - name: Documentation links
         run: python scripts/verify_document_links.py
-      - name: Compile Python sources
+      - name: Translation catalog parity
+        run: python -m unittest tests.test_i18n -v
+      - name: Foundation tests
+        run: python -m unittest tests.test_foundation -v
+
+  static-security:
+    name: Static checks and security policy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile all sources
         run: python -m compileall -q src app scripts tests
+      - name: Policy scan (no shell=True, no network clients, no bundled engines)
+        run: python scripts/check_policy.py
+
+  headless:
+    name: Core / UCI / Puzzle / Storage (${{ matrix.os }}, py${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          allow-prereleases: true
+      - name: Chess core
+        run: python -m unittest tests.test_chess_core tests.test_chess_golden -v
+      - name: UCI adapter, presets and game controller (mock engine)
+        run: python -m unittest tests.test_uci_engine tests.test_bot_presets tests.test_game_controller -v
+      - name: Puzzle pipeline
+        run: python -m unittest tests.test_puzzles -v
+      - name: Storage
+        run: python -m unittest tests.test_storage -v
+
+  gui-linux:
+    name: Tk GUI tests under Xvfb (py${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.14"]
+    env:
+      CHESS_AND_CHAINS_REQUIRE_DISPLAY: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          allow-prereleases: true
+      - name: Install Xvfb
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+      - name: GUI tests (skips are failures here)
+        run: xvfb-run -a python -m unittest tests.test_board_ui tests.test_app_integration -v
+
+  gui-native:
+    name: Tk GUI tests native (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    env:
+      CHESS_AND_CHAINS_REQUIRE_DISPLAY: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: GUI tests
+        run: python -m unittest tests.test_board_ui tests.test_app_integration -v

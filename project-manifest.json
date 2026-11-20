@@ -1,11 +1,11 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "2.0",
   "project": "Chess & Chains",
   "slug": "chess-and-chains",
   "proposed_repository": "n05a-design/chess-and-chains",
-  "snapshot_date": "2026-11-19",
+  "snapshot_date": "2026-11-20",
   "foundation_version": "F0",
-  "product_status": "FOUNDATION_ONLY_NOT_PLAYABLE",
+  "product_status": "PROTOTYPE_LOCAL_PLAY_NOT_RELEASED",
   "language_policy": {
     "public_readmes": [
       "en",
@@ -47,7 +47,16 @@
       "depends_on": "keine",
       "gate": "Clone/HEAD, F0-Struktur, README/MANIFEST/AGENTS, Link- und Manifestprüfung protokolliert",
       "phase": "F0",
-      "status": "NOT_STARTED"
+      "status": "TESTED",
+      "scope": "Repository inventory, F0 structure, manifest/link verification scripts",
+      "status_evidence": [
+        "docs/reports/2026-11-20_W00_bootstrap.md",
+        "scripts/verify_starter.py",
+        "tests/test_foundation.py"
+      ],
+      "open_gate_items": [
+        "Owner acceptance of W00 handoff"
+      ]
     },
     {
       "id": "W01",
@@ -56,7 +65,11 @@
       "depends_on": "W00",
       "gate": "Blick auf Nutzergruppen, MVP/Nicht-Ziele, Q-Register und ADR-000; Blocker markiert",
       "phase": "F0",
-      "status": "NOT_STARTED"
+      "status": "IN_PROGRESS",
+      "status_evidence": [
+        "docs/reports/2026-11-20_W01_scope.md",
+        "docs/product/MVP_CONTRACT.md"
+      ]
     },
     {
       "id": "W02",
@@ -65,7 +78,11 @@
       "depends_on": "W00",
       "gate": "Belegte, getrennte Rechte-/Engine-Matrix, ADR-001 als vorgeschlagene Entscheidung; keine verbotene Bündelung",
       "phase": "F0",
-      "status": "NOT_STARTED"
+      "status": "IN_PROGRESS",
+      "status_evidence": [
+        "docs/reports/2026-11-20_W02_license.md",
+        "docs/legal/LICENSE_STRATEGY.md"
+      ]
     },
     {
       "id": "W03",
@@ -74,7 +91,10 @@
       "depends_on": "W00",
       "gate": "Aktuellster Referenz-Commit, isolierbare Komponenten, Lizenz-/Testplan, Rollback; keine Komplettkopie",
       "phase": "F0",
-      "status": "NOT_STARTED"
+      "status": "IN_PROGRESS",
+      "status_evidence": [
+        "docs/reports/2026-11-20_W03_glide-audit.md"
+      ]
     },
     {
       "id": "W04",
@@ -83,7 +103,10 @@
       "depends_on": "W00",
       "gate": "Quellenbasierte Konkurrenzmatrix, Designsystem-Vorschlag, Asset-Herkunft und Wireframe-Fragen",
       "phase": "F0",
-      "status": "NOT_STARTED"
+      "status": "IN_PROGRESS",
+      "status_evidence": [
+        "docs/reports/2026-11-20_W04_competitor-design.md"
+      ]
     },
     {
       "id": "W05",
@@ -92,7 +115,17 @@
       "depends_on": "W01/W02",
       "gate": "Regelkonformer FEN/PGN-Zugablauf mit vollständigen Prüfungen, ohne GUI/Engine-Verflechtung",
       "phase": "F1",
-      "status": "NOT_STARTED"
+      "status": "TESTED",
+      "scope": "Headless rules domain: legal moves, FEN/SAN/PGN mainline, draw rules, undo/redo; perft + golden tests",
+      "status_evidence": [
+        "docs/reports/2026-11-20_W05_chess-core.md",
+        "src/chess_and_chains/chess/rules.py",
+        "tests/test_chess_core.py"
+      ],
+      "open_gate_items": [
+        "Owner acceptance",
+        "PGN variations/comments are skipped, not preserved (documented limitation)"
+      ]
     },
     {
       "id": "W06",
@@ -101,7 +134,20 @@
       "depends_on": "W03/W05",
       "gate": "Original-SVG-Rendering, Boardinteraktion, DPI/Keyboard, native UI-Gates",
       "phase": "F1",
-      "status": "NOT_STARTED"
+      "status": "IMPLEMENTED",
+      "scope": "Tk board with click/drag/keyboard input and geometric test pieces; no original SVG pieces",
+      "status_evidence": [
+        "docs/reports/2026-11-20_W06_board-ui.md",
+        "src/chess_and_chains/ui/board.py",
+        "tests/test_board_ui.py",
+        "src/chess_and_chains/ui/pieces.py",
+        "docs/reports/2026-11-20_N02_functional-core.md"
+      ],
+      "open_gate_items": [
+        "Original owner SVG piece rendering (ADR-005 asset gate)",
+        "Native Windows/Linux UI acceptance",
+        "High-DPI acceptance"
+      ]
     },
     {
       "id": "W07",
@@ -110,7 +156,22 @@
       "depends_on": "W02/W05",
       "gate": "UCI-Lifecycle, Fehlerbehandlung, dokumentierte Skills, physischer Offline-Test",
       "phase": "F2",
-      "status": "NOT_STARTED"
+      "status": "TESTED",
+      "scope": "UCI adapter + GameController + async worker + bot presets, tested with the project-owned mock engine; no real engine tested",
+      "status_evidence": [
+        "docs/reports/2026-11-20_W07_uci.md",
+        "docs/reports/2026-11-20_N02_functional-core.md",
+        "src/chess_and_chains/game/controller.py",
+        "src/chess_and_chains/engines/presets.py",
+        "tests/test_uci_engine.py",
+        "tests/test_game_controller.py",
+        "tests/test_bot_presets.py"
+      ],
+      "open_gate_items": [
+        "Real third-party engine offline test (ADR-001)",
+        "Bot strength calibration (ADR-007)",
+        "Native UI acceptance of bot mode on Windows/Linux"
+      ]
     },
     {
       "id": "W08",
@@ -119,7 +180,20 @@
       "depends_on": "W05",
       "gate": "Rechtssicherer Import, erste UCI-Aktion, Ratingminimum, Datenqualitätsberichte",
       "phase": "F3",
-      "status": "NOT_STARTED"
+      "status": "TESTED",
+      "scope": "Puzzle model, streaming Lichess CSV importer, versioned JSONL packs, puzzle session controller; tested with project-authored fixtures only",
+      "status_evidence": [
+        "docs/reports/2026-11-20_N02_functional-core.md",
+        "src/chess_and_chains/puzzles/importer.py",
+        "src/chess_and_chains/puzzles/session.py",
+        "tests/test_puzzles.py",
+        "tests/fixtures/puzzles_sample.csv"
+      ],
+      "open_gate_items": [
+        "Real Lichess export import run (owner opt-in download)",
+        "Pack size decision Q-009",
+        "Rating ceiling Q-008"
+      ]
     },
     {
       "id": "W09",
@@ -128,7 +202,19 @@
       "depends_on": "W05/W08",
       "gate": "Getrennte Nutzerdaten, Migrations- und Restore-Proben, PGN/FEN-Roundtrip",
       "phase": "F4",
-      "status": "NOT_STARTED"
+      "status": "IMPLEMENTED",
+      "scope": "SQLite schema with versioned migrations, backup/restore, corruption quarantine, atomic JSON settings, saved games and puzzle progress",
+      "status_evidence": [
+        "docs/reports/2026-11-20_N02_functional-core.md",
+        "src/chess_and_chains/storage/database.py",
+        "src/chess_and_chains/storage/settings.py",
+        "tests/test_storage.py"
+      ],
+      "open_gate_items": [
+        "Save/load UI",
+        "Profile model decision Q-012",
+        "ADR-004 acceptance"
+      ]
     },
     {
       "id": "W10",
@@ -137,7 +223,12 @@
       "depends_on": "W06/W09",
       "gate": "DE/EN-Katalogparität, Keyboard-/Kontrast-/Scaling-Abnahmen",
       "phase": "F4",
-      "status": "NOT_STARTED"
+      "status": "IN_PROGRESS",
+      "status_evidence": [
+        "docs/reports/2026-11-20_N02_functional-core.md",
+        "src/chess_and_chains/i18n/catalog.py",
+        "tests/test_i18n.py"
+      ]
     },
     {
       "id": "W11",
@@ -146,7 +237,11 @@
       "depends_on": "W05–W10",
       "gate": "Echte CI/OS/Offline-/Lieferartefakt-Belege, offene Fehler, keine erfundenen Gates",
       "phase": "F5",
-      "status": "NOT_STARTED"
+      "status": "IN_PROGRESS",
+      "status_evidence": [
+        ".github/workflows/checks.yml",
+        "docs/reports/2026-11-20_N02_functional-core.md"
+      ]
     },
     {
       "id": "W12",
@@ -177,14 +272,21 @@
     }
   ],
   "not_included": [
-    "live_chess_game",
+    "real_engine_bot_play",
     "stockfish_binary",
     "chess_rules_dependency",
-    "puzzle_datasets",
+    "full_puzzle_datasets",
     "user_svg_assets",
     "website",
     "installers",
     "winget_package",
     "homebrew_cask"
-  ]
+  ],
+  "foundation_baseline": {
+    "foundation_version": "F0",
+    "snapshot_date": "2026-11-19",
+    "product_status": "FOUNDATION_ONLY_NOT_PLAYABLE",
+    "work_package_status": "NOT_STARTED"
+  },
+  "status_model": "docs/governance/STATUS_MODEL.md"
 }

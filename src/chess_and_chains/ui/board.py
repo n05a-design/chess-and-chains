@@ -19,7 +19,8 @@ from __future__ import annotations
 import tkinter as tk
 from typing import Callable, Literal, Sequence
 
-from ..chess import Color, GameState, Move, Piece, PieceType
+from ..chess import GameState, Move, Piece, PieceType
+from .pieces import GeometricTestPieces, PieceRenderer
 from .theme import (
     CHROME_YELLOW,
     FOCUS_INK,
@@ -86,6 +87,7 @@ class BoardCanvas(tk.Canvas):
         master: tk.Misc,
         on_move_requested: MoveRequest,
         on_selection_changed: SelectionCallback | None = None,
+        renderer: PieceRenderer | None = None,
     ) -> None:
         super().__init__(
             master,
@@ -96,6 +98,8 @@ class BoardCanvas(tk.Canvas):
         )
         self._on_move_requested = on_move_requested
         self._on_selection_changed = on_selection_changed
+        self.renderer: PieceRenderer = renderer or GeometricTestPieces()
+        self._hint_square: int | None = None
         self._state: GameState | None = None
         self._legal_moves: tuple[Move, ...] = ()
         self._last_move: Move | None = None
@@ -136,10 +140,20 @@ class BoardCanvas(tk.Canvas):
         self._last_move = last_move
         self._in_check = in_check
         self._selected = None
+        self._hint_square = None
         self._drag_active = False
         self._drag_pointer = None
         self._notify_selection("")
         self.redraw()
+
+    def set_hint(self, square: int | None) -> None:
+        """Mark a square (e.g. the puzzle hint's source square)."""
+        self._hint_square = square
+        self.redraw()
+
+    @property
+    def orientation(self) -> Orientation:
+        return self._orientation
 
     def set_orientation(self, orientation: Orientation) -> None:
         if orientation not in ("white", "black"):
@@ -302,6 +316,20 @@ class BoardCanvas(tk.Canvas):
                     outline=LEGAL_MARK,
                 )
 
+        if self._hint_square is not None:
+            column, row = screen_cell(self._hint_square, self._orientation)
+            inset = size * 0.08
+            self.create_rectangle(
+                self._board_x + column * size + inset,
+                self._board_y + row * size + inset,
+                self._board_x + (column + 1) * size - inset,
+                self._board_y + (row + 1) * size - inset,
+                outline=FOCUS_INK,
+                dash=(2, 4),
+                width=max(2, int(size * 0.04)),
+                tags=("hint",),
+            )
+
         if self._in_check:
             king_square = self._state.king_square(self._state.turn)
             column, row = screen_cell(king_square, self._orientation)
@@ -343,27 +371,9 @@ class BoardCanvas(tk.Canvas):
         *,
         lifted: bool = False,
     ) -> None:
-        radius = square_size * (0.31 if not lifted else 0.34)
-        white_piece = piece.color is Color.WHITE
-        fill = PAPER if white_piece else INK
-        text_fill = INK if white_piece else PAPER
-        self.create_oval(
-            center_x - radius,
-            center_y - radius,
-            center_x + radius,
-            center_y + radius,
-            fill=fill,
-            outline=INK if white_piece else PAPER,
-            width=max(2, int(square_size * 0.035)),
-        )
-        symbol = piece.kind.value.upper()
-        self.create_text(
-            center_x,
-            center_y,
-            text=symbol,
-            fill=text_fill,
-            font=("TkDefaultFont", max(10, int(square_size * 0.42)), "bold"),
-        )
+        """Delegate to the exchangeable piece renderer (name kept for compatibility)."""
+        self.renderer.draw(self, center_x, center_y, square_size, piece, lifted=lifted)
+
     def _draw_last_move(self, x: float, y: float, size: float) -> None:
         self.create_rectangle(
             x,

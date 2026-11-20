@@ -23,6 +23,14 @@ Dieser Ordner ist ein vorgesehener **Integrationspunkt** und **enthält absichtl
 
 Erst nach Approval eine Zeile pro Datei in `REUSE_REGISTER.csv` mit `candidate -> isolated -> ported -> reviewed`; `reviewed` setzt unabhängige Tests voraus.
 
+## Quellenstand N02 (2026-11-20, nur lesend via `git ls-remote`/GitHub-Tree)
+
+- `n05a-design/glide-to-do` HEAD `4b6bce086a6dcb8984b8d2ee95e0a267f7a91adb`
+- `n05a-design/steps` HEAD `47af95372bf07002d61d88911774119ce1708644`
+- Befund: weiterhin **kein eigenständiges Glide-Shell-Paket** (kein `pyproject`/Paket „glide_shell“); neu ist nur
+  `01_Repository/Glide/docs/FABLE_GLIDE_SHELL_MIGRATION_PROMPT.md` (Migrationsauftrag, kein Code). Chess & Chains bleibt
+  unabhängig; Andockpunkte sind `ui/theme.py` (Tokens), `i18n/`, `storage/settings.py` und `ui/pieces.py` (Renderer-Protokoll).
+
 ## Quellenstand W03 (2026-11-20)
 
 Der aktuelle, ausschließlich lesende Audit ist in

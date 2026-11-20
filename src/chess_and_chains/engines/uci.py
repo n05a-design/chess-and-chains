@@ -282,6 +282,19 @@ class UCIEngine:
             self._send("stop")
             return True
 
+    def kill(self) -> None:
+        """Force-terminate the process without waiting for an active transaction.
+
+        Safe to call from any thread. A blocked search then fails with
+        EngineProtocolError; call close() afterwards to release resources.
+        """
+        process = self._process
+        if process is not None and process.poll() is None:
+            try:
+                process.kill()
+            except (ProcessLookupError, OSError):
+                pass
+
     def close(self) -> None:
         with self._transaction_lock:
             process = self._process

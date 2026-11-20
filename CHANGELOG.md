@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased – N02 Functional Core (2026-11-20, local commits, not pushed)
+
+- Evidence-based work-package status model; F0 baseline preserved.
+- Chess core: structural SAN parser (PGN import ~14× faster), PGN result
+  consistency checks, promotion without `=`, new golden/perft/property tests.
+- Game controller with asynchronous bot worker, stale-result protection and
+  engine fault handling; project-owned mock UCI engine (not a chess AI).
+- Six data-driven bot presets with handshake-based option negotiation.
+- Puzzle Lab: streaming Lichess CSV importer (Rating ≥ 1000), versioned
+  packs, solving sessions, five project-authored demo puzzles.
+- Local storage: platform data paths, SQLite migrations, backup/restore,
+  corruption quarantine, atomic JSON settings.
+- Tk app: bot modes, levels, engine settings dialog, puzzle tab, save game,
+  copy PGN, shortcuts, DE/EN UI, exchangeable piece renderer, SVG contract.
+- CI split into foundation/docs, policy, headless OS×Python matrix, GUI jobs.
+
 ## Unreleased – Foundation F0 (2026-11-19)
 
 - Initial repository starter, product brief, licensing decision gate and prompt work orders.
