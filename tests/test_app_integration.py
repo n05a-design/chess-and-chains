@@ -46,13 +46,31 @@ class AppTestCase(unittest.TestCase):
         return self.app
 
     def pump_until(self, predicate, timeout=10.0):
-        deadline = time.monotonic() + timeout
-        while time.monotonic() < deadline:
-            self.root.update()
-            if predicate():
-                return
-            time.sleep(0.005)
-        self.fail("condition not reached while pumping Tk events")
+        reached = False
+        check_job = None
+
+        def check():
+            nonlocal reached, check_job
+            check_job = None
+            reached = bool(predicate())
+            if reached:
+                self.root.quit()
+            else:
+                check_job = self.root.after(5, check)
+
+        stop_job = self.root.after(int(timeout * 1000), self.root.quit)
+        check_job = self.root.after(0, check)
+        try:
+            self.root.mainloop()
+        finally:
+            self.root.after_cancel(stop_job)
+            if check_job is not None:
+                self.root.after_cancel(check_job)
+        self.assertTrue(reached, "condition not reached while pumping Tk events")
+
+    def pump_for(self, seconds):
+        deadline = time.monotonic() + seconds
+        self.pump_until(lambda: time.monotonic() >= deadline, timeout=seconds + 1)
 
 
 class PromotionUiTests(AppTestCase):
@@ -132,13 +150,15 @@ class BotVerticalSliceTests(AppTestCase):
         self.assertIn("thinking", app.bot_text.get())
         self.assertEqual(app.board._legal_moves, (), "board is locked while the bot thinks")
         gaps, last = [], time.monotonic()
-        while len(app.game.moves) < 2 and time.monotonic() - start < 10:
-            self.root.update()
+
+        def bot_replied():
+            nonlocal last
             now = time.monotonic()
             gaps.append(now - last)
             last = now
-            time.sleep(0.01)
-        self.assertEqual(len(app.game.moves), 2)
+            return len(app.game.moves) == 2
+
+        self.pump_until(bot_replied)
         self.assertLess(max(gaps), 0.25, "Tk loop stalled while engine computed")
 
     def test_bot_plays_white_and_board_orients_for_black(self):
@@ -155,10 +175,7 @@ class BotVerticalSliceTests(AppTestCase):
         app._undo()
         self.assertEqual(app.game.moves, [])
         app.start_game("human-vs-human")
-        deadline = time.monotonic() + 0.8
-        while time.monotonic() < deadline:
-            self.root.update()
-            time.sleep(0.01)
+        self.pump_for(0.8)
         self.assertEqual(app.game.moves, [])
         self.assertIn("TWO PLAYERS", app.header_mode_text.get())
 
