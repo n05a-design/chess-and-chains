@@ -116,7 +116,7 @@
       "gate": "Regelkonformer FEN/PGN-Zugablauf mit vollständigen Prüfungen, ohne GUI/Engine-Verflechtung",
       "phase": "F1",
       "status": "TESTED",
-      "scope": "Headless rules domain: legal moves, FEN/SAN/PGN mainline, draw rules, undo/redo; perft + golden tests",
+      "scope": "Headless rules domain: legal moves, FEN/SAN/PGN mainline, draw rules including resignation against a lone king, undo/redo; perft + golden tests",
       "status_evidence": [
         "docs/reports/2026-11-20_W05_chess-core.md",
         "src/chess_and_chains/chess/rules.py",
@@ -187,14 +187,15 @@
       "gate": "Rechtssicherer Import, erste UCI-Aktion, Ratingminimum, Datenqualitätsberichte",
       "phase": "F3",
       "status": "TESTED",
-      "scope": "Puzzle model, streaming Lichess CSV importer, versioned JSONL packs, puzzle session controller; tested with project-authored fixtures only",
+      "scope": "Puzzle model, streaming Lichess CSV importer, versioned JSONL packs, puzzle session controller, theme/rating filters and progress; tested with project-authored fixtures only",
       "status_evidence": [
         "docs/reports/2026-11-20_N02_functional-core.md",
         "src/chess_and_chains/puzzles/importer.py",
         "src/chess_and_chains/puzzles/session.py",
         "tests/test_puzzles.py",
         "tests/fixtures/puzzles_sample.csv",
-        "docs/reports/2026-11-20_N02-follow-up.md"
+        "docs/reports/2026-11-20_N02-follow-up.md",
+        "tests/test_app_integration.py"
       ],
       "open_gate_items": [
         "Real Lichess export import run (owner opt-in download)",
@@ -210,7 +211,7 @@
       "gate": "Getrennte Nutzerdaten, Migrations- und Restore-Proben, PGN/FEN-Roundtrip",
       "phase": "F4",
       "status": "TESTED",
-      "scope": "SQLite migrations, validated backup/restore, local game library with save/reopen and PGN results, puzzle progress, atomic JSON settings; locally tested",
+      "scope": "SQLite migrations, validated backup/restore, local game library with save/reopen and bounded PGN file exchange, puzzle progress, atomic JSON settings; locally tested",
       "status_evidence": [
         "docs/reports/2026-11-20_N02_functional-core.md",
         "src/chess_and_chains/storage/database.py",
@@ -220,7 +221,7 @@
         "tests/test_app_integration.py"
       ],
       "open_gate_items": [
-        "PGN file exchange dialog and native platform acceptance",
+        "Manual native platform acceptance, including system file pickers",
         "Profile model decision Q-012",
         "ADR-004 acceptance"
       ]

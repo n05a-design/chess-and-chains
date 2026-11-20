@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased – PGN exchange and puzzle filters (2026-11-20)
+
+- Import and export a single UTF-8 PGN game from the local library. Bound input size and move count and replace export files atomically.
+- Filter Puzzle Lab by theme and rating and show saved solves in the current selection.
+- Score resignation against a lone king as a draw, preserving the outcome through undo and redo.
+
 ## Unreleased – N02 follow-up (2026-11-20)
 
 - Added draw claims in the Tk app for the current position and for a declared legal move.

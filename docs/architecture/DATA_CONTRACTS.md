@@ -25,9 +25,15 @@ Annotierungsaustausch bleibt eine mögliche Erweiterung nach Scope-Entscheidung.
 
 `Game {id, created_at_utc, initial_fen, moves_uci[], optional_pgn, result, time_control, engine_profile_id, schema_version}`. SQLite lädt eine Partie erst, wenn Ausgangs-FEN, UCI-Züge und Ergebnis mit dem validierten PGN übereinstimmen. Die Bibliothek öffnet Spiele lokal für zwei Personen. Aus dem Brett ableitbare Partieenden behalten ihren Grund. Bei anderen beendeten Partien zeigt die App das gespeicherte Ergebnis. Das bisherige Schema speichert keinen separaten Grund für Aufgabe oder Remisanspruch.
 
+Der Dateiaustausch der Partiebibliothek verarbeitet pro Vorgang genau eine
+Partie. Import akzeptiert UTF-8 mit optionalem BOM bis 256 KiB und 512
+Halbzügen und speichert erst nach der Validierung. Der Export übernimmt
+die gespeicherte Hauptvariante mit Tags und Ergebnis. Die Zieldatei wird
+erst nach vollständigem Schreiben im selben Verzeichnis ersetzt.
+
 ## Puzzle
 
-`Puzzle {id, source, source_export_date, original_fen, moves_uci[], rating, rating_deviation, popularity, plays, themes[], source_url, checksum}`. Bei Anzeige: `initial_fen -> first opponent move -> player start state`. Solve Progress getrennt: `puzzle_id, attempts, solved, last_attempt_utc, optional duration_ms, hints_used`.
+`Puzzle {id, source, source_export_date, original_fen, moves_uci[], rating, rating_deviation, popularity, plays, themes[], source_url, checksum}`. Bei Anzeige: `initial_fen -> first opponent move -> player start state`. Solve Progress getrennt: `puzzle_id, attempts, solved, last_attempt_utc, optional duration_ms, hints_used`. Die UI kombiniert Themen-Tags und Ratingbereiche im aktiven Pack. Sie zählt für die Auswahl unterschiedliche gelöste IDs aus dem SQLite-Fortschritt.
 
 ## Einstellungen
 
