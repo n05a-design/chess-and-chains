@@ -28,13 +28,15 @@ ENGINE_ENV = "CHESS_AND_CHAINS_ENGINE"
 
 @dataclass(frozen=True, slots=True)
 class BotRequest:
-    """Everything a provider needs; immutable so a worker cannot touch live game state."""
+    """Game data plus a thread-safe cancellation signal owned by the controller."""
 
     generation: int
     ply: int
     initial_fen: str
     moves: tuple[Move, ...]
     legal_moves: tuple[Move, ...]
+    game_id: int = 0
+    cancelled: threading.Event = field(default_factory=threading.Event, compare=False, repr=False)
 
 
 class MoveProvider(Protocol):
@@ -115,10 +117,10 @@ def resolve_engine_config(
             return EngineConfig.mock(), f"{error}. Using mock bot instead."
     dev = env.get(ENGINE_ENV)
     if dev:
-        parts = split_engine_command(dev)
         try:
+            parts = split_engine_command(dev)
             return EngineConfig.from_path(parts[0], parts[1:], source="environment"), None
-        except (EngineConfigError, IndexError) as error:
+        except (ValueError, IndexError) as error:
             return EngineConfig.mock(), f"{ENGINE_ENV}: {error}. Using mock bot instead."
     return EngineConfig.mock(), None
 
@@ -133,6 +135,7 @@ class UCIBot:
     search_margin: float = 5.0
     _engine: UCIEngine | None = field(default=None, init=False, repr=False)
     _lock: threading.Lock = field(default_factory=threading.Lock, init=False, repr=False)
+    _game_id: int | None = field(default=None, init=False, repr=False)
     _applied_preset: str | None = field(default=None, init=False, repr=False)
     last_plan: OptionPlan | None = field(default=None, init=False)
     engine_name: str | None = field(default=None, init=False)
@@ -148,7 +151,8 @@ class UCIBot:
     def set_preset(self, preset: BotPreset) -> None:
         self.preset = preset
 
-    def ensure_started(self) -> UCIEngine:
+    def ensure_started(self, preset: BotPreset | None = None) -> UCIEngine:
+        preset = preset or self.preset
         with self._lock:
             engine = self._engine
             if engine is None or not engine.running:
@@ -162,21 +166,36 @@ class UCIBot:
                 )
                 self._engine = engine
                 self._applied_preset = None
+                self._game_id = None
                 engine.start()
-            if self._applied_preset != self.preset.id:
-                plan = plan_options(self.preset, engine.options)
+            if self._applied_preset != preset.id:
+                plan = plan_options(preset, engine.options)
                 for name, value in plan.apply:
                     engine.set_option(name, value)
                 engine.is_ready()
                 self.last_plan = plan
-                self._applied_preset = self.preset.id
+                self._applied_preset = preset.id
             return engine
 
     def choose_move(self, request: BotRequest) -> Move | None:
-        engine = self.ensure_started()
-        engine.set_position(request.initial_fen, request.moves)
-        timeout = self.preset.movetime_ms / 1000 + self.search_margin
-        return engine.go_movetime(self.preset.movetime_ms, request.legal_moves, timeout=timeout)
+        if request.cancelled.is_set():
+            return None
+        preset = self.preset
+        try:
+            engine = self.ensure_started(preset)
+            if request.cancelled.is_set():
+                return None
+            if self._game_id != request.game_id:
+                engine.new_game()
+                self._game_id = request.game_id
+            engine.set_position(request.initial_fen, request.moves)
+            timeout = preset.movetime_ms / 1000 + self.search_margin
+            return engine.go_movetime(
+                preset.movetime_ms, request.legal_moves, timeout=timeout, cancelled=request.cancelled,
+            )
+        except UCIEngineError:
+            self.close()
+            raise
 
     def cancel(self) -> None:
         engine = self._engine

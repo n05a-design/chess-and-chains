@@ -13,7 +13,7 @@ from __future__ import annotations
 import threading
 import tkinter as tk
 from dataclasses import replace
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, ttk
 from typing import Callable, Sequence
 
 from ..chess import ChessError, ChessGame, Color, GameStatus, Move, export_pgn, square_name, to_san
@@ -309,6 +309,8 @@ class ChessApp:
         self.save_button.grid(row=2, column=0, sticky="ew", pady=3, padx=(0, 3))
         self.copy_pgn_button = self._button(controls, t("button.copy_pgn"), self._copy_pgn)
         self.copy_pgn_button.grid(row=2, column=1, sticky="ew", pady=3, padx=(3, 0))
+        self.claim_button = self._button(controls, t("button.claim_draw"), self._claim_draw)
+        self.claim_button.grid(row=3, column=0, sticky="ew", pady=3, padx=(0, 3))
         row += 1
         self._label(panel, var=self.action_state_text, role="caption", muted=True).grid(row=row, column=0, sticky="ew", pady=(6, 0))
         row += 1
@@ -534,6 +536,52 @@ class ChessApp:
         except ChessError as error:
             self.interaction_text.set(str(error))
 
+    def _choose_item(self, title: str, labels: Sequence[str], confirm: str) -> int | None:
+        dialog = tk.Toplevel(self.root)
+        dialog.title(title)
+        dialog.transient(self.root)
+        content = ttk.Frame(dialog, padding=12)
+        content.grid(sticky="nsew")
+        selection = ttk.Combobox(content, values=labels, state="readonly", width=46)
+        selection.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 10))
+        selection.current(0)
+        chosen = None
+
+        def accept() -> None:
+            nonlocal chosen
+            chosen = selection.current()
+            dialog.destroy()
+
+        ttk.Button(content, text=confirm, command=accept).grid(row=1, column=0, padx=4)
+        ttk.Button(content, text=self.t("button.cancel"), command=dialog.destroy).grid(row=1, column=1, padx=4)
+        dialog.bind("<Escape>", lambda _event: dialog.destroy())
+        dialog.bind("<Return>", lambda _event: accept())
+        dialog.grab_set()
+        selection.focus_set()
+        self.root.wait_window(dialog)
+        return chosen
+
+    def _claim_draw(self) -> None:
+        view = self.controller.view()
+        if not view.human_to_move:
+            return
+        options = self.game.draw_claim_options()
+        if not options:
+            return
+        labels = []
+        for reason, move in options:
+            label = self.t(f"claim.{reason.name.lower()}")
+            if move is not None:
+                label = self.t("claim.by_move", rule=label, move=to_san(view.state, move))
+            labels.append(label)
+        chosen = self._choose_item(self.t("button.claim_draw"), labels, self.t("button.claim_draw"))
+        if chosen is None or self.controller.view().state is not view.state:
+            return
+        try:
+            self.controller.claim_draw(*options[chosen])
+        except ChessError as error:
+            self.interaction_text.set(str(error))
+
     def _retry_bot(self) -> None:
         self.controller.retry_bot()
 
@@ -708,6 +756,8 @@ class ChessApp:
         self._update_move_list(view.san_moves)
         self.undo_button.configure(state=tk.NORMAL if view.can_undo else tk.DISABLED)
         self.redo_button.configure(state=tk.NORMAL if view.can_redo else tk.DISABLED)
+        can_claim = view.human_to_move and bool(self.game.draw_claim_options())
+        self.claim_button.configure(state=tk.NORMAL if can_claim else tk.DISABLED)
         active = view.outcome.status is GameStatus.ACTIVE
         self.resign_button.configure(state=tk.NORMAL if active and self.game.moves else tk.DISABLED)
         self.save_button.configure(state=tk.NORMAL if self.db is not None and self.game.moves else tk.DISABLED)

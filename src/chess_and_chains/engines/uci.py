@@ -235,6 +235,8 @@ class UCIEngine:
         milliseconds: int,
         legal_moves: Sequence[Move],
         timeout: float | None = None,
+        *,
+        cancelled: threading.Event | None = None,
     ) -> Move | None:
         if (
             not isinstance(milliseconds, int)
@@ -248,12 +250,12 @@ class UCIEngine:
             raise TypeError("Legal moves must be chess Move values.")
         with self._transaction_lock:
             self._ensure_running()
-            with self._state_lock:
-                if self._searching:
-                    raise EngineStateError("An engine search is already active.")
-                self._searching = True
             try:
-                self._send(f"go movetime {milliseconds}")
+                with self._state_lock:
+                    if cancelled is not None and cancelled.is_set():
+                        return None
+                    self._send(f"go movetime {milliseconds}")
+                    self._searching = True
                 response = self._read_until_prefix(
                     "bestmove ", response_timeout
                 )

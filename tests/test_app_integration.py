@@ -9,6 +9,7 @@ import time
 import tkinter as tk
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -51,6 +52,26 @@ class AppTestCase(unittest.TestCase):
                 return
             time.sleep(0.005)
         self.fail("condition not reached while pumping Tk events")
+
+
+class DrawClaimTests(AppTestCase):
+    def test_claim_by_declared_move_preserves_position_and_supports_undo(self):
+        app = self.make_app()
+        for uci in ("g1f3", "g8f6", "f3g1", "f6g8", "g1f3", "g8f6", "f3g1"):
+            app._play_move(Move.from_uci(uci))
+        before = app.game.state
+        self.assertFalse(app.game.outcome().claimable_draws)
+        self.assertEqual(app.claim_button.cget("state"), tk.NORMAL)
+        with patch.object(app, "_choose_item", return_value=0) as chooser:
+            app.claim_button.invoke()
+        self.assertEqual(chooser.call_args.args[1], ["Threefold repetition by declaring Ng8"])
+        self.assertIs(app.game.state, before)
+        self.assertEqual(len(app.game.moves), 7)
+        self.assertEqual(app.game.outcome().status, GameStatus.DRAW_CLAIMED)
+        app._undo()
+        self.assertEqual(app.game.outcome().status, GameStatus.ACTIVE)
+        app._redo()
+        self.assertEqual(app.game.outcome().status, GameStatus.DRAW_CLAIMED)
 
 
 class BotVerticalSliceTests(AppTestCase):

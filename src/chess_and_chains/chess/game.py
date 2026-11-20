@@ -84,28 +84,34 @@ class ChessGame:
     def claim_draw(self, reason: DrawClaim, move: Move | None = None) -> MoveOutcome:
         if self._termination is not None or self.outcome().status is not GameStatus.ACTIVE:
             raise ChessError("A draw cannot be claimed after the game has ended.")
-        if move is None:
-            available = self.outcome().claimable_draws
-            valid = reason in available
-        else:
-            if move not in self.rules.legal_moves(self.state):
-                raise IllegalMoveError(f"Illegal declared move {move.to_uci()}.")
-            next_state = self.rules.apply(self.state, move)
-            next_key = self.rules.position_key(next_state)
-            if reason is DrawClaim.FIFTY_MOVE_RULE:
-                valid = next_state.halfmove_clock >= 100
-            else:
-                valid = self._repetitions.get(next_key, 0) + 1 >= 3
-            if valid:
-                legal_after = self.rules.legal_moves(next_state)
-                if not legal_after:
-                    valid = False
+        if move is not None and move not in self.rules.legal_moves(self.state):
+            raise IllegalMoveError(f"Illegal declared move {move.to_uci()}.")
+        valid = (reason, move) in self.draw_claim_options()
         if not valid:
             raise ChessError(f"The {reason.name.lower().replace('_', ' ')} is not claimable.")
         self._push_undo()
         self._termination = _Termination(GameStatus.DRAW_CLAIMED, claim=reason)
         self._redo.clear()
         return self.outcome()
+
+    def draw_claim_options(self) -> tuple[tuple[DrawClaim, Move | None], ...]:
+        """Claims in the current position or by declaring a specific legal move."""
+        outcome = self.outcome()
+        if outcome.status is not GameStatus.ACTIVE:
+            return ()
+        options: list[tuple[DrawClaim, Move | None]] = [
+            (reason, None) for reason in DrawClaim if reason in outcome.claimable_draws
+        ]
+        fifty = self.state.halfmove_clock >= 99
+        repetition = any(count >= 2 for count in self._repetitions.values())
+        if fifty or repetition:
+            for move in self.rules.legal_moves(self.state):
+                child = self.rules.apply(self.state, move)
+                if fifty and child.halfmove_clock >= 100:
+                    options.append((DrawClaim.FIFTY_MOVE_RULE, move))
+                if repetition and self._repetitions.get(self.rules.position_key(child), 0) >= 2:
+                    options.append((DrawClaim.THREEFOLD_REPETITION, move))
+        return tuple(options)
 
     def resign(self, color: Color | None = None) -> MoveOutcome:
         if self._termination is not None or self.outcome().status is not GameStatus.ACTIVE:

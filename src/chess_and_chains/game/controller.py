@@ -4,7 +4,7 @@ Threading contract
 ------------------
 * Every public method except ``BotWorker`` internals must be called from one
   owner thread (the Tk main thread in the app).
-* The worker thread only receives an immutable ``BotRequest`` and calls the
+* The worker thread receives game data and a cancellation signal and calls the
   provider; it never touches ``ChessGame``.
 * Results are queued and applied by ``poll()`` on the owner thread. A result is
   discarded unless its generation id and ply still match the live game, and
@@ -28,6 +28,7 @@ from ..chess import (
     ChessError,
     ChessGame,
     Color,
+    DrawClaim,
     GameState,
     GameStatus,
     IllegalMoveError,
@@ -126,6 +127,8 @@ class BotWorker:
             request = self._requests.get()
             if request is None:
                 return
+            if request.cancelled.is_set():
+                continue
             try:
                 move = self.provider.choose_move(request)
                 result = BotResult(request.generation, request.ply, move=move)
@@ -151,7 +154,8 @@ class GameController:
         self._worker: BotWorker | None = None
         self._listeners: list[Listener] = []
         self._generation = 0
-        self._pending: tuple[int, int] | None = None
+        self._game_id = 0
+        self._pending: BotRequest | None = None
         self._bot_error: str | None = None
         self._setup = GameSetup.two_players()
         self._game = ChessGame()
@@ -219,6 +223,7 @@ class GameController:
             raise ChessError("No bot provider is configured.")
         initial = parse_fen(setup.initial_fen) if setup.initial_fen else None
         self._invalidate()
+        self._game_id += 1
         self._setup = setup
         self._game = ChessGame(initial)
         self._initial_fen = to_fen(self._game.initial_state)
@@ -274,6 +279,14 @@ class GameController:
         self._maybe_request_bot()
         self._notify()
 
+    def claim_draw(self, reason: DrawClaim, move: Move | None = None) -> None:
+        self._ensure_open()
+        if not self._human_to_move(self._game.outcome()):
+            raise ChessError("Only the player to move may claim a draw.")
+        self._game.claim_draw(reason, move)
+        self._invalidate()
+        self._notify()
+
     def resign(self) -> None:
         self._ensure_open()
         self._invalidate()
@@ -318,7 +331,8 @@ class GameController:
 
     # ----- internals ---------------------------------------------------
     def _apply_result(self, result: BotResult) -> bool:
-        if self._pending != (result.generation, result.ply):
+        pending = self._pending
+        if pending is None or (pending.generation, pending.ply) != (result.generation, result.ply):
             return False  # stale: game changed since the request was sent
         self._pending = None
         if result.error is not None:
@@ -355,14 +369,17 @@ class GameController:
             initial_fen=self._initial_fen,
             moves=tuple(self._game.moves),
             legal_moves=self._game.rules.legal_moves(self._game.state),
+            game_id=self._game_id,
         )
-        self._pending = (self._generation, ply)
+        self._pending = request
         self._worker.submit(request)
 
     def _invalidate(self) -> None:
         self._generation += 1
-        if self._pending is not None and self._provider is not None:
-            self._provider.cancel()
+        if self._pending is not None:
+            self._pending.cancelled.set()
+            if self._provider is not None:
+                self._provider.cancel()
         self._pending = None
 
     def _stop_worker(self, timeout: float = 2.0) -> bool:
@@ -379,12 +396,14 @@ class GameController:
         return self._pending is None and self._game.state.turn is not self._setup.bot_color
 
     def _can_undo(self) -> bool:
-        if not self._game.moves and self._game.outcome().status is GameStatus.ACTIVE:
+        if not self._game.can_undo:
             return False
         if self._setup.mode is PlayMode.HUMAN_VS_BOT:
             # Bot opened the game: its first move alone is not undoable to a human turn.
             bot_first = self._game.initial_state.turn is self._setup.bot_color
-            return len(self._game.moves) > (1 if bot_first else 0) or self._game.outcome().status is GameStatus.RESIGNED
+            return len(self._game.moves) > (1 if bot_first else 0) or self._game.outcome().status in (
+                GameStatus.RESIGNED, GameStatus.DRAW_CLAIMED,
+            )
         return True
 
     def _redo_available(self) -> bool:

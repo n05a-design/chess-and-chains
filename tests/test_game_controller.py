@@ -8,11 +8,12 @@ import threading
 import time
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from chess_and_chains.chess import ChessError, Color, GameStatus, IllegalMoveError, Move  # noqa: E402
+from chess_and_chains.chess import ChessError, Color, GameStatus, IllegalMoveError, Move, to_fen  # noqa: E402
 from chess_and_chains.engines.bot import (  # noqa: E402
     BotRequest,
     EngineConfig,
@@ -110,6 +111,44 @@ class ControllerUnitTests(unittest.TestCase):
         self.assertEqual(c.game.moves, [], "a move from the abandoned game must never be applied")
         self.assertTrue(c.view().human_to_move)
         c.shutdown()
+
+    def test_worker_skips_invalidated_requests_queued_behind_a_search(self):
+        provider = ScriptedProvider(block=True)
+        c = GameController(provider)
+        self.addCleanup(c.shutdown)
+        setup = GameSetup.against_bot(Color.BLACK)
+        c.new_game(setup)
+        self.assertTrue(provider.started.wait(2))
+        self.addCleanup(provider.release.set)
+        for _ in range(5):
+            c.new_game(setup)
+        latest = c.generation
+        provider.release.set()
+        wait_for(c, lambda view: view.human_to_move)
+        self.assertEqual([req.generation for req in provider.requests], [1, latest])
+        self.assertEqual(len(c.game.moves), 1)
+
+    def test_malformed_engine_command_falls_back_with_warning(self):
+        config, warning = resolve_engine_config(None, {"CHESS_AND_CHAINS_ENGINE": '"unterminated'})
+        self.assertTrue(config.is_mock)
+        self.assertIn("CHESS_AND_CHAINS_ENGINE", warning)
+
+    def test_uci_sends_new_game_once_per_game_and_skips_cancelled_search(self):
+        bot = UCIBot(EngineConfig.mock(), PRESET)
+        self.addCleanup(bot.close)
+        engine = bot.ensure_started()
+        c = GameController()
+        game = c.game
+        fen = to_fen(game.initial_state)
+        legal = game.rules.legal_moves(game.state)
+        with patch.object(engine, "new_game", wraps=engine.new_game) as reset:
+            for generation, game_id in ((1, 1), (2, 1), (3, 2)):
+                request = BotRequest(generation, 0, fen, (), legal, game_id)
+                self.assertIn(bot.choose_move(request), legal)
+            request = BotRequest(4, 0, fen, (), legal, 3)
+            request.cancelled.set()
+            self.assertIsNone(bot.choose_move(request))
+        self.assertEqual(reset.call_count, 2)
 
     def test_undo_during_search_cancels_and_returns_to_human(self):
         provider = ScriptedProvider(block=True)
