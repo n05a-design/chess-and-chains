@@ -260,6 +260,38 @@ class StorageAndLocaleUiTests(AppTestCase):
             self.assertTrue(app._current_pgn().endswith("1/2-1/2"))
             app.close()
 
+    def test_library_imports_into_an_empty_collection_and_exports_selected_game(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            app = self.make_app(data_layout=DataLayout(directory / "data"))
+            source, target = directory / "game.pgn", directory / "saved.pgn"
+            source.write_text("1. e4 e5 *", encoding="utf-8")
+
+            def choose_import(_title, labels, _confirm, *, actions, **_options):
+                self.assertEqual(labels, [])
+                label, run, requires_selection = actions[0]
+                self.assertEqual(label, "Import PGN…")
+                self.assertFalse(requires_selection)
+                run(None)
+
+            with patch.object(app, "_choose_item", side_effect=choose_import), patch(
+                "chess_and_chains.ui.app.filedialog.askopenfilename", return_value=str(source),
+            ):
+                app.library_button.invoke()
+            self.assertEqual(app.game.moves, [])
+            self.assertIn("Imported game #1", app.interaction_text.get())
+
+            def choose_export(_title, labels, _confirm, *, actions, **_options):
+                self.assertEqual(len(labels), 1)
+                actions[1][1](0)
+
+            with patch.object(app, "_choose_item", side_effect=choose_export), patch(
+                "chess_and_chains.ui.app.filedialog.asksaveasfilename", return_value=str(target),
+            ):
+                app.library_button.invoke()
+            self.assertIn("1. e4 e5 *", target.read_text(encoding="utf-8"))
+            app.close()
+
     def test_without_data_layout_nothing_is_written(self):
         app = self.make_app()
         app._play_move(Move.from_uci("e2e4"))

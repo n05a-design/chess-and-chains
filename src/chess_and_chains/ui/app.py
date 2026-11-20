@@ -14,6 +14,7 @@ import sqlite3
 import threading
 import tkinter as tk
 from dataclasses import replace
+from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from typing import Callable, Sequence
 
@@ -541,29 +542,56 @@ class ChessApp:
         except ChessError as error:
             self.interaction_text.set(str(error))
 
-    def _choose_item(self, title: str, labels: Sequence[str], confirm: str) -> int | None:
+    def _choose_item(
+        self,
+        title: str,
+        labels: Sequence[str],
+        confirm: str,
+        *,
+        empty: str = "",
+        actions: Sequence[tuple[str, Callable[[int | None], None], bool]] = (),
+    ) -> int | None:
         dialog = tk.Toplevel(self.root)
         dialog.title(title)
         dialog.transient(self.root)
         content = ttk.Frame(dialog, padding=12)
         content.grid(sticky="nsew")
-        selection = ttk.Combobox(content, values=labels, state="readonly", width=46)
-        selection.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 10))
-        selection.current(0)
+        selection = ttk.Combobox(content, values=labels, state="readonly" if labels else "disabled", width=46)
+        selection.grid(row=0, column=0, columnspan=len(actions) + 2, sticky="ew", pady=(0, 10))
+        if labels:
+            selection.current(0)
+        else:
+            selection.set(empty)
         chosen = None
+        action = None
 
-        def accept() -> None:
-            nonlocal chosen
-            chosen = selection.current()
+        def accept(callback: Callable[[int | None], None] | None = None) -> None:
+            nonlocal chosen, action
+            index = selection.current()
+            chosen = index if index >= 0 else None
+            action = callback
             dialog.destroy()
 
-        ttk.Button(content, text=confirm, command=accept).grid(row=1, column=0, padx=4)
-        ttk.Button(content, text=self.t("button.cancel"), command=dialog.destroy).grid(row=1, column=1, padx=4)
+        confirm_button = ttk.Button(content, text=confirm, command=accept, state="normal" if labels else "disabled")
+        confirm_button.grid(row=1, column=0, padx=4)
+        for column, (label, callback, requires_selection) in enumerate(actions, 1):
+            state = "disabled" if requires_selection and not labels else "normal"
+            button = ttk.Button(content, text=label, command=lambda callback=callback: accept(callback), state=state)
+            button.grid(row=1, column=column, padx=4)
+            if not labels and not requires_selection:
+                button.focus_set()
+        ttk.Button(content, text=self.t("button.cancel"), command=dialog.destroy).grid(
+            row=1, column=len(actions) + 1, padx=4,
+        )
         dialog.bind("<Escape>", lambda _event: dialog.destroy())
-        dialog.bind("<Return>", lambda _event: accept())
+        if labels:
+            selection.bind("<Return>", lambda _event: accept())
+            selection.focus_set()
         dialog.grab_set()
-        selection.focus_set()
         self.root.wait_window(dialog)
+        if action is not None:
+            action(chosen)
+            return None
         return chosen
 
     def _claim_draw(self) -> None:
@@ -634,12 +662,16 @@ class ChessApp:
             return
         try:
             rows = self.db.list_games()
-            if not rows:
-                self.interaction_text.set(self.t("library.empty"))
-                return
             labels = [self.t("library.entry", id=game_id, date=created, result=result)
                       for game_id, created, result, _mode in rows]
-            chosen = self._choose_item(self.t("button.library"), labels, self.t("library.open"))
+            chosen = self._choose_item(
+                self.t("button.library"), labels, self.t("library.open"), empty=self.t("library.empty"),
+                actions=(
+                    (self.t("library.import"), lambda _index: self._import_pgn_file(), False),
+                    (self.t("library.export"), lambda index: self._export_pgn_file(rows[index][0])
+                     if index is not None else None, True),
+                ),
+            )
             if chosen is None:
                 return
             saved = self.db.load_game(rows[chosen][0])
@@ -654,6 +686,39 @@ class ChessApp:
             self.interaction_text.set(self.t("library.loaded", id=saved.id))
         except (StorageError, sqlite3.Error, ChessError) as error:
             self.interaction_text.set(self.t("library.error", error=error))
+
+    def _import_pgn_file(self) -> None:
+        if self.db is None:
+            return
+        title = self.t("library.import")
+        names = [(self.t("library.pgn_files"), "*.pgn")]
+        source = filedialog.askopenfilename(parent=self.root, title=title, filetypes=names)
+        if not source:
+            return
+        try:
+            game_id = self.db.import_pgn_file(Path(source))
+        except (OSError, ValueError, StorageError, sqlite3.Error) as error:
+            messagebox.showerror(title, self.t("library.error", error=error), parent=self.root)
+            return
+        self.interaction_text.set(self.t("library.imported", id=game_id))
+
+    def _export_pgn_file(self, game_id: int) -> None:
+        if self.db is None:
+            return
+        title = self.t("library.export")
+        names = [(self.t("library.pgn_files"), "*.pgn")]
+        target = filedialog.asksaveasfilename(
+            parent=self.root, title=title, filetypes=names, defaultextension=".pgn",
+            initialfile=f"chess-and-chains-{game_id}.pgn",
+        )
+        if not target:
+            return
+        try:
+            self.db.export_pgn_file(game_id, Path(target))
+        except (OSError, ValueError, StorageError, sqlite3.Error) as error:
+            messagebox.showerror(title, self.t("library.error", error=error), parent=self.root)
+            return
+        self.interaction_text.set(self.t("library.exported", id=game_id))
 
     def _current_pgn(self) -> str:
         return export_pgn(self.game, self._pgn_headers())

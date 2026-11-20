@@ -10,7 +10,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from chess_and_chains.chess import ChessGame, DrawClaim, GameStatus, Move, parse_fen  # noqa: E402
+from chess_and_chains.chess import ChessGame, DrawClaim, GameStatus, Move, PGNError, parse_fen  # noqa: E402
 from chess_and_chains.storage import (  # noqa: E402
     SCHEMA_VERSION,
     DataLayout,
@@ -24,7 +24,7 @@ from chess_and_chains.storage import (  # noqa: E402
     save_settings,
     update_settings,
 )
-from chess_and_chains.storage.database import MIGRATIONS  # noqa: E402
+from chess_and_chains.storage.database import MAX_PGN_FILE_BYTES, MIGRATIONS  # noqa: E402
 
 
 class TempDirTestCase(unittest.TestCase):
@@ -155,6 +155,51 @@ class DatabaseTests(TempDirTestCase):
         self.assertIn("1/2-1/2", exported)
         with self.assertRaises(Exception):
             db.import_pgn("1. e5 *")
+
+    def test_pgn_file_round_trip_preserves_utf8_tags_fen_and_result(self):
+        db = self.open_db()
+        source, target = self.tmp / "Quelle.pgn", self.tmp / "kopie.pgn"
+        source.write_text(
+            '[Event "Frühling"]\n[SetUp "1"]\n[FEN "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1"]\n\n1. e4 1/2-1/2',
+            encoding="utf-8-sig",
+        )
+        game_id = db.import_pgn_file(source)
+        db.export_pgn_file(game_id, target)
+        copied = db.load_game(db.import_pgn_file(target))
+        original = db.load_game(game_id)
+        self.assertEqual(copied.pgn_tags, original.pgn_tags)
+        self.assertEqual(copied.moves, original.moves)
+        self.assertEqual(copied.result, "1/2-1/2")
+
+    def test_pgn_file_rejects_bad_input_without_inserting(self):
+        db = self.open_db()
+        source = self.tmp / "invalid.pgn"
+        for payload, error in (
+            (b"", StorageError),
+            (b"\xff", UnicodeDecodeError),
+            (b"1. e5 *", PGNError),
+            (b"1. e4 *\n\n1. d4 *", PGNError),
+            (b" " * (MAX_PGN_FILE_BYTES + 1), StorageError),
+        ):
+            with self.subTest(error=error), self.assertRaises(error):
+                source.write_bytes(payload)
+                db.import_pgn_file(source)
+        source.write_bytes(b"1. e4 e5 *")
+        with patch("chess_and_chains.storage.database.MAX_PGN_FILE_PLIES", 1):
+            with self.assertRaisesRegex(PGNError, "1 half-moves"):
+                db.import_pgn_file(source)
+        self.assertEqual(db.list_games(), [])
+
+    def test_pgn_export_failure_keeps_existing_file(self):
+        db = self.open_db()
+        game_id = db.import_pgn("1. e4 *")
+        target = self.tmp / "saved.pgn"
+        target.write_text("Keep this", encoding="utf-8")
+        with patch.object(Path, "replace", side_effect=PermissionError("test rename failure")):
+            with self.assertRaises(PermissionError):
+                db.export_pgn_file(game_id, target)
+        self.assertEqual(target.read_text(encoding="utf-8"), "Keep this")
+        self.assertEqual(list(self.tmp.glob(".pgn-*")), [])
 
     def test_backup_and_restore_round_trip(self):
         db = self.open_db()

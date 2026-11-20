@@ -16,6 +16,7 @@ Safety rules
 
 from __future__ import annotations
 
+import os
 import sqlite3
 import tempfile
 from contextlib import closing
@@ -24,6 +25,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from ..chess import ChessError, ChessGame, Move, export_pgn, parse_fen, parse_pgn, to_fen
+
+MAX_PGN_FILE_BYTES = 256 * 1024
+MAX_PGN_FILE_PLIES = 512
 
 MIGRATIONS: tuple[tuple[int, str], ...] = (
     (1, """
@@ -311,10 +315,41 @@ class Database:
     def delete_game(self, game_id: int) -> None:
         self._conn.execute("DELETE FROM games WHERE id = ?", (game_id,))
 
-    def import_pgn(self, text: str, *, mode: str = "imported") -> int:
-        document = parse_pgn(text)  # validates every move
+    def import_pgn(self, text: str, *, mode: str = "imported", max_plies: int | None = None) -> int:
+        document = parse_pgn(text, max_plies=max_plies)
         tags = {k: v for k, v in document.tags if k not in ("SetUp", "FEN", "Result")}
         return self.save_game(document.new_game(), mode=mode, headers=tags, result=document.result)
+
+    def import_pgn_file(self, source: Path) -> int:
+        """Import one UTF-8 PGN game after size, text and move validation."""
+        if not source.is_file():
+            raise StorageError("Choose a regular PGN file.")
+        with source.open("rb") as handle:
+            data = handle.read(MAX_PGN_FILE_BYTES + 1)
+        if len(data) > MAX_PGN_FILE_BYTES:
+            raise StorageError(f"PGN file exceeds {MAX_PGN_FILE_BYTES // 1024} KiB.")
+        text = data.decode("utf-8-sig")
+        if not text.strip() or any(ord(char) < 32 and char not in "\t\n\r" for char in text):
+            raise StorageError("PGN file is empty or contains invalid control characters.")
+        return self.import_pgn(text, max_plies=MAX_PGN_FILE_PLIES)
+
+    def export_pgn_file(self, game_id: int, destination: Path) -> None:
+        """Export one validated game and replace the destination atomically."""
+        if destination.suffix.lower() != ".pgn":
+            raise StorageError("Choose a destination with the .pgn extension.")
+        if destination.exists() and destination.samefile(self.path):
+            raise StorageError("The active database cannot be overwritten.")
+        data = self.export_pgn([game_id]).encode("utf-8")
+        fd, name = tempfile.mkstemp(dir=destination.parent, prefix=".pgn-")
+        pending = Path(name)
+        try:
+            with os.fdopen(fd, "wb") as handle:
+                handle.write(data)
+                handle.flush()
+                os.fsync(handle.fileno())
+            pending.replace(destination)
+        finally:
+            pending.unlink(missing_ok=True)
 
     def export_pgn(self, game_ids: list[int] | None = None) -> str:
         ids = game_ids if game_ids is not None else [r[0] for r in reversed(self.list_games())]
