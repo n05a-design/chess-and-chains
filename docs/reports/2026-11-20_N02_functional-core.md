@@ -72,13 +72,15 @@ Aktualisiert: `project-manifest.json` (Status + Nachweise, Baseline), `MANIFEST.
 
 ## G. GitHub-Stand
 
-- Commits: lokal auf `claude/chess-chains-codex-n02-237372` (siehe `git log cf84659..HEAD`). **LOCAL – nicht gepusht, kein PR, kein Merge, keine CI-Ausführung.**
-- Push/PR nur nach ausdrücklicher Owner-Freigabe (Q-019/Q-024). Nach einem Push den Remote-SHA mit `git ls-remote origin <branch>` gegen lokalen HEAD prüfen.
+- Commits auf `claude/chess-chains-codex-n02-237372` (siehe `git log cf84659..HEAD`).
+- **PUSHED** am 2026-11-20 nach ausdrücklicher Owner-Freigabe im Chat („Push and open PR“); Remote-SHA per `git ls-remote origin refs/heads/claude/chess-chains-codex-n02-237372` = lokaler HEAD `893e8d92d7ba58200325c31dafdd75f3ba5f6dfd` geprüft; `origin/main` unverändert `cf84659`.
+- **PR geöffnet:** https://github.com/n05a-design/chess-and-chains/pull/2 (Basis `main`). **Nicht gemergt.** CI lief bei Erstellung noch (3 grün, 9 ausstehend); Ergebnis im PR prüfen, nicht aus diesem Bericht ableiten.
+- Q-024 damit für diesen Branch beantwortet (Push + PR ja, Merge nein).
 - Glide/Steps nur lesend geprüft: glide-to-do `4b6bce0`, steps `47af953`; keine Änderungen an anderen Repositories.
 
 ## H. Offene Owner-Fragen (priorisiert)
 
-1. Q-024/Q-019: Push + PR dieses Branches erlauben?
+1. PR #2 prüfen und über Merge entscheiden (Push/PR wurden freigegeben).
 2. Q-001/ADR-001: Engine-/Vertriebsweg (A: GPL-konformer Gesamtvertrieb) – blockiert echtes Bot-Spiel.
 3. Q-021: Mock-Bot in Vorschau-Builds sichtbar oder ausblenden?
 4. Q-003/Q-004: Owner-SVG-Figuren und Brand-Assets mit Lizenz bereitstellen.
@@ -110,7 +112,7 @@ Aktualisiert: `project-manifest.json` (Status + Nachweise, Baseline), `MANIFEST.
 2. `PYTHONPATH=src python -m unittest discover -s tests` (mit Tk) – erwartet 141 grüne Tests.
 3. Statusquelle: `project-manifest.json` + `docs/governance/STATUS_MODEL.md`; nie ACCEPTED/RELEASED setzen.
 4. Architektur-Ist: `docs/architecture/ARCHITECTURE.md` (Tabelle „Implementierte Schichten“).
-5. Nicht auf GitHub: alle N02-Commits (Stand dieses Berichts).
+5. Alle N02-Commits liegen auf GitHub im PR #2; Merge steht aus.
 
 ## Rollback
 
