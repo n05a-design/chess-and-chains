@@ -9,6 +9,7 @@ import time
 import tkinter as tk
 import unittest
 from pathlib import Path
+from tkinter import ttk
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -308,27 +309,25 @@ class StorageAndLocaleUiTests(AppTestCase):
             source, target = directory / "game.pgn", directory / "saved.pgn"
             source.write_text("1. e4 e5 *", encoding="utf-8")
 
-            def choose_import(_title, labels, _confirm, *, actions, **_options):
-                self.assertEqual(labels, [])
-                label, run, requires_selection = actions[0]
-                self.assertEqual(label, "Import PGN…")
-                self.assertFalse(requires_selection)
-                run(None)
+            def invoke_action(label):
+                dialog = next(child for child in self.root.winfo_children() if isinstance(child, tk.Toplevel))
+                try:
+                    content = dialog.winfo_children()[0]
+                    button = next(child for child in content.winfo_children()
+                                  if isinstance(child, ttk.Button) and child.cget("text") == label)
+                    button.invoke()
+                finally:
+                    if dialog.winfo_exists():
+                        dialog.destroy()
 
-            with patch.object(app, "_choose_item", side_effect=choose_import), patch(
-                "chess_and_chains.ui.app.filedialog.askopenfilename", return_value=str(source),
-            ):
+            with patch("chess_and_chains.ui.app.filedialog.askopenfilename", return_value=str(source)):
+                self.root.after(0, invoke_action, "Import PGN…")
                 app.library_button.invoke()
             self.assertEqual(app.game.moves, [])
             self.assertIn("Imported game #1", app.interaction_text.get())
 
-            def choose_export(_title, labels, _confirm, *, actions, **_options):
-                self.assertEqual(len(labels), 1)
-                actions[1][1](0)
-
-            with patch.object(app, "_choose_item", side_effect=choose_export), patch(
-                "chess_and_chains.ui.app.filedialog.asksaveasfilename", return_value=str(target),
-            ):
+            with patch("chess_and_chains.ui.app.filedialog.asksaveasfilename", return_value=str(target)):
+                self.root.after(0, invoke_action, "Export PGN…")
                 app.library_button.invoke()
             self.assertIn("1. e4 e5 *", target.read_text(encoding="utf-8"))
             app.close()
