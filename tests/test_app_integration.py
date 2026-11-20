@@ -384,7 +384,7 @@ class OwnerPieceUiTests(AppTestCase):
         self.assertTrue(images())
         self.assertTrue(images() <= initial_images)
 
-    def test_png_atlas_preserves_piece_color_and_reuses_the_same_size_band(self):
+    def test_png_atlas_preserves_piece_color_and_shadows_and_reuses_the_same_size_band(self):
         root = create_root(self)
         canvas = tk.Canvas(root)
         renderer = OwnerSvgPieces()
@@ -404,8 +404,10 @@ class OwnerPieceUiTests(AppTestCase):
         self.assertEqual(white, another_white)
         self.assertEqual(root.tk.call("image", "width", white), 48)
         self.assertTrue(root.tk.getboolean(root.tk.call(white, "transparency", "get", 0, 0)))
-        self.assertEqual(root.tk.call(white, "get", 24, 35), (250, 246, 236))
-        self.assertEqual(root.tk.call(black, "get", 24, 35), (23, 25, 32))
+        self.assertGreater(root.tk.call(white, "get", 24, 35)[0], 220)
+        self.assertLess(root.tk.call(black, "get", 24, 35)[0], 80)
+        for image in (white, black):
+            self.assertLess(root.tk.call(image, "get", 35, 35)[0], root.tk.call(image, "get", 18, 35)[0])
 
     def test_top_view_uses_its_own_artwork_in_play_and_puzzles(self):
         renderer = OwnerSvgPieces(top_view=True)
