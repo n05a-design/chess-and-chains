@@ -1,4 +1,12 @@
-# Chess & Chains – GitHub-Starterpaket
+# Chess & Chains – Einstieg
+
+Der aktuelle Entwicklungsstand steht im [Mastermanifest](MANIFEST.md). Der
+lokale Tk-Prototyp lässt sich wie in der [deutschen README](README.de.md)
+beschrieben starten. Die [Agentenberichte](docs/reports/README.md) enthalten
+die Git- und Testnachweise. Für neue Arbeit im vorhandenen Repository gilt
+[AGENTS.md](AGENTS.md).
+
+## Historische Foundation-Anleitung (F0)
 
 **Stand:** 19.11.2026 · **Status:** Planungs-/Repository-Baseline, **kein spielbares Produkt** · **Sprache:** Deutsch (intern), Englisch + Deutsch (öffentlich).
 

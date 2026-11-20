@@ -18,7 +18,7 @@ Programm startet explizit konfigurierte lokale Engine als separaten Prozess, sen
 - `engines/uci.py`: Prozessadapter (`shell=False`), `kill()` für erzwungenes Beenden ohne Transaktionssperre.
 - `engines/presets.py`: Presets werden gegen die im Handshake angekündigten Optionen geplant (`plan_options`); nicht angekündigte oder außerhalb des Bereichs liegende Werte werden übersprungen und protokolliert.
 - `engines/bot.py`: `UCIBot` (MoveProvider), Engine-Konfiguration nur aus Settings-Pfad oder `CHESS_AND_CHAINS_ENGINE`; sonst Mock-Engine.
-- `game/controller.py`: Worker-Thread mit unveränderlichen `BotRequest`s; Ergebnisse werden per `poll()` im Tk-Hauptthread angewendet und anhand Generation-ID + Halbzug verworfen, wenn veraltet; jeder Zug wird gegen die eigene Regeldomäne validiert.
+- `game/controller.py`: Worker-Thread mit Zugdaten und thread-sicherem Abbruchsignal pro `BotRequest`. Die Partie-ID löst einmal pro Partie und Engine-Prozess `ucinewgame` mit `isready` aus. Rückgängig/Wiederholen erhöhen nur die Generation. Ein abgebrochener Auftrag in der Warteschlange wird übersprungen. Der Adapter ordnet Abbruch und `go` über seine Zustandssperre. `poll()` verwirft veraltete Ergebnisse anhand von Generation und Halbzug und prüft den Zug gegen die eigene Regeldomäne.
 - `engines/mock_engine.py`: projekteigener Test-Prozess, keine Schach-KI.
 
 Norm-/Softwarequellen über `docs/research/SOURCES.md` dokumentieren. UCI-Details je Stockfish-Version erneut verifizieren.

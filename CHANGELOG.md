@@ -1,6 +1,15 @@
 # Changelog
 
-## Unreleased – N02 Functional Core (2026-11-20, local commits, not pushed)
+## Unreleased – N02 follow-up (2026-11-20)
+
+- Added draw claims in the Tk app for the current position and for a declared legal move.
+- Reset the UCI engine once per game and skip cancelled searches before they can reach the engine.
+- Reopen stored games and recorded PGN results in the local two-player interface.
+- Validate and, if needed, migrate a backup before restoring it. Preserve the active database on invalid input.
+- Reject normalized duplicate puzzle IDs and validate loaded packs beyond their checksum.
+- Added external Perft fixtures and a Tk underpromotion regression. Run native Tk CI on Python 3.11 and 3.14.
+
+## Unreleased – N02 Functional Core (2026-11-20, merged in PR #2)
 
 - Evidence-based work-package status model; F0 baseline preserved.
 - Chess core: structural SAN parser (PGN import ~14× faster), PGN result

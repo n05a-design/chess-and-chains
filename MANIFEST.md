@@ -38,13 +38,13 @@
 
 `W00` (Repository/SSOT) → `W01` (Owner-Fragen und MVP) → `W02` (Rechte & Engine-Strategie) / `W03` (Shell-Audit) / `W04` (Konkurrenz & UX) → `W05` (Schachregeln) → `W06` (UI-Board) → `W07` (lokale UCI-Engine) → `W08` (Rätselimport) → `W09` (Lokalspeicher) → `W10` (i18n/Accessibility) → `W11` (CI/Sicherheit/QA) → `W12` (Release-Vorbereitung).
 
-**Regel:** Parallelität nur wenn Abhängigkeiten und Berechtigungen geklärt sind. Für W05-W07 muss die Regeln-/Engine-Lizenzentscheidung abgeschlossen sein. Publikumsrelease ist bis zum Rechte-Gate blockiert.
+**Regel:** Die Freigabe für den eigenen MPL-2.0-Regelkern und die Entwicklung mit projekteigener Mock-Engine sind in der [Lizenzstrategie](docs/legal/LICENSE_STRATEGY.md) dokumentiert. Engine-Bündelung und Release warten auf ADR-001. Die [Nacharbeit zu N02](docs/reports/2026-11-20_N02-follow-up.md) dokumentiert die lokale Implementierung und die Baseline-CI getrennt.
 
 ## Artefaktgrenzen
 
 `design/source/` = editierbare Originaldateien, `assets/` = ausgewählte Laufzeitressourcen, `references/inspiration/` = nur Linklisten & Notizen, `marketing/` = eigene Marken-/PR-Unterlagen, `data/source/` = Rohdaten (externe Datensätze nicht versionieren; nur kleine projekteigene Demo-CSV), `integrations/glide_shell/` = dokumentierte, freigegebene Wiederverwendung. **Keine automatischen OneDrive-Kopien, keine fremden Repo-Kopien in diesem Repository.**
 
-## Starter-Zustand (dieses ZIP)
+## Historische Foundation-Baseline (F0)
 
 - Dokumentationsgrundlagen und Copilot-Prompts: **enthalten**.
 - Minimales Python-Paket, Testbasis und GitHub-Prüfworkflow: **enthalten**, aber erst lokal/CI auf realen Systemen verifizieren.

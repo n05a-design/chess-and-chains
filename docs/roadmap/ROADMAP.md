@@ -14,6 +14,14 @@
 
 *Aufwand bei fokussierter Arbeit mit KI-Unterstützung, **nicht** verbindliche Kalenderwochen; Arbeit parallel zu Steps/Glide dauert länger.*
 
+## Stand nach N02
+
+Das gemergte N02 liefert den lokalen Zweispieler-Prototyp, die asynchrone
+Mock-UCI-Strecke und das Demo-Puzzle-Lab. Die lokale Nacharbeit ergänzt
+Remisansprüche und das Laden von Partien. Der reale Offline-Gegner, der
+Originalfigurensatz und der native Release-Nachweis bleiben offene Gates.
+Aktueller Umfang je Paket steht in [WORK_PACKAGES.md](WORK_PACKAGES.md).
+
 ## Kritischer Pfad
 
 Lizenz-Gate + Schachregeln + Engine-Fähigkeit + Rendering/Interaktion + Puzzle-Korrektheit + native Paketprüfung. Design und Marktanalyse parallel möglich; keine Veröffentlichung vor Legal/Source/QA-Freigabe.

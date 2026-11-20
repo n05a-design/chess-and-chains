@@ -120,11 +120,14 @@
       "status_evidence": [
         "docs/reports/2026-11-20_W05_chess-core.md",
         "src/chess_and_chains/chess/rules.py",
-        "tests/test_chess_core.py"
+        "tests/test_chess_core.py",
+        "docs/reports/2026-11-20_N02-follow-up.md",
+        "tests/test_chess_golden.py"
       ],
       "open_gate_items": [
         "Owner acceptance",
-        "PGN variations/comments are skipped, not preserved (documented limitation)"
+        "PGN variations/comments are skipped, not preserved (documented limitation)",
+        "General dead-position adjudication beyond material patterns"
       ]
     },
     {
@@ -141,7 +144,9 @@
         "src/chess_and_chains/ui/board.py",
         "tests/test_board_ui.py",
         "src/chess_and_chains/ui/pieces.py",
-        "docs/reports/2026-11-20_N02_functional-core.md"
+        "docs/reports/2026-11-20_N02_functional-core.md",
+        "docs/reports/2026-11-20_N02-follow-up.md",
+        "tests/test_app_integration.py"
       ],
       "open_gate_items": [
         "Original owner SVG piece rendering (ADR-005 asset gate)",
@@ -165,7 +170,8 @@
         "src/chess_and_chains/engines/presets.py",
         "tests/test_uci_engine.py",
         "tests/test_game_controller.py",
-        "tests/test_bot_presets.py"
+        "tests/test_bot_presets.py",
+        "docs/reports/2026-11-20_N02-follow-up.md"
       ],
       "open_gate_items": [
         "Real third-party engine offline test (ADR-001)",
@@ -187,7 +193,8 @@
         "src/chess_and_chains/puzzles/importer.py",
         "src/chess_and_chains/puzzles/session.py",
         "tests/test_puzzles.py",
-        "tests/fixtures/puzzles_sample.csv"
+        "tests/fixtures/puzzles_sample.csv",
+        "docs/reports/2026-11-20_N02-follow-up.md"
       ],
       "open_gate_items": [
         "Real Lichess export import run (owner opt-in download)",
@@ -202,16 +209,18 @@
       "depends_on": "W05/W08",
       "gate": "Getrennte Nutzerdaten, Migrations- und Restore-Proben, PGN/FEN-Roundtrip",
       "phase": "F4",
-      "status": "IMPLEMENTED",
-      "scope": "SQLite schema with versioned migrations, backup/restore, corruption quarantine, atomic JSON settings, saved games and puzzle progress",
+      "status": "TESTED",
+      "scope": "SQLite migrations, validated backup/restore, local game library with save/reopen and PGN results, puzzle progress, atomic JSON settings; locally tested",
       "status_evidence": [
         "docs/reports/2026-11-20_N02_functional-core.md",
         "src/chess_and_chains/storage/database.py",
         "src/chess_and_chains/storage/settings.py",
-        "tests/test_storage.py"
+        "tests/test_storage.py",
+        "docs/reports/2026-11-20_N02-follow-up.md",
+        "tests/test_app_integration.py"
       ],
       "open_gate_items": [
-        "Save/load UI",
+        "PGN file exchange dialog and native platform acceptance",
         "Profile model decision Q-012",
         "ADR-004 acceptance"
       ]
@@ -240,7 +249,8 @@
       "status": "IN_PROGRESS",
       "status_evidence": [
         ".github/workflows/checks.yml",
-        "docs/reports/2026-11-20_N02_functional-core.md"
+        "docs/reports/2026-11-20_N02_functional-core.md",
+        "docs/reports/2026-11-20_N02-follow-up.md"
       ]
     },
     {
@@ -263,12 +273,12 @@
     {
       "repository": "n05a-design/steps",
       "ref": "main",
-      "sha": "3a5c5add70172318979cac6518a923372c5fd193"
+      "sha": "e6baf69d41305be6c499c249d7668c17ea823b7c"
     },
     {
       "repository": "n05a-design/glide-to-do",
       "ref": "main",
-      "sha": "a53e779026295d315983c421bfbc9f42124037f5"
+      "sha": "55ad7e95e5824820098fb0a1d5d5cab66c0a9947"
     }
   ],
   "not_included": [

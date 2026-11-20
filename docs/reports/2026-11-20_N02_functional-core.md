@@ -1,5 +1,8 @@
 # N02 – Functional Core: Controller, Mock-Bot, Puzzle Lab, Storage
 
+> Historischer Entwicklungsbericht. PR #2 wurde inzwischen gemergt. Der
+> verifizierte Merge- und Teststand steht in der [N02-Nacharbeit](2026-11-20_N02-follow-up.md).
+
 **Datum:** 2026-11-20 13:49 CET · **Agent:** Claude Code (Claude Opus 5.5), AI-assistiert, menschliche Prüfung erforderlich ·
 **Gerät:** macOS 27.2.1 arm64, Python 3.14.5, Tk 9.0 · **Branch:** `claude/chess-chains-codex-n02-237372` (Git-Worktree) ·
 **Basis:** `origin/main` = `cf84659c8e3f3ea0551fd7d933b65d3aabebe0f8`

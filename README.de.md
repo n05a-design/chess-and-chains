@@ -25,7 +25,8 @@ Dokumentierte Projektbasis, ein **GUI-freier Python-Regelkern** (legale Züge, F
 - UCI-Prozessadapter, getestet **nur mit einer projekteigenen Mock-Engine** – diese ist **keine Schach-KI**,
 - sechs datengetriebenen Bot-Stufen (Optionen nur, wenn die Engine sie anbietet; Spielstärke **nicht kalibriert**),
 - **Puzzle Lab** mit Streaming-Importer für das Lichess-CSV-Format, Rating ≥ 1000, Paketen und fünf projekteigenen Demo-Rätseln,
-- lokaler SQLite-Speicherung (Partien, Rätselfortschritt), JSON-Einstellungen und DE/EN-Oberfläche.
+- Remisanspruch bei dreifacher Wiederholung oder nach der 50-Züge-Regel, auch durch Ansage eines legalen Zugs,
+- lokaler SQLite-Speicherung für Rätselfortschritt und Partien. Die Partiebibliothek öffnet gespeicherte Partien im Zweispielermodus und übernimmt das PGN-Ergebnis. Einstellungen liegen in JSON, die Oberfläche ist auf Deutsch und Englisch verfügbar.
 
 Nicht vorhanden: gebündelte oder getestete echte Engine (z. B. Stockfish, ADR-001 offen), Lichess-Rätseldaten, Original-SVG-Figuren, Installer. Der Prototyp ist nicht release-fertig.
 
