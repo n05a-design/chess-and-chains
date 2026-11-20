@@ -14,7 +14,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.headless_check:
         print(
-            f"Chess & Chains {__version__} — local two-player GUI prototype available."
+            f"Chess & Chains {__version__} — local GUI prototype available "
+            "(two players, mock bot, demo puzzles); no engine bundled."
         )
         return 0
 
