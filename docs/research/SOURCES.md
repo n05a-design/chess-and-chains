@@ -86,3 +86,13 @@ Repository-Metadaten wurden nur als Quellenhinweis aufgenommen, nicht als
 Freigabe einer Lizenz-/Codeübernahme. Detaillierte Beobachtungen,
 Nicht-Verifikationen und Designhypothesen sind in
 `docs/reports/2026-11-20_W04_competitor-design.md` festgehalten.
+
+## W05-Regeltests am 2026-11-20
+
+| Quelle | Verwendung | Grenze |
+| --- | --- | --- |
+| [Chess Programming Wiki – Perft Results](https://www.chessprogramming.org/Perft_Results) | Referenz-FENs und Perft-Knotenstände für Initialstellung sowie Positionen 2–6; als unabhängige Move-Generation-Golden-Tests in `tests/test_chess_core.py` verwendet | Kein Lizenzbeleg und keine vollständige Schachregeln-/Remissemantik-Abnahme; nur die dokumentierten Tiefen wurden als Fixture übernommen |
+
+Es wurden keine fremden Regelimplementierungen, Tests, Bibliotheken oder
+Schachpartien kopiert. Die Referenzwerte werden nicht als Beleg für
+Plattform-/GUI-/Engine- oder Release-Reife ausgegeben.

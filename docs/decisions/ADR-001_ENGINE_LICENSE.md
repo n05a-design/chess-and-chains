@@ -40,3 +40,15 @@ https://github.com/official-stockfish/Stockfish · https://www.mozilla.org/en-US
 
 **Status bleibt OPEN.** Keine Rechtsmeinung, Owner-Freigabe, Dependency oder
 Distribution wurde hierdurch erzeugt.
+
+## Begrenzte Owner-Entscheidung für W05 (2026-11-20)
+
+Der Owner hat den Start eines **eigenständig implementierten Schachregel-Kerns
+unter MPL-2.0** autorisiert. W05 verwendet daher keine externe Schachbibliothek
+und übernimmt keinen fremden Regelcode. Das ist keine Rechtsberatung und keine
+Freigabe für Stockfish, python-chess, andere GPL-Komponenten, Engine-Binaries,
+NNUE-Dateien oder eine kombinierte Distribution.
+
+Q-001/Q-002 bleiben für Engine-Bundling, Erststartkomfort und die konkrete
+Bot-Verteilung **OPEN**. Der Regelkern wird separat bewertet; ADR-001 bleibt
+insgesamt OPEN und blockiert die gebündelte GPL-Auslieferung.

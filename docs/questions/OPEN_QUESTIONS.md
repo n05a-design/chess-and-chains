@@ -4,7 +4,7 @@
 
 | ID | Priorität | Rückfrage an Owner | Vorgeschlagene Default-Richtung | Gate/Status |
 | --- | --- | --- | --- | --- |
-| Q-001 | BLOCKER | Ist **MPL-2.0 für den App-Quellcode** wichtiger als ein vollständig eingebauter Stockfish-Installer? Falls Konflikt: GPLv3 akzeptabel? | MPL bleibt Owner-Präferenz aus der Arbeitsanweisung; zunächst keine GPL-Bündelung. A/B/C anhand des konkreten Pakets und mit fachkundiger Rechtsprüfung entscheiden. | ADR-001 / OPEN |
+| Q-001 | BLOCKER | Ist **MPL-2.0 für den App-Quellcode** wichtiger als ein vollständig eingebauter Stockfish-Installer? Falls Konflikt: GPLv3 akzeptabel? | Owner autorisierte 2026-11-20 einen eigenständigen Regelkern unter MPL-2.0. Das klärt weder GPL-Bündelung noch Stockfish-Vertrieb; keine GPL-Bündelung bis Entscheidung und Prüfung. | ADR-001 / OPEN – Engine offen |
 | Q-002 | BLOCKER | Ist **sofort gegen Bots spielen nach Erstinstallation** zwingend oder wäre eine separat zu installierende Engine akzeptabel? | Offline-Nutzbarkeit als Ziel beibehalten; falls Engine fehlt, keine Netzinstallation/Downloads voraussetzen und lokale Bereitstellung verständlich machen. Erststart-Komfort nach Rechtsprüfung entscheiden. | ADR-001 / OPEN |
 | Q-003 | HIGH | Können deine bestehenden **SVG-Schachfiguren** samt grafischen Masterdateien öffentlich unter einer benannten Lizenz bereitgestellt werden? | Nicht verwenden oder veröffentlichen, bis Autor, Quelle und Änderungs-/Weitergaberechte je Datei bestätigt sind; Originale getrennt registrieren. | ADR-005 / OPEN |
 | Q-004 | HIGH | Gibt es bereits **Brett-Design, Logo, Farbwerte, Schriftstile oder Brand-Guides**? | Zuerst Owner-Masterdateien inventarisieren; bis dahin neutrale austauschbare Tokens statt erfundener Markenwerte/Fonts. | ADR-005 / OPEN |

@@ -20,7 +20,7 @@ integrations/glide_shell/ (ONLY when individually cleared)
 
 1. Chess-Domäne hängt weder von Tkinter noch von Glide/Steps ab. UI hängt an typisierten Services, nicht an der Engine-Binärdatei.
 2. Engine-Adapter spricht *UCI* zu einem separaten Prozess. Keine Engine-Library-API im Domain Core. Engine-Version, Dateipfad, CPU-Kompatibilität und Timeouts als konfigurierte Daten behandeln.
-3. Züge intern UCI und objektbasierter Spielzustand, serialisiert FEN/PGN gemäß gewählter Bibliothek. Keine Schachregeln in Canvas-Event-Callbacks implementieren.
+3. Züge intern UCI und objektbasierter Spielzustand, serialisiert FEN/PGN über den typisierten Rules-Port. Keine Schachregeln in Canvas-Event-Callbacks implementieren.
 4. Puzzle-Import ist offline reproduzierbar: FEN vor dem ersten Zug; zuerst den ersten Gegnerzug anwenden, danach Nutzeraufgabe; alle Schritte validieren.
 5. Runtime-Daten **außerhalb** Installations- und Git-Verzeichnissen unter geeigneten OS-Benutzerpfaden. Migrationsnummern und Rücksicherung.
 6. Locale, Asset-Varianten und UI sind eigene Einstellungen. Fehlende Übersetzungen müssen auffallen.
@@ -31,9 +31,14 @@ integrations/glide_shell/ (ONLY when individually cleared)
 
 Python 3.11+ für den Headless-Core; bevorzugt Tkinter/Tk für Desktop-Wiederverwendung. Python 3.14/Tk 9 muss auf Zielsystemen explizit getestet werden. SVG-Rendering-Strategie (Raster-Cache/Vektorrenderer) erfordert Prototyp und Lizenzprüfung. Tk vs. Qt ist kein Selbstzweck, sondern eine benchmarkbasierte Entscheidung.
 
-## Schachkern – ADR erforderlich
+## Schachkern – begrenzte W05-Entscheidung
 
-`python-chess` ist GPLv3 und mit einem nur-MPL-Artefakt nicht automatisch kompatibel. `Chessnut` ist Unlicense-lizenziert, muss aber funktional (Rochade, alle Remisregeln, FEN/PGN/Promotions) qualifiziert werden. Alternativ Gesamtprodukt unter GPLv3. Bis zur Klärung keine Dependency hinzufügen.
+Der Owner hat am 2026-11-20 einen eigenständig implementierten Regelkern
+unter MPL-2.0 für W05 autorisiert. Die Domain bleibt ohne Drittanbieter-
+Schachbibliothek, Tk, UCI und Dateisystem. `python-chess` ist GPLv3 und wird
+nicht verwendet; `Chessnut` wird ebenfalls nicht übernommen. Diese begrenzte
+Entscheidung klärt nicht die Stockfish-/Engine-Distribution; ADR-001 und
+Q-001/Q-002 bleiben dafür offen.
 
 ## Zu verifizierende Testfälle
 
