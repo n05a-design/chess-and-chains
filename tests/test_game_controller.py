@@ -13,7 +13,13 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from chess_and_chains.chess import ChessError, Color, GameStatus, IllegalMoveError, Move  # noqa: E402
-from chess_and_chains.engines.bot import BotRequest, EngineConfig, UCIBot, resolve_engine_config  # noqa: E402
+from chess_and_chains.engines.bot import (  # noqa: E402
+    BotRequest,
+    EngineConfig,
+    UCIBot,
+    resolve_engine_config,
+    split_engine_command,
+)
 from chess_and_chains.engines.presets import load_presets  # noqa: E402
 from chess_and_chains.game import BotStatus, GameController, GameSetup, PlayMode  # noqa: E402
 
@@ -289,6 +295,21 @@ class EngineConfigTests(unittest.TestCase):
         config, warning = resolve_engine_config("/nonexistent/engine", environ={})
         self.assertTrue(config.is_mock)
         self.assertIn("not found", warning)
+
+    def test_engine_command_split_keeps_windows_paths(self):
+        """Regression (CI Windows): POSIX shlex stripped backslashes from engine paths."""
+        self.assertEqual(
+            split_engine_command(r"C:\Engines\sf\engine.exe -u", windows=True),
+            [r"C:\Engines\sf\engine.exe", "-u"],
+        )
+        self.assertEqual(
+            split_engine_command(r'"C:\Program Files\Engine\e.exe" --uci', windows=True),
+            [r"C:\Program Files\Engine\e.exe", "--uci"],
+        )
+        self.assertEqual(
+            split_engine_command("'/opt/my engine/bin' -u", windows=False),
+            ["/opt/my engine/bin", "-u"],
+        )
 
     def test_explicit_dev_environment_engine(self):
         config, warning = resolve_engine_config(None, environ={"CHESS_AND_CHAINS_ENGINE": sys.executable + " -u"})

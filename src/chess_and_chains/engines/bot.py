@@ -88,6 +88,20 @@ class EngineConfig:
         return cls((str(executable), *args), executable.stem, False, source)
 
 
+def split_engine_command(text: str, *, windows: bool | None = None) -> list[str]:
+    """Split ``CHESS_AND_CHAINS_ENGINE`` into argv without a shell.
+
+    POSIX ``shlex`` treats backslashes as escapes and would mangle Windows
+    paths (``C:\\Engines\\x.exe`` -> ``C:Enginesx.exe``), so Windows uses
+    non-POSIX splitting and strips surrounding quotes.
+    """
+    is_windows = os.name == "nt" if windows is None else windows
+    if not is_windows:
+        return shlex.split(text)
+    parts = shlex.split(text, posix=False)
+    return [part[1:-1] if len(part) >= 2 and part[0] == part[-1] == '"' else part for part in parts]
+
+
 def resolve_engine_config(
     engine_path: str | None,
     environ: Mapping[str, str] | None = None,
@@ -101,7 +115,7 @@ def resolve_engine_config(
             return EngineConfig.mock(), f"{error}. Using mock bot instead."
     dev = env.get(ENGINE_ENV)
     if dev:
-        parts = shlex.split(dev)
+        parts = split_engine_command(dev)
         try:
             return EngineConfig.from_path(parts[0], parts[1:], source="environment"), None
         except (EngineConfigError, IndexError) as error:
