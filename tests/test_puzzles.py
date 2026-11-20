@@ -183,6 +183,20 @@ class SessionTests(unittest.TestCase):
 
 
 class PackTests(unittest.TestCase):
+    def test_checksummed_data_is_protected_from_line_ending_conversion(self):
+        """Regression (CI Windows): CRLF checkout broke the demo pack checksum."""
+        demo = ROOT / "src" / "chess_and_chains" / "puzzles" / "data" / "demo" / "puzzles.jsonl"
+        self.assertNotIn(b"\r", demo.read_bytes())
+        import shutil
+        import subprocess
+        if shutil.which("git") is None or not (ROOT / ".git").exists():
+            self.skipTest("git not available")
+        paths = [str(demo.relative_to(ROOT)), "tests/fixtures/puzzles_sample.csv", "data/source/demo_puzzles.csv"]
+        out = subprocess.run(["git", "check-attr", "text", "--", *paths], cwd=ROOT,
+                             capture_output=True, text=True, check=True).stdout
+        for line in out.splitlines():
+            self.assertTrue(line.endswith(": text: unset"), line)
+
     def test_demo_pack_is_marked_demo_and_valid(self):
         pack = load_demo_pack()
         self.assertTrue(pack.manifest.demo)

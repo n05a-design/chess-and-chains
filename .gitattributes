@@ -1,0 +1,6 @@
+# Checksummed data must be byte-identical on every platform (no CRLF conversion).
+# Puzzle packs carry a SHA-256 over the exact bytes of puzzles.jsonl.
+src/chess_and_chains/puzzles/data/** -text
+# Source CSVs and fixtures feed reproducible import reports (input SHA-256).
+data/source/*.csv -text
+tests/fixtures/** -text
