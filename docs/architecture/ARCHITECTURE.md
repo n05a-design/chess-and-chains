@@ -37,8 +37,11 @@ Der Owner hat am 2026-11-20 einen eigenständig implementierten Regelkern
 unter MPL-2.0 für W05 autorisiert. Die Domain bleibt ohne Drittanbieter-
 Schachbibliothek, Tk, UCI und Dateisystem. `python-chess` ist GPLv3 und wird
 nicht verwendet; `Chessnut` wird ebenfalls nicht übernommen. Diese begrenzte
-Entscheidung klärt nicht die Stockfish-/Engine-Distribution; ADR-001 und
-Q-001/Q-002 bleiben dafür offen.
+Entscheidung klärt nicht die Stockfish-/Engine-Distribution. Der Owner wählte
+zunächst Weg B für die UCI-Implementierung, bestätigte danach den
+Sofortstart-Bot als Anforderung und beauftragte die Prüfung von Weg A. Diese
+Prüfung ist keine Vertriebsfreigabe. Bis zur fachkundigen Prüfung bleiben
+Engine-Bundles und -Downloads gesperrt; ADR-001 bleibt offen.
 
 ## Zu verifizierende Testfälle
 

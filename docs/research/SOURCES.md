@@ -112,3 +112,15 @@ Der lokale Messaufbau, seine exakten Laufzeitdaten und Grenzen stehen in
 `scripts/benchmark_svg_backends.py` und
 `docs/reports/2026-11-20_W06_board-ui.md`. Verwendet wurde ausschließlich
 eine neu geschriebene SVG-Geometrie-Fixture; keine Owner- oder Fremdassets.
+
+## W02-GPL-Gesamtvertriebsrecherche am 2026-11-20
+
+| Quelle | Geprüfter Stand | Verwendet für / Grenze |
+| --- | --- | --- |
+| [GNU GPLv3 Originaltext](https://www.gnu.org/licenses/gpl-3.0.txt) | Version 3, 29.06.2007; abgerufen 2026-11-20 | §§5–6: „work based on“, Aggregate und zulässige Wege für Corresponding Source; §5(d): UI-Rechtsnotizen. Keine Einordnung der konkreten Chess-&-Chains-Bündelung. |
+| [Mozilla MPL 2.0 FAQ](https://www.mozilla.org/en-US/MPL/2.0/FAQ/) und [MPL/GPL-Kombinationsanleitung](https://www.mozilla.org/en-US/MPL/2.0/combining-mpl-and-gpl/) | FAQ zuletzt aktualisiert 2024-01-30; abgerufen 2026-11-20 | FAQ Q14 erläutert MPL §3.3 und die Bedingungen für eine zusätzliche GPL-Distribution; Anleitung behandelt Erhaltung der MPL-Dateihinweise. Lizenzgeber-Hinweise, keine fallbezogene Rechtsberatung. |
+| [Stockfish 19 README](https://raw.githubusercontent.com/official-stockfish/Stockfish/sf_19/README.md), [Copying.txt](https://raw.githubusercontent.com/official-stockfish/Stockfish/sf_19/Copying.txt) und [Release](https://github.com/official-stockfish/Stockfish/releases/tag/sf_19) | Tag `sf_19`, Release-Commit `edb0d9db6731067ec50ce619ff372b463bc4dd5d`; abgerufen 2026-11-20 | README nennt GPLv3, `Copying.txt`, `AUTHORS`, `src`/Makefile und `.nnue`-Netz als Distributionsbestandteile und verlangt Lizenz plus Quellcode oder passenden Quellverweis. Sie nennt LCZero-Trainingsdaten unter ODbL. Keine Binary heruntergeladen; keine eigenständige Bewertung der Netz-/Datensatzrechte. |
+
+Der Bericht `docs/reports/2026-11-20_W02_license.md` hält die Anwendung,
+Prüffragen und noch fehlenden Rechtsentscheidungen fest. Die Quellen stützen
+eine weitere Prüfung von Weg A, nicht dessen Annahme oder Auslieferung.

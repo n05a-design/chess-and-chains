@@ -1,6 +1,6 @@
 # ADR-001 – Engine- und Lizenzarchitektur
 
-**Status: OPEN – BLOCKIERT gebündelte Stockfish-Auslieferung und GPL-Schachbibliotheken.**
+**Status: OPEN – RELEASE BLOCKER; GPL-Gesamtvertrieb A wird geprüft.**
 
 ## Ausgangslage
 
@@ -14,7 +14,14 @@ Eigener Code soll möglichst MPL-2.0 bleiben. Stockfish ist GPLv3; `python-chess
 
 ## Empfehlung / Sperre
 
-Technik **engine-agnostisch** planen; kein Stockfish-Binary im Repo/Installer, kein `python-chess` als Abhängigkeit, bis der Owner und ggf. fachkundige Lizenzprüfung Weg A/B/C freigeben. Licensing checklist vor jeder Release: genaue Dateien, Prozesse, Patches, separierbare Distribution, Lizenztexte, komplette korrespondierende Quellen, Notices, Installer/UI-Verweise.
+Der Owner wählte zunächst Weg B als Implementierungsrichtung: engine-agnostisch
+mit konfiguriertem externem UCI-Prozess. Danach bestätigte er die Anforderung,
+dass ein Bot direkt nach App-Installation offline spielbereit sein muss, und
+beauftragte die Prüfung von Weg A als möglichem GPL-konformen Gesamtvertrieb.
+A ist **noch nicht** ausgewählt oder rechtlich freigegeben. Kein Stockfish-
+Binary im Repo/Installer und kein `python-chess` als Dependency. Vor jeder
+konkreten Distribution ist fachkundige Lizenzprüfung erforderlich; UCI und
+separate Prozesse garantieren keine rechtliche Trennung.
 
 ## Quellen
 
@@ -22,7 +29,21 @@ https://github.com/official-stockfish/Stockfish · https://www.mozilla.org/en-US
 
 ## Owner-Entscheid
 
-[OFFEN: A / B / C; Datum; Freigebender; konkreter Lieferumfang; Rechtsprüfung]
+**Owner-Eingaben (2026-11-20):** Zunächst Weg B als Implementierungsrichtung;
+danach die Pflichtanforderung, direkt nach App-Installation offline gegen
+einen Bot spielen zu können, sowie die Beauftragung, Weg A als möglichen
+GPL-konformen Gesamtvertrieb zu untersuchen. Dies ist ein Rechercheauftrag,
+keine Annahme oder Vertriebsfreigabe von A.
+
+Für W07 umfasst die Freigabe weiterhin nur einen konfigurierten externen
+UCI-Prozess und lokale Mock-Tests. Sie genehmigt weder eine bestimmte Engine
+noch deren Binary, Download, Installer, GPL-Komponente oder gemeinsame
+Distribution. Q-001 bleibt offen; Q-002 ist als Produktanforderung
+entschieden. ADR-001 bleibt Release-Gate, bis die konkrete Engine,
+Quelldateien, Netzdateien, Lieferartefakte und Vertriebsform fachkundig
+geprüft und vom Owner freigegeben sind.
+
+[Rechtsprüfung und konkreter Engine-Lieferumfang: OFFEN]
 
 ## W02-Technikaufnahme (2026-11-20; nicht als Freigabe)
 
@@ -38,8 +59,10 @@ https://github.com/official-stockfish/Stockfish · https://www.mozilla.org/en-US
 - Eine UCI-/Prozessgrenze ist eine Architekturinformation und entscheidet
   nicht, ob eine konkrete Gesamtverteilung eine kombinierte Arbeit darstellt.
 
-**Status bleibt OPEN.** Keine Rechtsmeinung, Owner-Freigabe, Dependency oder
-Distribution wurde hierdurch erzeugt.
+**Status zum Zeitpunkt der W02-Aufnahme:** Optionen noch nicht ausgewählt;
+keine Rechtsmeinung, Dependency oder Distribution wurde erzeugt. Die spätere
+Owner-Richtung ist im Abschnitt „Owner-Entscheid“ festgehalten und bleibt
+ebenfalls ohne Rechtsfreigabe.
 
 ## Begrenzte Owner-Entscheidung für W05 (2026-11-20)
 
@@ -49,6 +72,7 @@ und übernimmt keinen fremden Regelcode. Das ist keine Rechtsberatung und keine
 Freigabe für Stockfish, python-chess, andere GPL-Komponenten, Engine-Binaries,
 NNUE-Dateien oder eine kombinierte Distribution.
 
-Q-001/Q-002 bleiben für Engine-Bundling, Erststartkomfort und die konkrete
-Bot-Verteilung **OPEN**. Der Regelkern wird separat bewertet; ADR-001 bleibt
-insgesamt OPEN und blockiert die gebündelte GPL-Auslieferung.
+Q-001 bleibt offen, weil die Auswahl zwischen A und B noch nicht abgeschlossen
+ist. Q-002 ist als Produktanforderung entschieden; der Umsetzungsweg bleibt
+offen. Der Regelkern wird separat bewertet; ADR-001 bleibt Release-Gate und
+blockiert eine gebündelte GPL-Auslieferung.

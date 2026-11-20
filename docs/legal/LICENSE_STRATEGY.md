@@ -53,13 +53,15 @@ Quellenaufnahme, keine Prüfung der konkreten Vertriebsform:
 | **B – MPL-App plus getrennt installierte UCI-Engine** | Offline nach separater lokaler Installation oder Konfiguration; nicht zwingend spielbereit direkt nach Erstinstallation. | Engine-agnostische UCI-Grenze; Engine separat beziehen/aktualisieren und keine GPL-Dateien in diesem Repo/Installer bündeln, solange die Vertriebsform nicht geprüft ist. | Separater Prozess, UCI oder getrennte Installer garantieren keine rechtliche Trennung. Links/Anweisungen und Plattformpakete sind ebenfalls auf die konkrete Verteilung zu prüfen. |
 | **C – ausschließlich vom Nutzer bereitgestellte Engine** | Kein Bot nach Erstinstallation, bis der Nutzer eine kompatible lokale Engine bereitstellt; danach offline verwendbar. | Lokalen Pfad auswählen und UCI-Kompatibilität/Architektur prüfen; App liefert weder Engine noch Download/Auto-Installer. | Schwächere Erststart-UX; lokaler Pfad, Version und Rechte bleiben nutzer- bzw. plattformspezifisch. |
 
-**Vorläufige technische Leitlinie, keine Owner-Entscheidung:** Die App kann
-engine-agnostisch und UCI-orientiert vorbereitet werden. Keine der Optionen wird
-ausgewählt; kein Binary, Modellgewicht oder GPL-Regelwerk wird aufgenommen.
-Wenn „sofort nach Erstinstallation offline gegen einen Bot“ zwingend ist, muss
-der Owner zusammen mit fachkundiger Rechtsberatung insbesondere A und B anhand
-des konkreten Distributionspakets entscheiden. C bleibt eine UX-Alternative,
-keine Erfüllung dieses strengeren Erststartziels.
+**Owner-Eingaben und aktueller Prüfauftrag (2026-11-20):** Weg B wurde
+zunächst als Implementierungsrichtung gewählt. Danach bestätigte der Owner,
+dass ein Bot direkt nach der App-Installation offline spielbereit sein muss,
+und beauftragte die Prüfung von Weg A als möglichem GPL-konformen
+Gesamtvertrieb. A ist **noch nicht** ausgewählt oder rechtlich freigegeben.
+Bis zu einer fachkundigen Prüfung der konkreten Anwendung und Lieferform wird
+nichts gebündelt, heruntergeladen oder als freigegeben dargestellt. Kein
+Engine-Binary, Modellgewicht oder GPL-Regelwerk wurde aufgenommen. Q-002 ist
+als Anforderung geschlossen; Umsetzung und Distribution bleiben offen.
 
 ### Inventarvorlage für spätere Prüfung
 
@@ -91,3 +93,51 @@ vollständige Drittkomponenten-BOM, Lizenztexte/Notices, native
 Bibliotheksversionen sowie echte Paketierungsprüfungen für alle freigegebenen
 Zielsysteme. Details und Grenzen: `docs/reports/2026-11-20_W06_board-ui.md`,
 Quellen: `docs/research/SOURCES.md`.
+
+## W02-Nachtrag – möglicher GPL-Gesamtvertrieb (2026-11-20; Recherche, keine Freigabe)
+
+Der Owner verlangt einen direkt nach Installation offline verfügbaren Bot und
+beauftragte die Prüfung von Weg A als möglichem Vertriebsweg. Offizielle
+Mozilla-Hinweise zur MPL 2.0 beschreiben in FAQ Q14 die Kombination von
+MPL-Code mit einer vorhandenen GPL-Arbeit unter MPL §3.3: Die MPL-Arbeit darf
+nicht als inkompatibel markiert sein, es muss eine tatsächliche Kombination
+mit der Sekundärlizenz-Arbeit geben, und MPL-Code muss den Empfängern
+zusätzlich auch unter der GPL angeboten werden. Die offizielle Mozilla-
+Anleitung verlangt außerdem sorgfältige Erhaltung von Datei-Hinweisen und
+GPL-kompatible MPL-Änderungen. Das ist eine mögliche Lizenzmechanik, keine
+Aussage, dass Chess & Chains und eine konkrete Engine rechtlich eine
+zulässige Kombination bilden.
+
+Die offizielle GPLv3-Fassung definiert in §5 eine Ausnahme für Aggregate aus
+getrennten und unabhängigen Werken, die nicht zu einem größeren Programm
+kombiniert sind. Die Einordnung einer App, die eine Engine gezielt startet,
+und eines gemeinsamen Installers/Bundles ist damit nicht aus „separate
+Prozesse“, UCI, Dateigrenzen oder einem gemeinsamen Download allein
+abzuleiten. Bei Weitergabe von Objektcode verlangt §6 eine zulässige Form der
+Bereitstellung des maschinenlesbaren Corresponding Source; die Definition
+umfasst insbesondere nötige Quellen zum Erzeugen, Installieren, Ausführen und
+Ändern sowie Build-Skripte. GPLv3 §5(d) enthält außerdem Anforderungen an
+„Appropriate Legal Notices“ bei erfassten interaktiven Oberflächen; die
+konkrete Anwendbarkeit ist Teil der Rechtsprüfung.
+
+Stockfishs offizielle README der Version `sf_19` (Commit
+`edb0d9db6731067ec50ce619ff372b463bc4dd5d`) nennt GPLv3 und listet
+`Copying.txt`, `AUTHORS`, vollständigen `src`-Quellcode mit Makefile und
+Netzwerkdatei mit Endung `.nnue` als Distributionsbestandteile; bei
+Binärdistributionen kann das Netz eingebettet sein. Die README verlangt für
+weitergegebene Stockfish-Kopien die Lizenz und vollständigen Quellcode oder
+einen Verweis auf den Quellcode, der genau die verteilte Binary erzeugt.
+Sie nennt außerdem LCZero-Trainingsdaten unter ODbL. Daraus wird keine
+unabhängige Lizenzbewertung des jeweiligen NNUE-Artefakts oder Trainings-
+materials abgeleitet; beides muss in der konkreten Stückliste getrennt
+verifiziert werden.
+
+**Prüfergebnis:** Weg A ist als Prüfoption technisch plausibel, aber nicht
+als rechtlich abgenommen. Vor jeder Implementierung/Bündelung sind mindestens
+die konkrete Engine/Version/Architektur, NNUE-Provenienz, Patch- und
+Buildkette, Corresponding Source, Lizenztexte/Notices, MPL-Datei- und
+Copyright-Inhaberschaft, GPL-Anzeige in der UI sowie die Abgrenzung
+„Aggregate vs. kombinierte Arbeit“ für genau den Installer von fachkundiger
+Rechtsberatung zu prüfen. Die offizielle kostenlose Preisgestaltung beseitigt
+keine GPL-Pflichten. Es wurden weder Stockfish-Dateien noch GPL-Komponenten
+heruntergeladen oder hinzugefügt. `ADR-001` bleibt OPEN/RELEASE BLOCKER.

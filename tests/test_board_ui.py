@@ -127,6 +127,35 @@ class BoardInputTests(unittest.TestCase):
             self.board._on_button_release(SimpleNamespace(x=end_x, y=end_y))
         self.assertEqual(self.requested, [(Move(source, destination),)])
 
+    def test_keyboard_focus_selects_and_requests_a_legal_move(self):
+        with patch.object(self.board, "redraw"):
+            self.board._on_key(SimpleNamespace(keysym="Right"))
+            self.assertEqual(self.board._focused_square, parse_square("e2"))
+            self.board._on_key(SimpleNamespace(keysym="Return"))
+            self.assertEqual(self.board.selected_square, parse_square("e2"))
+
+            self.board._on_key(SimpleNamespace(keysym="Up"))
+            self.board._on_key(SimpleNamespace(keysym="Up"))
+            self.assertEqual(self.board._focused_square, parse_square("e4"))
+            self.board._on_key(SimpleNamespace(keysym="Return"))
+
+        self.assertEqual(
+            self.requested,
+            [(Move(parse_square("e2"), parse_square("e4")),)],
+        )
+
+    def test_keyboard_activation_does_not_dispatch_an_illegal_move(self):
+        with patch.object(self.board, "redraw"):
+            self.board._on_key(SimpleNamespace(keysym="Right"))
+            self.board._on_key(SimpleNamespace(keysym="Return"))
+            for _ in range(3):
+                self.board._on_key(SimpleNamespace(keysym="Up"))
+            self.assertEqual(self.board._focused_square, parse_square("e5"))
+            self.board._on_key(SimpleNamespace(keysym="Return"))
+
+        self.assertEqual(self.requested, [])
+        self.assertIsNone(self.board.selected_square)
+
 
 class ChessAppActionTests(unittest.TestCase):
     def setUp(self):
