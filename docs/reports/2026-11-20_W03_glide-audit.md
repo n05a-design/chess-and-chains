@@ -83,5 +83,10 @@ Einzelfunktionen nach explizitem Owner-Approval. Keine Komplettkopie von
 
 `integrations/glide_shell/REUSE_REGISTER.csv` bleibt leer (nur Kopfzeile), wie
 das Approval-Gate verlangt. ADR-002 bleibt PROPOSED; die Shell bleibt
-RESERVED/NOT APPROVED. LOCAL: dieser Auditbericht und Quellenhinweise.
-COMMITTED/PUSHED/MERGED/RELEASED: nein.
+RESERVED/NOT APPROVED. Zum Erstellungszeitpunkt waren Auditbericht und
+Quellenhinweise noch nicht committed oder gepusht.
+
+**Aktualisierung 2026-11-20 11:50 CET:** Die Auditunterlagen sind inzwischen
+auf `it568-chess-chains-bootstrap` enthalten. Branch und Remote stimmen bei
+Commit `d37ccf691906267a35b4b0c2cadbaf556f85d37f` überein. Kein PR oder Merge;
+Glide bleibt weiterhin nicht freigegeben.
