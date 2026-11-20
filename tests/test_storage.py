@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -169,6 +170,36 @@ class DatabaseTests(TempDirTestCase):
         with self.assertRaises(StorageError):
             db.restore(self.tmp / "junk.sqlite3")
         self.assertEqual(db.puzzle_progress("demo", "a").attempts, 1, "failed restore must not lose data")
+
+    def test_restore_rejects_missing_foreign_or_malformed_backup_without_touching_live_data(self):
+        db = self.open_db()
+        game_id = db.import_pgn("1. e4 *")
+        missing = self.tmp / "missing.sqlite3"
+        foreign = self.tmp / "foreign.sqlite3"
+        malformed = self.tmp / "malformed.sqlite3"
+        for path, sql in ((foreign, "CREATE TABLE notes (text)"), (malformed, f"PRAGMA user_version={SCHEMA_VERSION}")):
+            with sqlite3.connect(path) as connection:
+                connection.execute(sql)
+            connection.close()
+        for path in (missing, foreign, malformed):
+            with self.subTest(path=path), self.assertRaises(StorageError):
+                db.restore(path)
+        self.assertFalse(missing.exists())
+        self.assertEqual(db.load_game(game_id).moves, (Move.from_uci("e2e4"),))
+        with self.assertRaises(StorageError):
+            db.backup(db.path)
+        self.assertEqual(db.statistics().games_saved, 1)
+
+    def test_open_does_not_quarantine_on_transient_database_error(self):
+        path = self.tmp / "untouched.sqlite3"
+        with Database.open(path):
+            pass
+        before = path.read_bytes()
+        with patch.object(Database, "_connect_checked", side_effect=sqlite3.OperationalError("database is locked")):
+            with self.assertRaisesRegex(StorageError, "database is locked"):
+                Database.open(path)
+        self.assertEqual(path.read_bytes(), before)
+        self.assertEqual(list(path.parent.glob("*.corrupt-*")), [])
 
     def test_puzzle_progress_and_statistics(self):
         db = self.open_db()

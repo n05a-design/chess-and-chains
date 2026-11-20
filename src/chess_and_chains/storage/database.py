@@ -17,6 +17,8 @@ Safety rules
 from __future__ import annotations
 
 import sqlite3
+import tempfile
+from contextlib import closing
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -65,6 +67,10 @@ SCHEMA_VERSION = MIGRATIONS[-1][0]
 
 class StorageError(RuntimeError):
     """The database cannot be used safely."""
+
+
+class _CorruptDatabase(sqlite3.DatabaseError):
+    """An integrity check found damaged database data."""
 
 
 def _now() -> str:
@@ -127,13 +133,24 @@ class Database:
     # ----- lifecycle ---------------------------------------------------
     @classmethod
     def open(cls, path: Path) -> Database:
-        path = Path(path)
+        try:
+            return cls._open(Path(path))
+        except (OSError, sqlite3.Error) as error:
+            raise StorageError(f"Cannot open database {path}: {error}") from error
+
+    @classmethod
+    def _open(cls, path: Path) -> Database:
         path.parent.mkdir(parents=True, exist_ok=True)
         recovered_from: Path | None = None
         existed = path.exists() and path.stat().st_size > 0
         try:
             conn = cls._connect_checked(path)
-        except sqlite3.DatabaseError:
+        except sqlite3.DatabaseError as error:
+            code = getattr(error, "sqlite_errorcode", 0)
+            if not isinstance(error, _CorruptDatabase) and (code & 0xFF) not in (
+                sqlite3.SQLITE_CORRUPT, sqlite3.SQLITE_NOTADB,
+            ):
+                raise
             recovered_from = path.with_name(f"{path.name}.corrupt-{_stamp()}")
             path.rename(recovered_from)
             for suffix in ("-journal", "-wal", "-shm"):
@@ -142,27 +159,31 @@ class Database:
                     side.rename(recovered_from.with_name(recovered_from.name + suffix))
             existed = False
             conn = cls._connect_checked(path)
-        version = conn.execute("PRAGMA user_version").fetchone()[0]
-        if version > SCHEMA_VERSION:
+        try:
+            version = conn.execute("PRAGMA user_version").fetchone()[0]
+            if version > SCHEMA_VERSION:
+                raise StorageError(
+                    f"Database schema v{version} is newer than this app supports (v{SCHEMA_VERSION})."
+                )
+            backup_path = None
+            if existed and version < SCHEMA_VERSION:
+                backup_path = path.with_name(f"{path.name}.pre-v{SCHEMA_VERSION}-{_stamp()}.bak")
+                cls._copy(conn, backup_path)
+            cls._migrate(conn, version)
+        except BaseException:
             conn.close()
-            raise StorageError(
-                f"Database schema v{version} is newer than this app supports (v{SCHEMA_VERSION}); it was not modified."
-            )
-        backup_path = None
-        if existed and version < SCHEMA_VERSION:
-            backup_path = path.with_name(f"{path.name}.pre-v{SCHEMA_VERSION}-{_stamp()}.bak")
-            cls._copy(conn, backup_path)
-        cls._migrate(conn, version)
+            raise
         return cls(conn, path, recovered_from, backup_path)
 
     @staticmethod
-    def _connect_checked(path: Path) -> sqlite3.Connection:
-        conn = sqlite3.connect(path, isolation_level=None)
+    def _connect_checked(path: Path, *, read_only: bool = False) -> sqlite3.Connection:
+        target = f"{path.resolve().as_uri()}?mode=ro" if read_only else path
+        conn = sqlite3.connect(target, uri=read_only, isolation_level=None)
         try:
             conn.execute("PRAGMA foreign_keys = ON")
             status = conn.execute("PRAGMA quick_check").fetchone()[0]
             if status != "ok":
-                raise sqlite3.DatabaseError(f"quick_check failed: {status}")
+                raise _CorruptDatabase(f"quick_check failed: {status}")
         except sqlite3.DatabaseError:
             conn.close()
             raise
@@ -187,13 +208,14 @@ class Database:
     @staticmethod
     def _copy(conn: sqlite3.Connection, destination: Path) -> None:
         destination.parent.mkdir(parents=True, exist_ok=True)
-        tmp = destination.with_name(destination.name + ".tmp")
-        target = sqlite3.connect(tmp)
+        with tempfile.NamedTemporaryFile(dir=destination.parent, prefix=f".{destination.name}.", delete=False) as handle:
+            tmp = Path(handle.name)
         try:
-            conn.backup(target)
+            with closing(sqlite3.connect(tmp)) as target:
+                conn.backup(target)
+            tmp.replace(destination)
         finally:
-            target.close()
-        tmp.replace(destination)
+            tmp.unlink(missing_ok=True)
 
     @property
     def schema_version(self) -> int:
@@ -210,26 +232,35 @@ class Database:
 
     def backup(self, destination: Path) -> Path:
         """Consistent online copy via the SQLite backup API (atomic rename)."""
-        self._copy(self._conn, Path(destination))
-        return Path(destination)
+        destination = Path(destination)
+        if destination.exists() and destination.samefile(self.path):
+            raise StorageError("The active database cannot be its own backup.")
+        self._copy(self._conn, destination)
+        return destination
 
     def restore(self, source: Path) -> Path:
-        """Replace contents with a validated backup; current data is backed up first."""
+        """Validate and migrate a backup before replacing live data."""
         source = Path(source)
         try:
-            candidate = self._connect_checked(source)
-        except sqlite3.DatabaseError as error:
-            raise StorageError(f"Backup {source} is not a valid database: {error}") from error
-        try:
-            version = candidate.execute("PRAGMA user_version").fetchone()[0]
-            if version > SCHEMA_VERSION:
-                raise StorageError("Backup was written by a newer app version.")
-            safety = self.path.with_name(f"{self.path.name}.pre-restore-{_stamp()}.bak")
-            self._copy(self._conn, safety)
-            candidate.backup(self._conn)
-        finally:
-            candidate.close()
-        self._migrate(self._conn, self.schema_version)
+            with closing(self._connect_checked(source, read_only=True)) as candidate:
+                version = candidate.execute("PRAGMA user_version").fetchone()[0]
+                if not 1 <= version <= SCHEMA_VERSION:
+                    raise StorageError(f"Backup {source} has unsupported schema v{version}.")
+                with tempfile.TemporaryDirectory(prefix=".restore-", dir=self.path.parent) as directory:
+                    with closing(sqlite3.connect(Path(directory) / "staged.sqlite3", isolation_level=None)) as staged:
+                        candidate.backup(staged)
+                        self._migrate(staged, version)
+                        staged.execute("SELECT id, created_utc, initial_fen, moves_uci, pgn, result, mode, "
+                                       "bot_color, bot_name, bot_preset FROM games LIMIT 0")
+                        staged.execute("SELECT id, pack_id, puzzle_id, attempted_utc, solved, mistakes, "
+                                       "hints_used, duration_ms FROM puzzle_attempts LIMIT 0")
+                        staged.execute("SELECT pack_id, puzzle_id, attempts, solved, clean_solves, "
+                                       "best_duration_ms, last_attempt_utc FROM puzzle_progress LIMIT 0")
+                        safety = self.path.with_name(f"{self.path.name}.pre-restore-{_stamp()}.bak")
+                        self._copy(self._conn, safety)
+                        staged.backup(self._conn)
+        except (OSError, sqlite3.Error) as error:
+            raise StorageError(f"Cannot restore backup {source}: {error}") from error
         return safety
 
     # ----- games -------------------------------------------------------
