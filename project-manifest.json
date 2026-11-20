@@ -116,7 +116,7 @@
       "gate": "Regelkonformer FEN/PGN-Zugablauf mit vollständigen Prüfungen, ohne GUI/Engine-Verflechtung",
       "phase": "F1",
       "status": "TESTED",
-      "scope": "Headless rules domain: legal moves, FEN/SAN/PGN mainline, draw rules including resignation against a lone king, undo/redo; perft + golden tests",
+      "scope": "Headless rules domain: legal moves, FEN/SAN/PGN mainline, draw rules including resignation against a lone king, undo/redo; perft + golden tests; incremental action history with repetition-safe undo/redo",
       "status_evidence": [
         "docs/reports/2026-11-20_W05_chess-core.md",
         "src/chess_and_chains/chess/rules.py",
@@ -211,7 +211,7 @@
       "gate": "Getrennte Nutzerdaten, Migrations- und Restore-Proben, PGN/FEN-Roundtrip",
       "phase": "F4",
       "status": "TESTED",
-      "scope": "SQLite migrations, validated backup/restore, local game library with save/reopen and bounded PGN file exchange, puzzle progress, atomic JSON settings; locally tested",
+      "scope": "SQLite v3 migrations, validated backup/restore, local library with resignation and draw-claim details and bounded PGN file exchange, puzzle progress, atomic JSON settings; locally tested",
       "status_evidence": [
         "docs/reports/2026-11-20_N02_functional-core.md",
         "src/chess_and_chains/storage/database.py",

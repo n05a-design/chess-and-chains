@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased – Saved game endings and history (2026-11-20)
+
+- Keep local resignation and draw-claim details when reopening a game. SQLite v3 migrates existing libraries after creating a backup.
+- Fix saving games that ended before the first move.
+- Store individual history entries for undo and redo instead of copying the entire move list and repetition table.
+- Keep the play controls reachable in small windows with vertical scrolling and automatic focus visibility.
+
 ## Unreleased – PGN exchange and puzzle filters (2026-11-20)
 
 - Import and export a single UTF-8 PGN game from the local library. Bound input size and move count and replace export files atomically.
