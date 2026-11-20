@@ -1,6 +1,6 @@
 # MASTER MANIFEST – Chess & Chains
 
-**Stand:** 2026-11-19 · **Version:** Foundation F0 · **Status:** VORGESCHLAGEN / teilweise STARTER IMPLEMENTIERT. Nicht als Produktrelease verstehen.
+**Stand:** 2026-11-20 (N02) · **Version:** Foundation F0 + N02 Functional Core · **Status:** PROTOTYPE_LOCAL_PLAY_NOT_RELEASED. Nicht als Produktrelease verstehen. Arbeitspaket-Status siehe `project-manifest.json` und `docs/governance/STATUS_MODEL.md`; F0-Planungsstand bleibt dort als `foundation_baseline` erhalten.
 
 ## Single Sources of Truth (SSOT)
 
@@ -22,6 +22,7 @@
 | Branch-/PR-/Dokumentationspflege | `docs/governance/GOVERNANCE.md` |
 | Arbeitsverträge für Agenten | `AGENTS.md` + `.github/copilot-instructions.md` |
 | Maschinenlesbares Paketverzeichnis | `project-manifest.json` |
+| Statusmodell und Nachweispflichten | `docs/governance/STATUS_MODEL.md` |
 
 ## Reifegrad und Definitionen
 
@@ -41,7 +42,7 @@
 
 ## Artefaktgrenzen
 
-`design/source/` = editierbare Originaldateien, `assets/` = ausgewählte Laufzeitressourcen, `references/inspiration/` = nur Linklisten & Notizen, `marketing/` = eigene Marken-/PR-Unterlagen, `data/source/` = externe Rohdaten (nicht versionieren), `integrations/glide_shell/` = dokumentierte, freigegebene Wiederverwendung. **Keine automatischen OneDrive-Kopien, keine fremden Repo-Kopien in diesem Repository.**
+`design/source/` = editierbare Originaldateien, `assets/` = ausgewählte Laufzeitressourcen, `references/inspiration/` = nur Linklisten & Notizen, `marketing/` = eigene Marken-/PR-Unterlagen, `data/source/` = Rohdaten (externe Datensätze nicht versionieren; nur kleine projekteigene Demo-CSV), `integrations/glide_shell/` = dokumentierte, freigegebene Wiederverwendung. **Keine automatischen OneDrive-Kopien, keine fremden Repo-Kopien in diesem Repository.**
 
 ## Starter-Zustand (dieses ZIP)
 

@@ -1,6 +1,21 @@
 # Work Packages – aktive Abhängigkeitsmatrix
 
-**Status für alle W00–W12 bei Lieferung des Starter-ZIPs:** NOT STARTED; F0-Dateien sind Vorlagen und keine erledigten Agenten-Aufträge.
+**Historische Baseline (F0, 2026-11-19):** alle W00–W12 NOT_STARTED (in `project-manifest.json` als `foundation_baseline` erhalten).
+
+**Aktueller Stand (N02, 2026-11-20)** – maßgeblich ist `project-manifest.json` nach [Statusmodell](../governance/STATUS_MODEL.md); kein Paket ist `ACCEPTED`:
+
+| ID | Status | Umfang des Nachweises / offene Gate-Punkte |
+| --- | --- | --- |
+| W00 | TESTED | Struktur-/Statusprüfung; Owner-Abnahme offen |
+| W01–W04 | IN_PROGRESS | Berichte vorhanden; Owner-Fragen offen |
+| W05 | TESTED | Regelkern, Perft/Golden-Tests; PGN-Varianten werden übersprungen |
+| W06 | IMPLEMENTED | Tk-Brett mit Testfiguren; Original-SVG, native Win/Linux-, High-DPI-Abnahme offen |
+| W07 | TESTED (Mock) | Adapter + Controller + Presets mit Mock-Engine; echte Engine/ADR-001/Kalibrierung offen |
+| W08 | TESTED (Fixtures) | Importer, Packs, Session; realer Lichess-Import, Q-008/Q-009 offen |
+| W09 | IMPLEMENTED | SQLite/Settings; Save/Load-UI, Q-012, ADR-004 offen |
+| W10 | IN_PROGRESS | DE/EN-Kataloge; Accessibility-Abnahmen offen |
+| W11 | IN_PROGRESS | CI-Matrix erweitert; CI-Lauf nach Push ausstehend |
+| W12 | NOT_STARTED | – |
 
 | ID | Workstream | Prompt | Prerequisite | Verbindliches Gate | Zielphase |
 | --- | --- | --- | --- | --- | --- |

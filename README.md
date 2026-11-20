@@ -2,7 +2,7 @@
 
 **Play. Think. Connect.**
 
-> **Project status: early implementation, not release-ready.** The repository contains an independent chess-rules domain and a W06 local two-player desktop prototype with explicitly temporary geometric test pieces. It has no engine, puzzle pack, or installer.
+> **Project status: early implementation, not release-ready.** The repository contains an independent chess-rules domain and a local Tk desktop prototype (two players, bot mode against a project-owned **mock** engine, demo Puzzle Lab) with explicitly temporary geometric test pieces. No real chess engine is bundled or tested, no Lichess puzzle data is shipped, and there is no installer.
 
 **Chess & Chains** is a planned free, open-source, offline-first desktop chess experience featuring configurable local computer opponents, tactical puzzle training and a distinctive, customizable board designed around original SVG chess pieces.
 
@@ -22,16 +22,21 @@
 | Capability | Status |
 | --- | --- |
 | Product requirements, folder structure and initial documentation | Scaffolded / proposed |
-| Headless rules domain (legal moves, FEN/PGN, game history) | Implemented locally; W05 validation in progress |
-| Desktop board and local two-player UI | W06 prototype implemented locally; not release-ready |
-| Offline bot engine connection | Not implemented |
-| Offline puzzle catalog | Not implemented |
+| Headless rules domain (legal moves, FEN/SAN/PGN, draw rules, undo/redo) | Implemented and tested (perft + golden tests); owner acceptance open |
+| Desktop board and local two-player UI | Prototype implemented; native check on macOS only; not release-ready |
+| UCI process adapter | Implemented; tested only against a project-owned mock engine |
+| Game controller + asynchronous bot (play as White or Black) | Implemented; tested with the mock engine, which is **not a chess AI** |
+| Real engine (e.g. Stockfish) bot play | Not bundled, not tested; user-configured engine path supported but unverified (ADR-001 open) |
+| Bot difficulty presets | Six data-driven presets; options only sent if the engine advertises them; strengths **not calibrated** |
+| Puzzle Lab (importer, packs, solving) | Implemented; Rating ≥ 1000 enforced; ships only 5 project-authored demo puzzles |
+| Local storage (SQLite games, puzzle progress, settings) | Implemented and tested in temp dirs; save/load UI minimal |
+| English/German UI | Implemented catalogues with parity tests |
 | Windows/macOS/Linux installers | Not implemented |
 | WinGet / Homebrew distribution | Not published |
 
 ## Technology direction (subject to decisions)
 
-Python desktop project. An original MPL-2.0 headless rules domain is under W05 validation. Tkinter/Tk may be evaluated independently; Glide Shell remains gated. A graphical board, UCI engine interface, local puzzle storage and separate visual themes are planned. **Stockfish is GPLv3.** Bundling it with this app is gated by licensing review; the MPL-2.0 repository license alone does not license third-party components. See [License Strategy](docs/legal/LICENSE_STRATEGY.md).
+Python desktop project with an original MPL-2.0 headless rules domain and a Tkinter/Tk desktop prototype (owner-selected W06 direction). Glide Shell remains gated. A UCI adapter, game controller, puzzle pipeline and SQLite storage exist; original SVG pieces and visual themes are pending owner assets. **Stockfish is GPLv3.** Bundling it with this app is gated by licensing review; the MPL-2.0 repository license alone does not license third-party components. See [License Strategy](docs/legal/LICENSE_STRATEGY.md).
 
 ## Quick start for contributors
 
@@ -43,6 +48,8 @@ python scripts/verify_starter.py
 python -m chess_and_chains --headless-check
 python -m chess_and_chains
 ```
+
+To try a locally installed UCI engine during development (never downloaded by the app), set `CHESS_AND_CHAINS_ENGINE=/path/to/engine` or use *Engine settings…* in the app. Without it, bot mode uses the clearly labelled mock engine.
 
 Install the package first with `python -m pip install -e .`, or set `PYTHONPATH=src` when running from a checkout. The default command opens the local Tk prototype; `--headless-check` reports its availability without opening a window. The chess domain has no runtime chess-library dependency.
 

@@ -15,8 +15,9 @@ Windows/macOS are project targets, not release-tested platforms.
 
 ## Users
 
-For the first board prototype, the owner selected two people playing a local
-game on one desktop without an engine. Other user groups in
+The first board prototype targeted two people playing a local game on one
+desktop. N02 added a bot mode wired to a project-owned mock engine to prove
+the asynchronous engine path; it is not a real opponent. Other user groups in
 `docs/product/PRODUCT_BRIEF.md` remain product hypotheses.
 
 ## Product Purpose
@@ -28,13 +29,15 @@ is validated by the headless rules domain.
 ## Positioning
 
 Offline-first local chess without a required account, server, or telemetry.
-The W06 local two-player desktop prototype is implemented in this worktree but
-is not released. There is no engine, puzzle pack, or installer.
+The local desktop prototype (two players, mock-bot mode, demo Puzzle Lab) is
+implemented but not released. No real engine is bundled or tested, no
+Lichess puzzle data is shipped, and there is no installer.
 
 ## Operating Context
 
-One desktop window, two local players taking turns at the same board. The
-current W06 slice has no engine and must not imply bot play.
+One desktop window. Two local players, or one player against a bot. The bot
+defaults to the mock engine and the UI labels it as "not a chess AI"; real
+bot play must not be claimed until a real engine is tested (ADR-001).
 
 ## Capabilities and Constraints
 

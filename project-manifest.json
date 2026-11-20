@@ -139,7 +139,9 @@
       "status_evidence": [
         "docs/reports/2026-11-20_W06_board-ui.md",
         "src/chess_and_chains/ui/board.py",
-        "tests/test_board_ui.py"
+        "tests/test_board_ui.py",
+        "src/chess_and_chains/ui/pieces.py",
+        "docs/reports/2026-11-20_N02_functional-core.md"
       ],
       "open_gate_items": [
         "Original owner SVG piece rendering (ADR-005 asset gate)",
@@ -154,17 +156,21 @@
       "depends_on": "W02/W05",
       "gate": "UCI-Lifecycle, Fehlerbehandlung, dokumentierte Skills, physischer Offline-Test",
       "phase": "F2",
-      "status": "IMPLEMENTED",
-      "scope": "UCI subprocess adapter tested against a project-owned Python mock engine only",
+      "status": "TESTED",
+      "scope": "UCI adapter + GameController + async worker + bot presets, tested with the project-owned mock engine; no real engine tested",
       "status_evidence": [
         "docs/reports/2026-11-20_W07_uci.md",
-        "src/chess_and_chains/engines/uci.py",
-        "tests/test_uci_engine.py"
+        "docs/reports/2026-11-20_N02_functional-core.md",
+        "src/chess_and_chains/game/controller.py",
+        "src/chess_and_chains/engines/presets.py",
+        "tests/test_uci_engine.py",
+        "tests/test_game_controller.py",
+        "tests/test_bot_presets.py"
       ],
       "open_gate_items": [
-        "Game/UI integration",
-        "Real third-party engine offline test",
-        "ADR-001 distribution decision"
+        "Real third-party engine offline test (ADR-001)",
+        "Bot strength calibration (ADR-007)",
+        "Native UI acceptance of bot mode on Windows/Linux"
       ]
     },
     {
@@ -174,7 +180,20 @@
       "depends_on": "W05",
       "gate": "Rechtssicherer Import, erste UCI-Aktion, Ratingminimum, Datenqualitätsberichte",
       "phase": "F3",
-      "status": "NOT_STARTED"
+      "status": "TESTED",
+      "scope": "Puzzle model, streaming Lichess CSV importer, versioned JSONL packs, puzzle session controller; tested with project-authored fixtures only",
+      "status_evidence": [
+        "docs/reports/2026-11-20_N02_functional-core.md",
+        "src/chess_and_chains/puzzles/importer.py",
+        "src/chess_and_chains/puzzles/session.py",
+        "tests/test_puzzles.py",
+        "tests/fixtures/puzzles_sample.csv"
+      ],
+      "open_gate_items": [
+        "Real Lichess export import run (owner opt-in download)",
+        "Pack size decision Q-009",
+        "Rating ceiling Q-008"
+      ]
     },
     {
       "id": "W09",
@@ -183,7 +202,19 @@
       "depends_on": "W05/W08",
       "gate": "Getrennte Nutzerdaten, Migrations- und Restore-Proben, PGN/FEN-Roundtrip",
       "phase": "F4",
-      "status": "NOT_STARTED"
+      "status": "IMPLEMENTED",
+      "scope": "SQLite schema with versioned migrations, backup/restore, corruption quarantine, atomic JSON settings, saved games and puzzle progress",
+      "status_evidence": [
+        "docs/reports/2026-11-20_N02_functional-core.md",
+        "src/chess_and_chains/storage/database.py",
+        "src/chess_and_chains/storage/settings.py",
+        "tests/test_storage.py"
+      ],
+      "open_gate_items": [
+        "Save/load UI",
+        "Profile model decision Q-012",
+        "ADR-004 acceptance"
+      ]
     },
     {
       "id": "W10",
@@ -192,7 +223,12 @@
       "depends_on": "W06/W09",
       "gate": "DE/EN-Katalogparität, Keyboard-/Kontrast-/Scaling-Abnahmen",
       "phase": "F4",
-      "status": "NOT_STARTED"
+      "status": "IN_PROGRESS",
+      "status_evidence": [
+        "docs/reports/2026-11-20_N02_functional-core.md",
+        "src/chess_and_chains/i18n/catalog.py",
+        "tests/test_i18n.py"
+      ]
     },
     {
       "id": "W11",
@@ -203,7 +239,8 @@
       "phase": "F5",
       "status": "IN_PROGRESS",
       "status_evidence": [
-        ".github/workflows/checks.yml"
+        ".github/workflows/checks.yml",
+        "docs/reports/2026-11-20_N02_functional-core.md"
       ]
     },
     {
