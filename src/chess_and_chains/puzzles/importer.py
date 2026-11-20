@@ -1,0 +1,254 @@
+"""Streaming, validating importer for the Lichess puzzle CSV export.
+
+* Reads row by row; the multi-gigabyte export is never loaded into memory.
+* Computes a SHA-256 of the exact input bytes for provenance.
+* Rejects rows below ``min_rating`` (default 1000), duplicates, malformed
+  fields, invalid FEN and any illegal setup/solution move.
+* Never downloads anything. Callers pass a local file the owner obtained.
+"""
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+from __future__ import annotations
+
+import csv
+import hashlib
+import io
+import re
+from collections import Counter
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import BinaryIO, Iterator
+
+from ..chess import ChessError, ChessRules, Move, parse_fen
+from .model import MIN_PUBLISHED_RATING, Puzzle, ValidationStatus
+
+LICHESS_COLUMNS = (
+    "PuzzleId", "FEN", "Moves", "Rating", "RatingDeviation",
+    "Popularity", "NbPlays", "Themes", "GameUrl", "OpeningTags",
+)
+_ID = re.compile(r"^[A-Za-z0-9]{3,16}$")
+_THEME = re.compile(r"^[A-Za-z0-9]+$")
+MAX_SOLUTION_PLIES = 40
+
+
+class PuzzleImportError(ValueError):
+    """The input cannot be imported at all (bad header, unsupported format)."""
+
+
+class _RowError(Exception):
+    def __init__(self, reason: str) -> None:
+        super().__init__(reason)
+        self.reason = reason
+
+
+class _HashingReader(io.RawIOBase):
+    def __init__(self, raw: BinaryIO) -> None:
+        self._raw = raw
+        self.digest = hashlib.sha256()
+        self.bytes_read = 0
+
+    def readable(self) -> bool:
+        return True
+
+    def readinto(self, buffer) -> int:  # type: ignore[override]
+        data = self._raw.read(len(buffer))
+        if not data:
+            return 0
+        self.digest.update(data)
+        self.bytes_read += len(data)
+        buffer[: len(data)] = data
+        return len(data)
+
+
+@dataclass
+class ImportReport:
+    source_name: str
+    min_rating: int
+    max_rating: int | None
+    started_utc: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat(timespec="seconds"))
+    finished_utc: str | None = None
+    rows_read: int = 0
+    accepted: int = 0
+    rejected: Counter = field(default_factory=Counter)
+    examples: dict[str, str] = field(default_factory=dict)
+    input_sha256: str | None = None
+    input_bytes: int = 0
+    complete: bool = False
+
+    def reject(self, reason: str, puzzle_id: str) -> None:
+        self.rejected[reason] += 1
+        self.examples.setdefault(reason, puzzle_id)
+
+    def to_dict(self) -> dict:
+        return {
+            "source_name": self.source_name,
+            "filters": {"min_rating": self.min_rating, "max_rating": self.max_rating},
+            "started_utc": self.started_utc,
+            "finished_utc": self.finished_utc,
+            "rows_read": self.rows_read,
+            "accepted": self.accepted,
+            "rejected": dict(sorted(self.rejected.items())),
+            "rejected_examples": dict(sorted(self.examples.items())),
+            "input_sha256": self.input_sha256 if self.complete else None,
+            "input_bytes": self.input_bytes,
+            "complete": self.complete,
+        }
+
+
+def validate_row(row: dict[str, str], rules: ChessRules, source: str) -> Puzzle:
+    """Convert and fully validate one CSV row; raises _RowError with a reason code."""
+    puzzle_id = (row.get("PuzzleId") or "").strip()
+    if not _ID.match(puzzle_id):
+        raise _RowError("bad_id")
+    try:
+        rating = int(row.get("Rating", ""))
+        deviation = int(row.get("RatingDeviation") or 0)
+        popularity = int(row.get("Popularity") or 0)
+        plays = int(row.get("NbPlays") or 0)
+    except ValueError as error:
+        raise _RowError("bad_number") from error
+    if not -100 <= popularity <= 100 or deviation < 0 or plays < 0 or rating <= 0:
+        raise _RowError("number_out_of_range")
+    themes = tuple((row.get("Themes") or "").split())
+    if any(not _THEME.match(theme) for theme in themes):
+        raise _RowError("bad_theme")
+    texts = (row.get("Moves") or "").split()
+    if len(texts) < 2 or len(texts) > MAX_SOLUTION_PLIES:
+        raise _RowError("bad_move_count")
+    if len(texts) % 2:
+        raise _RowError("solution_must_end_with_player_move")
+    try:
+        moves = [Move.from_uci(text) for text in texts]
+    except ChessError as error:
+        raise _RowError("bad_uci") from error
+    fen = " ".join((row.get("FEN") or "").split())
+    try:
+        state = parse_fen(fen)
+    except ChessError as error:
+        raise _RowError("bad_fen") from error
+    for move in moves:
+        if move not in rules.legal_moves(state):
+            raise _RowError("illegal_move")
+        state = rules.apply(state, move)
+    return Puzzle(
+        puzzle_id=puzzle_id,
+        fen=fen,
+        setup_move=moves[0],
+        solution=tuple(moves[1:]),
+        rating=rating,
+        rating_deviation=deviation,
+        popularity=popularity,
+        plays=plays,
+        themes=themes,
+        source=source,
+        game_url=(row.get("GameUrl") or "").strip(),
+        opening_tags=tuple((row.get("OpeningTags") or "").split()),
+        validation=ValidationStatus.VALID,
+    )
+
+
+def iter_lichess_csv(
+    stream: BinaryIO,
+    report: ImportReport,
+    *,
+    source: str = "lichess-puzzle-db",
+    rules: ChessRules | None = None,
+    limit: int | None = None,
+) -> Iterator[Puzzle]:
+    """Yield validated puzzles from a binary CSV stream, updating ``report``."""
+    chess_rules = rules or ChessRules()
+    hashing = _HashingReader(stream)
+    text = io.TextIOWrapper(io.BufferedReader(hashing), encoding="utf-8", newline="")
+    reader = csv.reader(text)
+    try:
+        header = next(reader)
+    except StopIteration as error:
+        raise PuzzleImportError("Empty puzzle file.") from error
+    except UnicodeDecodeError as error:
+        raise PuzzleImportError("Puzzle file is not UTF-8 text.") from error
+    header = [name.strip().lstrip("﻿") for name in header]
+    if tuple(header[: len(LICHESS_COLUMNS)]) != LICHESS_COLUMNS:
+        raise PuzzleImportError(f"Unexpected CSV header: {header}")
+    seen: set[str] = set()
+    while True:
+        if limit is not None and report.accepted >= limit:
+            break
+        try:
+            values = next(reader)
+        except StopIteration:
+            # Drain remaining bytes so the checksum covers the whole file.
+            while hashing.read(1 << 16):
+                pass
+            report.complete = True
+            break
+        except (csv.Error, UnicodeDecodeError):
+            report.rows_read += 1
+            report.reject("unreadable_row", f"row-{report.rows_read}")
+            continue
+        report.rows_read += 1
+        if not values or values == [""]:
+            report.reject("empty_row", f"row-{report.rows_read}")
+            continue
+        if len(values) != len(header):
+            report.reject("column_count", values[0] if values else "?")
+            continue
+        row = dict(zip(header, values))
+        puzzle_id = row.get("PuzzleId", "?")
+        # Track every source id before filtering so duplicate handling does
+        # not depend on which rating filter is active.
+        if puzzle_id in seen:
+            report.reject("duplicate_id", puzzle_id)
+            continue
+        seen.add(puzzle_id)
+        try:
+            rating = int(row.get("Rating", ""))
+        except ValueError:
+            report.reject("bad_number", puzzle_id)
+            continue
+        if rating < report.min_rating:
+            report.reject("below_min_rating", puzzle_id)
+            continue
+        if report.max_rating is not None and rating > report.max_rating:
+            report.reject("above_max_rating", puzzle_id)
+            continue
+        try:
+            puzzle = validate_row(row, chess_rules, source)
+        except _RowError as error:
+            report.reject(error.reason, puzzle_id)
+            continue
+        report.accepted += 1
+        yield puzzle
+    report.input_bytes = hashing.bytes_read
+    report.input_sha256 = hashing.digest.hexdigest()
+    report.finished_utc = datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def open_puzzle_source(path: Path) -> BinaryIO:
+    """Open ``.csv`` or (when the Python build supports it) ``.csv.zst`` files."""
+    if path.suffix == ".zst":
+        try:
+            from compression import zstd  # Python 3.14+
+        except ImportError as error:
+            raise PuzzleImportError(
+                "This Python build cannot read .zst; decompress the file first."
+            ) from error
+        return zstd.open(path, "rb")  # type: ignore[return-value]
+    return path.open("rb")
+
+
+def import_lichess_file(
+    path: Path,
+    *,
+    min_rating: int = MIN_PUBLISHED_RATING,
+    max_rating: int | None = None,
+    limit: int | None = None,
+) -> tuple[list[Puzzle], ImportReport]:
+    if min_rating < MIN_PUBLISHED_RATING:
+        raise PuzzleImportError(f"Published packs require Rating >= {MIN_PUBLISHED_RATING}.")
+    report = ImportReport(path.name, min_rating, max_rating)
+    with open_puzzle_source(path) as stream:
+        puzzles = list(iter_lichess_csv(stream, report, limit=limit))
+    return puzzles, report

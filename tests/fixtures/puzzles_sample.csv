@@ -1,0 +1,16 @@
+PuzzleId,FEN,Moves,Rating,RatingDeviation,Popularity,NbPlays,Themes,GameUrl,OpeningTags
+ccBR01,6k1/p4ppp/8/8/8/8/5PPP/3R2K1 b - - 0 1,a7a6 d1d8,1000,0,0,0,mate mateIn1 backRankMate oneMove,,
+ccSC01,r1bqkbnr/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 3 3,g8f6 h5f7,1000,0,0,0,mate mateIn1 opening oneMove,,
+ccFM01,rnbqkbnr/pppp1ppp/8/4p3/8/5P2/PPPPP1PP/RNBQKBNR w KQkq - 0 2,g2g4 d8h4,1000,0,0,0,mate mateIn1 opening oneMove,,
+ccQB01,5rk1/p4p1p/6pQ/8/8/8/1B3PPP/6K1 b - - 0 1,a7a6 h6g7,1100,0,0,0,mate mateIn1 middlegame oneMove,,
+ccSM02,5r1k/p5pp/7N/8/2Q5/8/5PPP/6K1 b - - 0 1,a7a6 c4g8 f8g8 h6f7,1300,0,0,0,mate mateIn2 smotheredMate sacrifice short,,
+low001,6k1/p4ppp/8/8/8/8/5PPP/3R2K1 b - - 0 1,a7a6 d1d8,999,80,90,100,mate mateIn1,,
+ccBR01,6k1/p4ppp/8/8/8/8/5PPP/3R2K1 b - - 0 1,a7a6 d1d8,1500,80,90,100,mate mateIn1,,
+badfen,6k1/p4ppp/8/8/8/8/5PPP/3R2K9 b - - 0 1,a7a6 d1d8,1200,80,90,100,mate,,
+illeg1,6k1/p4ppp/8/8/8/8/5PPP/3R2K1 b - - 0 1,a7a6 d1d9,1200,80,90,100,mate,,
+illeg2,6k1/p4ppp/8/8/8/8/5PPP/3R2K1 b - - 0 1,d1d8 a7a6,1200,80,90,100,mate,,
+oddlen,6k1/p4ppp/8/8/8/8/5PPP/3R2K1 b - - 0 1,a7a6,1200,80,90,100,mate,,
+badnum,6k1/p4ppp/8/8/8/8/5PPP/3R2K1 b - - 0 1,a7a6 d1d8,high,80,90,100,mate,,
+colcnt,6k1/p4ppp/8/8/8/8/5PPP/3R2K1 b - - 0 1,a7a6 d1d8,1200
+popbad,6k1/p4ppp/8/8/8/8/5PPP/3R2K1 b - - 0 1,a7a6 d1d8,1200,80,500,100,mate,,
+"quote1","6k1/p4ppp/8/8/8/8/5PPP/3R2K1 b - - 0 1","a7a6 d1d8",1200,80,90,100,"mate mateIn1","https://example.invalid/x","Some_Opening"
