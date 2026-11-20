@@ -159,6 +159,12 @@ def iter_lichess_csv(
     limit: int | None = None,
 ) -> Iterator[Puzzle]:
     """Yield validated puzzles from a binary CSV stream, updating ``report``."""
+    if report.min_rating < MIN_PUBLISHED_RATING:
+        raise PuzzleImportError(f"Published packs require Rating >= {MIN_PUBLISHED_RATING}.")
+    if report.max_rating is not None and report.max_rating < report.min_rating:
+        raise PuzzleImportError("Maximum rating is below the minimum.")
+    if limit is not None and limit < 1:
+        raise PuzzleImportError("Puzzle limit must be positive.")
     chess_rules = rules or ChessRules()
     hashing = _HashingReader(stream)
     text = io.TextIOWrapper(io.BufferedReader(hashing), encoding="utf-8", newline="")
@@ -170,7 +176,8 @@ def iter_lichess_csv(
     except UnicodeDecodeError as error:
         raise PuzzleImportError("Puzzle file is not UTF-8 text.") from error
     header = [name.strip().lstrip("﻿") for name in header]
-    if tuple(header[: len(LICHESS_COLUMNS)]) != LICHESS_COLUMNS:
+    if (tuple(header[: len(LICHESS_COLUMNS)]) != LICHESS_COLUMNS
+            or len(set(header)) != len(header)):
         raise PuzzleImportError(f"Unexpected CSV header: {header}")
     seen: set[str] = set()
     while True:
@@ -196,7 +203,7 @@ def iter_lichess_csv(
             report.reject("column_count", values[0] if values else "?")
             continue
         row = dict(zip(header, values))
-        puzzle_id = row.get("PuzzleId", "?")
+        puzzle_id = row["PuzzleId"].strip()
         # Track every source id before filtering so duplicate handling does
         # not depend on which rating filter is active.
         if puzzle_id in seen:
@@ -246,8 +253,6 @@ def import_lichess_file(
     max_rating: int | None = None,
     limit: int | None = None,
 ) -> tuple[list[Puzzle], ImportReport]:
-    if min_rating < MIN_PUBLISHED_RATING:
-        raise PuzzleImportError(f"Published packs require Rating >= {MIN_PUBLISHED_RATING}.")
     report = ImportReport(path.name, min_rating, max_rating)
     with open_puzzle_source(path) as stream:
         puzzles = list(iter_lichess_csv(stream, report, limit=limit))
