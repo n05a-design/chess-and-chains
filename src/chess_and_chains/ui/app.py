@@ -1,20 +1,29 @@
-"""Offline local two-player Tk desktop prototype."""
+"""Offline Tk desktop prototype: two players, bot mode (mock/user engine), puzzles.
+
+The UI never talks to a UCI process directly: all game flow goes through
+``game.GameController``; bot searches run on its worker thread and results
+are applied by polling on the Tk main thread.
+"""
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 from __future__ import annotations
 
+import threading
 import tkinter as tk
-from tkinter import messagebox
-from typing import Sequence
+from dataclasses import replace
+from tkinter import filedialog, messagebox
+from typing import Callable, Sequence
 
-from ..chess import (
-    ChessError,
-    ChessGame,
-    Color,
-    GameStatus,
-    Move,
-    PieceType,
-    to_san,
-)
+from ..chess import ChessError, ChessGame, Color, GameStatus, Move, export_pgn, square_name, to_san
+from ..engines.bot import EngineConfig, EngineConfigError, MoveProvider, UCIBot, resolve_engine_config
+from ..engines.presets import BotPreset, load_presets
+from ..engines.uci import UCIEngine, UCIEngineError
+from ..game import BotStatus, GameController, GameSetup, GameView, PlayMode
+from ..i18n import Translator
+from ..puzzles import PuzzlePack, PuzzleSession, Verdict, load_demo_pack
+from ..storage import Database, DataLayout, Settings, StorageError, load_settings, save_settings
 from .board import BoardCanvas, Orientation
 from .theme import (
     ACETATE,
@@ -30,66 +39,53 @@ from .theme import (
     WINDOW,
 )
 
+POLL_MS = 40
+ProviderFactory = Callable[[BotPreset, Settings], MoveProvider]
+
+
+def default_provider_factory(preset: BotPreset, settings: Settings) -> MoveProvider:
+    config, _warning = resolve_engine_config(settings.engine_path)
+    return UCIBot(config, preset)
+
 
 class TabRail(tk.Canvas):
-    """Two stepped, keyboard-operable tabs on the side leaf's fore edge."""
+    """Stepped, keyboard-operable tabs on the side leaf's fore edge."""
 
-    def __init__(
-        self,
-        master: tk.Misc,
-        on_change,
-    ) -> None:
+    def __init__(self, master: tk.Misc, on_change, tabs: Sequence[tuple[str, str]]) -> None:
         super().__init__(
-            master,
-            width=54,
-            background=ACETATE,
-            highlightthickness=1,
-            highlightbackground=ACETATE,
-            highlightcolor=INK,
-            takefocus=True,
-            borderwidth=0,
+            master, width=54, background=ACETATE, highlightthickness=1,
+            highlightbackground=ACETATE, highlightcolor=INK, takefocus=True, borderwidth=0,
         )
         self._on_change = on_change
-        self._active = "play"
-        self._tabs = ("play", "moves")
+        self._tabs = tuple(name for name, _ in tabs)
+        self._labels = dict(tabs)
+        self._active = self._tabs[0]
         self.bind("<Configure>", lambda _event: self.redraw())
         self.bind("<Button-1>", self._on_click)
         self.bind("<KeyPress>", self._on_key)
         self.redraw()
 
+    @property
+    def active(self) -> str:
+        return self._active
+
+    def _bounds(self) -> dict[str, tuple[int, int]]:
+        height = max(self.winfo_height(), 60 * len(self._tabs))
+        step = height / len(self._tabs)
+        return {tab: (int(i * step), int((i + 1) * step)) for i, tab in enumerate(self._tabs)}
+
     def redraw(self) -> None:
         self.delete("all")
-        height = max(self.winfo_height(), 160)
-        split = int(height * 0.47)
-        bounds = {"play": (0, split), "moves": (split, height)}
-        for tab in self._tabs:
-            top, bottom = bounds[tab]
+        for tab, (top, bottom) in self._bounds().items():
             left = 0 if self._active == tab else 7
             right = 49
             fill = CHROME_YELLOW if self._active == tab else TAB_IDLE
             self.create_polygon(
-                left,
-                top + 8,
-                left + 7,
-                top,
-                right,
-                top,
-                right,
-                bottom,
-                left + 7,
-                bottom,
-                left,
-                bottom - 8,
-                fill=fill,
-                outline=INK,
-                width=1,
+                left, top + 8, left + 7, top, right, top, right, bottom, left + 7, bottom, left, bottom - 8,
+                fill=fill, outline=INK, width=1,
             )
             self.create_text(
-                (left + right) / 2,
-                (top + bottom) / 2,
-                text=tab.upper(),
-                angle=90,
-                fill=INK,
+                (left + right) / 2, (top + bottom) / 2, text=self._labels[tab], angle=90, fill=INK,
                 font=("TkDefaultFont", FONT_SIZES["caption"], "bold"),
             )
 
@@ -102,12 +98,16 @@ class TabRail(tk.Canvas):
 
     def _on_click(self, event: tk.Event) -> None:
         self.focus_set()
-        split = int(max(self.winfo_height(), 160) * 0.47)
-        self.set_active("play" if event.y < split else "moves")
+        for tab, (top, bottom) in self._bounds().items():
+            if top <= event.y < bottom:
+                self.set_active(tab)
+                return
 
     def _on_key(self, event: tk.Event) -> str | None:
+        index = self._tabs.index(self._active)
         if event.keysym in ("Up", "Down"):
-            self.set_active("moves" if self._active == "play" else "play")
+            step = -1 if event.keysym == "Up" else 1
+            self.set_active(self._tabs[(index + step) % len(self._tabs)])
             return "break"
         if event.keysym in ("Return", "KP_Enter", "space"):
             self._on_change(self._active)
@@ -116,20 +116,75 @@ class TabRail(tk.Canvas):
 
 
 class ChessApp:
-    def __init__(self, root: tk.Tk) -> None:
+    def __init__(
+        self,
+        root: tk.Tk,
+        *,
+        data_layout: DataLayout | None = None,
+        provider_factory: ProviderFactory = default_provider_factory,
+        locale: str | None = None,
+        puzzle_pack: PuzzlePack | None = None,
+    ) -> None:
         self.root = root
-        self.game = ChessGame()
+        self.layout = data_layout
+        self.settings_warning: str | None = None
+        if data_layout is not None:
+            self.settings, self.settings_warning = load_settings(data_layout.settings)
+            try:
+                self.db: Database | None = Database.open(data_layout.database)
+            except StorageError as error:
+                # Never modify a database we cannot handle; run without persistence.
+                self.db = None
+                self.settings_warning = str(error)
+        else:
+            self.settings, self.db = Settings(), None
+        self.t = Translator(locale or self.settings.locale)
+        self.presets = load_presets()
+        self._provider_factory = provider_factory
+        self.controller = GameController()
+        self.controller.subscribe(self._on_view)
         self.orientation: Orientation = "white"
-        self.redo_count = 0
+        self.active_panel = "play"
+        self.pack = puzzle_pack or load_demo_pack()
+        self.puzzle_index = 0
+        self.puzzle: PuzzleSession | None = None
+        self._puzzle_recorded = False
+        self._provider_stale = False
+        self._closed = False
         self.interaction_text = tk.StringVar(value="")
         self.panel_text = tk.StringVar(value="")
+        self.header_mode_text = tk.StringVar(value="")
         self.action_state_text = tk.StringVar(value="")
+        self.bot_text = tk.StringVar(value="")
+        self.puzzle_title_text = tk.StringVar(value="")
+        self.puzzle_meta_text = tk.StringVar(value="")
+        self.puzzle_feedback_text = tk.StringVar(value="")
+        self.mode_var = tk.StringVar(value=self.settings.play_mode)
+        preset_ids = [p.id for p in self.presets]
+        initial_preset = self.settings.bot_preset_id if self.settings.bot_preset_id in preset_ids else preset_ids[2]
+        self.preset_var = tk.StringVar(value=self._preset_label(initial_preset))
         self._wrap_labels: list[tk.Label] = []
         self._build()
+        self._bind_shortcuts()
+        self.root.protocol("WM_DELETE_WINDOW", self.close)
         self._refresh()
+        self._poll_job = self.root.after(POLL_MS, self._poll)
+        if self.settings_warning:
+            self.interaction_text.set(self.settings_warning)
 
+    # ----- compatibility with W06 API ---------------------------------
+    @property
+    def game(self) -> ChessGame:
+        return self.controller.game
+
+    @property
+    def redo_count(self) -> int:
+        return int(self.controller.view().can_redo)
+
+    # ----- construction ------------------------------------------------
     def _build(self) -> None:
-        self.root.title("Chess & Chains — Local Game")
+        t = self.t
+        self.root.title(t("app.window_title"))
         self.root.configure(background=WINDOW)
         self.root.geometry("1180x820")
         self.root.minsize(860, 700)
@@ -139,287 +194,274 @@ class ChessApp:
         header = tk.Frame(self.root, background=WINDOW, padx=22, pady=14)
         header.grid(row=0, column=0, sticky="ew")
         header.grid_columnconfigure(0, weight=1)
-        tk.Label(
-            header,
-            text="Chess & Chains",
-            background=WINDOW,
-            foreground=INK,
-            font=("TkDefaultFont", FONT_SIZES["title"], "bold"),
-        ).grid(row=0, column=0, sticky="w")
-        tk.Label(
-            header,
-            text="LOCAL GAME  ·  TWO PLAYERS",
-            background=WINDOW,
-            foreground=INK,
-            font=("TkDefaultFont", FONT_SIZES["caption"], "bold"),
-        ).grid(row=0, column=1, sticky="e", padx=(12, 0))
+        tk.Label(header, text=t("app.title"), background=WINDOW, foreground=INK,
+                 font=("TkDefaultFont", FONT_SIZES["title"], "bold")).grid(row=0, column=0, sticky="w")
+        tk.Label(header, textvariable=self.header_mode_text, background=WINDOW, foreground=INK,
+                 font=("TkDefaultFont", FONT_SIZES["caption"], "bold")).grid(row=0, column=1, sticky="e", padx=(12, 0))
 
         body = tk.Frame(self.root, background=WINDOW, padx=18)
         body.grid(row=1, column=0, sticky="nsew", pady=(4, 12))
         body.grid_rowconfigure(0, weight=1)
         body.grid_columnconfigure(0, weight=7, minsize=490)
-        body.grid_columnconfigure(1, weight=3, minsize=290)
+        body.grid_columnconfigure(1, weight=3, minsize=300)
 
-        board_slot = tk.Frame(body, background=CHROME_YELLOW)
-        board_slot.grid(row=0, column=0, sticky="nsew", padx=(0, 14), pady=(4, 10))
-        board_slot.grid_rowconfigure(0, weight=1)
-        board_slot.grid_columnconfigure(0, weight=1)
-        board_shadow = tk.Frame(board_slot, background=SHADOW)
-        board_shadow.place(x=6, y=6, relwidth=1, relheight=1, width=-6, height=-6)
-        board_sheet = tk.Frame(
-            board_slot,
-            background=ACETATE,
-            highlightbackground=INK,
-            highlightthickness=1,
-        )
-        board_sheet.place(x=0, y=0, relwidth=1, relheight=1, width=-6, height=-6)
+        board_sheet = self._sheet(body, 0, padx=(0, 14))
         board_sheet.grid_rowconfigure(1, weight=1)
         board_sheet.grid_columnconfigure(0, weight=1)
-
-        tk.Label(
-            board_sheet,
-            text="TEST PIECES  ·  TEMPORARY GEOMETRIC PLACEHOLDERS",
-            background=ACETATE,
-            foreground=INK,
-            font=("TkDefaultFont", FONT_SIZES["caption"], "bold"),
-            anchor="w",
-            padx=14,
-            pady=9,
-        ).grid(row=0, column=0, sticky="ew")
-        self.board = BoardCanvas(
-            board_sheet,
-            self._on_move_requested,
-            self._on_selection_changed,
-        )
+        tk.Label(board_sheet, text=t("board.test_pieces"), background=ACETATE, foreground=INK,
+                 font=("TkDefaultFont", FONT_SIZES["caption"], "bold"), anchor="w", padx=14, pady=9,
+                 ).grid(row=0, column=0, sticky="ew")
+        self.board = BoardCanvas(board_sheet, self._on_move_requested, self._on_selection_changed)
         self.board.grid(row=1, column=0, sticky="nsew", padx=12, pady=(0, 10))
-        tk.Label(
-            board_sheet,
-            textvariable=self.interaction_text,
-            background=ACETATE,
-            foreground=MUTED_INK,
-            font=("TkDefaultFont", FONT_SIZES["caption"]),
-            anchor="w",
-            padx=14,
-            pady=8,
-        ).grid(row=2, column=0, sticky="ew")
+        tk.Label(board_sheet, textvariable=self.interaction_text, background=ACETATE, foreground=MUTED_INK,
+                 font=("TkDefaultFont", FONT_SIZES["caption"]), anchor="w", padx=14, pady=8,
+                 ).grid(row=2, column=0, sticky="ew")
 
-        side_slot = tk.Frame(body, background=CHROME_YELLOW)
-        side_slot.grid(row=0, column=1, sticky="nsew", pady=(4, 10))
-        side_slot.grid_rowconfigure(0, weight=1)
-        side_slot.grid_columnconfigure(0, weight=1)
-        side_shadow = tk.Frame(side_slot, background=SHADOW)
-        side_shadow.place(x=6, y=6, relwidth=1, relheight=1, width=-6, height=-6)
-        side_sheet = tk.Frame(
-            side_slot,
-            background=ACETATE,
-            highlightbackground=INK,
-            highlightthickness=1,
-        )
-        side_sheet.place(x=0, y=0, relwidth=1, relheight=1, width=-6, height=-6)
+        side_sheet = self._sheet(body, 1)
         side_sheet.grid_rowconfigure(1, weight=1)
         side_sheet.grid_columnconfigure(0, weight=1)
-
-        tk.Label(
-            side_sheet,
-            textvariable=self.panel_text,
-            background=ACETATE,
-            foreground=INK,
-            font=("TkDefaultFont", FONT_SIZES["section"], "bold"),
-            anchor="w",
-            justify="left",
-            padx=16,
-            pady=15,
-        ).grid(row=0, column=0, columnspan=2, sticky="ew")
-
+        tk.Label(side_sheet, textvariable=self.panel_text, background=ACETATE, foreground=INK,
+                 font=("TkDefaultFont", FONT_SIZES["section"], "bold"), anchor="w", justify="left",
+                 padx=16, pady=15).grid(row=0, column=0, columnspan=2, sticky="ew")
         self.panel = tk.Frame(side_sheet, background=ACETATE, padx=14, pady=10)
         self.panel.grid(row=1, column=0, sticky="nsew")
         self.panel.grid_columnconfigure(0, weight=1)
-        self.tab_rail = TabRail(side_sheet, self._show_panel)
+        self.panel.grid_rowconfigure(0, weight=1)
+        self.tab_rail = TabRail(
+            side_sheet, self._show_panel,
+            (("play", t("tab.play")), ("moves", t("tab.moves")), ("puzzles", t("tab.puzzles"))),
+        )
         self.tab_rail.grid(row=0, column=2, rowspan=2, sticky="ns")
         side_sheet.grid_columnconfigure(1, minsize=8)
         side_sheet.grid_columnconfigure(2, minsize=54)
 
         self._build_play_panel()
         self._build_moves_panel()
+        self._build_puzzle_panel()
         self.panel.bind("<Configure>", self._update_panel_wraplengths)
         self._show_panel("play")
-        self._update_panel_wraplengths()
+
+    def _sheet(self, master: tk.Misc, column: int, padx=(0, 0)) -> tk.Frame:
+        slot = tk.Frame(master, background=CHROME_YELLOW)
+        slot.grid(row=0, column=column, sticky="nsew", padx=padx, pady=(4, 10))
+        shadow = tk.Frame(slot, background=SHADOW)
+        shadow.place(x=6, y=6, relwidth=1, relheight=1, width=-6, height=-6)
+        sheet = tk.Frame(slot, background=ACETATE, highlightbackground=INK, highlightthickness=1)
+        sheet.place(x=0, y=0, relwidth=1, relheight=1, width=-6, height=-6)
+        return sheet
+
+    def _label(self, master, *, text=None, var=None, role="body", bold=False, muted=False) -> tk.Label:
+        label = tk.Label(
+            master, text=text, textvariable=var, background=ACETATE,
+            foreground=MUTED_INK if muted else INK,
+            font=("TkDefaultFont", FONT_SIZES[role], "bold" if bold else "normal"),
+            wraplength=250, justify="left", anchor="w",
+        )
+        self._wrap_labels.append(label)
+        return label
 
     def _build_play_panel(self) -> None:
-        self.play_panel = tk.Frame(self.panel, background=ACETATE)
-        self.play_panel.grid(row=0, column=0, sticky="nsew")
-        self.play_panel.grid_columnconfigure(0, weight=1)
-        lead = tk.Label(
-            self.play_panel,
-            text="One game, one shared board.",
-            background=ACETATE,
-            foreground=INK,
-            font=("TkDefaultFont", FONT_SIZES["body"], "bold"),
-            wraplength=300,
-            anchor="w",
-        )
-        lead.grid(row=0, column=0, sticky="ew", pady=(0, 7))
-        self._wrap_labels.append(lead)
-        description = tk.Label(
-            self.play_panel,
-            text="The active side is shown above. Moves are checked by the local rules domain.",
-            background=ACETATE,
-            foreground=MUTED_INK,
-            font=("TkDefaultFont", FONT_SIZES["body"]),
-            wraplength=250,
-            justify="left",
-            anchor="w",
-        )
-        description.grid(row=1, column=0, sticky="ew", pady=(0, 18))
-        self._wrap_labels.append(description)
-
-        self.new_game_button = self._button(
-            self.play_panel,
-            "New local game",
-            self._new_game,
-            role="new",
-        )
-        self.new_game_button.grid(row=2, column=0, sticky="ew", pady=4)
-        self.undo_button = self._button(self.play_panel, "Undo move", self._undo)
-        self.undo_button.grid(row=3, column=0, sticky="ew", pady=4)
-        self.redo_button = self._button(self.play_panel, "Redo move", self._redo)
-        self.redo_button.grid(row=4, column=0, sticky="ew", pady=4)
-        self.flip_button = self._button(self.play_panel, "Flip board", self._flip_board)
-        self.flip_button.grid(row=5, column=0, sticky="ew", pady=4)
-
-        action_state = tk.Label(
-            self.play_panel,
-            textvariable=self.action_state_text,
-            background=ACETATE,
-            foreground=MUTED_INK,
-            font=("TkDefaultFont", FONT_SIZES["caption"]),
-            wraplength=250,
-            justify="left",
-            anchor="w",
-        )
-        action_state.grid(row=6, column=0, sticky="ew", pady=(8, 0))
-        self._wrap_labels.append(action_state)
-        tk.Frame(self.play_panel, height=1, background=INK).grid(
-            row=7, column=0, sticky="ew", pady=(20, 12)
-        )
-        engine_note = tk.Label(
-            self.play_panel,
-            text="NO ENGINE  ·  NO NETWORK  ·  NO CLOCK",
-            background=ACETATE,
-            foreground=INK,
-            font=("TkDefaultFont", FONT_SIZES["caption"], "bold"),
-            anchor="w",
-        )
-        engine_note.grid(row=8, column=0, sticky="ew")
-        self._wrap_labels.append(engine_note)
+        t = self.t
+        panel = self.play_panel = tk.Frame(self.panel, background=ACETATE)
+        panel.grid(row=0, column=0, sticky="nsew")
+        panel.grid_columnconfigure(0, weight=1)
+        row = 0
+        self._label(panel, text=t("play.description"), muted=True).grid(row=row, column=0, sticky="ew", pady=(0, 10))
+        row += 1
+        self._label(panel, text=t("play.mode_label"), role="caption", bold=True).grid(row=row, column=0, sticky="ew")
+        row += 1
+        self.mode_buttons: dict[str, tk.Radiobutton] = {}
+        for value, key in (("human-vs-human", "mode.human"), ("human-vs-bot-white", "mode.bot_white"),
+                           ("human-vs-bot-black", "mode.bot_black")):
+            button = tk.Radiobutton(
+                panel, text=t(key), value=value, variable=self.mode_var, anchor="w",
+                background=ACETATE, foreground=INK, activebackground=ACETATE, selectcolor=PAPER,
+                highlightthickness=1, highlightcolor=INK, font=("TkDefaultFont", FONT_SIZES["body"]),
+            )
+            button.grid(row=row, column=0, sticky="ew")
+            self.mode_buttons[value] = button
+            row += 1
+        level_row = tk.Frame(panel, background=ACETATE)
+        level_row.grid(row=row, column=0, sticky="ew", pady=(4, 8))
+        level_row.grid_columnconfigure(1, weight=1)
+        tk.Label(level_row, text=t("play.level_label"), background=ACETATE, foreground=INK,
+                 font=("TkDefaultFont", FONT_SIZES["caption"], "bold")).grid(row=0, column=0, sticky="w")
+        self.level_menu = tk.OptionMenu(level_row, self.preset_var, *[self._preset_label(p.id) for p in self.presets],
+                                        command=lambda _v: self._on_preset_changed())
+        self.level_menu.configure(background=PAPER, foreground=INK, highlightthickness=1, relief="solid", borderwidth=1)
+        self.level_menu.grid(row=0, column=1, sticky="ew", padx=(8, 0))
+        row += 1
+        self.new_game_button = self._button(panel, t("button.new_game"), self._new_game, role="new")
+        self.new_game_button.grid(row=row, column=0, sticky="ew", pady=3)
+        row += 1
+        controls = tk.Frame(panel, background=ACETATE)
+        controls.grid(row=row, column=0, sticky="ew")
+        controls.grid_columnconfigure((0, 1), weight=1)
+        self.undo_button = self._button(controls, t("button.undo"), self._undo)
+        self.undo_button.grid(row=0, column=0, sticky="ew", pady=3, padx=(0, 3))
+        self.redo_button = self._button(controls, t("button.redo"), self._redo)
+        self.redo_button.grid(row=0, column=1, sticky="ew", pady=3, padx=(3, 0))
+        self.flip_button = self._button(controls, t("button.flip"), self._flip_board)
+        self.flip_button.grid(row=1, column=0, sticky="ew", pady=3, padx=(0, 3))
+        self.resign_button = self._button(controls, t("button.resign"), self._resign)
+        self.resign_button.grid(row=1, column=1, sticky="ew", pady=3, padx=(3, 0))
+        self.save_button = self._button(controls, t("button.save_game"), self._save_game)
+        self.save_button.grid(row=2, column=0, sticky="ew", pady=3, padx=(0, 3))
+        self.copy_pgn_button = self._button(controls, t("button.copy_pgn"), self._copy_pgn)
+        self.copy_pgn_button.grid(row=2, column=1, sticky="ew", pady=3, padx=(3, 0))
+        row += 1
+        self._label(panel, var=self.action_state_text, role="caption", muted=True).grid(row=row, column=0, sticky="ew", pady=(6, 0))
+        row += 1
+        tk.Frame(panel, height=1, background=INK).grid(row=row, column=0, sticky="ew", pady=(12, 8))
+        row += 1
+        self.bot_label = self._label(panel, var=self.bot_text, role="caption", bold=True)
+        self.bot_label.grid(row=row, column=0, sticky="ew")
+        row += 1
+        bot_controls = tk.Frame(panel, background=ACETATE)
+        bot_controls.grid(row=row, column=0, sticky="ew", pady=(6, 0))
+        bot_controls.grid_columnconfigure((0, 1), weight=1)
+        self.retry_bot_button = self._button(bot_controls, t("button.retry_bot"), self._retry_bot)
+        self.retry_bot_button.grid(row=0, column=0, sticky="ew", padx=(0, 3))
+        self.engine_button = self._button(bot_controls, t("button.engine"), self._open_engine_dialog)
+        self.engine_button.grid(row=0, column=1, sticky="ew", padx=(3, 0))
 
     def _build_moves_panel(self) -> None:
-        self.moves_panel = tk.Frame(self.panel, background=ACETATE)
-        self.moves_panel.grid(row=0, column=0, sticky="nsew")
-        self.moves_panel.grid_rowconfigure(1, weight=1)
-        self.moves_panel.grid_columnconfigure(0, weight=1)
-        tk.Label(
-            self.moves_panel,
-            text="Move record",
-            background=ACETATE,
-            foreground=INK,
-            font=("TkDefaultFont", FONT_SIZES["section"], "bold"),
-            anchor="w",
-        ).grid(row=0, column=0, sticky="ew", pady=(0, 8))
-        self.empty_moves_label = tk.Label(
-            self.moves_panel,
-            text="No moves yet. The record begins with the first legal move.",
-            background=ACETATE,
-            foreground=MUTED_INK,
-            font=("TkDefaultFont", FONT_SIZES["body"]),
-            wraplength=250,
-            justify="left",
-            anchor="nw",
-            padx=4,
-            pady=6,
-        )
-        self._wrap_labels.append(self.empty_moves_label)
+        t = self.t
+        panel = self.moves_panel = tk.Frame(self.panel, background=ACETATE)
+        panel.grid(row=0, column=0, sticky="nsew")
+        panel.grid_rowconfigure(1, weight=1)
+        panel.grid_columnconfigure(0, weight=1)
+        tk.Label(panel, text=t("moves.title"), background=ACETATE, foreground=INK,
+                 font=("TkDefaultFont", FONT_SIZES["section"], "bold"), anchor="w").grid(row=0, column=0, sticky="ew", pady=(0, 8))
+        self.empty_moves_label = self._label(panel, text=t("moves.empty"), muted=True)
         self.empty_moves_label.grid(row=1, column=0, sticky="new")
-        list_frame = tk.Frame(self.moves_panel, background=ACETATE)
-        self.move_list_frame = list_frame
+        list_frame = self.move_list_frame = tk.Frame(panel, background=ACETATE)
         list_frame.grid(row=1, column=0, sticky="nsew")
         list_frame.grid_rowconfigure(0, weight=1)
         list_frame.grid_columnconfigure(0, weight=1)
         self.move_list = tk.Listbox(
-            list_frame,
-            background=PAPER,
-            foreground=INK,
-            selectbackground=CHROME_YELLOW,
-            selectforeground=INK,
-            font=("TkFixedFont", 11),
-            relief="solid",
-            borderwidth=1,
-            highlightthickness=1,
-            highlightbackground=INK,
-            highlightcolor=INK,
-            exportselection=False,
+            list_frame, background=PAPER, foreground=INK, selectbackground=CHROME_YELLOW, selectforeground=INK,
+            font=("TkFixedFont", 11), relief="solid", borderwidth=1, highlightthickness=1,
+            highlightbackground=INK, highlightcolor=INK, exportselection=False,
         )
         self.move_list.grid(row=0, column=0, sticky="nsew")
-        scrollbar = tk.Scrollbar(
-            list_frame,
-            orient="vertical",
-            command=self.move_list.yview,
-            background=CHROME_YELLOW,
-            troughcolor=PAPER,
-            activebackground=INK,
-        )
+        scrollbar = tk.Scrollbar(list_frame, orient="vertical", command=self.move_list.yview,
+                                 background=CHROME_YELLOW, troughcolor=PAPER, activebackground=INK)
         scrollbar.grid(row=0, column=1, sticky="ns")
         self.move_list.configure(yscrollcommand=scrollbar.set)
         list_frame.grid_remove()
 
+    def _build_puzzle_panel(self) -> None:
+        t = self.t
+        panel = self.puzzle_panel = tk.Frame(self.panel, background=ACETATE)
+        panel.grid(row=0, column=0, sticky="nsew")
+        panel.grid_columnconfigure(0, weight=1)
+        self._label(panel, var=self.puzzle_title_text, role="body", bold=True).grid(row=0, column=0, sticky="ew")
+        self._label(panel, var=self.puzzle_meta_text, role="caption", muted=True).grid(row=1, column=0, sticky="ew", pady=(2, 8))
+        if self.pack.manifest.demo:
+            self._label(panel, text=t("puzzle.demo_notice"), role="caption", muted=True).grid(row=2, column=0, sticky="ew", pady=(0, 8))
+        self.puzzle_feedback_label = self._label(panel, var=self.puzzle_feedback_text, role="body")
+        self.puzzle_feedback_label.grid(row=3, column=0, sticky="ew", pady=(4, 12))
+        self.hint_button = self._button(panel, t("button.hint"), self._puzzle_hint)
+        self.hint_button.grid(row=4, column=0, sticky="ew", pady=3)
+        self.solution_button = self._button(panel, t("button.solution"), self._puzzle_reveal)
+        self.solution_button.grid(row=5, column=0, sticky="ew", pady=3)
+        self.next_puzzle_button = self._button(panel, t("button.next_puzzle"), self._next_puzzle, role="new")
+        self.next_puzzle_button.grid(row=6, column=0, sticky="ew", pady=3)
+
+    def _bind_shortcuts(self) -> None:
+        for modifier in ("Control", "Command"):
+            for sequence, action in (("z", self._undo), ("y", self._redo), ("Z", self._redo), ("n", self._new_game)):
+                try:
+                    self.root.bind(f"<{modifier}-{sequence}>", lambda _e, a=action: (a(), "break")[1])
+                except tk.TclError:
+                    pass  # Command modifier only exists on macOS
+
     def _update_panel_wraplengths(self, _event: tk.Event | None = None) -> None:
-        wraplength = max(120, min(300, self.panel.winfo_width() - 56))
+        wraplength = max(120, min(320, self.panel.winfo_width() - 40))
         for label in self._wrap_labels:
             label.configure(wraplength=wraplength)
 
-    def _button(
-        self,
-        master: tk.Misc,
-        label: str,
-        command,
-        *,
-        role: str = "neutral",
-    ) -> tk.Button:
+    def _button(self, master: tk.Misc, label: str, command, *, role: str = "neutral") -> tk.Button:
         if role not in BUTTON_ROLES:
             raise ValueError(f"Unknown button role: {role}")
         background, foreground = BUTTON_ROLES[role]
         return tk.Button(
-            master,
-            text=label,
-            command=command,
-            background=background,
-            foreground=foreground,
-            activebackground=INK,
-            activeforeground=ACETATE,
-            disabledforeground=DISABLED_INK,
-            relief="solid",
-            borderwidth=1,
-            highlightthickness=1,
-            highlightbackground=background,
-            highlightcolor=INK,
-            padx=10,
-            pady=8,
-            anchor="w",
-            font=("TkDefaultFont", FONT_SIZES["body"], "bold"),
+            master, text=label, command=command, background=background, foreground=foreground,
+            activebackground=INK, activeforeground=ACETATE, disabledforeground=DISABLED_INK, relief="solid",
+            borderwidth=1, highlightthickness=1, highlightbackground=background, highlightcolor=INK,
+            padx=10, pady=7, anchor="w", font=("TkDefaultFont", FONT_SIZES["body"], "bold"),
         )
 
+    # ----- panels / modes ----------------------------------------------
     def _show_panel(self, name: str) -> None:
-        for panel in (self.play_panel, self.moves_panel):
-            panel.grid_remove()
-        if name == "play":
-            self.play_panel.grid()
-        elif name == "moves":
-            self.moves_panel.grid()
-        else:
+        panels = {"play": self.play_panel, "moves": self.moves_panel, "puzzles": self.puzzle_panel}
+        if name not in panels:
             raise ValueError(f"Unknown game panel: {name}")
+        for panel in panels.values():
+            panel.grid_remove()
+        panels[name].grid()
+        previous, self.active_panel = getattr(self, "active_panel", "play"), name
+        if name == "puzzles" and self.puzzle is None:
+            self._start_puzzle(self.puzzle_index)
+        if (previous == "puzzles") != (name == "puzzles"):
+            self._refresh()
 
-    def _on_selection_changed(self, message: str) -> None:
-        self.interaction_text.set(message)
+    def _preset_label(self, preset_id: str) -> str:
+        preset = next(p for p in self.presets if p.id == preset_id)
+        return self.t(preset.label_key)
+
+    def _selected_preset(self) -> BotPreset:
+        label = self.preset_var.get()
+        return next((p for p in self.presets if self.t(p.label_key) == label), self.presets[2])
+
+    def _on_preset_changed(self) -> None:
+        preset = self._selected_preset()
+        provider = self.controller.provider
+        if isinstance(provider, UCIBot):
+            provider.set_preset(preset)
+        self._store_settings(bot_preset_id=preset.id)
+
+    def _store_settings(self, **changes) -> None:
+        self.settings = replace(self.settings, **changes)
+        if self.layout is not None:
+            save_settings(self.layout.settings, self.settings)
+
+    def _setup_for_mode(self, mode: str) -> GameSetup:
+        if mode == "human-vs-bot-white":
+            return GameSetup.against_bot(Color.WHITE)
+        if mode == "human-vs-bot-black":
+            return GameSetup.against_bot(Color.BLACK)
+        return GameSetup.two_players()
+
+    # ----- game commands ------------------------------------------------
+    def _new_game(self) -> None:
+        if self.active_panel == "puzzles":
+            self.tab_rail.set_active("play")
+        view = self.controller.view()
+        if (self.game.moves or view.can_redo) and not messagebox.askyesno(
+            self.t("new_game.confirm_title"), self.t("new_game.confirm_body"), parent=self.root,
+        ):
+            return
+        self.start_game(self.mode_var.get())
+
+    def start_game(self, mode: str) -> None:
+        """Start a game in ``mode`` without confirmation (used by tests and New game)."""
+        setup = self._setup_for_mode(mode)
+        if setup.mode is PlayMode.HUMAN_VS_BOT:
+            preset = self._selected_preset()
+            provider = self.controller.provider
+            if provider is None or self._provider_stale:
+                self.controller.set_provider(self._provider_factory(preset, self.settings))
+                self._provider_stale = False
+            elif isinstance(provider, UCIBot):
+                provider.set_preset(preset)
+            human = Color.WHITE if mode == "human-vs-bot-white" else Color.BLACK
+            self.orientation = "white" if human is Color.WHITE else "black"
+            self.board.set_orientation(self.orientation)
+        self.mode_var.set(mode)
+        self._store_settings(play_mode=mode)
+        self.controller.new_game(setup)
 
     def _on_move_requested(self, candidates: tuple[Move, ...]) -> None:
         if len(candidates) == 1:
@@ -428,43 +470,35 @@ class ChessApp:
         self._choose_promotion(candidates)
 
     def _play_move(self, move: Move) -> None:
-        try:
-            self.game.play(move)
-        except ChessError as error:
-            self.interaction_text.set(f"Move rejected: {error}")
-            self._refresh()
+        if self.active_panel == "puzzles":
+            self._puzzle_move(move)
             return
-        self.redo_count = 0
-        self._refresh()
+        try:
+            self.controller.play_human(move)
+        except ChessError as error:
+            self.interaction_text.set(self.t("move.rejected", error=error))
+            self._refresh()
 
     def _choose_promotion(self, candidates: Sequence[Move]) -> None:
         promotions = tuple(move for move in candidates if move.promotion is not None)
         if not promotions:
-            self.interaction_text.set("Move choice is ambiguous; select a square again.")
+            self.interaction_text.set(self.t("move.ambiguous"))
             return
         dialog = tk.Toplevel(self.root)
-        dialog.title("Choose promotion")
+        dialog.title(self.t("promotion.title"))
         dialog.transient(self.root)
         dialog.resizable(False, False)
         dialog.configure(background=ACETATE)
-        tk.Label(
-            dialog,
-            text="Choose the piece for promotion",
-            background=ACETATE,
-            foreground=INK,
-            font=("TkDefaultFont", FONT_SIZES["body"], "bold"),
-            padx=18,
-            pady=14,
-        ).grid(row=0, column=0, columnspan=len(promotions), sticky="ew")
+        tk.Label(dialog, text=self.t("promotion.prompt"), background=ACETATE, foreground=INK,
+                 font=("TkDefaultFont", FONT_SIZES["body"], "bold"), padx=18, pady=14,
+                 ).grid(row=0, column=0, columnspan=len(promotions), sticky="ew")
         chosen: list[Move] = []
         for column, move in enumerate(promotions):
-            label = move.promotion.name.title() if move.promotion else "Piece"
-            self._button(
-                dialog,
-                label,
-                lambda candidate=move: (chosen.append(candidate), dialog.destroy()),
-                role="neutral",
-            ).grid(row=1, column=column, padx=6, pady=(0, 14))
+            label = self.t(f"piece.{move.promotion.name.lower()}") if move.promotion else "?"
+            button = self._button(dialog, label, lambda candidate=move: (chosen.append(candidate), dialog.destroy()))
+            button.grid(row=1, column=column, padx=6, pady=(0, 14))
+            if column == 0:
+                button.focus_set()
         dialog.bind("<Escape>", lambda _event: dialog.destroy())
         dialog.protocol("WM_DELETE_WINDOW", dialog.destroy)
         try:
@@ -478,128 +512,356 @@ class ChessApp:
         if chosen:
             self._play_move(chosen[0])
 
-    def _new_game(self) -> None:
-        if (self.game.moves or self.redo_count) and not messagebox.askyesno(
-            "Start a new game?",
-            "The current local game, including undone moves, will be replaced.",
-            parent=self.root,
-        ):
-            return
-        self.game = ChessGame()
-        self.redo_count = 0
-        self._refresh()
-
     def _undo(self) -> None:
+        if self.active_panel == "puzzles":
+            return
         try:
-            self.game.undo()
+            self.controller.undo()
         except ChessError as error:
             self.interaction_text.set(str(error))
-            return
-        self.redo_count += 1
-        self._refresh()
 
     def _redo(self) -> None:
-        if self.redo_count <= 0:
+        if self.active_panel == "puzzles":
             return
         try:
-            self.game.redo()
+            self.controller.redo()
         except ChessError as error:
             self.interaction_text.set(str(error))
-            self.redo_count = 0
-        else:
-            self.redo_count -= 1
-        self._refresh()
+
+    def _resign(self) -> None:
+        try:
+            self.controller.resign()
+        except ChessError as error:
+            self.interaction_text.set(str(error))
+
+    def _retry_bot(self) -> None:
+        self.controller.retry_bot()
 
     def _flip_board(self) -> None:
         self.orientation = "black" if self.orientation == "white" else "white"
         self.board.set_orientation(self.orientation)
-        self.interaction_text.set(
-            "Black's side is at the bottom." if self.orientation == "black"
-            else "White's side is at the bottom."
+        self.interaction_text.set(self.t("board.black_bottom" if self.orientation == "black" else "board.white_bottom"))
+
+    def _current_pgn(self) -> str:
+        view = self.controller.view()
+        headers = {"Event": "Chess & Chains local game"}
+        if view.setup.mode is PlayMode.HUMAN_VS_BOT and view.bot_name:
+            if view.setup.bot_color is Color.WHITE:
+                headers.update(White=view.bot_name, Black="Human")
+            else:
+                headers.update(White="Human", Black=view.bot_name)
+        return export_pgn(self.game, headers)
+
+    def _save_game(self) -> int | None:
+        if self.db is None:
+            self.interaction_text.set(self.t("save.unavailable"))
+            return None
+        view = self.controller.view()
+        provider = self.controller.provider
+        game_id = self.db.save_game(
+            self.game,
+            mode=self.mode_var.get(),
+            bot_color=view.setup.bot_color.value if view.setup.bot_color else None,
+            bot_name=view.bot_name if view.setup.mode is PlayMode.HUMAN_VS_BOT else None,
+            bot_preset=provider.preset.id if isinstance(provider, UCIBot) else None,
         )
+        self.interaction_text.set(self.t("save.done", id=game_id))
+        return game_id
+
+    def _copy_pgn(self) -> None:
+        self.root.clipboard_clear()
+        self.root.clipboard_append(self._current_pgn())
+        self.interaction_text.set(self.t("pgn.copied"))
+
+    # ----- puzzles --------------------------------------------------------
+    def _start_puzzle(self, index: int) -> None:
+        self.puzzle_index = index % len(self.pack.puzzles)
+        self.puzzle = PuzzleSession(self.pack.puzzles[self.puzzle_index])
+        self._puzzle_recorded = False
+        self.puzzle_feedback_text.set(self.t("puzzle.prompt", side=self._side(self.puzzle.player_color)))
+        self.orientation = "white" if self.puzzle.player_color is Color.WHITE else "black"
+        self.board.set_orientation(self.orientation)
+        self._refresh()
+
+    def _next_puzzle(self) -> None:
+        self._start_puzzle(self.puzzle_index + 1)
+
+    def _puzzle_move(self, move: Move) -> None:
+        session = self.puzzle
+        if session is None or session.finished:
+            return
+        before = session.state
+        feedback = session.submit(move)
+        if feedback.verdict is Verdict.CORRECT:
+            after_player = session.game.rules.apply(before, move)
+            reply = to_san(after_player, feedback.reply, session.game.rules)
+            self.puzzle_feedback_text.set(self.t("puzzle.correct", reply=reply))
+        elif feedback.verdict is Verdict.SOLVED:
+            self.puzzle_feedback_text.set(self.t("puzzle.solved_alternative" if feedback.alternative else "puzzle.solved"))
+            self._record_puzzle()
+        elif feedback.verdict is Verdict.WRONG:
+            self.puzzle_feedback_text.set(self.t("puzzle.wrong"))
+        else:
+            self.puzzle_feedback_text.set(self.t("puzzle.illegal"))
+        self._refresh()
+
+    def _puzzle_hint(self) -> None:
+        if self.puzzle is None:
+            return
+        square = self.puzzle.hint()
+        if square is not None:
+            self.puzzle_feedback_text.set(self.t("puzzle.hint", square=square_name(square)))
+            self.board.set_hint(square)
+
+    def _puzzle_reveal(self) -> None:
+        session = self.puzzle
+        if session is None or session.finished:
+            return
+        state = session.state
+        sans = []
+        for move in session.puzzle.solution[len(session.game.moves) - 1:]:
+            sans.append(to_san(state, move, session.game.rules))
+            state = session.game.rules.apply(state, move)
+        session.reveal()
+        self.puzzle_feedback_text.set(self.t("puzzle.revealed", line=" ".join(sans)))
+        self._record_puzzle()
+        self._refresh()
+
+    def _record_puzzle(self) -> None:
+        session = self.puzzle
+        if session is None or self._puzzle_recorded or self.db is None:
+            return
+        self.db.record_puzzle_attempt(
+            self.pack.manifest.pack_id, session.puzzle.puzzle_id, solved=session.solved,
+            mistakes=session.mistakes, hints_used=session.hints_used, duration_ms=session.duration_ms,
+        )
+        self._puzzle_recorded = True
+
+    # ----- engine settings dialog ------------------------------------
+    def _open_engine_dialog(self) -> None:
+        EngineDialog(self)
+
+    # ----- rendering ------------------------------------------------------
+    def _side(self, color: Color) -> str:
+        return self.t("side.white" if color is Color.WHITE else "side.black")
+
+    def _on_view(self, _view: GameView) -> None:
+        if not self._closed:
+            self._refresh()
+
+    def _poll(self) -> None:
+        if self._closed:
+            return
+        self.controller.poll()
+        self._poll_job = self.root.after(POLL_MS, self._poll)
 
     def _refresh(self) -> None:
-        outcome = self.game.outcome()
-        legal_moves = (
-            self.game.rules.legal_moves(self.game.state)
-            if outcome.status is GameStatus.ACTIVE
-            else ()
-        )
-        last_move = self.game.moves[-1] if self.game.moves else None
-        self.board.set_position(
-            self.game.state,
-            legal_moves,
-            last_move,
-            outcome.in_check,
-        )
-        self.panel_text.set(self._status_label(outcome.status, outcome.in_check, outcome.winner))
-        if not self.game.moves and self.redo_count:
-            action_state = "No earlier move to undo; redo is available."
-        elif not self.game.moves:
-            action_state = "Undo is unavailable before the first move."
-        elif not self.redo_count:
-            action_state = "Redo is unavailable until a move has been undone."
+        if self.active_panel == "puzzles" and self.puzzle is not None:
+            self._refresh_puzzle()
+        else:
+            self._refresh_game(self.controller.view())
+
+    def _refresh_puzzle(self) -> None:
+        session = self.puzzle
+        assert session is not None
+        pack = self.pack
+        self.header_mode_text.set(self.t("header.mode.puzzle", pack=pack.manifest.pack_id.upper()))
+        self.panel_text.set(self.t("puzzle.title", index=self.puzzle_index + 1, count=len(pack.puzzles)))
+        self.puzzle_title_text.set(self.t("puzzle.prompt", side=self._side(session.player_color)))
+        self.puzzle_meta_text.set(self.t("puzzle.meta", id=session.puzzle.puzzle_id, rating=session.puzzle.rating,
+                                         themes=", ".join(session.puzzle.themes[:3])))
+        legal = session.legal_moves()
+        self.board.set_position(session.state, legal, session.last_move, session.game.rules.is_in_check(session.state))
+        state = tk.DISABLED if session.finished else tk.NORMAL
+        self.hint_button.configure(state=state)
+        self.solution_button.configure(state=state)
+
+    def _refresh_game(self, view: GameView) -> None:
+        t = self.t
+        self.board.set_position(view.state, view.legal_moves, view.last_move, view.outcome.in_check)
+        self.panel_text.set(self._status_label(view))
+        bot = view.bot_name or ""
+        if view.setup.mode is PlayMode.HUMAN_VS_BOT:
+            key = "header.mode.bot_black" if view.setup.bot_color is Color.WHITE else "header.mode.bot_white"
+            self.header_mode_text.set(t(key, bot=bot.upper()))
+        else:
+            self.header_mode_text.set(t("header.mode.human"))
+        if view.bot_status is BotStatus.NONE:
+            self.bot_text.set(t("bot.none"))
+        elif view.bot_status is BotStatus.THINKING:
+            self.bot_text.set(t("bot.thinking", bot=bot))
+        elif view.bot_status is BotStatus.ERROR:
+            self.bot_text.set(t("bot.error", error=view.bot_error))
+        else:
+            notice = f"\n{t('bot.mock_notice')}" if view.bot_is_mock else ""
+            self.bot_text.set(t("bot.idle", bot=bot) + notice)
+        self.retry_bot_button.configure(state=tk.NORMAL if view.bot_status is BotStatus.ERROR else tk.DISABLED)
+        if not self.game.moves and view.can_redo:
+            action_state = t("action.redo_only")
+        elif not view.can_undo:
+            action_state = t("action.undo_unavailable")
+        elif not view.can_redo:
+            action_state = t("action.redo_unavailable")
         else:
             action_state = ""
         self.action_state_text.set(action_state)
-        self._update_move_list()
-        self.undo_button.configure(
-            state=tk.NORMAL if self.game.moves else tk.DISABLED
-        )
-        self.redo_button.configure(
-            state=tk.NORMAL if self.redo_count else tk.DISABLED
-        )
+        self._update_move_list(view.san_moves)
+        self.undo_button.configure(state=tk.NORMAL if view.can_undo else tk.DISABLED)
+        self.redo_button.configure(state=tk.NORMAL if view.can_redo else tk.DISABLED)
+        active = view.outcome.status is GameStatus.ACTIVE
+        self.resign_button.configure(state=tk.NORMAL if active and self.game.moves else tk.DISABLED)
+        self.save_button.configure(state=tk.NORMAL if self.db is not None and self.game.moves else tk.DISABLED)
 
-    def _status_label(
-        self,
-        status: GameStatus,
-        in_check: bool,
-        winner: Color | None,
-    ) -> str:
+    def _status_label(self, view: GameView) -> str:
+        t = self.t
+        status, winner = view.outcome.status, view.outcome.winner
         if status is GameStatus.ACTIVE:
-            side = self.game.state.turn.name.title()
-            return f"{'Check — ' if in_check else ''}{side} to move"
-        if status is GameStatus.CHECKMATE:
-            return f"{winner.name.title()} wins by checkmate" if winner else "Checkmate"
-        if status is GameStatus.STALEMATE:
-            return "Draw by stalemate"
-        if status is GameStatus.DRAW_INSUFFICIENT_MATERIAL:
-            return "Draw by insufficient material"
-        if status is GameStatus.DRAW_FIVEFOLD_REPETITION:
-            return "Draw by fivefold repetition"
-        if status is GameStatus.DRAW_SEVENTY_FIVE_MOVE:
-            return "Draw by the 75-move rule"
-        if status is GameStatus.DRAW_CLAIMED:
-            return "Draw claimed"
-        if status is GameStatus.RESIGNED:
-            return f"{winner.name.title()} wins by resignation" if winner else "Game resigned"
-        return "Game finished"
+            key = "status.check_to_move" if view.outcome.in_check else "status.to_move"
+            return t(key, side=self._side(view.state.turn))
+        if status is GameStatus.CHECKMATE and winner:
+            return t("status.checkmate", side=self._side(winner))
+        if status is GameStatus.RESIGNED and winner:
+            return t("status.resigned", side=self._side(winner))
+        return t({
+            GameStatus.STALEMATE: "status.stalemate",
+            GameStatus.DRAW_INSUFFICIENT_MATERIAL: "status.insufficient",
+            GameStatus.DRAW_FIVEFOLD_REPETITION: "status.fivefold",
+            GameStatus.DRAW_SEVENTY_FIVE_MOVE: "status.seventyfive",
+            GameStatus.DRAW_CLAIMED: "status.claimed",
+        }.get(status, "status.finished"))
 
-    def _update_move_list(self) -> None:
-        san_moves: list[str] = []
-        state = self.game.initial_state
-        for move in self.game.moves:
-            san_moves.append(to_san(state, move, self.game.rules))
-            state = self.game.rules.apply(state, move)
+    def _update_move_list(self, san_moves: Sequence[str]) -> None:
+        offset = 1 if self.game.initial_state.turn is Color.BLACK else 0
+        padded = [""] * offset + list(san_moves)
         rows = []
-        for index in range(0, len(san_moves), 2):
-            white = san_moves[index]
-            black = san_moves[index + 1] if index + 1 < len(san_moves) else ""
-            rows.append(f"{index // 2 + 1:>2}. {white:<8} {black}")
+        first = self.game.initial_state.fullmove_number
+        for index in range(0, len(padded), 2):
+            white = padded[index] or "…"
+            black = padded[index + 1] if index + 1 < len(padded) else ""
+            rows.append(f"{first + index // 2:>3}. {white:<8} {black}")
         self.move_list.delete(0, tk.END)
         for row in rows:
             self.move_list.insert(tk.END, row)
         if rows:
             self.empty_moves_label.grid_remove()
             self.move_list_frame.grid()
+            self.move_list.selection_clear(0, tk.END)
             self.move_list.selection_set(len(rows) - 1)
             self.move_list.see(len(rows) - 1)
         else:
             self.move_list_frame.grid_remove()
             self.empty_moves_label.grid()
 
+    def _on_selection_changed(self, message: str) -> None:
+        self.interaction_text.set(message)
+
+    # ----- lifecycle --------------------------------------------------------
+    def close(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        try:
+            self.root.after_cancel(self._poll_job)
+        except (tk.TclError, ValueError):
+            pass
+        self.controller.shutdown()
+        if self.db is not None:
+            self.db.close()
+        try:
+            self.root.destroy()
+        except tk.TclError:
+            pass
+
+
+class EngineDialog:
+    """Configure a locally installed UCI engine; tests run on a worker thread."""
+
+    def __init__(self, app: ChessApp) -> None:
+        self.app = app
+        t = app.t
+        self.window = tk.Toplevel(app.root)
+        self.window.title(t("engine.title"))
+        self.window.transient(app.root)
+        self.window.configure(background=ACETATE, padx=16, pady=14)
+        self.path_var = tk.StringVar(value=app.settings.engine_path or "")
+        self.status_var = tk.StringVar(value="" if app.settings.engine_path else t("engine.missing"))
+        self._result: tuple[str, str] | None = None
+        tk.Label(self.window, text=t("engine.explain"), background=ACETATE, foreground=INK, wraplength=420,
+                 justify="left", font=("TkDefaultFont", FONT_SIZES["body"])).grid(row=0, column=0, columnspan=3, sticky="ew")
+        tk.Label(self.window, text=t("engine.path_label"), background=ACETATE, foreground=INK,
+                 font=("TkDefaultFont", FONT_SIZES["caption"], "bold")).grid(row=1, column=0, sticky="w", pady=(12, 2))
+        self.entry = tk.Entry(self.window, textvariable=self.path_var, width=48)
+        self.entry.grid(row=2, column=0, columnspan=2, sticky="ew")
+        app._button(self.window, t("button.browse"), self._browse).grid(row=2, column=2, padx=(6, 0))
+        tk.Label(self.window, textvariable=self.status_var, background=ACETATE, foreground=MUTED_INK, wraplength=420,
+                 justify="left", font=("TkDefaultFont", FONT_SIZES["caption"])).grid(row=3, column=0, columnspan=3, sticky="ew", pady=8)
+        buttons = tk.Frame(self.window, background=ACETATE)
+        buttons.grid(row=4, column=0, columnspan=3, sticky="e")
+        self.test_button = app._button(buttons, t("button.test_engine"), self.test)
+        self.test_button.grid(row=0, column=0, padx=3)
+        app._button(buttons, t("button.use_mock"), self.use_mock).grid(row=0, column=1, padx=3)
+        app._button(buttons, t("button.save"), self.save, role="new").grid(row=0, column=2, padx=3)
+        app._button(buttons, t("button.cancel"), self.window.destroy).grid(row=0, column=3, padx=3)
+        self.window.bind("<Escape>", lambda _e: self.window.destroy())
+        self.entry.focus_set()
+
+    def _browse(self) -> None:
+        path = filedialog.askopenfilename(parent=self.window, title=self.app.t("engine.path_label"))
+        if path:
+            self.path_var.set(path)
+
+    def test(self) -> None:
+        try:
+            config = EngineConfig.from_path(self.path_var.get().strip())
+        except EngineConfigError as error:
+            self.status_var.set(self.app.t("engine.test_failed", error=error))
+            return
+        self.status_var.set(self.app.t("engine.testing"))
+        self.test_button.configure(state=tk.DISABLED)
+
+        def work() -> None:
+            try:
+                with UCIEngine(config.command, startup_timeout=5) as engine:
+                    name = config.display_name
+                    self._result = ("ok", f"{name}|{len(engine.options)}")
+            except (UCIEngineError, ValueError) as error:
+                self._result = ("error", str(error))
+
+        threading.Thread(target=work, name="engine-test", daemon=True).start()
+        self.window.after(50, self._check)
+
+    def _check(self) -> None:
+        if self._result is None:
+            self.window.after(50, self._check)
+            return
+        kind, payload = self._result
+        self._result = None
+        self.test_button.configure(state=tk.NORMAL)
+        if kind == "ok":
+            name, count = payload.split("|")
+            self.status_var.set(self.app.t("engine.test_ok", name=name, count=count))
+        else:
+            self.status_var.set(self.app.t("engine.test_failed", error=payload))
+
+    def use_mock(self) -> None:
+        self.path_var.set("")
+        self.save()
+
+    def save(self) -> None:
+        path = self.path_var.get().strip() or None
+        if path is not None:
+            try:
+                EngineConfig.from_path(path)
+            except EngineConfigError as error:
+                self.status_var.set(self.app.t("engine.test_failed", error=error))
+                return
+        self.app._store_settings(engine_path=path)
+        self.app._provider_stale = True  # the next bot game builds a provider from the new setting
+        self.app.interaction_text.set(self.app.t("engine.saved"))
+        self.window.destroy()
+
 
 def launch() -> None:
     root = tk.Tk()
-    ChessApp(root)
+    ChessApp(root, data_layout=DataLayout.default())
     root.mainloop()

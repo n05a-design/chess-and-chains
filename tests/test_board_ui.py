@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
+sys.path.insert(0, str(ROOT))
 
 from chess_and_chains.chess import (  # noqa: E402
     ChessRules,
@@ -18,6 +19,7 @@ from chess_and_chains.chess import (  # noqa: E402
     parse_square,
 )
 from chess_and_chains.ui.app import ChessApp  # noqa: E402
+from tests.tk_support import create_root  # noqa: E402
 from chess_and_chains.ui.board import (  # noqa: E402
     BoardCanvas,
     moves_between,
@@ -75,10 +77,7 @@ class BoardMoveTests(unittest.TestCase):
 
 class BoardInputTests(unittest.TestCase):
     def setUp(self):
-        try:
-            self.root = tk.Tk()
-        except tk.TclError as error:
-            self.skipTest(f"Tk display unavailable: {error}")
+        self.root = create_root(self)
         self.root.withdraw()
         self.requested = []
         self.board = BoardCanvas(self.root, self.requested.append)
@@ -159,10 +158,7 @@ class BoardInputTests(unittest.TestCase):
 
 class ChessAppActionTests(unittest.TestCase):
     def setUp(self):
-        try:
-            self.root = tk.Tk()
-        except tk.TclError as error:
-            self.skipTest(f"Tk display unavailable: {error}")
+        self.root = create_root(self)
         self.root.withdraw()
         self.app = ChessApp(self.root)
 
