@@ -422,6 +422,13 @@ class OwnerPieceUiTests(AppTestCase):
 
 
 class StorageAndLocaleUiTests(AppTestCase):
+    def test_app_variables_belong_to_its_root_with_another_window_open(self):
+        other_root = create_root(self)
+        app = self.make_app()
+        self.assertIsNot(self.root.tk, other_root.tk)
+        self.assertIs(app.interaction_text._tk, self.root.tk)
+        self.assertIs(app.mode_var._tk, self.root.tk)
+
     def test_save_game_and_settings_persist_in_temp_layout(self):
         with tempfile.TemporaryDirectory() as tmp:
             layout = DataLayout(Path(tmp) / "data")

@@ -14,7 +14,7 @@
 | W08 | TESTED (Fixtures) | Importer, Packs, Session, Themen-/Ratingfilter und Fortschrittsanzeige; realer Lichess-Import, Q-008/Q-009 offen |
 | W09 | TESTED | Lokale Bibliothek mit PGN-Dateiaustausch und lokalem Partieendgrund, Migration auf Schema 3, Sicherung und Wiederherstellung, Settings. Manuelle Plattformabnahme, Q-012 und ADR-004 offen |
 | W10 | IN_PROGRESS | DE/EN-Kataloge; Accessibility-Abnahmen offen |
-| W11 | IN_PROGRESS | 12 CI-Jobs auf gemergter Basis erfolgreich. Erweiterte native Matrix für lokalen Folgebranch ausstehend |
+| W11 | IN_PROGRESS | PR #6 vor Merge mit 14/14 Jobs grün. Anschließender `main`-Lauf mit 12/14 durch zwei native Tk-Abstürze auf macOS. Windows-Gegenlauf zur lokalen Tk-Lifecycle-Korrektur dokumentiert. [CI-Nachweis](../reports/2026-11-21_W11-ci-nach-pr6.md) |
 | W12 | NOT_STARTED | – |
 
 | ID | Workstream | Prompt | Prerequisite | Verbindliches Gate | Zielphase |

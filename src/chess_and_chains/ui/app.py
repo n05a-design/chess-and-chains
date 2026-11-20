@@ -150,19 +150,19 @@ class ChessApp:
         self._provider_stale = False
         self._game_headers: dict[str, str] = {}
         self._closed = False
-        self.interaction_text = tk.StringVar(value="")
-        self.panel_text = tk.StringVar(value="")
-        self.header_mode_text = tk.StringVar(value="")
-        self.action_state_text = tk.StringVar(value="")
-        self.bot_text = tk.StringVar(value="")
-        self.puzzle_title_text = tk.StringVar(value="")
-        self.puzzle_meta_text = tk.StringVar(value="")
-        self.puzzle_feedback_text = tk.StringVar(value="")
-        self.puzzle_progress_text = tk.StringVar(value="")
-        self.mode_var = tk.StringVar(value=self.settings.play_mode)
+        self.interaction_text = tk.StringVar(root)
+        self.panel_text = tk.StringVar(root)
+        self.header_mode_text = tk.StringVar(root)
+        self.action_state_text = tk.StringVar(root)
+        self.bot_text = tk.StringVar(root)
+        self.puzzle_title_text = tk.StringVar(root)
+        self.puzzle_meta_text = tk.StringVar(root)
+        self.puzzle_feedback_text = tk.StringVar(root)
+        self.puzzle_progress_text = tk.StringVar(root)
+        self.mode_var = tk.StringVar(root, value=self.settings.play_mode)
         preset_ids = [p.id for p in self.presets]
         initial_preset = self.settings.bot_preset_id if self.settings.bot_preset_id in preset_ids else preset_ids[2]
-        self.preset_var = tk.StringVar(value=self._preset_label(initial_preset))
+        self.preset_var = tk.StringVar(root, value=self._preset_label(initial_preset))
         self._wrap_labels: list[tk.Label] = []
         self._build(piece_renderer)
         self._bind_shortcuts()
@@ -1116,8 +1116,8 @@ class EngineDialog:
         self.window.title(t("engine.title"))
         self.window.transient(app.root)
         self.window.configure(background=ACETATE, padx=16, pady=14)
-        self.path_var = tk.StringVar(value=app.settings.engine_path or "")
-        self.status_var = tk.StringVar(value="" if app.settings.engine_path else t("engine.missing"))
+        self.path_var = tk.StringVar(self.window, value=app.settings.engine_path or "")
+        self.status_var = tk.StringVar(self.window, value="" if app.settings.engine_path else t("engine.missing"))
         self._result: tuple[str, str] | None = None
         tk.Label(self.window, text=t("engine.explain"), background=ACETATE, foreground=INK, wraplength=420,
                  justify="left", font=("TkDefaultFont", FONT_SIZES["body"])).grid(row=0, column=0, columnspan=3, sticky="ew")

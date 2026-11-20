@@ -89,7 +89,6 @@ class BoardArtworkInputTests(unittest.TestCase):
 class BoardArtworkUiTests(unittest.TestCase):
     def test_tile_background_tracks_the_named_square_and_keeps_marks_in_front(self):
         root = create_root(self)
-        self.addCleanup(root.destroy)
         with tempfile.TemporaryDirectory() as directory:
             folder = Path(directory)
             for filename, color in (("light.svg", "#ffeecc"), ("dark.svg", "#504136"), ("a8.svg", "#00aa00")):
@@ -182,10 +181,6 @@ class BoardInputTests(unittest.TestCase):
         self.board._board_y = 0
         self.board._square_size = 10
 
-    def tearDown(self):
-        if hasattr(self, "root"):
-            self.root.destroy()
-
     def _center(self, square):
         column, row = screen_cell(square)
         return (
@@ -250,12 +245,8 @@ class BoardInputTests(unittest.TestCase):
 class ChessAppActionTests(unittest.TestCase):
     def setUp(self):
         self.root = create_root(self)
-        self.root.withdraw()
         self.app = ChessApp(self.root)
-
-    def tearDown(self):
-        if hasattr(self, "app"):
-            self.app.close()
+        self.addCleanup(self.app.close)
 
     def test_undo_and_redo_controls_follow_the_game_timeline(self):
         move = Move(parse_square("e2"), parse_square("e4"))

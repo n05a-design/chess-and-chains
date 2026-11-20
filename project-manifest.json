@@ -253,6 +253,7 @@
       "status": "IN_PROGRESS",
       "status_evidence": [
         ".github/workflows/checks.yml",
+        "docs/reports/2026-11-21_W11-ci-nach-pr6.md",
         "docs/reports/2026-11-20_N02_functional-core.md",
         "docs/reports/2026-11-20_N02-follow-up.md"
       ]
