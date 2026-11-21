@@ -39,11 +39,15 @@ GUI-Testläufe mit `CHESS_AND_CHAINS_REQUIRE_DISPLAY=1`,
 | --- | --- |
 | `python -m unittest tests.test_storage.PositionFileTests tests.test_app_integration.PositionExchangeUiTests -v` | 5 Tests, Exitcode 0. Abgedeckt sind FEN mit BOM, ungültige Daten, Schreibfehler, Zwischenablage, Bestätigung, Zug und Fokusrückkehr. |
 | `py -3.14 -m unittest tests.test_storage.PositionFileTests tests.test_app_integration.PositionExchangeUiTests tests.test_i18n -q` | 13 Tests, Exitcode 0. Die native Tk-Oberfläche wurde mit isolierten Testpfaden für die Öffnen-/Speichern-Dialoge betrieben. |
+| `python -m unittest discover -s tests -q` | 230 Tests auf Commit `934c0a89c40bed04dec73219df5d41f5e514a9e1`, Exitcode 0 (92,285 s). |
+| Windows-Tk-Dialogprobe und Sichtprüfung | Deutsch bei 96 Tk-DPI und 1180 × 820 px, Englisch bei 192 Tk-DPI und 860 × 700 px. Tab und Umschalt+Tab wechselten zwischen FEN-Feld und Dateiöffnung. Enter zeigte bei fehlerhafter FEN den Grund und nahm nach Korrektur die Stellung an. |
+| `python scripts/verify_starter.py`, `python scripts/verify_document_links.py` | Exitcode 0. |
 | `python scripts/check_policy.py`, `python -m compileall -q src app scripts tests`, `git diff --check dd47f22...HEAD` | Exitcode 0. |
 
 Der erste vollständige Lauf startete während der Dokumentationsarbeit.
 Beim Prüfen des Manifests fehlte der dort bereits verlinkte Bericht.
 Der Lauf endete mit zwei Foundation-Fehlschlägen und Exitcode 1.
+Der vollständige Wiederholungslauf prüfte den committed Stand mit Bericht.
 
 ## Übergabe
 
