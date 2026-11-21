@@ -28,6 +28,7 @@ from chess_and_chains.storage import DataLayout, load_settings, update_settings 
 from chess_and_chains.ui.app import ChessApp, EngineDialog  # noqa: E402
 from chess_and_chains.ui.branding import brand_image  # noqa: E402
 from chess_and_chains.ui.dialogs import PositionDialog  # noqa: E402
+from chess_and_chains.ui.replay import ReplayDialog  # noqa: E402
 from chess_and_chains.ui.text_board import TextBoardDialog  # noqa: E402
 from chess_and_chains.ui.pieces import (  # noqa: E402
     PIECE_FALLBACK_SIZES,
@@ -854,6 +855,59 @@ class PositionExchangeUiTests(AppTestCase):
 
 
 class StorageAndLocaleUiTests(AppTestCase):
+    def test_saved_game_replay_keeps_active_game_and_handles_black_first(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            app = self.make_app(data_layout=DataLayout(Path(tmp) / "data"))
+            fen = "r3k2r/8/8/8/3pP3/8/8/R3K2R b KQkq e3 0 17"
+            game_id = app.db.import_pgn(f'[SetUp "1"]\n[FEN "{fen}"]\n\n17... dxe3 1/2-1/2')
+            app._play_move(Move.from_uci("d2d4"))
+            live = app.game
+            original_pgn = app.db.load_game(game_id).pgn
+            errors = []
+
+            def inspect():
+                dialog = self.root.grab_current()
+                try:
+                    self.assertIsInstance(dialog, ReplayDialog)
+                    self.assertEqual(to_fen(dialog.board._state), fen)
+                    self.assertEqual(dialog.move_list.get(1), "17… dxe3")
+                    dialog.move_list.focus_force()
+                    self.root.update()
+                    dialog.move_list.event_generate("<Right>", when="tail")
+                    self.root.update()
+                    self.assertEqual(dialog.index, 1)
+                    self.assertIsNone(dialog.board._state.board[parse_square("e4")])
+                    self.assertIn("½–½", dialog.status.cget("text"))
+                    self.assertFalse(dialog.board._legal_moves)
+                    dialog._previous.invoke()
+                    self.assertEqual(to_fen(dialog.board._state), fen)
+                    dialog._close()
+                except Exception as error:
+                    errors.append(error)
+                finally:
+                    if dialog is not None and dialog.winfo_exists():
+                        dialog.destroy()
+
+            def choose():
+                dialog = self.root.grab_current()
+                button = next(child for child in dialog.winfo_children()[0].winfo_children()
+                              if isinstance(child, ttk.Button) and child.cget("text") == app.t("replay.title"))
+                self.root.after(0, inspect)
+                button.invoke()
+
+            try:
+                self.root.deiconify()
+                self.root.update()
+                self.root.after(0, choose)
+                app.library_button.invoke()
+                if errors:
+                    raise errors[0]
+                self.assertIs(app.game, live)
+                self.assertEqual(app.game.moves, [Move.from_uci("d2d4")])
+                self.assertEqual(app.db.load_game(game_id).pgn, original_pgn)
+            finally:
+                app.close()
+
     def test_library_search_keeps_open_and_export_bound_to_filtered_game(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp)

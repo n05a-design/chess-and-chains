@@ -227,6 +227,10 @@ class ChessGame:
                 del self._repetitions[entry.position_key]
         return self.state
 
+    def played_positions(self) -> tuple[GameState, ...]:
+        """Return the starting board and one immutable position per played move."""
+        return (self.initial_state, *(entry.after for entry in self._undo if entry.move is not None))
+
     def redo(self) -> GameState:
         if not self._redo:
             raise ChessError("There is no action to redo.")

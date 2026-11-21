@@ -36,6 +36,7 @@ from .board_artwork import BoardArtwork, BoardArtworkError, BoardDesign
 from .branding import brand_image
 from .dialogs import PositionDialog, bind_button_enter as _bind_button_enter
 from .pieces import OwnerSvgPieces, PieceRenderer
+from .replay import ReplayDialog
 from .text_board import TextBoardDialog
 from .theme import (
     ACETATE,
@@ -465,6 +466,8 @@ class ChessApp:
         scrollbar.grid(row=0, column=1, sticky="ns")
         self.move_list.configure(yscrollcommand=scrollbar.set)
         list_frame.grid_remove()
+        self.replay_button = self._button(panel, t("replay.title"), lambda: self._open_replay(self.game))
+        self.replay_button.grid(row=2, column=0, sticky="ew", pady=(8, 0))
 
     def _build_puzzle_panel(self) -> None:
         t = self.t
@@ -733,8 +736,9 @@ class ChessApp:
         dialog.transient(self.root)
         content = ttk.Frame(dialog, padding=12)
         content.grid(sticky="nsew")
+        columns = 3 if len(actions) >= 3 else len(actions) + 2
         selection = ttk.Combobox(content, values=labels, state="readonly" if labels else "disabled", width=46)
-        selection.grid(row=0, column=0, columnspan=len(actions) + 2, sticky="ew", pady=(0, 10))
+        selection.grid(row=0, column=0, columnspan=columns, sticky="ew", pady=(0, 10))
         if labels:
             selection.current(initial_index)
         else:
@@ -762,17 +766,18 @@ class ChessApp:
         _bind_button_enter(confirm_button)
         initial_focus: tk.Widget | None = selection if labels else None
         selection_actions = [confirm_button]
-        for column, (label, callback, requires_selection) in enumerate(actions, 1):
+        for index, (label, callback, requires_selection) in enumerate(actions, 1):
             state = "disabled" if requires_selection and not labels else "normal"
             button = ttk.Button(content, text=label, command=lambda callback=callback: accept(callback), state=state)
-            button.grid(row=1, column=column, padx=4)
+            button.grid(row=1 + index // columns, column=index % columns, padx=4, pady=2)
             _bind_button_enter(button)
             if requires_selection:
                 selection_actions.append(button)
             if initial_focus is None and state == "normal":
                 initial_focus = button
         cancel_button = ttk.Button(content, text=self.t("button.cancel"), command=close)
-        cancel_button.grid(row=1, column=len(actions) + 1, padx=4)
+        index = len(actions) + 1
+        cancel_button.grid(row=1 + index // columns, column=index % columns, padx=4, pady=2)
         _bind_button_enter(cancel_button)
         dialog.bind("<Escape>", close)
         dialog.protocol("WM_DELETE_WINDOW", close)
@@ -782,15 +787,15 @@ class ChessApp:
         query = None
         trace = None
         if searchable and labels:
-            ttk.Label(content, text=self.t("library.search")).grid(row=0, column=0, columnspan=len(actions) + 2,
+            ttk.Label(content, text=self.t("library.search")).grid(row=0, column=0, columnspan=columns,
                                                                    sticky="w")
             query = tk.StringVar(dialog)
             search = ttk.Entry(content, textvariable=query)
-            search.grid(row=1, column=0, columnspan=len(actions) + 2, sticky="ew", pady=(4, 8))
+            search.grid(row=1, column=0, columnspan=columns, sticky="ew", pady=(4, 8))
             selection.grid_configure(row=2)
             for child in content.winfo_children():
                 if isinstance(child, ttk.Button):
-                    child.grid_configure(row=3)
+                    child.grid_configure(row=int(child.grid_info()["row"]) + 2)
             normalized = tuple(label.casefold() for label in labels)
 
             def filter_games(*_trace: str) -> None:
@@ -911,6 +916,8 @@ class ChessApp:
                 actions=(
                     (self.t("library.import"), lambda _index: self._import_pgn_file(), False),
                     (self.t("library.export"), lambda index: self._export_pgn_file(rows[index].id)
+                     if index is not None else None, True),
+                    (self.t("replay.title"), lambda index: self._open_replay(self.db.load_game(rows[index].id).to_game())
                      if index is not None else None, True),
                 ),
             )
@@ -1235,6 +1242,10 @@ class ChessApp:
     def _open_engine_dialog(self) -> None:
         EngineDialog(self)
 
+    def _open_replay(self, game: ChessGame) -> None:
+        dialog = ReplayDialog(self.root, game, self.t, self._board_artwork, self.board.renderer, self.orientation)
+        self.root.wait_window(dialog)
+
     def _open_text_board(self) -> None:
         dialog = TextBoardDialog(self.root, self.t, self._play_move)
         self._text_board = dialog
@@ -1334,6 +1345,7 @@ class ChessApp:
             action_state = ""
         self.action_state_text.set(action_state)
         self._update_move_list(view.san_moves)
+        self.replay_button.configure(state=tk.NORMAL if view.san_moves else tk.DISABLED)
         self.undo_button.configure(state=tk.NORMAL if view.can_undo else tk.DISABLED)
         self.redo_button.configure(state=tk.NORMAL if view.can_redo else tk.DISABLED)
         can_claim = view.human_to_move and bool(self.game.draw_claim_options())
