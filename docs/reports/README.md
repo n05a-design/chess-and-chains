@@ -55,6 +55,8 @@ Neue Berichte bitte in der passenden Gruppe ergänzen. `scripts/verify_document_
 
 ## W09 · Speicher und Bibliothek
 
+- 2026-11-21 · [W09/W10 · Dateiaustausch und Wiedergabe am Marmorbrett](2026-11-21_W09-W10-marmorbrett-dateien-wiedergabe.md)
+
 - 2026-11-21 · [W08/W09 · Rätselneustart und Partiewiedergabe](2026-11-21_W08-W09-raetselneustart-partiewiedergabe.md)
 
 - 2026-11-21 · [W09 – SQLite-Sicherungen vor der Wiederherstellung prüfen](2026-11-21_W09-sichere-wiederherstellung.md)

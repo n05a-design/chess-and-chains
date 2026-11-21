@@ -18,8 +18,12 @@ Mit `--assets <Ordner>` lässt sich ein eigener Satz laden. Mit `--no-browser`
 wird die lokale Adresse ausgegeben. `--fen` nimmt eine vom Regelkern
 validierte Startstellung an. Beim Schließen des Python-Prozesses
 endet die lokale Sitzung. **Partie als PGN speichern** exportiert die
-aktuelle Zugfolge, Startstellung und Ergebnis. Die Datei lässt
-sich in der Partiebibliothek der Tk-App öffnen.
+aktuelle Zugfolge, Startstellung, Ergebnis und vorhandene PGN-Kopfdaten.
+Die Datei lässt sich in der Partiebibliothek der Tk-App öffnen. Unter
+**Dateien** können einzelne PGNs bis 256 KiB und FEN-Dateien bis 4 KiB
+geladen werden. Vor dem Ersetzen einer begonnenen Partie fragt der
+Browser nach. **Stellung als FEN speichern** exportiert die aktuelle
+Brettstellung mit Zugrechten und Zählern.
 
 Eine eigene ziehbare Platte mit der Maus greifen, über das markierte
 Zielfeld führen und loslassen. Beim Halten zeigt der Mauszeiger eine
@@ -33,6 +37,11 @@ Draufsicht und Seitenwechsel gehen fließend in die gewünschte Ansicht
 auf ein Bild. Während eine Platte gehalten wird, pausiert die Kamera.
 Die Zugliste folgt dem lokalen Spielzustand. Umwandlungen und
 beanspruchbare Remisoptionen werden vom Regelkern geliefert.
+
+**Partie nachspielen** zeigt einen Schnappschuss der Anfangsstellung
+und der gespielten Züge. Der Stellungsregler reagiert auf Pfeiltasten.
+Die Zugliste markiert den betrachteten Halbzug. **Zur laufenden Partie**
+lädt den aktuellen Stand der lokalen Sitzung.
 
 ## Editierbare Grafik
 

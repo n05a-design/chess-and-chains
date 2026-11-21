@@ -30,6 +30,8 @@
 - Filter puzzles by unsolved or attempted without a clean solve. Show the latest attempt and best solve time from local history.
 - Replay current or saved games on a separate board. Browse individual plies while keeping the active game and stored record intact.
 - Restart the current puzzle and reveal the source piece and target square in two stages. Wrap the piece label at high text scaling.
+- Add PGN import and FEN exchange to the local 3D marble board.
+- Replay the 3D marble position history with a keyboard-adjustable timeline and return to the live game.
 
 The dated entries below preserve the development history incorporated into this snapshot.
 
