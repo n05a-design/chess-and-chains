@@ -13,6 +13,7 @@
 - Validate saved games on a temporary copy of an SQLite backup before replacing the active library.
 - Show the preserved filename when the app creates a new library after database corruption. Verify repository asset paths and recorded hashes in the Foundation check.
 - Show localized demo puzzle themes in the filter and puzzle details. Keep custom theme identifiers visible and preserve the original identifiers used for filtering.
+- Add optional quality thresholds and rejection reasons to the offline puzzle builder. Record the origin of each puzzle and correct the source metadata of the bundled demo pack.
 
 The dated entries below preserve the development history incorporated into this snapshot.
 

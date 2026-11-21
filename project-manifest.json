@@ -214,18 +214,20 @@
       "gate": "Rechtssicherer Import, erste UCI-Aktion, Ratingminimum, Datenqualitätsberichte",
       "phase": "F3",
       "status": "TESTED",
-      "scope": "Puzzle model, streaming Lichess CSV importer, versioned JSONL packs, puzzle session controller, theme/rating filters and progress; tested with project-authored fixtures only",
+      "scope": "Puzzle model, offline CSV and .csv.zst import, optional quality thresholds and rejection report, versioned JSONL packs with per-puzzle provenance, puzzle session controller, theme/rating filters and progress; tested with project-authored fixtures only",
       "status_evidence": [
         "docs/reports/2026-11-20_N02_functional-core.md",
         "src/chess_and_chains/puzzles/importer.py",
         "src/chess_and_chains/puzzles/session.py",
         "tests/test_puzzles.py",
         "tests/fixtures/puzzles_sample.csv",
+        "docs/reports/2026-11-21_W08-puzzle-qualitaetsfilter.md",
         "docs/reports/2026-11-20_N02-follow-up.md",
         "tests/test_app_integration.py"
       ],
       "open_gate_items": [
         "Real Lichess export import run (owner opt-in download)",
+        "Quality profile, thresholds and seeded selection for a production pack",
         "Pack size decision Q-009",
         "Rating ceiling Q-008"
       ]

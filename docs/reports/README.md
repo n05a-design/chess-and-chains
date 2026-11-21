@@ -8,6 +8,8 @@ Hier nur tatsächlich ausgeführte Prüfberichte/Agentenübergaben unter `YYYY-M
 
 [W10 – Rätselthemen in DE und EN](2026-11-21_W10-raetselthemen.md)
 
+[W08 – Qualitätsfilter und Herkunft der Rätselpakete](2026-11-21_W08-puzzle-qualitaetsfilter.md)
+
 [W05/W09 – Tote Stellungen und ältere Aufzeichnungen](2026-11-21_W05-tote-stellungen-und-altpartien.md)
 
 [W09 – Partiedaten vor der Rücksicherung prüfen](2026-11-21_W09-sichere-wiederherstellung.md)

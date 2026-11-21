@@ -60,7 +60,18 @@ erst nach vollständigem Schreiben im selben Verzeichnis ersetzt.
 
 ## Puzzle
 
-`Puzzle {id, source, source_export_date, original_fen, moves_uci[], rating, rating_deviation, popularity, plays, themes[], source_url, checksum}`. Bei Anzeige: `initial_fen -> first opponent move -> player start state`. Solve Progress getrennt: `puzzle_id, attempts, solved, last_attempt_utc, optional duration_ms, hints_used`. Die UI kombiniert Themen-Tags und Ratingbereiche im aktiven Pack. Sie zählt für die Auswahl unterschiedliche gelöste IDs aus dem SQLite-Fortschritt.
+Jede JSONL-Zeile enthält `id`, `source`, `fen`, `moves` (UCI),
+`rating`, `rating_deviation`, `popularity`, `plays`, `themes`,
+`game_url` und `opening_tags`. Die Ausgangs-FEN beschreibt die Stellung
+vor dem Aufbauzug `moves[0]`. Erst nach diesem Zug übernimmt der Spieler.
+Die Paketsumme steht im Manifest, angewendete Importgrenzen und Quellprüfsumme
+stehen im Importbericht. [Offline-Builder](../../data/puzzle_packs/README.md)
+
+Die UI kombiniert Themen und Ratingbereiche im aktiven Paket und zählt
+unterschiedliche gelöste IDs. SQLite speichert Versuche mit `pack_id`,
+`puzzle_id`, `attempted_utc`, `solved`, `mistakes`, `hints_used`
+und optional `duration_ms`. Eine Korrektur der Paketherkunft mit denselben
+Paket- und Aufgabenkennungen lässt diesen Bezug bestehen.
 
 ## Einstellungen
 
