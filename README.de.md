@@ -29,7 +29,7 @@ Der lokale Tk-Prototyp umfasst folgende Funktionen.
 - **Connected System** mit eigener Wortmarke, Vorderansichten V.02 und separatem Draufsichtssatz als Original-SVGs,
 - UCI-Prozessadapter, getestet **nur mit einer projekteigenen Mock-Engine** – diese ist **keine Schach-KI**,
 - sechs datengetriebenen Bot-Stufen (Optionen nur, wenn die Engine sie anbietet; Spielstärke **nicht kalibriert**),
-- **Puzzle Lab** mit Streaming-Importer für das Lichess-CSV-Format, Rating ≥ 1000, Paketen und fünf projekteigenen Demo-Rätseln. Filter für Thema und Rating zeigen im Atlas of Moves den Fortschritt je Auswahl,
+- **Puzzle Lab** mit fünf projekteigenen Demo-Rätseln und Import eigener Paketordner. Unter **Rätselpakete…** lassen sich lokale Pakete öffnen. Die App merkt sich das zuletzt geöffnete Paket und speichert den Fortschritt je Paket. Der [Offline-Builder](data/puzzle_packs/README.md) verarbeitet CSV im Lichess-Format ab Rating 1000,
 - Remisanspruch bei dreifacher Wiederholung oder nach der 50-Züge-Regel, auch durch Ansage eines legalen Zugs,
 - lokaler SQLite-Speicherung für Rätselfortschritt und Partien. Die Partiebibliothek öffnet gespeicherte Partien im Zweispielermodus und übernimmt das PGN-Ergebnis. Bei neu gespeicherten Partien bleiben Aufgabe, Remisanspruch und ein eventuell angesagter Zug erhalten. Über die Bibliothek lässt sich pro Vorgang eine UTF-8-PGN-Datei importieren oder exportieren. Einstellungen liegen in JSON, die Oberfläche ist auf Deutsch und Englisch verfügbar.
 

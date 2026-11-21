@@ -19,6 +19,7 @@
 - Keep valid CSV records around malformed UTF-8 bytes and verify the checksums of the archived OneDrive snapshots in Foundation CI.
 - Support Enter on library and draw-claim dialog buttons and restore the previous keyboard focus when the chooser closes.
 - Reuse SVG board backgrounds for both orientations at the current size and reuse rendered tiles when changing perspective.
+- Import verified local puzzle packs from the Puzzle Lab. Keep progress by pack and restore the last selected pack on restart.
 
 The dated entries below preserve the development history incorporated into this snapshot.
 

@@ -217,15 +217,17 @@
       "gate": "Rechtssicherer Import, erste UCI-Aktion, Ratingminimum, Datenqualitätsberichte",
       "phase": "F3",
       "status": "TESTED",
-      "scope": "Puzzle model, offline CSV and .csv.zst import, optional quality thresholds and rejection report, deterministic seeded selection, versioned JSONL packs with per-puzzle provenance, puzzle sessions and progress; tested with project-authored fixtures only",
+      "scope": "Offline CSV and .csv.zst builder with quality thresholds and seeded selection. Puzzle Lab validates, installs and opens local JSONL packs. Tested with project-authored fixtures only.",
       "status_evidence": [
         "docs/reports/2026-11-20_N02_functional-core.md",
         "src/chess_and_chains/puzzles/importer.py",
         "src/chess_and_chains/puzzles/session.py",
+        "src/chess_and_chains/puzzles/pack.py",
         "tests/test_puzzles.py",
         "tests/fixtures/puzzles_sample.csv",
         "docs/reports/2026-11-21_W08-puzzle-qualitaetsfilter.md",
         "docs/reports/2026-11-21_W08-puzzle-seed.md",
+        "docs/reports/2026-11-21_W08-W09-lokale-raetselpakete.md",
         "docs/reports/2026-11-20_N02-follow-up.md",
         "tests/test_app_integration.py"
       ],
@@ -244,7 +246,7 @@
       "gate": "Getrennte Nutzerdaten, Migrations- und Restore-Proben, PGN/FEN-Roundtrip",
       "phase": "F4",
       "status": "TESTED",
-      "scope": "SQLite v3 migrations, library, puzzle progress and atomic JSON settings. Windows PGN exchange and backup/restore verified with transient data, including pre-restore game validation and interrupted writes",
+      "scope": "SQLite v3 migrations, game library, backup and restore, per-pack puzzle progress, last pack restoration and atomic JSON preferences. Verified on Windows with temporary data.",
       "status_evidence": [
         "docs/reports/2026-11-20_N02_functional-core.md",
         "src/chess_and_chains/storage/database.py",
@@ -254,10 +256,11 @@
         "tests/test_app_integration.py",
         "docs/reports/2026-11-21_W00-W12-paketabgleich.md",
         "docs/reports/2026-11-21_W05-tote-stellungen-und-altpartien.md",
-        "docs/reports/2026-11-21_W09-sichere-wiederherstellung.md"
+        "docs/reports/2026-11-21_W09-sichere-wiederherstellung.md",
+        "docs/reports/2026-11-21_W08-W09-lokale-raetselpakete.md"
       ],
       "open_gate_items": [
-        "Native file-dialog acceptance on macOS and Linux; Windows smoke tested",
+        "Native PGN file and puzzle directory dialogs on macOS and Linux",
         "Profile model decision Q-012",
         "ADR-004 acceptance"
       ]
