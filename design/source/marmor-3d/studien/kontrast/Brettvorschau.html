@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="de">
+<meta charset="utf-8">
+<title>Chess &amp; Chains – Brettvorschau</title>
+<style>
+* { box-sizing:border-box }
+body { margin:0; background:#FAF6EC; color:#514B44; font: 13px system-ui,sans-serif }
+main { display:grid; grid-template: auto 25px / 25px auto; width:min(100vw,588px); padding:12px; margin:0 auto }
+.board { display:grid; grid-template-columns:repeat(8,1fr); border:1px solid #514B44 }
+.field { display:grid; place-items:center; aspect-ratio:1 }
+.field svg { width:79%; height:79%; display:block }
+.files { grid-column:2; display:grid; grid-template-columns:repeat(8,1fr); place-items:center }
+.ranks { display:grid; grid-template-rows:repeat(8,1fr); place-items:center }
+</style>
+<main aria-label="Schachbrett in Grundstellung">
+  <div class="ranks" aria-hidden="true"><span>8</span><span>7</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span></div>
+  <div class="board"><div class="field" style="background:#ECE2CA"><svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260" role="img" aria-labelledby="cell-0-titel cell-0-beschreibung">
+  <title id="cell-0-titel">Turm (Schwarz)</title>
+  <desc id="cell-0-beschreibung">Turm (Schwarz) auf runder Platte.</desc>
+  <g id="cell-0-turm">
+    <circle id="cell-0-turm-platte" cx="130" cy="130" r="115.3" fill="#171920" stroke="#FAF6EC" stroke-width="9.4"/>
+    <path id="cell-0-turm-figur" fill="#FAF6EC" fill-rule="evenodd" d="
+      M98.363 107.002 L90.296 170.182 C104.901 167.184 118.802 168.015 133.594 168.005 C140.518 168 147.466 167.581 154.366 168.155 L169.705 170.182 L161.637 107.002 L130 104.751 L98.363 107.002 Z
+      M74.027 203 L185.973 203 L185.825 192.151 C185.081 182.12 179.149 176.281 169.445 174.394 C157.307 172.035 146.263 172.029 134.092 171.992 L117 171.753 L94.008 173.729 C82.789 175.468 75.071 180.1 74.177 192.152 L74.027 203 Z
+      M177.408 65.08 C172.59 62.318 166.632 61.295 161.17 61.072 L157.419 79.331 L143.288 79.331 L140.893 57.775 C133.705 56.742 126.296 56.742 119.108 57.775 L116.713 79.331 L102.58 79.331 L98.829 61.072 C93.311 61.299 87.444 62.297 82.593 65.08 L83.893 88.393 C84.5 92.935 86.675 97.13 90.253 100.007 C92.005 101.416 94.286 102.877 96.619 103.015 L129.275 100.578 C137.41 100.274 147.396 101.476 155.274 102.212 L163.381 103.015 C164.922 102.943 166.675 102.07 167.92 101.313 C172.606 98.464 175.458 93.538 176.147 88.151 L177.408 65.08 Z"/>
+  </g>
+</svg>
+</div><div class="field" style="background:#8D7862"><svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260" role="img" aria-labelledby="cell-1-titel cell-1-beschreibung">
+  <title id="cell-1-titel">Springer (Schwarz)</title>
+  <desc id="cell-1-beschreibung">Springer (Schwarz) auf runder Platte.</desc>
+  <g id="cell-1-springer">
+    <circle id="cell-1-springer-platte" cx="130" cy="130" r="115.3" fill="#171920" stroke="#FAF6EC" stroke-width="9.4"/>
+    <path id="cell-1-springer-figur" fill="#FAF6EC" fill-rule="evenodd" d="
+      M91.707 144.834 L92.978 143.579 L99.696 134.658 L100.844 133.604 C103.43 131.996 109.403 132.398 111.012 132.116 C113.181 131.736 115.124 130.488 117.019 129.366 C120.351 127.395 123.423 124.78 126.088 121.967 C127.648 120.32 128.682 118.078 130.609 116.881 C131.129 116.626 131.744 116.618 132.27 116.863 C133.833 117.598 134.764 120.219 135.215 121.748 C138.543 133.055 128.336 140.066 121.08 146.851 L111.552 155.715 C107.008 160.519 103.389 166.562 101.627 172.95 L105.025 172.279 L122.146 170.604 L144.156 170.972 L164.371 171.241 L176.531 173.129 C181.037 162.702 183.5 151.675 184.475 140.362 C186.376 118.306 179.461 99.617 162.453 85.288 C157.816 81.382 152.663 77.989 147.167 75.43 C141.568 72.823 135.095 72.802 129.101 71.312 C128.324 71.119 127.581 70.869 126.98 70.321 L113.967 57 C112.257 57.954 110.588 59.442 109.501 61.068 C109.492 61.21 108.601 68.797 107.044 71.401 L106.154 72.632 L95.726 83.395 L95.302 84.126 L87.306 104.223 L71.267 127.359 C68.368 132.177 70.098 136.909 74.615 139.881 L77.424 141.486 L78.654 141.993 L88.223 144.562 C89.367 144.782 90.547 144.946 91.707 144.834 Z
+      M87.233 203 L190.157 203 L190.02 193.025 C189.549 186.665 186.495 181.111 180.508 178.421 C177.115 176.896 173.354 176.286 169.674 175.739 L154.886 174.435 L110.013 175.449 C108.192 175.62 106.41 176.084 104.626 176.485 C102.031 177.069 99.311 177.33 96.885 178.42 C90.913 181.1 87.843 186.645 87.37 193.024 L87.233 203 Z
+      M119.664 90.096 C117.774 85.11 111.616 87.073 109.007 90.179 C107.173 92.364 106.343 95.38 105.909 98.133 C109.187 94.33 116.676 99.457 119.458 94.171 C120.099 92.952 120.145 91.383 119.664 90.096 Z"/>
+  </g>
+</svg>
+</div><div class="field" style="background:#ECE2CA"><svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260" role="img" aria-labelledby="cell-2-titel cell-2-beschreibung">
+  <title id="cell-2-titel">Läufer (Schwarz)</title>
+  <desc id="cell-2-beschreibung">Läufer (Schwarz) auf runder Platte.</desc>
+  <g id="cell-2-laeufer">
+    <circle id="cell-2-laeufer-platte" cx="130" cy="130" r="115.3" fill="#171920" stroke="#FAF6EC" stroke-width="9.4"/>
+    <path id="cell-2-laeufer-figur" fill="#FAF6EC" fill-rule="evenodd" d="
+      M118.984 79.999 L105.357 94.004 C95.385 105.461 90.044 118.35 89.092 133.503 C88.164 148.274 94.41 160.859 103.773 171.979 L156.227 171.979 C160.946 166.377 165.416 159.83 168.106 152.942 C170.449 146.94 171.299 140.172 170.919 133.756 C169.756 114.125 162.118 101.199 148.486 87.223 C139.38 101.492 136.1 119.998 136.95 136.212 L124.85 136.212 C125.3 116.7 127.35 100.4 133.6 84.07 C128.3 85.2 122.1 83 118.984 79.999 Z
+      M79.567 203 L180.433 203 L180.299 193.224 C179.415 181.291 171.182 177.763 160.36 176.284 L148.693 175.531 L142.537 174.931 L125.25 175.549 L101.889 176 L98.122 176.624 L96.61 177.015 C94.068 177.587 91.403 177.844 89.026 178.911 C83.157 181.546 80.163 186.99 79.701 193.225 L79.567 203 Z
+      M132.256 80.206 C134.764 75.66 137.849 71.39 141.379 67.584 C140.943 63.233 138.026 59.389 133.951 57.798 C131.136 56.698 127.939 56.737 125.15 57.905 C111.818 63.488 118.932 83.709 132.256 80.206 Z"/>
+  </g>
+</svg>
+</div><div class="field" style="background:#8D7862"><svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260" role="img" aria-labelledby="cell-3-titel cell-3-beschreibung">
+  <title id="cell-3-titel">Dame (Schwarz)</title>
+  <desc id="cell-3-beschreibung">Dame (Schwarz) auf runder Platte.</desc>
+  <g id="cell-3-dame">
+    <circle id="cell-3-dame-platte" cx="130" cy="130" r="115.3" fill="#171920" stroke="#FAF6EC" stroke-width="9.4"/>
+    <path id="cell-3-dame-figur" fill="#FAF6EC" fill-rule="evenodd" d="
+      M103.784 86.646 L102.285 131.153 L83.901 111.414 C80.96 115.251 76.438 117.706 71.611 118.042 L94.321 172.47 C107.132 169.932 122.709 170.39 135.479 170.511 L146.684 170.511 C153.038 170.799 159.364 171.6 165.664 172.468 L188.386 118.008 C183.56 117.672 179.036 115.218 176.096 111.38 L157.712 131.119 L156.213 86.612 C152.06 87.615 147.369 87.027 143.693 84.779 L129.999 123.257 L116.305 84.812 C112.548 87.007 108.012 87.669 103.784 86.646 Z
+      M78.285 203 L181.712 203 L181.574 192.976 C180.909 183.996 175.137 178.261 166.441 176.571 L151.054 174.569 L129.848 174.625 L109.715 174.539 L93.919 176.498 C85.018 178.173 79.109 183.739 78.424 192.977 L78.285 203 Z
+      M83.54 101.118 A13.116 13.116 0 1 1 57.307 101.118 A13.116 13.116 0 1 1 83.54 101.118 Z
+      M165.342 70.117 A13.117 13.117 0 1 1 139.108 70.117 A13.117 13.117 0 1 1 165.342 70.117 Z
+      M120.89 70.153 A13.113 13.113 0 1 1 94.664 70.153 A13.113 13.113 0 1 1 120.89 70.153 Z
+      M202.692 101.083 A13.118 13.118 0 1 1 176.457 101.083 A13.118 13.118 0 1 1 202.692 101.083 Z"/>
+  </g>
+</svg>
+</div><div class="field" style="background:#ECE2CA"><svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260" role="img" aria-labelledby="cell-4-titel cell-4-beschreibung">
+  <title id="cell-4-titel">König (Schwarz)</title>
+  <desc id="cell-4-beschreibung">König (Schwarz) auf runder Platte.</desc>
+  <g id="cell-4-koenig">
+    <circle id="cell-4-koenig-platte" cx="130" cy="130" r="115.3" fill="#171920" stroke="#FAF6EC" stroke-width="9.4"/>
+    <path id="cell-4-koenig-figur" fill="#FAF6EC" fill-rule="evenodd" d="
+      M149.919 69.399 L137.383 69.399 L137.383 57 L122.611 57 L122.612 69.399 L110.076 69.399 L110.075 84.277 L122.361 84.277 L118.912 100.457 C114.057 98.432 108.89 97.132 103.707 96.228 C84.359 92.854 67.316 99.61 62.686 119.614 C61.134 126.318 61.632 133.514 64.476 139.805 C65.509 142.09 66.798 144.285 68.351 146.255 L90.324 170.679 L92.605 174.174 C106.156 171.055 119.762 171.541 133.558 171.732 L153.289 172.042 L167.389 174.174 C170.978 168.186 176.253 163.568 180.777 158.305 C186.115 152.094 192.147 147.244 195.509 139.826 C198.379 133.493 198.866 126.371 197.305 119.615 C191.021 92.421 163.059 91.673 141.082 100.457 L137.633 84.277 L149.919 84.277 L149.919 69.399 Z
+      M80.047 203 L179.947 203 L179.814 193.318 C179.178 184.731 173.588 179.104 165.197 177.472 L150.334 175.538 L118.397 175.116 L97.879 176.878 C87.924 178.421 80.978 182.574 80.181 193.319 L80.047 203 Z
+      M142.859 124.861 L142.859 153.547 L153.891 153.598 C158.041 147.772 163.644 143.116 168.167 137.574 C169.547 135.882 170.755 133.949 171.453 131.87 C172.146 129.802 171.899 127.265 171.311 125.211 C169.056 117.331 159.294 116.025 152.568 118.328 C148.897 119.585 145.392 121.92 142.859 124.861 Z
+      M106.102 153.599 L117.136 153.547 L117.136 124.861 C114.607 121.925 111.105 119.593 107.442 118.336 C100.713 116.026 90.94 117.323 88.682 125.211 C88.078 127.323 87.861 129.875 88.583 131.992 C89.306 134.112 90.588 136.078 92.003 137.794 C96.493 143.242 102.01 147.846 106.102 153.599 Z"/>
+  </g>
+</svg>
+</div><div class="field" style="background:#8D7862"><svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260" role="img" aria-labelledby="cell-5-titel cell-5-beschreibung">
+  <title id="cell-5-titel">Läufer (Schwarz)</title>
+  <desc id="cell-5-beschreibung">Läufer (Schwarz) auf runder Platte.</desc>
+  <g id="cell-5-laeufer">
+    <circle id="cell-5-laeufer-platte" cx="130" cy="130" r="115.3" fill="#171920" stroke="#FAF6EC" stroke-width="9.4"/>
+    <path id="cell-5-laeufer-figur" fill="#FAF6EC" fill-rule="evenodd" d="
+      M118.984 79.999 L105.357 94.004 C95.385 105.461 90.044 118.35 89.092 133.503 C88.164 148.274 94.41 160.859 103.773 171.979 L156.227 171.979 C160.946 166.377 165.416 159.83 168.106 152.942 C170.449 146.94 171.299 140.172 170.919 133.756 C169.756 114.125 162.118 101.199 148.486 87.223 C139.38 101.492 136.1 119.998 136.95 136.212 L124.85 136.212 C125.3 116.7 127.35 100.4 133.6 84.07 C128.3 85.2 122.1 83 118.984 79.999 Z
+      M79.567 203 L180.433 203 L180.299 193.224 C179.415 181.291 171.182 177.763 160.36 176.284 L148.693 175.531 L142.537 174.931 L125.25 175.549 L101.889 176 L98.122 176.624 L96.61 177.015 C94.068 177.587 91.403 177.844 89.026 178.911 C83.157 181.546 80.163 186.99 79.701 193.225 L79.567 203 Z
+      M132.256 80.206 C134.764 75.66 137.849 71.39 141.379 67.584 C140.943 63.233 138.026 59.389 133.951 57.798 C131.136 56.698 127.939 56.737 125.15 57.905 C111.818 63.488 118.932 83.709 132.256 80.206 Z"/>
+  </g>
+</svg>
+</div><div class="field" style="background:#ECE2CA"><svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260" role="img" aria-labelledby="cell-6-titel cell-6-beschreibung">
+  <title id="cell-6-titel">Springer (Schwarz)</title>
+  <desc id="cell-6-beschreibung">Springer (Schwarz) auf runder Platte.</desc>
+  <g id="cell-6-springer">
+    <circle id="cell-6-springer-platte" cx="130" cy="130" r="115.3" fill="#171920" stroke="#FAF6EC" stroke-width="9.4"/>
+    <path id="cell-6-springer-figur" fill="#FAF6EC" fill-rule="evenodd" d="
+      M91.707 144.834 L92.978 143.579 L99.696 134.658 L100.844 133.604 C103.43 131.996 109.403 132.398 111.012 132.116 C113.181 131.736 115.124 130.488 117.019 129.366 C120.351 127.395 123.423 124.78 126.088 121.967 C127.648 120.32 128.682 118.078 130.609 116.881 C131.129 116.626 131.744 116.618 132.27 116.863 C133.833 117.598 134.764 120.219 135.215 121.748 C138.543 133.055 128.336 140.066 121.08 146.851 L111.552 155.715 C107.008 160.519 103.389 166.562 101.627 172.95 L105.025 172.279 L122.146 170.604 L144.156 170.972 L164.371 171.241 L176.531 173.129 C181.037 162.702 183.5 151.675 184.475 140.362 C186.376 118.306 179.461 99.617 162.453 85.288 C157.816 81.382 152.663 77.989 147.167 75.43 C141.568 72.823 135.095 72.802 129.101 71.312 C128.324 71.119 127.581 70.869 126.98 70.321 L113.967 57 C112.257 57.954 110.588 59.442 109.501 61.068 C109.492 61.21 108.601 68.797 107.044 71.401 L106.154 72.632 L95.726 83.395 L95.302 84.126 L87.306 104.223 L71.267 127.359 C68.368 132.177 70.098 136.909 74.615 139.881 L77.424 141.486 L78.654 141.993 L88.223 144.562 C89.367 144.782 90.547 144.946 91.707 144.834 Z
+      M87.233 203 L190.157 203 L190.02 193.025 C189.549 186.665 186.495 181.111 180.508 178.421 C177.115 176.896 173.354 176.286 169.674 175.739 L154.886 174.435 L110.013 175.449 C108.192 175.62 106.41 176.084 104.626 176.485 C102.031 177.069 99.311 177.33 96.885 178.42 C90.913 181.1 87.843 186.645 87.37 193.024 L87.233 203 Z
+      M119.664 90.096 C117.774 85.11 111.616 87.073 109.007 90.179 C107.173 92.364 106.343 95.38 105.909 98.133 C109.187 94.33 116.676 99.457 119.458 94.171 C120.099 92.952 120.145 91.383 119.664 90.096 Z"/>
+  </g>
+</svg>
+</div><div class="field" style="background:#8D7862"><svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260" role="img" aria-labelledby="cell-7-titel cell-7-beschreibung">
+  <title id="cell-7-titel">Turm (Schwarz)</title>
+  <desc id="cell-7-beschreibung">Turm (Schwarz) auf runder Platte.</desc>
+  <g id="cell-7-turm">
+    <circle id="cell-7-turm-platte" cx="130" cy="130" r="115.3" fill="#171920" stroke="#FAF6EC" stroke-width="9.4"/>
+    <path id="cell-7-turm-figur" fill="#FAF6EC" fill-rule="evenodd" d="
+      M98.363 107.002 L90.296 170.182 C104.901 167.184 118.802 168.015 133.594 168.005 C140.518 168 147.466 167.581 154.366 168.155 L169.705 170.182 L161.637 107.002 L130 104.751 L98.363 107.002 Z
+      M74.027 203 L185.973 203 L185.825 192.151 C185.081 182.12 179.149 176.281 169.445 174.394 C157.307 172.035 146.263 172.029 134.092 171.992 L117 171.753 L94.008 173.729 C82.789 175.468 75.071 180.1 74.177 192.152 L74.027 203 Z
+      M177.408 65.08 C172.59 62.318 166.632 61.295 161.17 61.072 L157.419 79.331 L143.288 79.331 L140.893 57.775 C133.705 56.742 126.296 56.742 119.108 57.775 L116.713 79.331 L102.58 79.331 L98.829 61.072 C93.311 61.299 87.444 62.297 82.593 65.08 L83.893 88.393 C84.5 92.935 86.675 97.13 90.253 100.007 C92.005 101.416 94.286 102.877 96.619 103.015 L129.275 100.578 C137.41 100.274 147.396 101.476 155.274 102.212 L163.381 103.015 C164.922 102.943 166.675 102.07 167.92 101.313 C172.606 98.464 175.458 93.538 176.147 88.151 L177.408 65.08 Z"/>
+  </g>
+</svg>
+</div><div class="field" style="background:#8D7862"><svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260" role="img" aria-labelledby="cell-8-titel cell-8-beschreibung">
+  <title id="cell-8-titel">Bauer (Schwarz)</title>
+  <desc id="cell-8-beschreibung">Bauer (Schwarz) auf runder Platte.</desc>
+  <g id="cell-8-bauer">
+    <circle id="cell-8-bauer-platte" cx="130" cy="130" r="115.3" fill="#171920" stroke="#FAF6EC" stroke-width="9.4"/>
+    <path id="cell-8-bauer-figur" fill="#FAF6EC" fill-rule="evenodd" d="
+      M144.043 131.872 L115.956 131.872 C115.307 144.201 107.683 155.92 98.582 163.859 L86.217 173.427 C83.537 175.714 81.357 178.432 79.591 181.47 C77.83 184.499 76.419 187.838 75.804 191.307 L74.586 203 L185.414 203 L184.196 191.307 C182.985 184.474 179.028 177.912 173.783 173.427 C170.535 170.649 166.881 168.375 163.57 165.672 C153.503 157.454 144.745 145.241 144.043 131.872 Z
+      M156.617 83.615 A26.615 26.615 0 1 1 103.387 83.615 A26.615 26.615 0 1 1 156.617 83.615 Z
+      M162.126 118.582 L148.106 109 C137.375 116.669 122.625 116.669 111.894 109 L97.874 118.582 C98.352 121.627 99.312 124.69 101.001 127.29 L158.999 127.29 C160.689 124.691 161.648 121.626 162.126 118.582 Z"/>
+  </g>
+</svg>
+</div><div class="field" style="background:#ECE2CA"><svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260" role="img" aria-labelledby="cell-9-titel cell-9-beschreibung">
+  <title id="cell-9-titel">Bauer (Schwarz)</title>
+  <desc id="cell-9-beschreibung">Bauer (Schwarz) auf runder Platte.</desc>
+  <g id="cell-9-bauer">
+    <circle id="cell-9-bauer-platte" cx="130" cy="130" r="115.3" fill="#171920" stroke="#FAF6EC" stroke-width="9.4"/>
+    <path id="cell-9-bauer-figur" fill="#FAF6EC" fill-rule="evenodd" d="
+      M144.043 131.872 L115.956 131.872 C115.307 144.201 107.683 155.92 98.582 163.859 L86.217 173.427 C83.537 175.714 81.357 178.432 79.591 181.47 C77.83 184.499 76.419 187.838 75.804 191.307 L74.586 203 L185.414 203 L184.196 191.307 C182.985 184.474 179.028 177.912 173.783 173.427 C170.535 170.649 166.881 168.375 163.57 165.672 C153.503 157.454 144.745 145.241 144.043 131.872 Z
+      M156.617 83.615 A26.615 26.615 0 1 1 103.387 83.615 A26.615 26.615 0 1 1 156.617 83.615 Z
+      M162.126 118.582 L148.106 109 C137.375 116.669 122.625 116.669 111.894 109 L97.874 118.582 C98.352 121.627 99.312 124.69 101.001 127.29 L158.999 127.29 C160.689 124.691 161.648 121.626 162.126 118.582 Z"/>
+  </g>
+</svg>
+</div><div class="field" style="background:#8D7862"><svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260" role="img" aria-labelledby="cell-10-titel cell-10-beschreibung">
+  <title id="cell-10-titel">Bauer (Schwarz)</title>
+  <desc id="cell-10-beschreibung">Bauer (Schwarz) auf runder Platte.</desc>
+  <g id="cell-10-bauer">
+    <circle id="cell-10-bauer-platte" cx="130" cy="130" r="115.3" fill="#171920" stroke="#FAF6EC" stroke-width="9.4"/>
+    <path id="cell-10-bauer-figur" fill="#FAF6EC" fill-rule="evenodd" d="
+      M144.043 131.872 L115.956 131.872 C115.307 144.201 107.683 155.92 98.582 163.859 L86.217 173.427 C83.537 175.714 81.357 178.432 79.591 181.47 C77.83 184.499 76.419 187.838 75.804 191.307 L74.586 203 L185.414 203 L184.196 191.307 C182.985 184.474 179.028 177.912 173.783 173.427 C170.535 170.649 166.881 168.375 163.57 165.672 C153.503 157.454 144.745 145.241 144.043 131.872 Z
+      M156.617 83.615 A26.615 26.615 0 1 1 103.387 83.615 A26.615 26.615 0 1 1 156.617 83.615 Z
+      M162.126 118.582 L148.106 109 C137.375 116.669 122.625 116.669 111.894 109 L97.874 118.582 C98.352 121.627 99.312 124.69 101.001 127.29 L158.999 127.29 C160.689 124.691 161.648 121.626 162.126 118.582 Z"/>
+  </g>
+</svg>
+</div><div class="field" style="background:#ECE2CA"><svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260" role="img" aria-labelledby="cell-11-titel cell-11-beschreibung">
+  <title id="cell-11-titel">Bauer (Schwarz)</title>
+  <desc id="cell-11-beschreibung">Bauer (Schwarz) auf runder Platte.</desc>
+  <g id="cell-11-bauer">
+    <circle id="cell-11-bauer-platte" cx="130" cy="130" r="115.3" fill="#171920" stroke="#FAF6EC" stroke-width="9.4"/>
+    <path id="cell-11-bauer-figur" fill="#FAF6EC" fill-rule="evenodd" d="
+      M144.043 131.872 L115.956 131.872 C115.307 144.201 107.683 155.92 98.582 163.859 L86.217 173.427 C83.537 175.714 81.357 178.432 79.591 181.47 C77.83 184.499 76.419 187.838 75.804 191.307 L74.586 203 L185.414 203 L184.196 191.307 C182.985 184.474 179.028 177.912 173.783 173.427 C170.535 170.649 166.881 168.375 163.57 165.672 C153.503 157.454 144.745 145.241 144.043 131.872 Z
+      M156.617 83.615 A26.615 26.615 0 1 1 103.387 83.615 A26.615 26.615 0 1 1 156.617 83.615 Z
+      M162.126 118.582 L148.106 109 C137.375 116.669 122.625 116.669 111.894 109 L97.874 118.582 C98.352 121.627 99.312 124.69 101.001 127.29 L158.999 127.29 C160.689 124.691 161.648 121.626 162.126 118.582 Z"/>
+  </g>
+</svg>
+</div><div class="field" style="background:#8D7862"><svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260" role="img" aria-labelledby="cell-12-titel cell-12-beschreibung">
+  <title id="cell-12-titel">Bauer (Schwarz)</title>
+  <desc id="cell-12-beschreibung">Bauer (Schwarz) auf runder Platte.</desc>
+  <g id="cell-12-bauer">
+    <circle id="cell-12-bauer-platte" cx="130" cy="130" r="115.3" fill="#171920" stroke="#FAF6EC" stroke-width="9.4"/>
+    <path id="cell-12-bauer-figur" fill="#FAF6EC" fill-rule="evenodd" d="
+      M144.043 131.872 L115.956 131.872 C115.307 144.201 107.683 155.92 98.582 163.859 L86.217 173.427 C83.537 175.714 81.357 178.432 79.591 181.47 C77.83 184.499 76.419 187.838 75.804 191.307 L74.586 203 L185.414 203 L184.196 191.307 C182.985 184.474 179.028 177.912 173.783 173.427 C170.535 170.649 166.881 168.375 163.57 165.672 C153.503 157.454 144.745 145.241 144.043 131.872 Z
+      M156.617 83.615 A26.615 26.615 0 1 1 103.387 83.615 A26.615 26.615 0 1 1 156.617 83.615 Z
+      M162.126 118.582 L148.106 109 C137.375 116.669 122.625 116.669 111.894 109 L97.874 118.582 C98.352 121.627 99.312 124.69 101.001 127.29 L158.999 127.29 C160.689 124.691 161.648 121.626 162.126 118.582 Z"/>
+  </g>
+</svg>
+</div><div class="field" style="background:#ECE2CA"><svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260" role="img" aria-labelledby="cell-13-titel cell-13-beschreibung">
+  <title id="cell-13-titel">Bauer (Schwarz)</title>
+  <desc id="cell-13-beschreibung">Bauer (Schwarz) auf runder Platte.</desc>
+  <g id="cell-13-bauer">
+    <circle id="cell-13-bauer-platte" cx="130" cy="130" r="115.3" fill="#171920" stroke="#FAF6EC" stroke-width="9.4"/>
+    <path id="cell-13-bauer-figur" fill="#FAF6EC" fill-rule="evenodd" d="
+      M144.043 131.872 L115.956 131.872 C115.307 144.201 107.683 155.92 98.582 163.859 L86.217 173.427 C83.537 175.714 81.357 178.432 79.591 181.47 C77.83 184.499 76.419 187.838 75.804 191.307 L74.586 203 L185.414 203 L184.196 191.307 C182.985 184.474 179.028 177.912 173.783 173.427 C170.535 170.649 166.881 168.375 163.57 165.672 C153.503 157.454 144.745 145.241 144.043 131.872 Z
+      M156.617 83.615 A26.615 26.615 0 1 1 103.387 83.615 A26.615 26.615 0 1 1 156.617 83.615 Z
+      M162.126 118.582 L148.106 109 C137.375 116.669 122.625 116.669 111.894 109 L97.874 118.582 C98.352 121.627 99.312 124.69 101.001 127.29 L158.999 127.29 C160.689 124.691 161.648 121.626 162.126 118.582 Z"/>
+  </g>
+</svg>
+</div><div class="field" style="background:#8D7862"><svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260" role="img" aria-labelledby="cell-14-titel cell-14-beschreibung">
+  <title id="cell-14-titel">Bauer (Schwarz)</title>
+  <desc id="cell-14-beschreibung">Bauer (Schwarz) auf runder Platte.</desc>
+  <g id="cell-14-bauer">
+    <circle id="cell-14-bauer-platte" cx="130" cy="130" r="115.3" fill="#171920" stroke="#FAF6EC" stroke-width="9.4"/>
+    <path id="cell-14-bauer-figur" fill="#FAF6EC" fill-rule="evenodd" d="
+      M144.043 131.872 L115.956 131.872 C115.307 144.201 107.683 155.92 98.582 163.859 L86.217 173.427 C83.537 175.714 81.357 178.432 79.591 181.47 C77.83 184.499 76.419 187.838 75.804 191.307 L74.586 203 L185.414 203 L184.196 191.307 C182.985 184.474 179.028 177.912 173.783 173.427 C170.535 170.649 166.881 168.375 163.57 165.672 C153.503 157.454 144.745 145.241 144.043 131.872 Z
+      M156.617 83.615 A26.615 26.615 0 1 1 103.387 83.615 A26.615 26.615 0 1 1 156.617 83.615 Z
+      M162.126 118.582 L148.106 109 C137.375 116.669 122.625 116.669 111.894 109 L97.874 118.582 C98.352 121.627 99.312 124.69 101.001 127.29 L158.999 127.29 C160.689 124.691 161.648 121.626 162.126 118.582 Z"/>
+  </g>
+</svg>
+</div><div class="field" style="background:#ECE2CA"><svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260" role="img" aria-labelledby="cell-15-titel cell-15-beschreibung">
+  <title id="cell-15-titel">Bauer (Schwarz)</title>
+  <desc id="cell-15-beschreibung">Bauer (Schwarz) auf runder Platte.</desc>
+  <g id="cell-15-bauer">
+    <circle id="cell-15-bauer-platte" cx="130" cy="130" r="115.3" fill="#171920" stroke="#FAF6EC" stroke-width="9.4"/>
+    <path id="cell-15-bauer-figur" fill="#FAF6EC" fill-rule="evenodd" d="
+      M144.043 131.872 L115.956 131.872 C115.307 144.201 107.683 155.92 98.582 163.859 L86.217 173.427 C83.537 175.714 81.357 178.432 79.591 181.47 C77.83 184.499 76.419 187.838 75.804 191.307 L74.586 203 L185.414 203 L184.196 191.307 C182.985 184.474 179.028 177.912 173.783 173.427 C170.535 170.649 166.881 168.375 163.57 165.672 C153.503 157.454 144.745 145.241 144.043 131.872 Z
+      M156.617 83.615 A26.615 26.615 0 1 1 103.387 83.615 A26.615 26.615 0 1 1 156.617 83.615 Z
+      M162.126 118.582 L148.106 109 C137.375 116.669 122.625 116.669 111.894 109 L97.874 118.582 C98.352 121.627 99.312 124.69 101.001 127.29 L158.999 127.29 C160.689 124.691 161.648 121.626 162.126 118.582 Z"/>
+  </g>
+</svg>
+</div><div class="field" style="background:#ECE2CA"></div><div class="field" style="background:#8D7862"></div><div class="field" style="background:#ECE2CA"></div><div class="field" style="background:#8D7862"></div><div class="field" style="background:#ECE2CA"></div><div class="field" style="background:#8D7862"></div><div class="field" style="background:#ECE2CA"></div><div class="field" style="background:#8D7862"></div><div class="field" style="background:#8D7862"></div><div class="field" style="background:#ECE2CA"></div><div class="field" style="background:#8D7862"></div><div class="field" style="background:#ECE2CA"></div><div class="field" style="background:#8D7862"></div><div class="field" style="background:#ECE2CA"></div><div class="field" style="background:#8D7862"></div><div class="field" style="background:#ECE2CA"></div><div class="field" style="background:#ECE2CA"></div><div class="field" style="background:#8D7862"></div><div class="field" style="background:#ECE2CA"></div><div class="field" style="background:#8D7862"></div><div class="field" style="background:#ECE2CA"></div><div class="field" style="background:#8D7862"></div><div class="field" style="background:#ECE2CA"></div><div class="field" style="background:#8D7862"></div><div class="field" style="background:#8D7862"></div><div class="field" style="background:#ECE2CA"></div><div class="field" style="background:#8D7862"></div><div class="field" style="background:#ECE2CA"></div><div class="field" style="background:#8D7862"></div><div class="field" style="background:#ECE2CA"></div><div class="field" style="background:#8D7862"></div><div class="field" style="background:#ECE2CA"></div><div class="field" style="background:#ECE2CA"><svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260" role="img" aria-labelledby="cell-48-titel cell-48-beschreibung">
+  <title id="cell-48-titel">Bauer (Weiß)</title>
+  <desc id="cell-48-beschreibung">Bauer (Weiß) auf runder Platte.</desc>
+  <g id="cell-48-bauer">
+    <circle id="cell-48-bauer-platte" cx="130" cy="130" r="115.3" fill="#FAF6EC" stroke="#171920" stroke-width="9.4"/>
+    <path id="cell-48-bauer-figur" fill="#171920" fill-rule="evenodd" d="
+      M144.043 131.872 L115.956 131.872 C115.307 144.201 107.683 155.92 98.582 163.859 L86.217 173.427 C83.537 175.714 81.357 178.432 79.591 181.47 C77.83 184.499 76.419 187.838 75.804 191.307 L74.586 203 L185.414 203 L184.196 191.307 C182.985 184.474 179.028 177.912 173.783 173.427 C170.535 170.649 166.881 168.375 163.57 165.672 C153.503 157.454 144.745 145.241 144.043 131.872 Z
+      M156.617 83.615 A26.615 26.615 0 1 1 103.387 83.615 A26.615 26.615 0 1 1 156.617 83.615 Z
+      M162.126 118.582 L148.106 109 C137.375 116.669 122.625 116.669 111.894 109 L97.874 118.582 C98.352 121.627 99.312 124.69 101.001 127.29 L158.999 127.29 C160.689 124.691 161.648 121.626 162.126 118.582 Z"/>
+  </g>
+</svg>
+</div><div class="field" style="background:#8D7862"><svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260" role="img" aria-labelledby="cell-49-titel cell-49-beschreibung">
+  <title id="cell-49-titel">Bauer (Weiß)</title>
+  <desc id="cell-49-beschreibung">Bauer (Weiß) auf runder Platte.</desc>
+  <g id="cell-49-bauer">
+    <circle id="cell-49-bauer-platte" cx="130" cy="130" r="115.3" fill="#FAF6EC" stroke="#171920" stroke-width="9.4"/>
+    <path id="cell-49-bauer-figur" fill="#171920" fill-rule="evenodd" d="
+      M144.043 131.872 L115.956 131.872 C115.307 144.201 107.683 155.92 98.582 163.859 L86.217 173.427 C83.537 175.714 81.357 178.432 79.591 181.47 C77.83 184.499 76.419 187.838 75.804 191.307 L74.586 203 L185.414 203 L184.196 191.307 C182.985 184.474 179.028 177.912 173.783 173.427 C170.535 170.649 166.881 168.375 163.57 165.672 C153.503 157.454 144.745 145.241 144.043 131.872 Z
+      M156.617 83.615 A26.615 26.615 0 1 1 103.387 83.615 A26.615 26.615 0 1 1 156.617 83.615 Z
+      M162.126 118.582 L148.106 109 C137.375 116.669 122.625 116.669 111.894 109 L97.874 118.582 C98.352 121.627 99.312 124.69 101.001 127.29 L158.999 127.29 C160.689 124.691 161.648 121.626 162.126 118.582 Z"/>
+  </g>
+</svg>
+</div><div class="field" style="background:#ECE2CA"><svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260" role="img" aria-labelledby="cell-50-titel cell-50-beschreibung">
+  <title id="cell-50-titel">Bauer (Weiß)</title>
+  <desc id="cell-50-beschreibung">Bauer (Weiß) auf runder Platte.</desc>
+  <g id="cell-50-bauer">
+    <circle id="cell-50-bauer-platte" cx="130" cy="130" r="115.3" fill="#FAF6EC" stroke="#171920" stroke-width="9.4"/>
+    <path id="cell-50-bauer-figur" fill="#171920" fill-rule="evenodd" d="
+      M144.043 131.872 L115.956 131.872 C115.307 144.201 107.683 155.92 98.582 163.859 L86.217 173.427 C83.537 175.714 81.357 178.432 79.591 181.47 C77.83 184.499 76.419 187.838 75.804 191.307 L74.586 203 L185.414 203 L184.196 191.307 C182.985 184.474 179.028 177.912 173.783 173.427 C170.535 170.649 166.881 168.375 163.57 165.672 C153.503 157.454 144.745 145.241 144.043 131.872 Z
+      M156.617 83.615 A26.615 26.615 0 1 1 103.387 83.615 A26.615 26.615 0 1 1 156.617 83.615 Z
+      M162.126 118.582 L148.106 109 C137.375 116.669 122.625 116.669 111.894 109 L97.874 118.582 C98.352 121.627 99.312 124.69 101.001 127.29 L158.999 127.29 C160.689 124.691 161.648 121.626 162.126 118.582 Z"/>
+  </g>
+</svg>
+</div><div class="field" style="background:#8D7862"><svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260" role="img" aria-labelledby="cell-51-titel cell-51-beschreibung">
+  <title id="cell-51-titel">Bauer (Weiß)</title>
+  <desc id="cell-51-beschreibung">Bauer (Weiß) auf runder Platte.</desc>
+  <g id="cell-51-bauer">
+    <circle id="cell-51-bauer-platte" cx="130" cy="130" r="115.3" fill="#FAF6EC" stroke="#171920" stroke-width="9.4"/>
+    <path id="cell-51-bauer-figur" fill="#171920" fill-rule="evenodd" d="
+      M144.043 131.872 L115.956 131.872 C115.307 144.201 107.683 155.92 98.582 163.859 L86.217 173.427 C83.537 175.714 81.357 178.432 79.591 181.47 C77.83 184.499 76.419 187.838 75.804 191.307 L74.586 203 L185.414 203 L184.196 191.307 C182.985 184.474 179.028 177.912 173.783 173.427 C170.535 170.649 166.881 168.375 163.57 165.672 C153.503 157.454 144.745 145.241 144.043 131.872 Z
+      M156.617 83.615 A26.615 26.615 0 1 1 103.387 83.615 A26.615 26.615 0 1 1 156.617 83.615 Z
+      M162.126 118.582 L148.106 109 C137.375 116.669 122.625 116.669 111.894 109 L97.874 118.582 C98.352 121.627 99.312 124.69 101.001 127.29 L158.999 127.29 C160.689 124.691 161.648 121.626 162.126 118.582 Z"/>
+  </g>
+</svg>
+</div><div class="field" style="background:#ECE2CA"><svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260" role="img" aria-labelledby="cell-52-titel cell-52-beschreibung">
+  <title id="cell-52-titel">Bauer (Weiß)</title>
+  <desc id="cell-52-beschreibung">Bauer (Weiß) auf runder Platte.</desc>
+  <g id="cell-52-bauer">
+    <circle id="cell-52-bauer-platte" cx="130" cy="130" r="115.3" fill="#FAF6EC" stroke="#171920" stroke-width="9.4"/>
+    <path id="cell-52-bauer-figur" fill="#171920" fill-rule="evenodd" d="
+      M144.043 131.872 L115.956 131.872 C115.307 144.201 107.683 155.92 98.582 163.859 L86.217 173.427 C83.537 175.714 81.357 178.432 79.591 181.47 C77.83 184.499 76.419 187.838 75.804 191.307 L74.586 203 L185.414 203 L184.196 191.307 C182.985 184.474 179.028 177.912 173.783 173.427 C170.535 170.649 166.881 168.375 163.57 165.672 C153.503 157.454 144.745 145.241 144.043 131.872 Z
+      M156.617 83.615 A26.615 26.615 0 1 1 103.387 83.615 A26.615 26.615 0 1 1 156.617 83.615 Z
+      M162.126 118.582 L148.106 109 C137.375 116.669 122.625 116.669 111.894 109 L97.874 118.582 C98.352 121.627 99.312 124.69 101.001 127.29 L158.999 127.29 C160.689 124.691 161.648 121.626 162.126 118.582 Z"/>
+  </g>
+</svg>
+</div><div class="field" style="background:#8D7862"><svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260" role="img" aria-labelledby="cell-53-titel cell-53-beschreibung">
+  <title id="cell-53-titel">Bauer (Weiß)</title>
+  <desc id="cell-53-beschreibung">Bauer (Weiß) auf runder Platte.</desc>
+  <g id="cell-53-bauer">
+    <circle id="cell-53-bauer-platte" cx="130" cy="130" r="115.3" fill="#FAF6EC" stroke="#171920" stroke-width="9.4"/>
+    <path id="cell-53-bauer-figur" fill="#171920" fill-rule="evenodd" d="
+      M144.043 131.872 L115.956 131.872 C115.307 144.201 107.683 155.92 98.582 163.859 L86.217 173.427 C83.537 175.714 81.357 178.432 79.591 181.47 C77.83 184.499 76.419 187.838 75.804 191.307 L74.586 203 L185.414 203 L184.196 191.307 C182.985 184.474 179.028 177.912 173.783 173.427 C170.535 170.649 166.881 168.375 163.57 165.672 C153.503 157.454 144.745 145.241 144.043 131.872 Z
+      M156.617 83.615 A26.615 26.615 0 1 1 103.387 83.615 A26.615 26.615 0 1 1 156.617 83.615 Z
+      M162.126 118.582 L148.106 109 C137.375 116.669 122.625 116.669 111.894 109 L97.874 118.582 C98.352 121.627 99.312 124.69 101.001 127.29 L158.999 127.29 C160.689 124.691 161.648 121.626 162.126 118.582 Z"/>
+  </g>
+</svg>
+</div><div class="field" style="background:#ECE2CA"><svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260" role="img" aria-labelledby="cell-54-titel cell-54-beschreibung">
+  <title id="cell-54-titel">Bauer (Weiß)</title>
+  <desc id="cell-54-beschreibung">Bauer (Weiß) auf runder Platte.</desc>
+  <g id="cell-54-bauer">
+    <circle id="cell-54-bauer-platte" cx="130" cy="130" r="115.3" fill="#FAF6EC" stroke="#171920" stroke-width="9.4"/>
+    <path id="cell-54-bauer-figur" fill="#171920" fill-rule="evenodd" d="
+      M144.043 131.872 L115.956 131.872 C115.307 144.201 107.683 155.92 98.582 163.859 L86.217 173.427 C83.537 175.714 81.357 178.432 79.591 181.47 C77.83 184.499 76.419 187.838 75.804 191.307 L74.586 203 L185.414 203 L184.196 191.307 C182.985 184.474 179.028 177.912 173.783 173.427 C170.535 170.649 166.881 168.375 163.57 165.672 C153.503 157.454 144.745 145.241 144.043 131.872 Z
+      M156.617 83.615 A26.615 26.615 0 1 1 103.387 83.615 A26.615 26.615 0 1 1 156.617 83.615 Z
+      M162.126 118.582 L148.106 109 C137.375 116.669 122.625 116.669 111.894 109 L97.874 118.582 C98.352 121.627 99.312 124.69 101.001 127.29 L158.999 127.29 C160.689 124.691 161.648 121.626 162.126 118.582 Z"/>
+  </g>
+</svg>
+</div><div class="field" style="background:#8D7862"><svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260" role="img" aria-labelledby="cell-55-titel cell-55-beschreibung">
+  <title id="cell-55-titel">Bauer (Weiß)</title>
+  <desc id="cell-55-beschreibung">Bauer (Weiß) auf runder Platte.</desc>
+  <g id="cell-55-bauer">
+    <circle id="cell-55-bauer-platte" cx="130" cy="130" r="115.3" fill="#FAF6EC" stroke="#171920" stroke-width="9.4"/>
+    <path id="cell-55-bauer-figur" fill="#171920" fill-rule="evenodd" d="
+      M144.043 131.872 L115.956 131.872 C115.307 144.201 107.683 155.92 98.582 163.859 L86.217 173.427 C83.537 175.714 81.357 178.432 79.591 181.47 C77.83 184.499 76.419 187.838 75.804 191.307 L74.586 203 L185.414 203 L184.196 191.307 C182.985 184.474 179.028 177.912 173.783 173.427 C170.535 170.649 166.881 168.375 163.57 165.672 C153.503 157.454 144.745 145.241 144.043 131.872 Z
+      M156.617 83.615 A26.615 26.615 0 1 1 103.387 83.615 A26.615 26.615 0 1 1 156.617 83.615 Z
+      M162.126 118.582 L148.106 109 C137.375 116.669 122.625 116.669 111.894 109 L97.874 118.582 C98.352 121.627 99.312 124.69 101.001 127.29 L158.999 127.29 C160.689 124.691 161.648 121.626 162.126 118.582 Z"/>
+  </g>
+</svg>
+</div><div class="field" style="background:#8D7862"><svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260" role="img" aria-labelledby="cell-56-titel cell-56-beschreibung">
+  <title id="cell-56-titel">Turm (Weiß)</title>
+  <desc id="cell-56-beschreibung">Turm (Weiß) auf runder Platte.</desc>
+  <g id="cell-56-turm">
+    <circle id="cell-56-turm-platte" cx="130" cy="130" r="115.3" fill="#FAF6EC" stroke="#171920" stroke-width="9.4"/>
+    <path id="cell-56-turm-figur" fill="#171920" fill-rule="evenodd" d="
+      M98.363 107.002 L90.296 170.182 C104.901 167.184 118.802 168.015 133.594 168.005 C140.518 168 147.466 167.581 154.366 168.155 L169.705 170.182 L161.637 107.002 L130 104.751 L98.363 107.002 Z
+      M74.027 203 L185.973 203 L185.825 192.151 C185.081 182.12 179.149 176.281 169.445 174.394 C157.307 172.035 146.263 172.029 134.092 171.992 L117 171.753 L94.008 173.729 C82.789 175.468 75.071 180.1 74.177 192.152 L74.027 203 Z
+      M177.408 65.08 C172.59 62.318 166.632 61.295 161.17 61.072 L157.419 79.331 L143.288 79.331 L140.893 57.775 C133.705 56.742 126.296 56.742 119.108 57.775 L116.713 79.331 L102.58 79.331 L98.829 61.072 C93.311 61.299 87.444 62.297 82.593 65.08 L83.893 88.393 C84.5 92.935 86.675 97.13 90.253 100.007 C92.005 101.416 94.286 102.877 96.619 103.015 L129.275 100.578 C137.41 100.274 147.396 101.476 155.274 102.212 L163.381 103.015 C164.922 102.943 166.675 102.07 167.92 101.313 C172.606 98.464 175.458 93.538 176.147 88.151 L177.408 65.08 Z"/>
+  </g>
+</svg>
+</div><div class="field" style="background:#ECE2CA"><svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260" role="img" aria-labelledby="cell-57-titel cell-57-beschreibung">
+  <title id="cell-57-titel">Springer (Weiß)</title>
+  <desc id="cell-57-beschreibung">Springer (Weiß) auf runder Platte.</desc>
+  <g id="cell-57-springer">
+    <circle id="cell-57-springer-platte" cx="130" cy="130" r="115.3" fill="#FAF6EC" stroke="#171920" stroke-width="9.4"/>
+    <path id="cell-57-springer-figur" fill="#171920" fill-rule="evenodd" d="
+      M91.707 144.834 L92.978 143.579 L99.696 134.658 L100.844 133.604 C103.43 131.996 109.403 132.398 111.012 132.116 C113.181 131.736 115.124 130.488 117.019 129.366 C120.351 127.395 123.423 124.78 126.088 121.967 C127.648 120.32 128.682 118.078 130.609 116.881 C131.129 116.626 131.744 116.618 132.27 116.863 C133.833 117.598 134.764 120.219 135.215 121.748 C138.543 133.055 128.336 140.066 121.08 146.851 L111.552 155.715 C107.008 160.519 103.389 166.562 101.627 172.95 L105.025 172.279 L122.146 170.604 L144.156 170.972 L164.371 171.241 L176.531 173.129 C181.037 162.702 183.5 151.675 184.475 140.362 C186.376 118.306 179.461 99.617 162.453 85.288 C157.816 81.382 152.663 77.989 147.167 75.43 C141.568 72.823 135.095 72.802 129.101 71.312 C128.324 71.119 127.581 70.869 126.98 70.321 L113.967 57 C112.257 57.954 110.588 59.442 109.501 61.068 C109.492 61.21 108.601 68.797 107.044 71.401 L106.154 72.632 L95.726 83.395 L95.302 84.126 L87.306 104.223 L71.267 127.359 C68.368 132.177 70.098 136.909 74.615 139.881 L77.424 141.486 L78.654 141.993 L88.223 144.562 C89.367 144.782 90.547 144.946 91.707 144.834 Z
+      M87.233 203 L190.157 203 L190.02 193.025 C189.549 186.665 186.495 181.111 180.508 178.421 C177.115 176.896 173.354 176.286 169.674 175.739 L154.886 174.435 L110.013 175.449 C108.192 175.62 106.41 176.084 104.626 176.485 C102.031 177.069 99.311 177.33 96.885 178.42 C90.913 181.1 87.843 186.645 87.37 193.024 L87.233 203 Z
+      M119.664 90.096 C117.774 85.11 111.616 87.073 109.007 90.179 C107.173 92.364 106.343 95.38 105.909 98.133 C109.187 94.33 116.676 99.457 119.458 94.171 C120.099 92.952 120.145 91.383 119.664 90.096 Z"/>
+  </g>
+</svg>
+</div><div class="field" style="background:#8D7862"><svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260" role="img" aria-labelledby="cell-58-titel cell-58-beschreibung">
+  <title id="cell-58-titel">Läufer (Weiß)</title>
+  <desc id="cell-58-beschreibung">Läufer (Weiß) auf runder Platte.</desc>
+  <g id="cell-58-laeufer">
+    <circle id="cell-58-laeufer-platte" cx="130" cy="130" r="115.3" fill="#FAF6EC" stroke="#171920" stroke-width="9.4"/>
+    <path id="cell-58-laeufer-figur" fill="#171920" fill-rule="evenodd" d="
+      M118.984 79.999 L105.357 94.004 C95.385 105.461 90.044 118.35 89.092 133.503 C88.164 148.274 94.41 160.859 103.773 171.979 L156.227 171.979 C160.946 166.377 165.416 159.83 168.106 152.942 C170.449 146.94 171.299 140.172 170.919 133.756 C169.756 114.125 162.118 101.199 148.486 87.223 C139.38 101.492 136.1 119.998 136.95 136.212 L124.85 136.212 C125.3 116.7 127.35 100.4 133.6 84.07 C128.3 85.2 122.1 83 118.984 79.999 Z
+      M79.567 203 L180.433 203 L180.299 193.224 C179.415 181.291 171.182 177.763 160.36 176.284 L148.693 175.531 L142.537 174.931 L125.25 175.549 L101.889 176 L98.122 176.624 L96.61 177.015 C94.068 177.587 91.403 177.844 89.026 178.911 C83.157 181.546 80.163 186.99 79.701 193.225 L79.567 203 Z
+      M132.256 80.206 C134.764 75.66 137.849 71.39 141.379 67.584 C140.943 63.233 138.026 59.389 133.951 57.798 C131.136 56.698 127.939 56.737 125.15 57.905 C111.818 63.488 118.932 83.709 132.256 80.206 Z"/>
+  </g>
+</svg>
+</div><div class="field" style="background:#ECE2CA"><svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260" role="img" aria-labelledby="cell-59-titel cell-59-beschreibung">
+  <title id="cell-59-titel">Dame (Weiß)</title>
+  <desc id="cell-59-beschreibung">Dame (Weiß) auf runder Platte.</desc>
+  <g id="cell-59-dame">
+    <circle id="cell-59-dame-platte" cx="130" cy="130" r="115.3" fill="#FAF6EC" stroke="#171920" stroke-width="9.4"/>
+    <path id="cell-59-dame-figur" fill="#171920" fill-rule="evenodd" d="
+      M103.784 86.646 L102.285 131.153 L83.901 111.414 C80.96 115.251 76.438 117.706 71.611 118.042 L94.321 172.47 C107.132 169.932 122.709 170.39 135.479 170.511 L146.684 170.511 C153.038 170.799 159.364 171.6 165.664 172.468 L188.386 118.008 C183.56 117.672 179.036 115.218 176.096 111.38 L157.712 131.119 L156.213 86.612 C152.06 87.615 147.369 87.027 143.693 84.779 L129.999 123.257 L116.305 84.812 C112.548 87.007 108.012 87.669 103.784 86.646 Z
+      M78.285 203 L181.712 203 L181.574 192.976 C180.909 183.996 175.137 178.261 166.441 176.571 L151.054 174.569 L129.848 174.625 L109.715 174.539 L93.919 176.498 C85.018 178.173 79.109 183.739 78.424 192.977 L78.285 203 Z
+      M83.54 101.118 A13.116 13.116 0 1 1 57.307 101.118 A13.116 13.116 0 1 1 83.54 101.118 Z
+      M165.342 70.117 A13.117 13.117 0 1 1 139.108 70.117 A13.117 13.117 0 1 1 165.342 70.117 Z
+      M120.89 70.153 A13.113 13.113 0 1 1 94.664 70.153 A13.113 13.113 0 1 1 120.89 70.153 Z
+      M202.692 101.083 A13.118 13.118 0 1 1 176.457 101.083 A13.118 13.118 0 1 1 202.692 101.083 Z"/>
+  </g>
+</svg>
+</div><div class="field" style="background:#8D7862"><svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260" role="img" aria-labelledby="cell-60-titel cell-60-beschreibung">
+  <title id="cell-60-titel">König (Weiß)</title>
+  <desc id="cell-60-beschreibung">König (Weiß) auf runder Platte.</desc>
+  <g id="cell-60-koenig">
+    <circle id="cell-60-koenig-platte" cx="130" cy="130" r="115.3" fill="#FAF6EC" stroke="#171920" stroke-width="9.4"/>
+    <path id="cell-60-koenig-figur" fill="#171920" fill-rule="evenodd" d="
+      M149.919 69.399 L137.383 69.399 L137.383 57 L122.611 57 L122.612 69.399 L110.076 69.399 L110.075 84.277 L122.361 84.277 L118.912 100.457 C114.057 98.432 108.89 97.132 103.707 96.228 C84.359 92.854 67.316 99.61 62.686 119.614 C61.134 126.318 61.632 133.514 64.476 139.805 C65.509 142.09 66.798 144.285 68.351 146.255 L90.324 170.679 L92.605 174.174 C106.156 171.055 119.762 171.541 133.558 171.732 L153.289 172.042 L167.389 174.174 C170.978 168.186 176.253 163.568 180.777 158.305 C186.115 152.094 192.147 147.244 195.509 139.826 C198.379 133.493 198.866 126.371 197.305 119.615 C191.021 92.421 163.059 91.673 141.082 100.457 L137.633 84.277 L149.919 84.277 L149.919 69.399 Z
+      M80.047 203 L179.947 203 L179.814 193.318 C179.178 184.731 173.588 179.104 165.197 177.472 L150.334 175.538 L118.397 175.116 L97.879 176.878 C87.924 178.421 80.978 182.574 80.181 193.319 L80.047 203 Z
+      M142.859 124.861 L142.859 153.547 L153.891 153.598 C158.041 147.772 163.644 143.116 168.167 137.574 C169.547 135.882 170.755 133.949 171.453 131.87 C172.146 129.802 171.899 127.265 171.311 125.211 C169.056 117.331 159.294 116.025 152.568 118.328 C148.897 119.585 145.392 121.92 142.859 124.861 Z
+      M106.102 153.599 L117.136 153.547 L117.136 124.861 C114.607 121.925 111.105 119.593 107.442 118.336 C100.713 116.026 90.94 117.323 88.682 125.211 C88.078 127.323 87.861 129.875 88.583 131.992 C89.306 134.112 90.588 136.078 92.003 137.794 C96.493 143.242 102.01 147.846 106.102 153.599 Z"/>
+  </g>
+</svg>
+</div><div class="field" style="background:#ECE2CA"><svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260" role="img" aria-labelledby="cell-61-titel cell-61-beschreibung">
+  <title id="cell-61-titel">Läufer (Weiß)</title>
+  <desc id="cell-61-beschreibung">Läufer (Weiß) auf runder Platte.</desc>
+  <g id="cell-61-laeufer">
+    <circle id="cell-61-laeufer-platte" cx="130" cy="130" r="115.3" fill="#FAF6EC" stroke="#171920" stroke-width="9.4"/>
+    <path id="cell-61-laeufer-figur" fill="#171920" fill-rule="evenodd" d="
+      M118.984 79.999 L105.357 94.004 C95.385 105.461 90.044 118.35 89.092 133.503 C88.164 148.274 94.41 160.859 103.773 171.979 L156.227 171.979 C160.946 166.377 165.416 159.83 168.106 152.942 C170.449 146.94 171.299 140.172 170.919 133.756 C169.756 114.125 162.118 101.199 148.486 87.223 C139.38 101.492 136.1 119.998 136.95 136.212 L124.85 136.212 C125.3 116.7 127.35 100.4 133.6 84.07 C128.3 85.2 122.1 83 118.984 79.999 Z
+      M79.567 203 L180.433 203 L180.299 193.224 C179.415 181.291 171.182 177.763 160.36 176.284 L148.693 175.531 L142.537 174.931 L125.25 175.549 L101.889 176 L98.122 176.624 L96.61 177.015 C94.068 177.587 91.403 177.844 89.026 178.911 C83.157 181.546 80.163 186.99 79.701 193.225 L79.567 203 Z
+      M132.256 80.206 C134.764 75.66 137.849 71.39 141.379 67.584 C140.943 63.233 138.026 59.389 133.951 57.798 C131.136 56.698 127.939 56.737 125.15 57.905 C111.818 63.488 118.932 83.709 132.256 80.206 Z"/>
+  </g>
+</svg>
+</div><div class="field" style="background:#8D7862"><svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260" role="img" aria-labelledby="cell-62-titel cell-62-beschreibung">
+  <title id="cell-62-titel">Springer (Weiß)</title>
+  <desc id="cell-62-beschreibung">Springer (Weiß) auf runder Platte.</desc>
+  <g id="cell-62-springer">
+    <circle id="cell-62-springer-platte" cx="130" cy="130" r="115.3" fill="#FAF6EC" stroke="#171920" stroke-width="9.4"/>
+    <path id="cell-62-springer-figur" fill="#171920" fill-rule="evenodd" d="
+      M91.707 144.834 L92.978 143.579 L99.696 134.658 L100.844 133.604 C103.43 131.996 109.403 132.398 111.012 132.116 C113.181 131.736 115.124 130.488 117.019 129.366 C120.351 127.395 123.423 124.78 126.088 121.967 C127.648 120.32 128.682 118.078 130.609 116.881 C131.129 116.626 131.744 116.618 132.27 116.863 C133.833 117.598 134.764 120.219 135.215 121.748 C138.543 133.055 128.336 140.066 121.08 146.851 L111.552 155.715 C107.008 160.519 103.389 166.562 101.627 172.95 L105.025 172.279 L122.146 170.604 L144.156 170.972 L164.371 171.241 L176.531 173.129 C181.037 162.702 183.5 151.675 184.475 140.362 C186.376 118.306 179.461 99.617 162.453 85.288 C157.816 81.382 152.663 77.989 147.167 75.43 C141.568 72.823 135.095 72.802 129.101 71.312 C128.324 71.119 127.581 70.869 126.98 70.321 L113.967 57 C112.257 57.954 110.588 59.442 109.501 61.068 C109.492 61.21 108.601 68.797 107.044 71.401 L106.154 72.632 L95.726 83.395 L95.302 84.126 L87.306 104.223 L71.267 127.359 C68.368 132.177 70.098 136.909 74.615 139.881 L77.424 141.486 L78.654 141.993 L88.223 144.562 C89.367 144.782 90.547 144.946 91.707 144.834 Z
+      M87.233 203 L190.157 203 L190.02 193.025 C189.549 186.665 186.495 181.111 180.508 178.421 C177.115 176.896 173.354 176.286 169.674 175.739 L154.886 174.435 L110.013 175.449 C108.192 175.62 106.41 176.084 104.626 176.485 C102.031 177.069 99.311 177.33 96.885 178.42 C90.913 181.1 87.843 186.645 87.37 193.024 L87.233 203 Z
+      M119.664 90.096 C117.774 85.11 111.616 87.073 109.007 90.179 C107.173 92.364 106.343 95.38 105.909 98.133 C109.187 94.33 116.676 99.457 119.458 94.171 C120.099 92.952 120.145 91.383 119.664 90.096 Z"/>
+  </g>
+</svg>
+</div><div class="field" style="background:#ECE2CA"><svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260" role="img" aria-labelledby="cell-63-titel cell-63-beschreibung">
+  <title id="cell-63-titel">Turm (Weiß)</title>
+  <desc id="cell-63-beschreibung">Turm (Weiß) auf runder Platte.</desc>
+  <g id="cell-63-turm">
+    <circle id="cell-63-turm-platte" cx="130" cy="130" r="115.3" fill="#FAF6EC" stroke="#171920" stroke-width="9.4"/>
+    <path id="cell-63-turm-figur" fill="#171920" fill-rule="evenodd" d="
+      M98.363 107.002 L90.296 170.182 C104.901 167.184 118.802 168.015 133.594 168.005 C140.518 168 147.466 167.581 154.366 168.155 L169.705 170.182 L161.637 107.002 L130 104.751 L98.363 107.002 Z
+      M74.027 203 L185.973 203 L185.825 192.151 C185.081 182.12 179.149 176.281 169.445 174.394 C157.307 172.035 146.263 172.029 134.092 171.992 L117 171.753 L94.008 173.729 C82.789 175.468 75.071 180.1 74.177 192.152 L74.027 203 Z
+      M177.408 65.08 C172.59 62.318 166.632 61.295 161.17 61.072 L157.419 79.331 L143.288 79.331 L140.893 57.775 C133.705 56.742 126.296 56.742 119.108 57.775 L116.713 79.331 L102.58 79.331 L98.829 61.072 C93.311 61.299 87.444 62.297 82.593 65.08 L83.893 88.393 C84.5 92.935 86.675 97.13 90.253 100.007 C92.005 101.416 94.286 102.877 96.619 103.015 L129.275 100.578 C137.41 100.274 147.396 101.476 155.274 102.212 L163.381 103.015 C164.922 102.943 166.675 102.07 167.92 101.313 C172.606 98.464 175.458 93.538 176.147 88.151 L177.408 65.08 Z"/>
+  </g>
+</svg>
+</div></div>
+  <div class="files" aria-hidden="true"><span>a</span><span>b</span><span>c</span><span>d</span><span>e</span><span>f</span><span>g</span><span>h</span></div>
+</main>
+</html>
