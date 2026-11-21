@@ -13,8 +13,8 @@
 | W07 | TESTED (Mock) | Adapter, Controller, Presets und asynchroner UCI-Bereitschaftstest mit Mock-Engine. Echte Engine, ADR-001 und Kalibrierung offen. [Bereitschaftstest](../reports/2026-11-21_W07-uci-verbindungstest.md) |
 | W08 | TESTED (Fixtures) | Importer, Packs, Session, Themen-/Ratingfilter und Fortschrittsanzeige; realer Lichess-Import, Q-008/Q-009 offen |
 | W09 | TESTED | Lokale Bibliothek mit PGN-Dateiaustausch und lokalem Partieendgrund, Migration auf Schema 3, Sicherung und Wiederherstellung, Settings. Manuelle Plattformabnahme, Q-012 und ADR-004 offen |
-| W10 | IN_PROGRESS | DE/EN-Kataloge mit automatischer Sprachauswahl und Tastaturregressionen. Manuelle Kontrast-, Skalierungs- und Screenreader-Abnahmen stehen aus. |
-| W11 | TESTED | PR #7 mit je 14/14 Jobs auf Branch, PR und `main`. Native macOS-Tests für Python 3.11 und 3.14 bestanden. Manuelle Installations- und Offline-Abnahme steht aus. [Standabgleich](../reports/2026-11-21_W11-v0.0.1-standsaudit.md) |
+| W10 | IN_PROGRESS | Lokalisierte Brettmeldungen, sichtbarer Feldfokus und Eingabetaste für Aktionsbuttons. Windows-Probe bei drei Tk-Textskalierungen und Kontrastberechnung bestanden. Native Skalierung und Screenreader stehen zur Abnahme aus. [W10/W11-Bericht](../reports/2026-11-21_W10-W11-tastatur-und-skalierung.md) |
+| W11 | TESTED | PR #8 auf `main` mit 14/14 Jobs inklusive nativer macOS-GUI für Python 3.11 und 3.14. Folgearbeit mit lokaler Windows-Suite und installiertem Wheel geprüft. Die Folgeänderungen brauchen noch GUI-CI auf den weiteren Plattformen. Die native Installations- und Offline-Abnahme steht aus. [W10/W11-Bericht](../reports/2026-11-21_W10-W11-tastatur-und-skalierung.md) |
 | W12 | BLOCKED | Öffentliche Distribution wartet auf ADR-001, ADR-005, ADR-006 und manuelle W11-Abnahme. [Vertriebsstrategie](../release/RELEASE_STRATEGY.md) |
 
 | ID | Workstream | Prompt | Prerequisite | Verbindliches Gate | Zielphase |

@@ -246,7 +246,12 @@
       "status_evidence": [
         "docs/reports/2026-11-20_N02_functional-core.md",
         "src/chess_and_chains/i18n/catalog.py",
-        "tests/test_i18n.py"
+        "tests/test_i18n.py",
+        "tests/test_app_integration.py",
+        "docs/reports/2026-11-21_W10-W11-tastatur-und-skalierung.md"
+      ],
+      "open_gate_items": [
+        "Native system scaling, visual review, and screen reader acceptance"
       ]
     },
     {
@@ -257,17 +262,19 @@
       "gate": "Echte CI/OS/Offline-/Lieferartefakt-Belege, offene Fehler, keine erfundenen Gates",
       "phase": "F5",
       "status": "TESTED",
-      "scope": "Automated foundation, policy, core and Tk integration checks on Windows, macOS and Linux; PR #7 and its main merge passed",
+      "scope": "PR #8 main merge passed the Windows, macOS and Linux matrix. W10 follow-up passed local Windows tests and a wheel smoke test.",
       "status_evidence": [
         ".github/workflows/checks.yml",
         "tests/test_foundation.py",
         "tests/test_app_integration.py",
+        "docs/reports/2026-11-21_W10-W11-tastatur-und-skalierung.md",
         "docs/reports/2026-11-21_W11-v0.0.1-standsaudit.md",
         "docs/reports/2026-11-21_W11-ci-nach-pr6.md",
         "docs/reports/2026-11-20_N02_functional-core.md",
         "docs/reports/2026-11-20_N02-follow-up.md"
       ],
       "open_gate_items": [
+        "Cross-platform GUI CI for the W10 follow-up",
         "Manual platform, offline installation and distributable artifact acceptance"
       ]
     },

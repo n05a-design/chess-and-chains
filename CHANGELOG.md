@@ -7,6 +7,7 @@
 - Test configured local UCI engines through `readyok`, show the advertised name and option count, and clean up the process and the Tk poll independently.
 - Stabilize Tk test cleanup and enable crash diagnostics. Branch, PR and post-merge CI for PR #7 passed on Windows, macOS and Linux.
 - Reconcile the current documentation with the code, archive prior planning snapshots, and record the next tasks and owner decisions. This is a development version.
+- Show keyboard focus when entering the board, localize square and selection feedback, and support Enter on action buttons, including promotion choices.
 
 The dated entries below preserve the development history incorporated into this snapshot.
 
