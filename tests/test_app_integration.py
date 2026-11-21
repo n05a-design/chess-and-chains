@@ -511,6 +511,25 @@ class OwnerPieceUiTests(AppTestCase):
 
 
 class StorageAndLocaleUiTests(AppTestCase):
+    def test_startup_reports_database_recovery_alongside_settings_warning(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            layout = DataLayout(Path(tmp) / "data")
+            damaged = b"not a SQLite database" * 20
+            layout.database.write_bytes(damaged)
+            layout.settings.write_text("{", encoding="utf-8")
+            app = self.make_app(data_layout=layout, locale="de")
+            try:
+                recovered = app.db.recovered_from
+                self.assertEqual(recovered.read_bytes(), damaged)
+                self.assertIn(
+                    f"Beschädigte Bibliothek gesichert als {recovered.name}",
+                    app.interaction_text.get(),
+                )
+                self.assertIn("settings.json.invalid-", app.interaction_text.get())
+                self.assertEqual(app.db.list_games(), [])
+            finally:
+                app.close()
+
     def test_app_variables_belong_to_its_root_with_another_window_open(self):
         other_root = create_root(self)
         app = self.make_app()

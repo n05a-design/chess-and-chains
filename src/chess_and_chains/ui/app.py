@@ -125,6 +125,7 @@ class ChessApp:
         self._board_artwork = board_artwork
         self.layout = data_layout
         self.settings_warning: str | None = None
+        database_warning: str | None = None
         if data_layout is not None:
             self.settings, self.settings_warning = load_settings(data_layout.settings)
             try:
@@ -132,7 +133,7 @@ class ChessApp:
             except StorageError as error:
                 # Never modify a database we cannot handle; run without persistence.
                 self.db = None
-                self.settings_warning = str(error)
+                database_warning = str(error)
         else:
             self.settings, self.db = Settings(), None
         self.t = Translator(locale or self.settings.locale)
@@ -172,8 +173,10 @@ class ChessApp:
         self.root.protocol("WM_DELETE_WINDOW", self.close)
         self._refresh()
         self._poll_job = self.root.after(POLL_MS, self._poll)
-        if self.settings_warning:
-            self.interaction_text.set(self.settings_warning)
+        if self.db is not None and self.db.recovered_from is not None:
+            database_warning = self.t("library.recovered", file=self.db.recovered_from.name)
+        startup_messages = (database_warning, self.settings_warning)
+        self.interaction_text.set("\n".join(message for message in startup_messages if message))
 
     # ----- compatibility with W06 API ---------------------------------
     @property

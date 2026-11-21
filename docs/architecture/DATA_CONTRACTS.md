@@ -78,7 +78,9 @@ Datenpfad folgt der Plattform oder `CHESS_AND_CHAINS_DATA_DIR`.
 `schema` 1 (`manifest.json` mit SHA-256, `puzzles.jsonl` und
 `import_report.json`). Migrationen sichern bestehende Datenbanken vorab
 unter `*.pre-vN-*.bak`. Die App lehnt neuere Schemata ab und benennt
-bestätigt beschädigte Dateien um. Die endgültige Festlegung erfolgt
+bestätigt beschädigte Dateien um. Wenn dabei eine neue Bibliothek
+angelegt wird, nennt die App den Dateinamen der gesicherten beschädigten
+Datei beim Start. Die endgültige Festlegung erfolgt
 durch den Inhaber über ADR-004.
 
 Bei einer Wiederherstellung liest SQLite die Sicherung in eine temporäre
