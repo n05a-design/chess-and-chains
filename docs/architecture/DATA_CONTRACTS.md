@@ -72,6 +72,21 @@ Fallback aus `i18n/catalog.py`. `theme_id`, `piece_set_id`,
 Brett- und Figurenwechsel wird im aktuellen CLI-Aufruf gewählt. Der
 Datenpfad folgt der Plattform oder `CHESS_AND_CHAINS_DATA_DIR`.
 
-**Implementierungsvorschlag N02 (ADR-004 weiterhin PROPOSED):** SQLite `PRAGMA user_version` = 3 (`storage/database.py`: Tabellen `games`, `puzzle_attempts`, View `puzzle_progress`), Settings-JSON `schema_version` 1 (`storage/settings.py`), Puzzle-Packs `schema` 1 (`puzzles/pack.py`: `manifest.json` mit SHA-256 + `puzzles.jsonl` + `import_report.json`). Migrationen sichern bestehende DBs vorher (`*.pre-vN-*.bak`); neuere Schemata bleiben geschützt. Bestätigt beschädigte Dateien werden umbenannt. Bei einer Wiederherstellung wird eine nur lesend geöffnete Sicherung in einer temporären Datenbank geprüft und migriert. Erst danach wird der aktive Stand gesichert und in einer SQLite-Backup-Transaktion ersetzt. Endgültige Festlegung durch Owner über ADR-004.
+**Implementierungsvorschlag N02 (ADR-004 weiterhin PROPOSED)**. SQLite
+`PRAGMA user_version` = 3 (`games`, `puzzle_attempts`, View
+`puzzle_progress`), Settings-JSON `schema_version` 1 und Puzzle-Packs
+`schema` 1 (`manifest.json` mit SHA-256, `puzzles.jsonl` und
+`import_report.json`). Migrationen sichern bestehende Datenbanken vorab
+unter `*.pre-vN-*.bak`. Die App lehnt neuere Schemata ab und benennt
+bestätigt beschädigte Dateien um. Die endgültige Festlegung erfolgt
+durch den Inhaber über ADR-004.
+
+Bei einer Wiederherstellung liest SQLite die Sicherung in eine temporäre
+Datenbank ein und migriert diese bei Bedarf. Anschließend validiert
+`Database.load_game()` dort jeden Partiedatensatz mit denselben Regeln
+wie beim Öffnen der Bibliothek. Nach erfolgreichen Prüfungen sichert die
+App den aktiven Stand unter `*.pre-restore-*.bak` und ersetzt ihn in
+einer SQLite-Backup-Transaktion.
+[W09-Prüfnachweis](../reports/2026-11-21_W09-sichere-wiederherstellung.md)
 
 Die Projektversion V.0.0.1 lässt diese Schemaversionen unverändert.

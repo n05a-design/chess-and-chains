@@ -238,7 +238,7 @@
       "gate": "Getrennte Nutzerdaten, Migrations- und Restore-Proben, PGN/FEN-Roundtrip",
       "phase": "F4",
       "status": "TESTED",
-      "scope": "SQLite v3 migrations, local library, puzzle progress and atomic JSON settings. Native Windows PGN file exchange and backup/restore verified with transient data",
+      "scope": "SQLite v3 migrations, library, puzzle progress and atomic JSON settings. Windows PGN exchange and backup/restore verified with transient data, including pre-restore game validation and interrupted writes",
       "status_evidence": [
         "docs/reports/2026-11-20_N02_functional-core.md",
         "src/chess_and_chains/storage/database.py",
@@ -247,7 +247,8 @@
         "docs/reports/2026-11-20_N02-follow-up.md",
         "tests/test_app_integration.py",
         "docs/reports/2026-11-21_W00-W12-paketabgleich.md",
-        "docs/reports/2026-11-21_W05-tote-stellungen-und-altpartien.md"
+        "docs/reports/2026-11-21_W05-tote-stellungen-und-altpartien.md",
+        "docs/reports/2026-11-21_W09-sichere-wiederherstellung.md"
       ],
       "open_gate_items": [
         "Native file-dialog acceptance on macOS and Linux; Windows smoke tested",
