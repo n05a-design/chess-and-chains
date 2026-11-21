@@ -48,7 +48,15 @@
           <button id="redo" type="button" disabled>Wiederholen</button>
         </div>
         <button id="claim" type="button" hidden>Remis beanspruchen</button>
-        <a class="download" href="/api/partie.pgn" download>Partie als PGN speichern</a>
+        <details class="files">
+          <summary>Dateien</summary>
+          <div class="file-actions">
+            <button id="import" type="button" disabled>PGN oder FEN öffnen…</button>
+            <input id="import-file" type="file" accept=".pgn,.fen" hidden>
+            <a class="download" href="/api/partie.pgn" download>Partie als PGN speichern</a>
+            <a class="download" href="/api/stellung.fen" download>Stellung als FEN speichern</a>
+          </div>
+        </details>
         <button id="new" class="primary" type="button" disabled>Neue Partie</button>
       </div>
     </aside>

@@ -101,34 +101,39 @@ function showGame() {
   byId("undo").disabled=busy||!state.undo;
   byId("redo").disabled=busy||!state.redo;
   byId("new").disabled=busy;
+  byId("import").disabled=busy;
   byId("claim").hidden=!state.claims.length;
   byId("claim").disabled=busy;
   showMoves();
   refreshBoard();
 }
 
-async function send(action,extra={}) {
+async function send(action,extra={},file=null) {
   if (!state||busy) return;
   endPointer();
   busy=true;
   message();
   showGame();
   try {
-    const response=await fetch("/api/game",{
-      method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({action,revision:state.revision,...extra}),
+    const response=await fetch(file?"/api/import":"/api/game",{
+      method:"POST",
+      headers:file?{"Content-Type":extra.mime,"X-Board-Revision":String(state.revision)}
+        :{"Content-Type":"application/json"},
+      body:file??JSON.stringify({action,revision:state.revision,...extra}),
     });
     const result=await response.json();
     if (response.ok) {
       state=result;
       selected=null;
       if (action==="new") cursor=scene?.orientation==="b"?"e7":"e2";
+      if (file) message("Datei geladen.");
     } else if (response.status===409&&result.state) {
       state=result.state;
       selected=null;
       message("Die Stellung wurde aktualisiert. Wähle die Figur erneut.");
     } else {
-      message("Die Aktion ist in dieser Stellung nicht möglich.");
+      message(file?"Die Datei konnte nicht gelesen werden. Die aktuelle Partie bleibt erhalten."
+        :"Die Aktion ist in dieser Stellung nicht möglich.");
     }
   } catch {
     message("Der lokale Spielprozess ist nicht erreichbar. Starte die Ansicht erneut.");
@@ -305,6 +310,23 @@ window.addEventListener("blur",cancelPointer);
 
 byId("undo").addEventListener("click",()=>send("undo"));
 byId("redo").addEventListener("click",()=>send("redo"));
+byId("import").addEventListener("click",()=>byId("import-file").click());
+byId("import-file").addEventListener("change",event=>{
+  const file=event.target.files[0];
+  event.target.value="";
+  if (!file||!state||busy) return;
+  const suffix=file.name.toLowerCase().split(".").pop();
+  const limit=suffix==="pgn"?262144:suffix==="fen"?4096:0;
+  if (!file.size||file.size>limit) {
+    message("Wähle eine PGN-Datei bis 256 KiB oder eine FEN-Datei bis 4 KiB.");
+    return;
+  }
+  const open=()=>send("import",{mime:`application/x-chess-${suffix}`},file);
+  if (state.san.length||state.redo||state.status!=="ACTIVE") {
+    choose("Datei laden?", "Die Datei ersetzt die aktuelle Stellung und ihre Zugliste.",
+      [["Datei laden",open]]);
+  } else open();
+});
 byId("new").addEventListener("click",()=>{
   if (state.san.length&&state.status==="ACTIVE") {
     choose("Neue Partie beginnen?", "Die laufende Stellung und die Zugliste werden zurückgesetzt.",
