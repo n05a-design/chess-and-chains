@@ -29,7 +29,13 @@ Kompilierungs- und Diff-Prüfung endeten mit Exitcode 0.
 
 ## Übergabe
 
-1. Die Prüfung der Suchoberfläche in die Plattformmatrix aufnehmen,
-   sobald die Veröffentlichung dieses Folgepakets beauftragt ist.
-2. Native Bedienabnahme für Systemdialoge und Screenreader nach der
+Der [PR #16](https://github.com/n05a-design/chess-and-chains/pull/16) ist
+in `main`. [PR-CI](https://github.com/n05a-design/chess-and-chains/actions/runs/44931796442),
+[Push-CI](https://github.com/n05a-design/chess-and-chains/actions/runs/44931791296)
+und [Merge-CI](https://github.com/n05a-design/chess-and-chains/actions/runs/44932023205)
+bestanden mit je 14 Jobs. Auf macOS liefen je 65 Tk-Tests mit
+Python 3.11 und 3.14. Die Logs dokumentieren den erfolgreichen Suchtest
+samt Öffnen und Export.
+
+1. Native Bedienabnahme für Systemdialoge und Screenreader nach der
    [QA-Matrix](../qa/TEST_PLAN.md) weiterführen.

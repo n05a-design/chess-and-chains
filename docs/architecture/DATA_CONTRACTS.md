@@ -32,8 +32,12 @@ mögliche Erweiterung nach Scope-Entscheidung.
 Der Regelkern erkennt tote Stellungen in Folgen von bis zu vier Halbzügen,
 wenn jeweils nur ein Zug legal ist und die Folge in Patt oder ungenügendem
 Material endet. Bei mehreren legalen Zügen gilt der Nachweis, wenn alle
-unmittelbare Schläge in Stellungen mit ungenügendem Material sind. Der
-Remisgrund wird aus dem Brett neu abgeleitet. Die
+unmittelbare Schläge in Stellungen mit ungenügendem Material sind. Für
+geschlossene Bauernketten mit ausschließlich Königen und Bauern gibt
+es einen weiteren Nachweis. Alle Bauern sind dauerhaft blockiert,
+beide Könige bleiben in getrennten Bereichen und kein König erreicht
+einen Schlag, der die Sperre öffnet. [Prüfbericht](../reports/2026-11-21_W05-bauernsperren.md)
+Der Remisgrund wird aus dem Brett neu abgeleitet. Die
 Wiedergabe alter PGN- und SQLite-Zugfolgen verwendet die bisherigen
 Abbruchprüfungen, damit bereits gespeicherte Züge und Endgründe erhalten
 bleiben. Für eine anschließend fortgesetzte Partie gilt die aktuelle
