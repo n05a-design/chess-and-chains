@@ -35,6 +35,10 @@ sowie einen Ausschlussgrund pro abgelehnter Zeile. Sein SHA-256 bezieht
 sich auf die CSV-Bytes nach einer eventuellen Dekompression. Das Manifest
 enthält separat die Prüfsumme der erzeugten JSONL-Datei.
 
+Fehlerhafte UTF-8-Bytes in einem Datensatz führen zu `unreadable_row`.
+Die gültigen Datensätze davor und danach bleiben im Import. Ein
+fehlerhafter Header bricht den Import vor der Paketerstellung ab.
+
 ## Auswahl mit Seed
 
 Der folgende Aufruf erzeugt aus den projekteigenen Demo-Daten eine

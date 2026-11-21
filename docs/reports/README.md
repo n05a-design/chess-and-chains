@@ -6,6 +6,8 @@ Hier nur tatsächlich ausgeführte Prüfberichte/Agentenübergaben unter `YYYY-M
 
 [W11 – Ablage, Code und GitHub abgleichen](2026-11-21_W11-ablageabgleich.md)
 
+[W11 – Lokale Folgecommits, Projektablage und GitHub abgleichen](2026-11-21_W11-entwicklungsabgleich.md)
+
 [W10 – Rätselthemen in DE und EN](2026-11-21_W10-raetselthemen.md)
 
 [W08 – Qualitätsfilter und Herkunft der Rätselpakete](2026-11-21_W08-puzzle-qualitaetsfilter.md)

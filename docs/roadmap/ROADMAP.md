@@ -6,7 +6,7 @@
 
 | Priorität | Arbeit | Voraussetzung und nächster Nachweis |
 | --- | --- | --- |
-| 1 | W10 und W11 · Native Bedienabnahme | PR #10 ist in `main` und bestand den eigenen Merge-Lauf. Die DE/EN-Rätselthemen sind lokal geprüft. Den lokalen Folgebranch in der Plattform-CI prüfen und Fokusreihenfolge, Dialoge, Zugliste sowie Screenreader bei nativer Systemskalierung abnehmen. [W10-Prüfnachweis](../reports/2026-11-21_W10-raetselthemen.md) |
+| 1 | W10 und W11 · Native Bedienabnahme | PR #10 bestand den Merge-Lauf. Der Entwicklungsabgleich führt den Folgebranch mit den Prüfnachweisen. Fokusreihenfolge, Dialoge, Zugliste und Screenreader bei nativer Systemskalierung stehen zur Abnahme aus. [Entwicklungsabgleich](../reports/2026-11-21_W11-entwicklungsabgleich.md) |
 | 2 | W06 · Individuelle Brettgestaltung | Finale SVG-Bretter des Inhabers mit Partie, Rätseln, Perspektivwechsel und V.02 prüfen. Die lokale SVG-Vorschau unterstützt die [vereinbarten Lieferformate](../../assets/boards/source/README.md). |
 | Parallel | W02/W07 · Echte Offline-Engine | Konkrete Engine- und Vertriebsstrategie für den sofort spielbaren Offline-Bot prüfen und in ADR-001 entscheiden lassen. Danach Test einer vollständigen Partie mit identifiziertem Binary und Offline-Nachweis. Die Mock-Tests dienen der Adapterprüfung. |
 | Parallel | W08 · Produktiver Rätselkatalog | Importgrenzen, Demo-Herkunft und Auswahl per Seed mit lokalen Fixtures geprüft. Nach Opt-in Q-022 den realen Export und den Setupzug prüfen. Datenprofil und Stichprobe auswerten. Q-008/Q-009 entscheiden Ratingbereich und Paketgröße. [W08-Prüfnachweis](../reports/2026-11-21_W08-puzzle-seed.md) |
@@ -42,7 +42,7 @@ bestand die Plattformmatrix im Push- und PR-Lauf sowie nach dem Merge auf
 `main`. Die lokalen Folgecommits ergänzen die Rätselthemen auf Deutsch und
 Englisch, Qualitätsfilter, kurze Zwangsfolgen und die Auswahl per Seed.
 [Merge-Lauf PR #10](https://github.com/n05a-design/chess-and-chains/actions/runs/44901076786) ·
-[Letzter lokaler Prüfstand](../reports/2026-11-21_W08-puzzle-seed.md)
+[Prüfstand der Folgecommits](../reports/2026-11-21_W11-entwicklungsabgleich.md)
 
 ## Kritischer Pfad
 

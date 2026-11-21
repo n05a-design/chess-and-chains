@@ -14,3 +14,7 @@ diesem PR wurde vom Inhaber beauftragt. [Quellpfade und Prüfsummen](SOURCES.csv
   und Status gilt die [kanonische Dokumentation](../../governance/DOC_INDEX.md).
   Die [Designquellen](../../../design/brand_exploration/README.md) liegen
   neben ihren bisherigen Arbeitsdateinamen.
+
+Die Foundation-Prüfung kontrolliert die archivierten Dateien gegen
+`archive_sha256` aus `SOURCES.csv`. `source_sha256` beschreibt den Stand
+der jeweiligen Originaldatei bei der Übernahme.

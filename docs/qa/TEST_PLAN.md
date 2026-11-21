@@ -1,15 +1,16 @@
 # QA-Matrix – Foundation / Produkt
 
-Stand **V.0.0.1**. Der Merge von PR #9 auf `main` und PR #10 auf dem
-Entwicklungsbranch bestanden ihre Plattformprüfungen. Die DE/EN-Rätselthemen
-des lokalen Folgebranchs sind unter Windows geprüft. Die native Windows-Probe
-für PGN-Dateidialoge, Backup/Restore und Brettfokus ist separat dokumentiert.
-[Paketabgleich](../reports/2026-11-21_W00-W12-paketabgleich.md) ·
-[W10-Prüfnachweis](../reports/2026-11-21_W10-raetselthemen.md)
+Stand **V.0.0.1**. Der Merge von PR #10 auf `main` bestand die
+Plattformmatrix. Der Entwicklungsabgleich belegt die Prüfung der
+Folgecommits, das installierte Wheel und den Vergleich mit OneDrive.
+Die native Windows-Probe für PGN-Dateidialoge, Backup/Restore und
+Brettfokus ist separat dokumentiert.
+[Entwicklungsabgleich](../reports/2026-11-21_W11-entwicklungsabgleich.md) ·
+[Paketabgleich](../reports/2026-11-21_W00-W12-paketabgleich.md)
 
 | Bereich | Testmodul | Umfang des automatisierten Nachweises |
 | --- | --- | --- |
-| Foundation/Status | `test_foundation`, `scripts/verify_starter.py` | Struktur, Status-Evidenz und Versionskonsistenz über Laufzeit, Paketquelle, Manifest und Einstiegsdokumente |
+| Foundation/Status | `test_foundation`, `scripts/verify_starter.py` | Struktur, Status-Evidenz und Versionskonsistenz über Laufzeit, Paketquelle, Manifest und Einstiegsdokumente. Pfade und Prüfsummen des Assetregisters und OneDrive-Archivs |
 | Chess Core | `test_chess_core`, `test_chess_golden` | Perft (Start d4, CPW 2–6), Spiegel-Symmetrie, SAN, PGN-Fehlerfälle, Roundtrips, deklarierte Remisansprüche, Aufgabe gegen blanken König, Matt mit zwei Springern, Wiederholungszähler nach Undo/Redo und Abzweigung, Performance-Budget. Tote Stellungen in kurzen Zwangsfolgen zum Patt oder Materialremis mit Matt und Zugwahl als Gegenproben. [W05-Nachweis](../reports/2026-11-21_W05-mehrzuegige-tote-stellungen.md) |
 | UCI | `test_uci_engine` | Nur Mock-Engine; echte Engine NICHT getestet |
 | Bot/Controller | `test_game_controller`, `test_bot_presets` | Vertical Slice, Crash, Timeout, verworfene Suchaufträge, UCI-Partiewechsel, Undo, Shutdown mit Mock-Engine |

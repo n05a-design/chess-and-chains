@@ -291,7 +291,7 @@
       "gate": "Echte CI/OS/Offline-/Lieferartefakt-Belege, offene Fehler, keine erfundenen Gates",
       "phase": "F5",
       "status": "TESTED",
-      "scope": "PR #10 passed the Windows, macOS and Linux matrix on push, PR and main. The local follow-up has Windows evidence for W10 theme localization, W05 forced play and W08 puzzle selection.",
+      "scope": "PR #10 passed the Windows, macOS and Linux matrix on push, PR and main. Follow-up evidence covers Windows tests, offline wheel installation and the contents and checksums of the OneDrive archive.",
       "status_evidence": [
         ".github/workflows/checks.yml",
         "tests/test_foundation.py",
@@ -301,6 +301,7 @@
         "docs/reports/2026-11-21_W00-W12-paketabgleich.md",
         "docs/reports/2026-11-21_W10-W11-tastatur-und-skalierung.md",
         "docs/reports/2026-11-21_W11-v0.0.1-standsaudit.md",
+        "docs/reports/2026-11-21_W11-entwicklungsabgleich.md",
         "docs/reports/2026-11-21_W11-ci-nach-pr6.md",
         "docs/reports/2026-11-20_N02_functional-core.md",
         "docs/reports/2026-11-20_N02-follow-up.md"
