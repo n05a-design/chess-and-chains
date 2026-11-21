@@ -45,5 +45,13 @@ Der Rollback erfordert keine Rückmigration.
 
 ## Übergabe
 
+Der erste Lauf von [PR #20](https://github.com/n05a-design/chess-and-chains/pull/20)
+meldete zwei Fehler im Lernstandtest auf Aqua. Python 3.11 erreichte
+beim Warten auf das virtuelle Auswahlereignis das Zeitlimit. Unter
+Python 3.14 wurde die synthetische Auswahl im ausgeblendeten Fenster
+nicht verarbeitet. Die Regression prüft die Ereignisbindung und ruft
+den produktiven Auswahlhandler anschließend direkt auf. Damit prüft
+sie die gleichen Filter- und Datenübergänge ohne Aqua-Ereigniswarteschlange.
+
 1. Plattformmatrix und native Screenreader-Prüfung nach beauftragtem Push.
 2. Realdaten und Paketumfang weiter über ADR-003 und Q-022 abnehmen.

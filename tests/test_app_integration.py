@@ -365,11 +365,12 @@ class PuzzleUiTests(AppTestCase):
                 app.db.record_puzzle_attempt("different-pack", first.puzzle_id, solved=True, mistakes=0,
                                              hints_used=0, duration_ms=1000)
                 app.tab_rail.set_active("puzzles")
+                self.assertTrue(app.puzzle_status_filter.bind("<<ComboboxSelected>>"))
 
                 def select(value):
                     app.puzzle_status_filter.current(value)
-                    app.puzzle_status_filter.event_generate("<<ComboboxSelected>>", when="tail")
-                    self.root.update()
+                    # A withdrawn Aqua window cannot reliably deliver virtual selection events.
+                    app._apply_puzzle_filters()
 
                 select(1)  # Unsolved, including revealed and never attempted.
                 self.assertIn(first, app._puzzle_selection)
@@ -386,8 +387,9 @@ class PuzzleUiTests(AppTestCase):
                 app.next_puzzle_button.invoke()
                 self.assertEqual(app._puzzle_selection, (third,))
                 self.assertIs(app.puzzle.puzzle, third)
-                while not app.puzzle.finished:
-                    app._play_move(app.puzzle.expected_move)
+                for move in third.solution[::2]:
+                    app._play_move(move)
+                self.assertTrue(app.puzzle.solved)
                 app.next_puzzle_button.invoke()
                 self.assertIsNone(app.puzzle)
                 self.assertEqual(app.puzzle_history_text.get(), "")
