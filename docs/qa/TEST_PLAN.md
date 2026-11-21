@@ -1,12 +1,13 @@
 # QA-Matrix – Foundation / Produkt
 
-Stand **V.0.0.1**. Der Merge von PR #11 auf `main` bestand die
+Stand **V.0.0.1**. Der Merge von PR #12 auf `main` bestand die
 Plattformmatrix. Der Entwicklungsabgleich belegt die Prüfung der
 Folgecommits, das installierte Wheel und den Vergleich mit OneDrive.
 Die native Windows-Probe für PGN-Dateidialoge, Backup/Restore und
 Brettfokus ist separat dokumentiert.
 [Entwicklungsabgleich](../reports/2026-11-21_W11-entwicklungsabgleich.md) ·
-[W10-Dialogtastatur](../reports/2026-11-21_W10-dialogtastatur.md)
+[W10-Dialogtastatur](../reports/2026-11-21_W10-dialogtastatur.md) ·
+[W06-SVG-Brettvorschau](../reports/2026-11-21_W06-svg-brettcache.md)
 
 | Bereich | Testmodul | Umfang des automatisierten Nachweises |
 | --- | --- | --- |

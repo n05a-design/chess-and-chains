@@ -12,6 +12,8 @@ Hier nur tatsächlich ausgeführte Prüfberichte/Agentenübergaben unter `YYYY-M
 
 [W10 – Bibliotheksdialog per Tastatur bedienen](2026-11-21_W10-dialogtastatur.md)
 
+[W06 – Perspektivwechsel in der SVG-Brettvorschau](2026-11-21_W06-svg-brettcache.md)
+
 [W08 – Qualitätsfilter und Herkunft der Rätselpakete](2026-11-21_W08-puzzle-qualitaetsfilter.md)
 
 [W08 – Reproduzierbare Auswahl der Rätsel](2026-11-21_W08-puzzle-seed.md)

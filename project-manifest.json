@@ -161,7 +161,7 @@
       "gate": "Original-SVG-Rendering, Boardinteraktion, DPI/Keyboard, native UI-Gates",
       "phase": "F1",
       "status": "TESTED",
-      "scope": "Tk board with click/drag/keyboard input, front V.02 and top original SVG sets with PNG fallbacks, and opt-in Tk 9 preview for local SVG boards. Automated Windows, macOS and Linux runs passed",
+      "scope": "Tk board with click/drag/keyboard input, original front V.02 and top SVG sets with PNG fallbacks, opt-in Tk 9 SVG board preview and local evidence for reusing both orientations.",
       "status_evidence": [
         "docs/reports/2026-11-20_W06_board-ui.md",
         "docs/reports/2026-11-20_W06-originalfiguren.md",
@@ -169,6 +169,7 @@
         "docs/reports/2026-11-21_W06-figurenschatten.md",
         "docs/reports/2026-11-21_W06-figurenschatten-v02.md",
         "docs/reports/2026-11-20_W06-svg-brettvorschau.md",
+        "docs/reports/2026-11-21_W06-svg-brettcache.md",
         "src/chess_and_chains/ui/board.py",
         "tests/test_board_ui.py",
         "src/chess_and_chains/ui/pieces.py",
@@ -178,6 +179,7 @@
       ],
       "open_gate_items": [
         "Owner-supplied final board designs and their review",
+        "Cross-platform GUI CI for the local SVG board cache",
         "Manual native UI, high-DPI and accessibility acceptance"
       ]
     },
@@ -268,7 +270,7 @@
       "gate": "DE/EN-Katalogparität, Keyboard-/Kontrast-/Scaling-Abnahmen",
       "phase": "F4",
       "status": "TESTED",
-      "scope": "DE/EN catalog, puzzle labels and board keyboard flow through PR #11 CI. Local Windows coverage for keyboard use and focus restoration in the library, plus Tk text scaling.",
+      "scope": "DE/EN catalog, puzzle labels and board keyboard flow through PR #11 CI. PR #12 tested the library chooser keyboard bindings and focus handoff in the platform matrix.",
       "status_evidence": [
         "docs/reports/2026-11-20_N02_functional-core.md",
         "src/chess_and_chains/i18n/catalog.py",
@@ -281,7 +283,7 @@
       ],
       "open_gate_items": [
         "Native 150/200 percent scaling, full visual review, and screen reader acceptance",
-        "Cross-platform GUI CI for the local chooser keyboard change"
+        "Physical keypad Enter check"
       ]
     },
     {
@@ -292,7 +294,7 @@
       "gate": "Echte CI/OS/Offline-/Lieferartefakt-Belege, offene Fehler, keine erfundenen Gates",
       "phase": "F5",
       "status": "TESTED",
-      "scope": "PR #11 passed the Windows, macOS and Linux matrix on push, PR and main. Local evidence includes an offline wheel, OneDrive archive checksums and the chooser keyboard follow-up on Windows.",
+      "scope": "PR #12 passed the Windows, macOS and Linux matrix on push, PR and main. Local evidence includes an offline wheel, OneDrive archive checksums and the SVG preview cache follow-up.",
       "status_evidence": [
         ".github/workflows/checks.yml",
         "tests/test_foundation.py",
@@ -305,11 +307,12 @@
         "docs/reports/2026-11-21_W11-entwicklungsabgleich.md",
         "docs/reports/2026-11-21_W10-dialogtastatur.md",
         "docs/reports/2026-11-21_W11-ci-nach-pr6.md",
+        "docs/reports/2026-11-21_W06-svg-brettcache.md",
         "docs/reports/2026-11-20_N02_functional-core.md",
         "docs/reports/2026-11-20_N02-follow-up.md"
       ],
       "open_gate_items": [
-        "Cross-platform CI for the local follow-up after the PR #11 merge",
+        "Cross-platform CI for the local W06 follow-up after the PR #12 merge",
         "Manual platform, offline installation and distributable artifact acceptance"
       ]
     },

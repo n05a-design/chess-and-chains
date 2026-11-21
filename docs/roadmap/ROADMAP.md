@@ -6,8 +6,8 @@
 
 | Priorität | Arbeit | Voraussetzung und nächster Nachweis |
 | --- | --- | --- |
-| 1 | W10 und W11 · Native Bedienabnahme | PR #11 ist in `main` und bestand den Merge-Lauf. Die Tastaturwege für PGN-Import, Export und Abbruch im Bibliotheksdialog sind lokal geprüft. Plattform-CI für den Folgebranch, native Skalierung und Screenreader stehen aus. [W10-Prüfnachweis](../reports/2026-11-21_W10-dialogtastatur.md) |
-| 2 | W06 · Individuelle Brettgestaltung | Finale SVG-Bretter des Inhabers mit Partie, Rätseln, Perspektivwechsel und V.02 prüfen. Die lokale SVG-Vorschau unterstützt die [vereinbarten Lieferformate](../../assets/boards/source/README.md). |
+| 1 | W10 und W11 · Native Bedienabnahme | PR #12 mit den Tastaturwegen für PGN-Import, Export und Abbruch ist in `main` und bestand den Merge-Lauf. Native Skalierung, physischer Ziffernblock und Screenreader stehen zur Abnahme aus. [W10-Prüfnachweis](../reports/2026-11-21_W10-dialogtastatur.md) |
+| 2 | W06 · Individuelle Brettgestaltung | Die Wiederverwendung der beiden Perspektiven ist lokal geprüft. Finale SVG-Bretter des Inhabers mit Partie, Rätseln und V.02 prüfen. [Lieferformate](../../assets/boards/source/README.md) · [W06-Prüfnachweis](../reports/2026-11-21_W06-svg-brettcache.md) |
 | Parallel | W02/W07 · Echte Offline-Engine | Konkrete Engine- und Vertriebsstrategie für den sofort spielbaren Offline-Bot prüfen und in ADR-001 entscheiden lassen. Danach Test einer vollständigen Partie mit identifiziertem Binary und Offline-Nachweis. Die Mock-Tests dienen der Adapterprüfung. |
 | Parallel | W08 · Produktiver Rätselkatalog | Importgrenzen, Demo-Herkunft und Auswahl per Seed mit lokalen Fixtures geprüft. Nach Opt-in Q-022 den realen Export und den Setupzug prüfen. Datenprofil und Stichprobe auswerten. Q-008/Q-009 entscheiden Ratingbereich und Paketgröße. [W08-Prüfnachweis](../reports/2026-11-21_W08-puzzle-seed.md) |
 | Parallel | W05/W09 · Regeln und Datenaustausch | Kurze Zwangsfolgen mit Remis und historische Aufzeichnungen geprüft. Verblockte Stellungen und längere oder verzweigte Zwangsfolgen weiter untersuchen. Rücksicherung mit widersprüchlichen Partiedaten und simulierten Schreibfehlern geprüft. Native Dateidialoge auf macOS/Linux und Profile nach ADR-004/Q-012 stehen aus. [W05-Nachweis](../reports/2026-11-21_W05-mehrzuegige-tote-stellungen.md) · [W09-Nachweis](../reports/2026-11-21_W09-sichere-wiederherstellung.md) |
@@ -42,10 +42,13 @@ bestand die Plattformmatrix im Push- und PR-Lauf sowie nach dem Merge auf
 `main`. Die lokalen Folgecommits ergänzen die Rätselthemen auf Deutsch und
 Englisch, Qualitätsfilter, kurze Zwangsfolgen und die Auswahl per Seed.
 Diese Folgecommits sind mit PR #11 in `main` und bestanden dort 14 von
-14 Jobs. Der lokale W10-Branch ergänzt die Dialogtastatur.
+14 Jobs. Die Dialogtastatur folgte mit PR #12 und 14 erfolgreichen Jobs
+nach dem Merge. Der lokale W06-Folgebranch beschleunigt die Drehung in
+der SVG-Brettvorschau.
 [Merge-Lauf PR #10](https://github.com/n05a-design/chess-and-chains/actions/runs/44901076786) ·
 [Merge-Lauf PR #11](https://github.com/n05a-design/chess-and-chains/actions/runs/44904083668) ·
-[W10-Prüfstand](../reports/2026-11-21_W10-dialogtastatur.md)
+[Merge-Lauf PR #12](https://github.com/n05a-design/chess-and-chains/actions/runs/44905214890) ·
+[W06-Prüfstand](../reports/2026-11-21_W06-svg-brettcache.md)
 
 ## Kritischer Pfad
 
