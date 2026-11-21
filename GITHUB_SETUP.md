@@ -1,6 +1,14 @@
-# Neues GitHub-Repository anlegen – Chess & Chains
+# Bestehendes GitHub-Repository – Chess & Chains
 
-Das ZIP wurde **nicht automatisch zu GitHub hochgeladen**. Die Repo-URL `https://github.com/n05a-design/chess-and-chains` ist ein **Vorschlag**, solange der Benutzer das Repository nicht selbst angelegt hat.
+Das Projekt liegt auf [GitHub](https://github.com/n05a-design/chess-and-chains). `main` ist der Integrationsbranch. Für neue Arbeit Standort, Änderungen und Remote-Stand im vorhandenen Checkout prüfen und den PR-Weg verwenden. Der [Einstieg](START_HERE.md) und die [Roadmap](docs/roadmap/ROADMAP.md) gelten für die laufende Entwicklung.
+
+Die GitHub-Kurzbeschreibung nennt das lokale Zweispieler-Spiel, Demo-Rätsel
+und die eigenen SVG-Figuren des Entwicklungsprototyps. Den aktuellen
+Versions- und Funktionsstand führen die READMEs.
+
+## Historische Anlageanleitung F0
+
+Die folgenden Schritte beschreiben die ursprüngliche Neuanlage aus dem Starter-ZIP. Sie bleiben als Archiv der Einrichtung erhalten.
 
 ## Variante A – GitHub-Webseite
 

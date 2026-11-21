@@ -10,7 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'src'))
 sys.path.insert(0, str(ROOT))
-from chess_and_chains import __version__  # noqa: E402
+from chess_and_chains import DISPLAY_VERSION, __version__  # noqa: E402
 from scripts.verify_starter import parse_dependencies, verify  # noqa: E402
 
 MANIFEST = json.loads((ROOT / 'project-manifest.json').read_text(encoding='utf-8'))
@@ -28,8 +28,22 @@ class FoundationTests(unittest.TestCase):
     def test_manifest_and_expected_files(self):
         self.assertEqual(verify(), [])
 
-    def test_version_is_pre_release(self):
-        self.assertEqual(__version__, '0.1.0.dev0')
+    def test_project_version_matches_runtime(self):
+        self.assertEqual(__version__, MANIFEST['project_version'])
+        self.assertEqual(DISPLAY_VERSION, f'V.{__version__}')
+
+    def test_project_version_rejects_display_label_in_machine_manifest(self):
+        errors = verify({**MANIFEST, 'project_version': DISPLAY_VERSION})
+        self.assertTrue(any('project_version must be a numeric' in error for error in errors))
+
+    def test_cli_version_uses_project_label(self):
+        completed = subprocess.run(
+            [sys.executable, '-m', 'chess_and_chains', '--version'],
+            env={**os.environ, 'PYTHONPATH': str(ROOT / 'src')},
+            capture_output=True, text=True, timeout=15,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(completed.stdout.strip(), f'Chess & Chains {DISPLAY_VERSION}')
 
     def test_cli_headless_check_does_not_open_gui(self):
         completed = subprocess.run(
@@ -40,6 +54,7 @@ class FoundationTests(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertIn('GUI prototype available', completed.stdout)
         self.assertIn('no engine bundled', completed.stdout)
+        self.assertIn(DISPLAY_VERSION, completed.stdout)
 
 
 class StatusModelTests(unittest.TestCase):

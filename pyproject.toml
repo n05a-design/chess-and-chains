@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "chess-and-chains"
-version = "0.1.0.dev0"
-description = "Chess & Chains – planned offline-first desktop chess and puzzle experience"
+dynamic = ["version"]
+description = "Chess & Chains – offline-first desktop chess and puzzle prototype"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MPL-2.0"
@@ -20,6 +20,9 @@ classifiers = [
 
 [project.scripts]
 chess-and-chains = "chess_and_chains.__main__:main"
+
+[tool.setuptools.dynamic]
+version = {attr = "chess_and_chains.__version__"}
 
 [tool.setuptools.packages.find]
 where = ["src"]

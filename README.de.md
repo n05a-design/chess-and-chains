@@ -1,5 +1,7 @@
 # Chess & Chains
 
+**V.0.0.1 · Entwicklungsstand.** [Änderungsverlauf](CHANGELOG.md) · [Versionspflege](docs/governance/GOVERNANCE.md#projektversion)
+
 **Play. Think. Connect. – Schach offline spielen, verstehen und gestalten.**
 
 Chess & Chains soll eine **dauerhaft kostenlos angebotene, quelloffene und offlinefähige Desktop-Schach-App** werden: lokal spielbare Computergegner mit einstellbarer Schwierigkeit, anspruchsvolle Taktikaufgaben und ein eigenständiges Design auf Basis eigener SVG-Schachfiguren und Bretter.
@@ -22,7 +24,7 @@ GitHub ist der Entwicklungsort und beschreibt, wie das fertige Produkt funktioni
 Dokumentierte Projektbasis, ein **GUI-freier Python-Regelkern** (legale Züge, FEN/SAN/PGN, Remisregeln, Undo/Redo; Perft- und Golden-Tests) und ein lokaler Tk-Prototyp mit:
 
 - Partie für zwei Personen und **Bot-Modus** (Bot spielt Weiß oder Schwarz) über einen asynchronen Game-Controller,
-- **Connected System** mit eigener Wortmarke und Original-SVG-Figuren in Vorder- und Draufsicht,
+- **Connected System** mit eigener Wortmarke, Vorderansichten V.02 und separatem Draufsichtssatz als Original-SVGs,
 - UCI-Prozessadapter, getestet **nur mit einer projekteigenen Mock-Engine** – diese ist **keine Schach-KI**,
 - sechs datengetriebenen Bot-Stufen (Optionen nur, wenn die Engine sie anbietet; Spielstärke **nicht kalibriert**),
 - **Puzzle Lab** mit Streaming-Importer für das Lichess-CSV-Format, Rating ≥ 1000, Paketen und fünf projekteigenen Demo-Rätseln. Filter für Thema und Rating zeigen im Atlas of Moves den Fortschritt je Auswahl,
@@ -37,6 +39,7 @@ Der Inhaber hat die Original-SVG-Figuren unter MPL-2.0 freigegeben. Tk 9 zeichne
 python -m unittest discover -s tests -v
 python scripts/verify_starter.py
 python -m pip install -e .
+python -m chess_and_chains --version
 python -m chess_and_chains --headless-check
 python -m chess_and_chains
 ```

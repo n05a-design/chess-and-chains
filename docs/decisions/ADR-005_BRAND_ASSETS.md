@@ -2,7 +2,7 @@
 
 **Status: PARTIALLY DECIDED (20.11.2026).** Die folgenden Inhaberentscheidungen gelten. Offen bleiben weitere Einzelfreigaben und die Release-Abnahme.
 
-Arbeitstitel Chess & Chains. Eigene SVG-Schachfiguren sind vorhanden, liegen **noch nicht** im Starterpaket. Brett und Wort-/Bildmarke werden erst ausgearbeitet. Originaldateien gehören nach `design/source/` und/oder `assets/chess_pieces/source_svg/`, Render-Exports in `marketing/exports/` (ignoriert).
+**Ausgangslage im historischen Starter F0.** Der Arbeitstitel lautete Chess & Chains. Die SVG-Schachfiguren lagen nur als Entwurf vor. Für die inzwischen integrierten Figuren und Markenassets gelten die Inhaberentscheidungen weiter unten. Originaldateien liegen in `design/source/` beziehungsweise `assets/chess_pieces/source_svg/`.
 
 Vor Release: Urheberschaft, eventuelle Font-Lizenz, Farbpalette, Iconrechte, Markenkollision (DPMA/EUIPO), Favicon/App-ID, Bildnachweise, kommerzielle/derivative Nutzungsrechte festlegen. GPL/MPL-Lizenzierung des Codes erfasst nicht automatisch jede Marke oder grafische Quelldatei.
 

@@ -1,5 +1,7 @@
 # Chess & Chains
 
+**V.0.0.1 · Development snapshot.** [Changelog](CHANGELOG.md) · [Versioning policy](docs/governance/GOVERNANCE.md#projektversion)
+
 **Play. Think. Connect.**
 
 **Chess & Chains** is a planned free, open-source, offline-first desktop chess experience featuring configurable local computer opponents, tactical puzzle training and a distinctive, customizable board designed around original SVG chess pieces.
@@ -25,7 +27,7 @@ The local Tk desktop prototype supports two-player play, a project-owned mock en
 | --- | --- |
 | Product requirements, folder structure and initial documentation | Scaffolded / proposed |
 | Headless rules domain (legal moves, FEN/SAN/PGN, draw rules, undo/redo) | Implemented and tested (perft + golden tests); owner acceptance open |
-| Desktop board and local two-player UI | Tk prototype with Connected System branding and original SVG pieces in front and top views |
+| Desktop board and local two-player UI | Tk prototype with Connected System branding, V.02 SVG front views and a separate top-view set |
 | UCI process adapter | Implemented; tested only against a project-owned mock engine |
 | Game controller + asynchronous bot (play as White or Black) | Implemented; tested with the mock engine, which is **not a chess AI** |
 | Real engine (e.g. Stockfish) bot play | Not bundled, not tested; user-configured engine path supported but unverified (ADR-001 open) |
@@ -48,6 +50,8 @@ Requires **Python 3.11+** with Tk support for the desktop prototype.
 ```sh
 python -m unittest discover -s tests -v
 python scripts/verify_starter.py
+python -m pip install -e .
+python -m chess_and_chains --version
 python -m chess_and_chains --headless-check
 python -m chess_and_chains
 ```
@@ -56,7 +60,7 @@ To try a locally installed UCI engine during development (never downloaded by th
 
 *Test engine* waits for the UCI handshake and `readyok`, then displays the engine name and advertised option count. The test closes its process. Use *Save* to apply the path.
 
-Install the package first with `python -m pip install -e .`, or set `PYTHONPATH=src` when running from a checkout. The default command opens the local Tk prototype; `--headless-check` reports its availability without opening a window. The chess domain has no runtime chess-library dependency.
+For a source-only run, put `src` on `PYTHONPATH`. `--version` prints the project version without loading Tk, and `--headless-check` reports the available prototype features. The default command opens the local Tk prototype. The chess domain has no runtime chess-library dependency.
 
 With Tk 9, preview a local vector board for one session with `python -m chess_and_chains --board-design assets/boards/source/board-template.svg`. The [SVG delivery guide](assets/boards/source/README.md) covers complete boards and collections of individual squares.
 

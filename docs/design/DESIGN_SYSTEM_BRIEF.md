@@ -13,9 +13,9 @@ Eigenständige, hochwertige Desktop-UI zwischen konzentriertem Schachspiel und p
 - `motion.quick`, `motion.board`, `motion.reduced`; System-Reduce-Motion respektieren.
 - `spacing`, `radius`, `border`, `elevation`, `density`, `board.scale` als neutrale Settings.
 
-## W06-Prototyp (temporäre Richtung)
+## W06-Prototyp und Gestaltungsverlauf
 
-- Für den lokalen Zwei-Personen-Prototyp wurde **Layered reference manual** gewählt: ein klar abgegrenztes Brett mit einem seitlichen, getönten Steuerblatt und festen Register-Tabs. Das ist eine W06-Arbeitsrichtung, keine finale Markenfreigabe; Q-003, Q-004 und Q-014 bleiben offen.
+- **Layered reference manual** war die ursprüngliche W06-Studie für Brett und Steuerblatt. Der aktuelle Prototyp integriert Connected System, Wortmarke und Atlas of Moves. Q-003 ist für Rechte und App-Lizenz entschieden. Konkrete Brettmotive und weitere Freigaben laufen über Q-004/Q-014.
 - Als Gestaltungsgrundlage dienen außerdem die UX-/Designregeln aus [`n05a-design/glide-to-do`](https://github.com/n05a-design/glide-to-do/tree/d1708565cd9a2404354dd373c59fbf6f3c38ddbc/01_Repository/Glide/docs) am Commit `d1708565cd9a2404354dd373c59fbf6f3c38ddbc`: `DESIGN_RICHTLINIEN.md`, `01_PRODUCT_CONSTRAINTS.md`, `ARBEITSRICHTUNG.md` und der QA-Plan. Übernommen werden nur allgemeine Leitlinien wie Funktionshierarchie, semantische Farbrollen, sichtbarer Tastaturfokus und Mindestfenstergröße; **kein Glide-Code, keine Shell-Komponenten und keine Marken- oder Bildassets**.
 - Tk bietet hier keine echte Widget-Transparenz; die Acetat-Anmutung wird deshalb mit einer deckenden Tönung dargestellt. Farben und Systemschriften des Prototyps sind vorläufig und keine finalen Brand-Tokens.
 
@@ -30,7 +30,7 @@ Eigenständige, hochwertige Desktop-UI zwischen konzentriertem Schachspiel und p
 ## Grafikpipeline
 
 - `design/source/` – editierbare Illustrator-/Affinity-/Figma-/SVG-/PDF-Quelldateien, soweit lizenzfrei für Veröffentlichung; keine vertraulichen Kundendateien.
-- `assets/chess_pieces/source_svg/` – 12 grundlegende Figurensymbole als getrennte Dateien oder explizit dokumentierte Namespaces.
+- `assets/chess_pieces/source_svg/` – Provenienz und Einstieg zu den Figuren. Die 24 Laufzeit-SVGs und beide PNG-Atlanten liegen unter `src/chess_and_chains/ui/piece_assets/`. Die editierbaren V.02-Prüfbögen liegen unter `design/source/chess_pieces/`.
 - `assets/boards/source/` – Brettmuster/Texture/Shape-Quellen, `assets/boards/runtime/` – optimierte Assets.
 - `assets/branding/` – eigene Wort- und Bildmarke, App-Icons, Favicon, Avatar-Exports.
 - `marketing/source/` – editable Social/Website/Store-Assets, `marketing/exports/` – erzeugte Ausgabe (aus .gitignore).
@@ -56,7 +56,7 @@ Siehe Q-003, Q-004, Q-005, Q-014, Q-020. Exakte Brandfarben, Logo und Schriften 
    Taktikmotive und Lernpfade; keine Kettenillustration oder fremde
    Produktanordnung kopieren.
 
-Kein Farbwert, Logo, Font oder Stil ist damit entschieden.
+Dieser Vergleich dokumentiert die Exploration. Den gewählten Stand beschreibt [Connected System](CONNECTED_SYSTEM.md).
 
 ## Textuelle Wireframes (Vorschläge)
 

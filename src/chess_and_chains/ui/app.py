@@ -20,6 +20,7 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from typing import Callable, Sequence
 
+from .. import DISPLAY_VERSION
 from ..chess import ChessError, ChessGame, Color, GameStatus, Move, export_pgn, square_name, to_san
 from ..engines.bot import EngineConfig, EngineConfigError, MoveProvider, UCIBot, probe_engine, resolve_engine_config
 from ..engines.presets import BotPreset, load_presets
@@ -187,7 +188,7 @@ class ChessApp:
         t = self.t
         # Child widgets can outlive the window while a worker is winding down.
         app = proxy(self)
-        self.root.title(t("app.window_title"))
+        self.root.title(f'{t("app.window_title")} · {DISPLAY_VERSION}')
         self._window_icon = brand_image(self.root, "app-icon")
         self.root.iconphoto(True, self._window_icon)
         self.root.configure(background=WINDOW)

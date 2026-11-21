@@ -1,5 +1,15 @@
 # Changelog
 
+## V.0.0.1 – Development snapshot (2026-11-21)
+
+- Establish `0.0.1` as the package version and `V.0.0.1` as the display label. The CLI and window title expose the same version as the package metadata. Foundation CI checks the manifest and current documentation.
+- Integrate Connected System branding and the optically balanced V.02 front-view pieces with stronger shading for dark pieces. Keep the separate top-view set, editable SVG masters, offline PNG fallbacks, and the Tk 9 session preview for custom SVG boards.
+- Test configured local UCI engines through `readyok`, show the advertised name and option count, and clean up the process and the Tk poll independently.
+- Stabilize Tk test cleanup and enable crash diagnostics. Branch, PR and post-merge CI for PR #7 passed on Windows, macOS and Linux.
+- Reconcile the current documentation with the code, archive prior planning snapshots, and record the next tasks and owner decisions. This is a development version.
+
+The dated entries below preserve the development history incorporated into this snapshot.
+
 ## Unreleased – Saved game endings and history (2026-11-20)
 
 - Keep local resignation and draw-claim details when reopening a game. SQLite v3 migrates existing libraries after creating a backup.
