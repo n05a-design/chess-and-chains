@@ -61,6 +61,15 @@ def default_provider_factory(preset: BotPreset, settings: Settings) -> MoveProvi
     return UCIBot(config, preset)
 
 
+def _bind_button_enter(button: tk.Button | ttk.Button) -> None:
+    def invoke(_event: tk.Event) -> str:
+        button.invoke()
+        return "break"
+
+    button.bind("<Return>", invoke)
+    button.bind("<KP_Enter>", invoke)
+
+
 class TabRail(tk.Frame):
     """The three workspace views, with native keyboard-focusable controls."""
 
@@ -522,12 +531,7 @@ class ChessApp:
             padx=10, pady=7, anchor="w", font=("TkDefaultFont", FONT_SIZES["body"], "bold"),
         )
 
-        def invoke(_event: tk.Event) -> str:
-            button.invoke()
-            return "break"
-
-        button.bind("<Return>", invoke)
-        button.bind("<KP_Enter>", invoke)
+        _bind_button_enter(button)
         return button
 
     # ----- panels / modes ----------------------------------------------
@@ -685,6 +689,7 @@ class ChessApp:
         empty: str = "",
         actions: Sequence[tuple[str, Callable[[int | None], None], bool]] = (),
     ) -> int | None:
+        previous_focus = self.root.focus_lastfor()
         dialog = tk.Toplevel(self.root)
         dialog.title(title)
         dialog.transient(self.root)
@@ -699,28 +704,40 @@ class ChessApp:
         chosen = None
         action = None
 
+        def close(_event: tk.Event | None = None) -> None:
+            # Return focus while the dialog still owns it. Tk also remembers the
+            # target in the parent if the window manager has deactivated the app.
+            if previous_focus is not None and previous_focus.winfo_exists() and previous_focus.winfo_viewable():
+                previous_focus.focus_set()
+            dialog.destroy()
+
         def accept(callback: Callable[[int | None], None] | None = None) -> None:
             nonlocal chosen, action
             index = selection.current()
             chosen = index if index >= 0 else None
             action = callback
-            dialog.destroy()
+            close()
 
         confirm_button = ttk.Button(content, text=confirm, command=accept, state="normal" if labels else "disabled")
         confirm_button.grid(row=1, column=0, padx=4)
+        _bind_button_enter(confirm_button)
+        initial_focus: tk.Widget | None = selection if labels else None
         for column, (label, callback, requires_selection) in enumerate(actions, 1):
             state = "disabled" if requires_selection and not labels else "normal"
             button = ttk.Button(content, text=label, command=lambda callback=callback: accept(callback), state=state)
             button.grid(row=1, column=column, padx=4)
-            if not labels and not requires_selection:
-                button.focus_set()
-        ttk.Button(content, text=self.t("button.cancel"), command=dialog.destroy).grid(
-            row=1, column=len(actions) + 1, padx=4,
-        )
-        dialog.bind("<Escape>", lambda _event: dialog.destroy())
+            _bind_button_enter(button)
+            if initial_focus is None and state == "normal":
+                initial_focus = button
+        cancel_button = ttk.Button(content, text=self.t("button.cancel"), command=close)
+        cancel_button.grid(row=1, column=len(actions) + 1, padx=4)
+        _bind_button_enter(cancel_button)
+        dialog.bind("<Escape>", close)
+        dialog.protocol("WM_DELETE_WINDOW", close)
         if labels:
             selection.bind("<Return>", lambda _event: accept())
-            selection.focus_set()
+            selection.bind("<KP_Enter>", lambda _event: accept())
+        (initial_focus or cancel_button).focus_set()
         dialog.grab_set()
         self.root.wait_window(dialog)
         if action is not None:

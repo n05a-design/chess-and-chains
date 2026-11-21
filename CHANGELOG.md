@@ -17,6 +17,7 @@
 - Add optional quality thresholds and rejection reasons to the offline puzzle builder. Record the origin of each puzzle and correct the source metadata of the bundled demo pack.
 - Add an optional seed for repeatable selection from a fully validated puzzle source. Report the source checksum and the number of selected puzzles.
 - Keep valid CSV records around malformed UTF-8 bytes and verify the checksums of the archived OneDrive snapshots in Foundation CI.
+- Support Enter on library and draw-claim dialog buttons and restore the previous keyboard focus when the chooser closes.
 
 The dated entries below preserve the development history incorporated into this snapshot.
 

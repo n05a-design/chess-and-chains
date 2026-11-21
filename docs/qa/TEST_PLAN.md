@@ -1,12 +1,12 @@
 # QA-Matrix – Foundation / Produkt
 
-Stand **V.0.0.1**. Der Merge von PR #10 auf `main` bestand die
+Stand **V.0.0.1**. Der Merge von PR #11 auf `main` bestand die
 Plattformmatrix. Der Entwicklungsabgleich belegt die Prüfung der
 Folgecommits, das installierte Wheel und den Vergleich mit OneDrive.
 Die native Windows-Probe für PGN-Dateidialoge, Backup/Restore und
 Brettfokus ist separat dokumentiert.
 [Entwicklungsabgleich](../reports/2026-11-21_W11-entwicklungsabgleich.md) ·
-[Paketabgleich](../reports/2026-11-21_W00-W12-paketabgleich.md)
+[W10-Dialogtastatur](../reports/2026-11-21_W10-dialogtastatur.md)
 
 | Bereich | Testmodul | Umfang des automatisierten Nachweises |
 | --- | --- | --- |
@@ -20,7 +20,7 @@ Brettfokus ist separat dokumentiert.
 | UI | `test_board_ui`, `test_app_integration` | Brett, Umwandlung, Tastaturfokus, Partie/Rätsel, V.02 und Draufsicht, PNG-Fallback sowie UCI-Dialog. Nativ auf Windows/macOS und unter Xvfb auf Linux, jeweils Python 3.11 und 3.14 |
 | i18n | `test_i18n` | Schlüssel-/Platzhalter-Parität, UI-Abdeckung, eindeutige DE/EN-Bezeichnungen aller Demo-Themen und Fallback für zusätzliche Kennungen |
 | Security | `scripts/check_policy.py` | Kein `shell=True`, keine Netzwerk-Imports, keine Engine-Binaries |
-| Bedienqualität | `test_app_integration` und Windows-Tk-Probe | Feldfokus, Zug, Unterverwandlung per Eingabetaste und Tab-Wechsel als Regressionen. Zugliste, Bibliotheksdialog und Puzzle mit Tk-Textskalierung 100/150/200 % geprüft. Sichtprobe mit 96 nativen Fenster-DPI. Weitere native DPI-/Screenreader-Prüfungen offen. |
+| Bedienqualität | `test_app_integration` und Windows-Tk-Probe | Feldfokus, Zug, Unterverwandlung per Eingabetaste und Tab-Wechsel als Regressionen. PGN-Import, Export und Abbruch über den Tastaturdialog samt Fokusrückkehr geprüft. Zugliste, Bibliotheksdialog und Puzzle mit Tk-Textskalierung 100/150/200 % geprüft. Sichtprobe mit 96 nativen Fenster-DPI. Weitere native DPI-/Screenreader-Prüfungen offen. |
 | Release | – | NICHT IMPLEMENTIERT |
 
 Lokale Gesamtläufe und Abgrenzung zur CI der Merge-Basis stehen in der [N02-Übergabe](../reports/2026-11-20_N02-follow-up.md).
