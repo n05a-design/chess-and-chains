@@ -626,6 +626,12 @@ class StorageAndLocaleUiTests(AppTestCase):
                 pending = None
                 sent = False
                 keypad_bound = False
+                timed_out = False
+
+                def close_after_timeout(dialog):
+                    nonlocal timed_out
+                    timed_out = True
+                    dialog.destroy()
 
                 def press_when_focused():
                     nonlocal pending, sent, keypad_bound
@@ -635,7 +641,7 @@ class StorageAndLocaleUiTests(AppTestCase):
                     button = next(child for child in content.winfo_children()
                                   if isinstance(child, ttk.Button) and child.cget("text") == label)
                     if time.monotonic() >= deadline:
-                        dialog.destroy()
+                        close_after_timeout(dialog)
                     elif not button.winfo_viewable():
                         pending = self.root.after(10, press_when_focused)
                     elif self.root.focus_get() is not button:
@@ -645,7 +651,7 @@ class StorageAndLocaleUiTests(AppTestCase):
                         sent = True
                         keypad_bound = bool(button.bind("<KP_Enter>"))
                         button.event_generate(f"<{key}>", when="tail")
-                        pending = self.root.after(1000, dialog.destroy)
+                        pending = self.root.after(1000, close_after_timeout, dialog)
 
                 pending = self.root.after(0, press_when_focused)
                 try:
@@ -654,6 +660,7 @@ class StorageAndLocaleUiTests(AppTestCase):
                     if pending is not None:
                         self.root.after_cancel(pending)
                 self.assertTrue(sent, f"{label} did not receive focus")
+                self.assertFalse(timed_out, f"{key} did not close the chooser for {label}")
                 self.assertTrue(keypad_bound, f"{label} has no keypad Enter binding")
                 self.pump_until(lambda: self.root.focus_get() is app.library_button)
 

@@ -10,6 +10,8 @@ Hier nur tatsächlich ausgeführte Prüfberichte/Agentenübergaben unter `YYYY-M
 
 [W10 – Rätselthemen in DE und EN](2026-11-21_W10-raetselthemen.md)
 
+[W10 – Bibliotheksdialog per Tastatur bedienen](2026-11-21_W10-dialogtastatur.md)
+
 [W08 – Qualitätsfilter und Herkunft der Rätselpakete](2026-11-21_W08-puzzle-qualitaetsfilter.md)
 
 [W08 – Reproduzierbare Auswahl der Rätsel](2026-11-21_W08-puzzle-seed.md)

@@ -268,19 +268,20 @@
       "gate": "DE/EN-Katalogparität, Keyboard-/Kontrast-/Scaling-Abnahmen",
       "phase": "F4",
       "status": "TESTED",
-      "scope": "DE/EN catalog, board keyboard flow and focus feedback through PR #10 CI. Local Windows coverage for DE/EN demo puzzle themes and Tk text scaling.",
+      "scope": "DE/EN catalog, puzzle labels and board keyboard flow through PR #11 CI. Local Windows coverage for keyboard use and focus restoration in the library, plus Tk text scaling.",
       "status_evidence": [
         "docs/reports/2026-11-20_N02_functional-core.md",
         "src/chess_and_chains/i18n/catalog.py",
         "tests/test_i18n.py",
         "tests/test_app_integration.py",
         "docs/reports/2026-11-21_W10-raetselthemen.md",
+        "docs/reports/2026-11-21_W10-dialogtastatur.md",
         "docs/reports/2026-11-21_W10-W11-tastatur-und-skalierung.md",
         "docs/reports/2026-11-21_W00-W12-paketabgleich.md"
       ],
       "open_gate_items": [
         "Native 150/200 percent scaling, full visual review, and screen reader acceptance",
-        "Cross-platform GUI CI for the local puzzle theme localization"
+        "Cross-platform GUI CI for the local chooser keyboard change"
       ]
     },
     {
@@ -291,7 +292,7 @@
       "gate": "Echte CI/OS/Offline-/Lieferartefakt-Belege, offene Fehler, keine erfundenen Gates",
       "phase": "F5",
       "status": "TESTED",
-      "scope": "PR #10 passed the Windows, macOS and Linux matrix on push, PR and main. Follow-up evidence covers Windows tests, offline wheel installation and the contents and checksums of the OneDrive archive.",
+      "scope": "PR #11 passed the Windows, macOS and Linux matrix on push, PR and main. Local evidence includes an offline wheel, OneDrive archive checksums and the chooser keyboard follow-up on Windows.",
       "status_evidence": [
         ".github/workflows/checks.yml",
         "tests/test_foundation.py",
@@ -302,12 +303,13 @@
         "docs/reports/2026-11-21_W10-W11-tastatur-und-skalierung.md",
         "docs/reports/2026-11-21_W11-v0.0.1-standsaudit.md",
         "docs/reports/2026-11-21_W11-entwicklungsabgleich.md",
+        "docs/reports/2026-11-21_W10-dialogtastatur.md",
         "docs/reports/2026-11-21_W11-ci-nach-pr6.md",
         "docs/reports/2026-11-20_N02_functional-core.md",
         "docs/reports/2026-11-20_N02-follow-up.md"
       ],
       "open_gate_items": [
-        "Cross-platform CI for the local follow-up after the PR #10 head",
+        "Cross-platform CI for the local follow-up after the PR #11 merge",
         "Manual platform, offline installation and distributable artifact acceptance"
       ]
     },
