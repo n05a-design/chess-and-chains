@@ -1,6 +1,6 @@
 # W06 – Marmoransicht im Tk-Spielfenster
 
-**V.0.0.1 · 21.11.2026 · KI-gestützt.** Implementierung
+**V.0.0.1 · 21.–22.11.2026 · KI-gestützt.** Implementierung
 `ce622e2c794c2d411a20c3f9d71e300fba13310a` auf
 `codex/chess-chains-marmor-dateiaustausch-wiedergabe`.
 
@@ -32,6 +32,19 @@ Die fokussierte Tcl/Tk-Suite mit Python 3.14.7 bestand mit 77 Tests.
 Der erste vollständige Windows-Lauf meldete einen falsch übertragenen
 SHA-256-Wert der hellen Bretttextur im Assetregister. Der Wert in Register
 und Provenienz wurde anhand der tatsächlich gebauten PNG-Datei korrigiert.
+
+- `python -m unittest discover -s tests -q` auf `a4d0a50` bestand mit
+  251 Tests und Exitcode 0 (104,004 s). Umgebung Windows 11, Python
+  3.15.1 und Tk 9.0.4, verpflichtendes Display, `ResourceWarning` als
+  Fehler und `PYTHONFAULTHANDLER=1`.
+- Die neu erzeugten drei Texturen waren bytegleich mit den committeten
+  Laufzeitdateien. Struktur-, Link-, Policy-, Kompilierungs- und
+  Git-Diff-Prüfungen bestanden.
+- Ein offline gebautes und getrennt installiertes Wheel aus `a4d0a50`
+  enthielt alle drei Texturen und die Provenienz. `--headless-check`
+  sowie Wechsel, Drag-and-drop und Rückgängig im installierten Fenster
+  bestanden. Wheel-SHA-256
+  `7a12f5529a89f1229b4072b0c213913b350ccee97bc5692831f06fdb15a14c47`.
 
 ## Übergabe
 
