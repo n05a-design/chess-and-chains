@@ -28,7 +28,7 @@ from ..engines.presets import BotPreset, load_presets
 from ..engines.uci import UCIEngineError
 from ..game import BotStatus, GameController, GameSetup, GameView, PlayMode
 from ..i18n import Translator
-from ..puzzles import DEMO_PACK_ID, PackError, PackLibrary, PuzzlePack, PuzzleSession, Verdict, load_demo_pack
+from ..puzzles import DEMO_PACK_ID, PackError, PackLibrary, Puzzle, PuzzlePack, PuzzleSession, Verdict, load_demo_pack
 from ..storage import Database, DataLayout, Settings, SettingsError, StorageError, load_settings, save_settings
 from .atlas import PuzzleAtlas
 from .board import BoardCanvas, Orientation
@@ -156,6 +156,7 @@ class ChessApp:
         self.puzzle: PuzzleSession | None = None
         self._puzzle_recorded = False
         self._solved_puzzle_ids: set[str] = set()
+        self._review_puzzle_ids: set[str] = set()
         self._provider_stale = False
         self._game_headers: dict[str, str] = {}
         self._closed = False
@@ -170,6 +171,7 @@ class ChessApp:
         self.puzzle_meta_text = tk.StringVar(root)
         self.puzzle_feedback_text = tk.StringVar(root)
         self.puzzle_progress_text = tk.StringVar(root)
+        self.puzzle_history_text = tk.StringVar(root)
         self.puzzle_pack_text = tk.StringVar(root)
         self.puzzle_pack_feedback = tk.StringVar(root)
         self.mode_var = tk.StringVar(root, value=self.settings.play_mode)
@@ -489,7 +491,7 @@ class ChessApp:
         self.next_puzzle_button = self._button(panel, t("button.next_puzzle"), self._next_puzzle, role="new")
         self.next_puzzle_button.grid(row=6, column=0, sticky="ew", pady=3)
         filters = tk.Frame(panel, background=ACETATE)
-        filters.grid(row=7, column=0, sticky="ew", pady=(8, 0))
+        filters.grid(row=8, column=0, sticky="ew", pady=(8, 0))
         filters.grid_columnconfigure(1, weight=1)
         self._label(filters, text=t("puzzle.filter_theme"), role="caption").grid(row=0, column=0, sticky="w")
         self._label(filters, text=t("puzzle.filter_rating"), role="caption").grid(row=1, column=0, sticky="w")
@@ -504,25 +506,36 @@ class ChessApp:
         self.puzzle_rating_filter = ttk.Combobox(
             filters, state="readonly", values=(t("puzzle.all_ratings"), *rating_labels), width=12,
         )
-        for row, dropdown in enumerate((self.puzzle_theme_filter, self.puzzle_rating_filter)):
+        self.puzzle_status_filter = ttk.Combobox(
+            filters, state="readonly",
+            values=(t("puzzle.status_all"), t("puzzle.status_open"), t("puzzle.status_review")), width=12,
+        )
+        dropdowns = (self.puzzle_theme_filter, self.puzzle_rating_filter)
+        if self.db is not None:
+            self._label(filters, text=t("puzzle.filter_status"), role="caption").grid(row=2, column=0, sticky="w")
+            dropdowns += (self.puzzle_status_filter,)
+        for row, dropdown in enumerate(dropdowns):
             dropdown.grid(row=row, column=1, sticky="ew", padx=(8, 0), pady=2)
             dropdown.current(0)
             dropdown.bind("<<ComboboxSelected>>", self._apply_puzzle_filters)
         self.atlas_section = tk.Frame(panel, background=PAPER, padx=6, pady=4)
-        self.atlas_section.grid(row=8, column=0, sticky="ew", pady=(12, 0))
+        self.atlas_section.grid(row=9, column=0, sticky="ew", pady=(12, 0))
         tk.Label(self.atlas_section, text="Atlas of Moves", background=PAPER, foreground=INK, anchor="w",
                  font=("TkDefaultFont", FONT_SIZES["caption"], "bold"), padx=6, pady=3).pack(fill="x")
         self.puzzle_atlas = PuzzleAtlas(self.atlas_section)
         self.puzzle_atlas.pack(fill="x")
         if self.db is not None:
             self._label(panel, var=self.puzzle_progress_text, role="caption", muted=True).grid(
-                row=9, column=0, sticky="ew", pady=(6, 0),
+                row=10, column=0, sticky="ew", pady=(6, 0),
             )
+            self.puzzle_history_label = self._label(panel, var=self.puzzle_history_text, role="caption", muted=True)
+            self.puzzle_history_label.grid(row=7, column=0, sticky="ew", pady=(6, 0))
+            self.puzzle_history_label.grid_remove()
         self._label(panel, var=self.puzzle_pack_text, role="caption", muted=True).grid(
-            row=10, column=0, sticky="ew", pady=(8, 0),
+            row=11, column=0, sticky="ew", pady=(8, 0),
         )
         buttons = (self.puzzle_pack_button, self.hint_button, self.solution_button, self.next_puzzle_button)
-        controls = (*buttons, self.puzzle_theme_filter, self.puzzle_rating_filter)
+        controls = (*buttons, *dropdowns)
 
         def resize_buttons(width: int) -> None:
             for button in buttons:
@@ -1052,10 +1065,14 @@ class ChessApp:
         self.puzzle_theme_filter.configure(values=(self.t("puzzle.all_themes"), *labels))
         self.puzzle_theme_filter.current(0)
         self.puzzle_rating_filter.current(0)
+        self.puzzle_status_filter.current(0)
+        self._solved_puzzle_ids.clear()
+        self._review_puzzle_ids.clear()
         self.puzzle = None
         self.puzzle_index = 0
         self.puzzle_pack_text.set(self._pack_description())
         self._set_pack_feedback("")
+        self._update_puzzle_history()
         self._update_puzzle_progress()
         if self.active_panel == "puzzles":
             self._start_puzzle(0)
@@ -1065,16 +1082,22 @@ class ChessApp:
             except (OSError, SettingsError):
                 self._set_pack_feedback(self.t("puzzle.pack_preference_error"))
 
-    def _apply_puzzle_filters(self, _event: tk.Event | None = None) -> None:
+    def _matching_puzzles(self) -> tuple[Puzzle, ...]:
         theme_choice = self.puzzle_theme_filter.current()
         theme = self._puzzle_themes[theme_choice - 1] if theme_choice > 0 else None
         rating_choice = self.puzzle_rating_filter.current()
         lower, upper = PUZZLE_RATING_RANGES[rating_choice - 1] if rating_choice > 0 else (0, None)
-        self._puzzle_selection = tuple(
+        status_choice = self.puzzle_status_filter.current()
+        return tuple(
             puzzle for puzzle in self.pack.puzzles
             if (not theme or theme in puzzle.themes)
             and puzzle.rating >= lower and (upper is None or puzzle.rating <= upper)
+            and (status_choice != 1 or puzzle.puzzle_id not in self._solved_puzzle_ids)
+            and (status_choice != 2 or puzzle.puzzle_id in self._review_puzzle_ids)
         )
+
+    def _apply_puzzle_filters(self, _event: tk.Event | None = None) -> None:
+        self._puzzle_selection = self._matching_puzzles()
         self._update_puzzle_progress()
         if self.puzzle is not None and self.puzzle.puzzle in self._puzzle_selection:
             self.puzzle_index = self._puzzle_selection.index(self.puzzle.puzzle)
@@ -1092,25 +1115,65 @@ class ChessApp:
         else:
             self.puzzle_index = 0
             self.puzzle = None
+        self._update_puzzle_history()
         self._refresh()
 
     def _next_puzzle(self) -> None:
-        self._start_puzzle(self.puzzle_index + 1)
+        following = self.puzzle_index + 1
+        if self.puzzle_status_filter.current() > 0 and self.puzzle_status_filter.instate(("!disabled",)):
+            previous = self._puzzle_selection
+            self._puzzle_selection = self._matching_puzzles()
+            indexes = {puzzle.puzzle_id: index for index, puzzle in enumerate(self._puzzle_selection)}
+            following = next((indexes[puzzle.puzzle_id] for puzzle in previous[following:] + previous[:following]
+                              if puzzle.puzzle_id in indexes), 0)
+            self._update_puzzle_progress()
+        self._start_puzzle(following)
 
     def _update_puzzle_progress(self) -> None:
         if self.db is None:
             return
         try:
-            solved = self.db.solved_puzzle_ids(self.pack.manifest.pack_id)
+            solved, review = self.db.puzzle_training_ids(self.pack.manifest.pack_id)
         except sqlite3.Error:
-            self._solved_puzzle_ids.clear()
+            self.puzzle_status_filter.configure(state="disabled")
             self.puzzle_progress_text.set(self.t("puzzle.progress_unavailable"))
             return
         self._solved_puzzle_ids = solved
+        self._review_puzzle_ids = review
+        self.puzzle_status_filter.configure(state="readonly")
         count = sum(puzzle.puzzle_id in solved for puzzle in self._puzzle_selection)
         self.puzzle_progress_text.set(
             self.t("puzzle.progress", solved=count, count=len(self._puzzle_selection)) if self._puzzle_selection else ""
         )
+
+    def _update_puzzle_history(self) -> None:
+        if self.db is None:
+            return
+        self.puzzle_history_text.set("")
+        self.puzzle_history_label.grid_remove()
+        if self.puzzle is None:
+            return
+        pack_id, puzzle_id = self.pack.manifest.pack_id, self.puzzle.puzzle.puzzle_id
+        try:
+            progress = self.db.puzzle_progress(pack_id, puzzle_id)
+            last = self.db.latest_puzzle_attempt(pack_id, puzzle_id)
+        except sqlite3.Error:
+            return
+        if progress is None or last is None:
+            return
+
+        def duration(milliseconds: int | None) -> str:
+            if milliseconds is None:
+                return "–"
+            minutes, seconds = divmod(milliseconds // 1000, 60)
+            return f"{minutes}:{seconds:02d}"
+
+        outcome = self.t("puzzle.attempt_solved" if last.solved else "puzzle.attempt_unsolved")
+        self.puzzle_history_text.set(self.t(
+            "puzzle.history", count=progress.attempts, best=duration(progress.best_duration_ms),
+            outcome=outcome, mistakes=last.mistakes, hints=last.hints_used, time=duration(last.duration_ms),
+        ))
+        self.puzzle_history_label.grid()
 
     def _puzzle_move(self, move: Move) -> None:
         session = self.puzzle
@@ -1167,6 +1230,7 @@ class ChessApp:
             return
         self._puzzle_recorded = True
         self._update_puzzle_progress()
+        self._update_puzzle_history()
 
     def _open_engine_dialog(self) -> None:
         EngineDialog(self)

@@ -145,6 +145,14 @@ class PuzzleProgress:
 
 
 @dataclass(frozen=True, slots=True)
+class PuzzleAttempt:
+    solved: bool
+    mistakes: int
+    hints_used: int
+    duration_ms: int | None
+
+
+@dataclass(frozen=True, slots=True)
 class Statistics:
     games_saved: int
     puzzles_attempted: int
@@ -434,6 +442,26 @@ class Database:
         return {r[0] for r in self._conn.execute(
             "SELECT puzzle_id FROM puzzle_progress WHERE pack_id = ? AND solved = 1", (pack_id,)
         )}
+
+    def puzzle_training_ids(self, pack_id: str) -> tuple[set[str], set[str]]:
+        """Return solved ids and attempted ids still missing a clean solve."""
+        solved: set[str] = set()
+        review: set[str] = set()
+        for puzzle_id, was_solved, clean_solves in self._conn.execute(
+            "SELECT puzzle_id, solved, clean_solves FROM puzzle_progress WHERE pack_id = ?", (pack_id,),
+        ):
+            if was_solved:
+                solved.add(puzzle_id)
+            if not clean_solves:
+                review.add(puzzle_id)
+        return solved, review
+
+    def latest_puzzle_attempt(self, pack_id: str, puzzle_id: str) -> PuzzleAttempt | None:
+        row = self._conn.execute(
+            "SELECT solved, mistakes, hints_used, duration_ms FROM puzzle_attempts"
+            " WHERE pack_id = ? AND puzzle_id = ? ORDER BY id DESC LIMIT 1", (pack_id, puzzle_id),
+        ).fetchone()
+        return PuzzleAttempt(bool(row[0]), row[1], row[2], row[3]) if row is not None else None
 
     def statistics(self) -> Statistics:
         games = self._conn.execute("SELECT COUNT(*) FROM games").fetchone()[0]

@@ -316,6 +316,61 @@ class BotVerticalSliceTests(AppTestCase):
 
 
 class PuzzleUiTests(AppTestCase):
+    def test_training_filter_uses_saved_attempts_and_retires_clean_solves_on_next(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            layout = DataLayout(Path(tmp) / "data")
+            app = self.make_app(data_layout=layout, locale="de")
+            first, second, third, *_ = app.pack.puzzles
+            pack_id = app.pack.manifest.pack_id
+            try:
+                for puzzle, solved, mistakes, hints in (
+                    (first, False, 2, 1), (second, True, 0, 0), (third, True, 0, 1),
+                ):
+                    app.db.record_puzzle_attempt(pack_id, puzzle.puzzle_id, solved=solved, mistakes=mistakes,
+                                                 hints_used=hints, duration_ms=8000)
+                app.db.record_puzzle_attempt("different-pack", first.puzzle_id, solved=True, mistakes=0,
+                                             hints_used=0, duration_ms=1000)
+                app.tab_rail.set_active("puzzles")
+
+                def select(value):
+                    app.puzzle_status_filter.current(value)
+                    app.puzzle_status_filter.event_generate("<<ComboboxSelected>>", when="tail")
+                    self.root.update()
+
+                select(1)  # Unsolved, including revealed and never attempted.
+                self.assertIn(first, app._puzzle_selection)
+                self.assertNotIn(third, app._puzzle_selection)
+                select(2)  # Review only attempted puzzles without a clean solve.
+                self.assertEqual(app._puzzle_selection, (first, third))
+                history = app.puzzle_history_text.get()
+                self.assertIn("Zuletzt: ungelöst", history)
+                self.assertIn("Fehler: 2 · Hinweise: 1 · Zeit: 0:08", history)
+                app._play_move(app.puzzle.expected_move)
+                self.assertTrue(app.puzzle.finished)
+                self.assertIs(app.puzzle.puzzle, first)
+                self.assertIn("Versuche: 2", app.puzzle_history_text.get())
+                app.next_puzzle_button.invoke()
+                self.assertEqual(app._puzzle_selection, (third,))
+                self.assertIs(app.puzzle.puzzle, third)
+                while not app.puzzle.finished:
+                    app._play_move(app.puzzle.expected_move)
+                app.next_puzzle_button.invoke()
+                self.assertIsNone(app.puzzle)
+                self.assertEqual(app.puzzle_history_text.get(), "")
+                self.assertEqual(app.next_puzzle_button.cget("state"), tk.DISABLED)
+                select(0)
+                self.assertEqual(app._puzzle_selection, app.pack.puzzles)
+            finally:
+                app.close()
+
+            reopened = self.make_app(data_layout=layout, locale="de")
+            try:
+                reopened.tab_rail.set_active("puzzles")
+                self.assertIn("Versuche: 2", reopened.puzzle_history_text.get())
+                self.assertIn("Zuletzt: gelöst", reopened.puzzle_history_text.get())
+            finally:
+                reopened.close()
+
     def test_local_pack_import_switch_and_restart_keep_progress_separate(self):
         root = Path(self.enterContext(tempfile.TemporaryDirectory()))
         layout = DataLayout(root / "data")
