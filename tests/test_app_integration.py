@@ -317,6 +317,39 @@ class BotVerticalSliceTests(AppTestCase):
 
 
 class PuzzleUiTests(AppTestCase):
+    def test_staged_hints_and_retry_keep_completed_attempts_separate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            app = self.make_app(data_layout=DataLayout(Path(tmp) / "data"), locale="de")
+            try:
+                app.tab_rail.set_active("puzzles")
+                session = app.puzzle
+                first_position = session.state
+                move = session.expected_move
+                app.hint_button.invoke()
+                self.assertEqual(app.board._hint_square, move.from_square)
+                self.assertEqual(app.hint_button.cget("text"), "Zielfeld zeigen")
+                app.hint_button.invoke()
+                self.assertEqual(app.board._hint_square, move.to_square)
+                self.assertEqual(session.hints_used, 2)
+                self.assertEqual(app.hint_button.cget("state"), tk.DISABLED)
+                with patch("chess_and_chains.ui.app.messagebox.askyesno", return_value=False):
+                    app.retry_puzzle_button.invoke()
+                self.assertIs(app.puzzle, session)
+                app._play_move(move)
+                first = app.db.latest_puzzle_attempt("demo", session.puzzle.puzzle_id)
+                self.assertEqual(first.hints_used, 2)
+
+                app.retry_puzzle_button.invoke()
+                self.assertEqual(app.puzzle.state, first_position)
+                self.assertEqual(app.puzzle.hints_used, 0)
+                self.assertIsNone(app.board._hint_square)
+                self.assertEqual(app.hint_button.cget("state"), tk.NORMAL)
+                app._play_move(app.puzzle.expected_move)
+                progress = app.db.puzzle_progress("demo", session.puzzle.puzzle_id)
+                self.assertEqual((progress.attempts, progress.clean_solves), (2, 1))
+            finally:
+                app.close()
+
     def test_training_filter_uses_saved_attempts_and_retires_clean_solves_on_next(self):
         with tempfile.TemporaryDirectory() as tmp:
             layout = DataLayout(Path(tmp) / "data")

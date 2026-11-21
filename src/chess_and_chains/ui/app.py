@@ -156,6 +156,7 @@ class ChessApp:
         self.puzzle_index = 0
         self.puzzle: PuzzleSession | None = None
         self._puzzle_recorded = False
+        self._puzzle_hint_stage = 0
         self._solved_puzzle_ids: set[str] = set()
         self._review_puzzle_ids: set[str] = set()
         self._provider_stale = False
@@ -242,11 +243,13 @@ class ChessApp:
         board_header = tk.Frame(board_sheet, background=ACETATE)
         board_header.grid(row=0, column=0, sticky="ew")
         board_header.columnconfigure(0, weight=1)
-        tk.Label(board_header, text=t("board.pieces"), background=ACETATE, foreground=INK,
-                 font=("TkDefaultFont", FONT_SIZES["caption"], "bold"), anchor="w", padx=14, pady=9,
-                 ).grid(row=0, column=0, sticky="ew")
+        board_title = tk.Label(board_header, text=t("board.pieces"), background=ACETATE, foreground=INK,
+                 font=("TkDefaultFont", FONT_SIZES["caption"], "bold"), anchor="w", justify="left", padx=14, pady=9,
+                 )
+        board_title.grid(row=0, column=0, sticky="ew")
         self.text_board_button = self._button(board_header, t("text_board.button"), self._open_text_board)
         self.text_board_button.grid(row=0, column=1, padx=(0, 12), pady=4)
+        board_title.bind("<Configure>", lambda event: board_title.configure(wraplength=max(1, event.width - 28)))
         self.board = BoardCanvas(board_sheet, lambda moves: app._on_move_requested(moves),
                                  lambda detail: app._on_selection_changed(detail),
                                  artwork=self._board_artwork, renderer=piece_renderer, translator=t)
@@ -493,8 +496,10 @@ class ChessApp:
         self.solution_button.grid(row=5, column=0, sticky="ew", pady=3)
         self.next_puzzle_button = self._button(panel, t("button.next_puzzle"), self._next_puzzle, role="new")
         self.next_puzzle_button.grid(row=6, column=0, sticky="ew", pady=3)
+        self.retry_puzzle_button = self._button(panel, t("puzzle.retry"), self._retry_puzzle)
+        self.retry_puzzle_button.grid(row=7, column=0, sticky="ew", pady=3)
         filters = tk.Frame(panel, background=ACETATE)
-        filters.grid(row=8, column=0, sticky="ew", pady=(8, 0))
+        filters.grid(row=9, column=0, sticky="ew", pady=(8, 0))
         filters.grid_columnconfigure(1, weight=1)
         self._label(filters, text=t("puzzle.filter_theme"), role="caption").grid(row=0, column=0, sticky="w")
         self._label(filters, text=t("puzzle.filter_rating"), role="caption").grid(row=1, column=0, sticky="w")
@@ -522,22 +527,23 @@ class ChessApp:
             dropdown.current(0)
             dropdown.bind("<<ComboboxSelected>>", self._apply_puzzle_filters)
         self.atlas_section = tk.Frame(panel, background=PAPER, padx=6, pady=4)
-        self.atlas_section.grid(row=9, column=0, sticky="ew", pady=(12, 0))
+        self.atlas_section.grid(row=10, column=0, sticky="ew", pady=(12, 0))
         tk.Label(self.atlas_section, text="Atlas of Moves", background=PAPER, foreground=INK, anchor="w",
                  font=("TkDefaultFont", FONT_SIZES["caption"], "bold"), padx=6, pady=3).pack(fill="x")
         self.puzzle_atlas = PuzzleAtlas(self.atlas_section)
         self.puzzle_atlas.pack(fill="x")
         if self.db is not None:
             self._label(panel, var=self.puzzle_progress_text, role="caption", muted=True).grid(
-                row=10, column=0, sticky="ew", pady=(6, 0),
+                row=11, column=0, sticky="ew", pady=(6, 0),
             )
             self.puzzle_history_label = self._label(panel, var=self.puzzle_history_text, role="caption", muted=True)
-            self.puzzle_history_label.grid(row=7, column=0, sticky="ew", pady=(6, 0))
+            self.puzzle_history_label.grid(row=8, column=0, sticky="ew", pady=(6, 0))
             self.puzzle_history_label.grid_remove()
         self._label(panel, var=self.puzzle_pack_text, role="caption", muted=True).grid(
-            row=11, column=0, sticky="ew", pady=(8, 0),
+            row=12, column=0, sticky="ew", pady=(8, 0),
         )
-        buttons = (self.puzzle_pack_button, self.hint_button, self.solution_button, self.next_puzzle_button)
+        buttons = (self.puzzle_pack_button, self.hint_button, self.solution_button,
+                   self.next_puzzle_button, self.retry_puzzle_button)
         controls = (*buttons, *dropdowns)
 
         def resize_buttons(width: int) -> None:
@@ -1114,6 +1120,7 @@ class ChessApp:
 
     def _start_puzzle(self, index: int) -> None:
         self._puzzle_recorded = False
+        self._puzzle_hint_stage = 0
         self.puzzle_feedback_text.set("")
         if self._puzzle_selection:
             self.puzzle_index = index % len(self._puzzle_selection)
@@ -1135,6 +1142,17 @@ class ChessApp:
                               if puzzle.puzzle_id in indexes), 0)
             self._update_puzzle_progress()
         self._start_puzzle(following)
+
+    def _retry_puzzle(self) -> None:
+        session = self.puzzle
+        if session is None:
+            return
+        has_work = session.mistakes or session.hints_used or len(session.game.moves) > 1
+        if not session.finished and has_work and not messagebox.askyesno(
+            self.t("puzzle.retry"), self.t("puzzle.retry_confirm"), parent=self.root, default=messagebox.NO,
+        ):
+            return
+        self._start_puzzle(self.puzzle_index)
 
     def _update_puzzle_progress(self) -> None:
         if self.db is None:
@@ -1189,6 +1207,7 @@ class ChessApp:
         before = session.state
         feedback = session.submit(move)
         if feedback.verdict is Verdict.CORRECT:
+            self._puzzle_hint_stage = 0
             after_player = session.game.rules.apply(before, move)
             reply = to_san(after_player, feedback.reply, session.game.rules)
             self.puzzle_feedback_text.set(self.t("puzzle.correct", reply=reply))
@@ -1202,12 +1221,23 @@ class ChessApp:
         self._refresh()
 
     def _puzzle_hint(self) -> None:
-        if self.puzzle is None:
+        if self.puzzle is None or self._puzzle_hint_stage >= 2:
             return
-        square = self.puzzle.hint()
-        if square is not None:
-            self.puzzle_feedback_text.set(self.t("puzzle.hint", square=square_name(square)))
-            self.board.set_hint(square)
+        move = self.puzzle.expected_move
+        if move is None:
+            return
+        destination = self._puzzle_hint_stage == 1
+        self.puzzle.hint(destination=destination)
+        self._puzzle_hint_stage += 1
+        if destination:
+            key = "puzzle.hint_promotion" if move.promotion is not None else "puzzle.hint_destination"
+            detail = {"source": square_name(move.from_square), "target": square_name(move.to_square)}
+            if move.promotion is not None:
+                detail["piece"] = self.t(f"piece.{move.promotion.name.lower()}")
+            self.puzzle_feedback_text.set(self.t(key, **detail))
+        else:
+            self.puzzle_feedback_text.set(self.t("puzzle.hint", square=square_name(move.from_square)))
+        self._refresh()
 
     def _puzzle_reveal(self) -> None:
         session = self.puzzle
@@ -1281,6 +1311,7 @@ class ChessApp:
         session = self.puzzle
         self.header_mode_text.set(self.t("header.mode.puzzle", pack=self.pack.manifest.pack_id.upper()))
         self.next_puzzle_button.configure(state=tk.NORMAL if session is not None else tk.DISABLED)
+        self.retry_puzzle_button.configure(state=tk.NORMAL if session is not None else tk.DISABLED)
         self.puzzle_atlas.update_route(self._puzzle_selection, self.puzzle_index, session, self._solved_puzzle_ids)
         if session is None:
             self.atlas_section.grid_remove()
@@ -1301,11 +1332,15 @@ class ChessApp:
                                          themes=", ".join(theme_labels)))
         legal = session.legal_moves()
         self.board.set_position(session.state, legal, session.last_move, session.game.rules.is_in_check(session.state))
+        move = session.expected_move
+        if move is not None and self._puzzle_hint_stage:
+            self.board.set_hint(move.to_square if self._puzzle_hint_stage == 2 else move.from_square)
         if self._text_board is not None:
             self._text_board.show_position(session.state, legal, self.puzzle_title_text.get(),
                                            self.puzzle_feedback_text.get())
         state = tk.DISABLED if session.finished else tk.NORMAL
-        self.hint_button.configure(state=state)
+        hint_label = self.t("puzzle.hint_target_button" if self._puzzle_hint_stage else "button.hint")
+        self.hint_button.configure(text=hint_label, state=state if self._puzzle_hint_stage < 2 else tk.DISABLED)
         self.solution_button.configure(state=state)
 
     def _refresh_game(self, view: GameView) -> None:
