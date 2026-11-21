@@ -58,6 +58,11 @@ Vorschlag zur Fortschreibung der historischen Zielmarken. Die Nummern gelten ers
 
 ## Abgeschlossen seit Einführung von V.0.0.1
 
+Das Puzzle Lab unterstützt Lernstandfilter, Versuchsverlauf, Neustart und
+gestufte Hinweise. Aktive und gespeicherte Partien lassen sich separat
+nachspielen. [Wiederholtraining](../reports/2026-11-21_W08-W09-wiederholtraining.md)
+· [Rätselneustart und Partiewiedergabe](../reports/2026-11-21_W08-W09-raetselneustart-partiewiedergabe.md)
+
 | PR | Inhalt | Merge-Lauf |
 | --- | --- | --- |
 | [#17](https://github.com/n05a-design/chess-and-chains/pull/17) | W05 · Tote Stellungen bei geschlossener Bauernsperre | [14/14](https://github.com/n05a-design/chess-and-chains/actions/runs/44932980772) |

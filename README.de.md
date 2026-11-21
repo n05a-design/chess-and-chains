@@ -45,6 +45,16 @@ In der Partiebibliothek können mehrere Suchbegriffe kombiniert werden,
 etwa ein Spielername und eine Veranstaltung. Enter wechselt vom Suchfeld
 zur Trefferliste. Öffnen und PGN-Export verwenden die ausgewählte Partie.
 
+Im Rätsellabor zeigt „Lernstand“ alle Aufgaben, ungelöste Aufgaben oder
+bereits versuchte Aufgaben ohne fehlerfreie Lösung. Pro Aufgabe bleiben
+Versuchsanzahl, beste Lösungszeit und die Angaben zum letzten Versuch
+lokal verfügbar.
+
+„Rätsel neu starten“ setzt dieselbe Aufgabe auf die Startstellung nach dem
+Aufbauzug zurück. Hinweise zeigen zuerst die Figur und dann das Zielfeld.
+Unter „Züge“ oder in der Partiebibliothek öffnet „Partie nachspielen…“ eine
+eigene Ansicht. Die Zugliste und die Links-/Rechts-Tasten wechseln die Stellung.
+
 ## Entwicklerstart
 
 ```bash

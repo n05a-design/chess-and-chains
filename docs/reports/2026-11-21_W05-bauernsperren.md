@@ -47,5 +47,11 @@ zurücknehmen, ohne Nutzerdaten umzuschreiben.
 
 ## Übergabe
 
-1. Plattformmatrix nach beauftragter Veröffentlichung ausführen.
-2. Weitere Regelfälle für verblockte Stellungen erfassen.
+[PR #17](https://github.com/n05a-design/chess-and-chains/pull/17) ist in
+`main`. [Push](https://github.com/n05a-design/chess-and-chains/actions/runs/44932609420),
+[PR](https://github.com/n05a-design/chess-and-chains/actions/runs/44932613717)
+und [Merge-Lauf](https://github.com/n05a-design/chess-and-chains/actions/runs/44932980772)
+bestanden je 14 Jobs. Die vier neuen Regelfälle liefen unter macOS mit
+Python 3.11 und 3.14 erfolgreich.
+
+Weitere Regelfälle für verblockte Stellungen bleiben Teil der Roadmap.

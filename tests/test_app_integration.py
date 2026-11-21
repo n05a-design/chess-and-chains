@@ -28,6 +28,7 @@ from chess_and_chains.storage import DataLayout, load_settings, update_settings 
 from chess_and_chains.ui.app import ChessApp, EngineDialog  # noqa: E402
 from chess_and_chains.ui.branding import brand_image  # noqa: E402
 from chess_and_chains.ui.dialogs import PositionDialog  # noqa: E402
+from chess_and_chains.ui.replay import ReplayDialog  # noqa: E402
 from chess_and_chains.ui.text_board import TextBoardDialog  # noqa: E402
 from chess_and_chains.ui.pieces import (  # noqa: E402
     PIECE_FALLBACK_SIZES,
@@ -316,6 +317,96 @@ class BotVerticalSliceTests(AppTestCase):
 
 
 class PuzzleUiTests(AppTestCase):
+    def test_staged_hints_and_retry_keep_completed_attempts_separate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            app = self.make_app(data_layout=DataLayout(Path(tmp) / "data"), locale="de")
+            try:
+                app.tab_rail.set_active("puzzles")
+                session = app.puzzle
+                first_position = session.state
+                move = session.expected_move
+                app.hint_button.invoke()
+                self.assertEqual(app.board._hint_square, move.from_square)
+                self.assertEqual(app.hint_button.cget("text"), "Zielfeld zeigen")
+                app.hint_button.invoke()
+                self.assertEqual(app.board._hint_square, move.to_square)
+                self.assertEqual(session.hints_used, 2)
+                self.assertEqual(app.hint_button.cget("state"), tk.DISABLED)
+                with patch("chess_and_chains.ui.app.messagebox.askyesno", return_value=False):
+                    app.retry_puzzle_button.invoke()
+                self.assertIs(app.puzzle, session)
+                app._play_move(move)
+                first = app.db.latest_puzzle_attempt("demo", session.puzzle.puzzle_id)
+                self.assertEqual(first.hints_used, 2)
+
+                app.retry_puzzle_button.invoke()
+                self.assertEqual(app.puzzle.state, first_position)
+                self.assertEqual(app.puzzle.hints_used, 0)
+                self.assertIsNone(app.board._hint_square)
+                self.assertEqual(app.hint_button.cget("state"), tk.NORMAL)
+                app._play_move(app.puzzle.expected_move)
+                progress = app.db.puzzle_progress("demo", session.puzzle.puzzle_id)
+                self.assertEqual((progress.attempts, progress.clean_solves), (2, 1))
+            finally:
+                app.close()
+
+    def test_training_filter_uses_saved_attempts_and_retires_clean_solves_on_next(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            layout = DataLayout(Path(tmp) / "data")
+            app = self.make_app(data_layout=layout, locale="de")
+            first, second, third, *_ = app.pack.puzzles
+            pack_id = app.pack.manifest.pack_id
+            try:
+                for puzzle, solved, mistakes, hints in (
+                    (first, False, 2, 1), (second, True, 0, 0), (third, True, 0, 1),
+                ):
+                    app.db.record_puzzle_attempt(pack_id, puzzle.puzzle_id, solved=solved, mistakes=mistakes,
+                                                 hints_used=hints, duration_ms=8000)
+                app.db.record_puzzle_attempt("different-pack", first.puzzle_id, solved=True, mistakes=0,
+                                             hints_used=0, duration_ms=1000)
+                app.tab_rail.set_active("puzzles")
+                self.assertTrue(app.puzzle_status_filter.bind("<<ComboboxSelected>>"))
+
+                def select(value):
+                    app.puzzle_status_filter.current(value)
+                    # A withdrawn Aqua window cannot reliably deliver virtual selection events.
+                    app._apply_puzzle_filters()
+
+                select(1)  # Unsolved, including revealed and never attempted.
+                self.assertIn(first, app._puzzle_selection)
+                self.assertNotIn(third, app._puzzle_selection)
+                select(2)  # Review only attempted puzzles without a clean solve.
+                self.assertEqual(app._puzzle_selection, (first, third))
+                history = app.puzzle_history_text.get()
+                self.assertIn("Zuletzt: ungelöst", history)
+                self.assertIn("Fehler: 2 · Hinweise: 1 · Zeit: 0:08", history)
+                app._play_move(app.puzzle.expected_move)
+                self.assertTrue(app.puzzle.finished)
+                self.assertIs(app.puzzle.puzzle, first)
+                self.assertIn("Versuche: 2", app.puzzle_history_text.get())
+                app.next_puzzle_button.invoke()
+                self.assertEqual(app._puzzle_selection, (third,))
+                self.assertIs(app.puzzle.puzzle, third)
+                for move in third.solution[::2]:
+                    app._play_move(move)
+                self.assertTrue(app.puzzle.solved)
+                app.next_puzzle_button.invoke()
+                self.assertIsNone(app.puzzle)
+                self.assertEqual(app.puzzle_history_text.get(), "")
+                self.assertEqual(app.next_puzzle_button.cget("state"), tk.DISABLED)
+                select(0)
+                self.assertEqual(app._puzzle_selection, app.pack.puzzles)
+            finally:
+                app.close()
+
+            reopened = self.make_app(data_layout=layout, locale="de")
+            try:
+                reopened.tab_rail.set_active("puzzles")
+                self.assertIn("Versuche: 2", reopened.puzzle_history_text.get())
+                self.assertIn("Zuletzt: gelöst", reopened.puzzle_history_text.get())
+            finally:
+                reopened.close()
+
     def test_local_pack_import_switch_and_restart_keep_progress_separate(self):
         root = Path(self.enterContext(tempfile.TemporaryDirectory()))
         layout = DataLayout(root / "data")
@@ -799,6 +890,59 @@ class PositionExchangeUiTests(AppTestCase):
 
 
 class StorageAndLocaleUiTests(AppTestCase):
+    def test_saved_game_replay_keeps_active_game_and_handles_black_first(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            app = self.make_app(data_layout=DataLayout(Path(tmp) / "data"))
+            fen = "r3k2r/8/8/8/3pP3/8/8/R3K2R b KQkq e3 0 17"
+            game_id = app.db.import_pgn(f'[SetUp "1"]\n[FEN "{fen}"]\n\n17... dxe3 1/2-1/2')
+            app._play_move(Move.from_uci("d2d4"))
+            live = app.game
+            original_pgn = app.db.load_game(game_id).pgn
+            errors = []
+
+            def inspect():
+                dialog = self.root.grab_current()
+                try:
+                    self.assertIsInstance(dialog, ReplayDialog)
+                    self.assertEqual(to_fen(dialog.board._state), fen)
+                    self.assertEqual(dialog.move_list.get(1), "17… dxe3")
+                    dialog.move_list.focus_force()
+                    self.root.update()
+                    dialog.move_list.event_generate("<Right>", when="tail")
+                    self.root.update()
+                    self.assertEqual(dialog.index, 1)
+                    self.assertIsNone(dialog.board._state.board[parse_square("e4")])
+                    self.assertIn("½–½", dialog.status.cget("text"))
+                    self.assertFalse(dialog.board._legal_moves)
+                    dialog._previous.invoke()
+                    self.assertEqual(to_fen(dialog.board._state), fen)
+                    dialog._close()
+                except Exception as error:
+                    errors.append(error)
+                finally:
+                    if dialog is not None and dialog.winfo_exists():
+                        dialog.destroy()
+
+            def choose():
+                dialog = self.root.grab_current()
+                button = next(child for child in dialog.winfo_children()[0].winfo_children()
+                              if isinstance(child, ttk.Button) and child.cget("text") == app.t("replay.title"))
+                self.root.after(0, inspect)
+                button.invoke()
+
+            try:
+                self.root.deiconify()
+                self.root.update()
+                self.root.after(0, choose)
+                app.library_button.invoke()
+                if errors:
+                    raise errors[0]
+                self.assertIs(app.game, live)
+                self.assertEqual(app.game.moves, [Move.from_uci("d2d4")])
+                self.assertEqual(app.db.load_game(game_id).pgn, original_pgn)
+            finally:
+                app.close()
+
     def test_library_search_keeps_open_and_export_bound_to_filtered_game(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp)

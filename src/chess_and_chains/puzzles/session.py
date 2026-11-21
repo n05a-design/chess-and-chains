@@ -101,13 +101,13 @@ class PuzzleSession:
         self._index += 1
         return Feedback(Verdict.CORRECT, reply=reply)
 
-    def hint(self) -> int | None:
-        """Return the source square of the expected move and count the hint."""
+    def hint(self, *, destination: bool = False) -> int | None:
+        """Return one endpoint of the expected move and count the hint."""
         expected = self.expected_move
         if expected is None:
             return None
         self.hints_used += 1
-        return expected.from_square
+        return expected.to_square if destination else expected.from_square
 
     def reveal(self) -> tuple[Move, ...]:
         """Play out the remaining solution; the puzzle counts as not solved."""
