@@ -34,6 +34,7 @@ from .atlas import PuzzleAtlas
 from .board import BoardCanvas, Orientation
 from .board_artwork import BoardArtwork, BoardArtworkError, BoardDesign
 from .branding import brand_image
+from .dialogs import PositionDialog, bind_button_enter as _bind_button_enter
 from .pieces import OwnerSvgPieces, PieceRenderer
 from .theme import (
     ACETATE,
@@ -60,15 +61,6 @@ ProviderFactory = Callable[[BotPreset, Settings], MoveProvider]
 def default_provider_factory(preset: BotPreset, settings: Settings) -> MoveProvider:
     config, _warning = resolve_engine_config(settings.engine_path)
     return UCIBot(config, preset)
-
-
-def _bind_button_enter(button: tk.Button | ttk.Button) -> None:
-    def invoke(_event: tk.Event) -> str:
-        button.invoke()
-        return "break"
-
-    button.bind("<Return>", invoke)
-    button.bind("<KP_Enter>", invoke)
 
 
 class TabRail(tk.Frame):
@@ -349,6 +341,9 @@ class ChessApp:
         self.library_button = self._button(controls, t("button.library"), self._open_library)
         self.library_button.grid(row=3, column=1, sticky="ew", pady=3, padx=(3, 0))
         row += 1
+        self.position_button = self._button(panel, t("position.button"), self._open_position)
+        self.position_button.grid(row=row, column=0, sticky="ew", pady=3)
+        row += 1
         self._label(panel, var=self.action_state_text, role="caption", muted=True).grid(row=row, column=0, sticky="ew", pady=(6, 0))
         row += 1
         tk.Frame(panel, height=1, background=INK).grid(row=row, column=0, sticky="ew", pady=(12, 8))
@@ -372,11 +367,12 @@ class ChessApp:
         def resize_content(width: int) -> None:
             for button in paired_buttons:
                 button.configure(wraplength=max(1, width // 2 - 32), justify="left")
-            for button in self.mode_buttons.values():
+            for button in (*self.mode_buttons.values(), self.position_button):
                 button.configure(wraplength=max(1, width - 35), justify="left")
 
         self._bind_panel_scroll(
-            canvas, panel, (*paired_buttons, *self.mode_buttons.values(), self.level_menu, self.new_game_button),
+            canvas, panel,
+            (*paired_buttons, *self.mode_buttons.values(), self.level_menu, self.new_game_button, self.position_button),
             resize_content,
         )
 
@@ -899,6 +895,23 @@ class ChessApp:
         self.root.clipboard_clear()
         self.root.clipboard_append(self._current_pgn())
         self.interaction_text.set(self.t("pgn.copied"))
+
+    def _open_position(self) -> None:
+        def confirm_replacement(parent: tk.Misc) -> bool:
+            if not (self.game.can_undo or self.game.can_redo):
+                return True
+            return messagebox.askyesno(
+                self.t("position.play"), self.t("position.replace"), parent=parent, default=messagebox.NO,
+            )
+
+        dialog = PositionDialog(self.root, self.t, self.controller.view().state, confirm_replacement)
+        self.root.wait_window(dialog)
+        if dialog.result is None or self._closed:
+            return
+        self._game_headers.clear()
+        self.mode_var.set("human-vs-human")
+        self.controller.load_game(ChessGame(dialog.result))
+        self.interaction_text.set(self.t("position.playing"))
 
     # ----- puzzles --------------------------------------------------------
     def _pack_description(self) -> str:

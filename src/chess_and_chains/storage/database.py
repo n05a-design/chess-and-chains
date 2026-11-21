@@ -16,7 +16,6 @@ Safety rules
 
 from __future__ import annotations
 
-import os
 import sqlite3
 import tempfile
 from contextlib import closing
@@ -25,6 +24,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from ..chess import ChessError, ChessGame, Color, DrawClaim, Move, export_pgn, parse_fen, parse_pgn, to_fen
+from .exchange import write_atomic_export
 
 MAX_PGN_FILE_BYTES = 256 * 1024
 MAX_PGN_FILE_PLIES = 512
@@ -379,17 +379,7 @@ class Database:
             raise StorageError("Choose a destination with the .pgn extension.")
         if destination.exists() and destination.samefile(self.path):
             raise StorageError("The active database cannot be overwritten.")
-        data = self.export_pgn([game_id]).encode("utf-8")
-        fd, name = tempfile.mkstemp(dir=destination.parent, prefix=".pgn-")
-        pending = Path(name)
-        try:
-            with os.fdopen(fd, "wb") as handle:
-                handle.write(data)
-                handle.flush()
-                os.fsync(handle.fileno())
-            pending.replace(destination)
-        finally:
-            pending.unlink(missing_ok=True)
+        write_atomic_export(destination, self.export_pgn([game_id]).encode("utf-8"))
 
     def export_pgn(self, game_ids: list[int] | None = None) -> str:
         ids = game_ids if game_ids is not None else [r[0] for r in reversed(self.list_games())]
