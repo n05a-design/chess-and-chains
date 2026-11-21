@@ -85,6 +85,35 @@ class AppTestCase(unittest.TestCase):
 
 
 class PromotionUiTests(AppTestCase):
+    def test_keyboard_promotion_counts_one_target_and_accepts_return(self):
+        app = self.make_app(locale="de")
+        app.controller.new_game(GameSetup(initial_fen="4k3/P7/8/8/8/8/8/4K3 w - - 0 1"))
+        self.root.deiconify()
+        self.root.update()
+        app.board.focus_force()
+        self.root.update()
+
+        keys = ("Left",) * 4 + ("Up",) * 5 + ("Return",)
+        for key in keys:
+            app.board.event_generate(f"<{key}>")
+        self.assertEqual(app.interaction_text.get(), "a7 ausgewählt · 1 legales Zielfeld")
+        app.board.event_generate("<Up>")
+
+        def choose_rook():
+            dialog = next(child for child in self.root.winfo_children() if isinstance(child, tk.Toplevel))
+            try:
+                rook = next(child for child in dialog.winfo_children()
+                            if isinstance(child, tk.Button) and child.cget("text") == "Turm")
+                rook.focus_force()
+                rook.event_generate("<Return>")
+            finally:
+                if dialog.winfo_exists():
+                    dialog.destroy()
+
+        self.root.after(50, choose_rook)
+        app.board.event_generate("<Return>")
+        self.assertEqual(app.game.moves, [Move.from_uci("a7a8r")])
+
     def test_promotion_dialog_applies_a_legal_underpromotion(self):
         app = self.make_app()
         app.controller.new_game(GameSetup(initial_fen="4k3/P7/8/8/8/8/8/4K3 w - - 0 1"))
@@ -573,6 +602,29 @@ class StorageAndLocaleUiTests(AppTestCase):
         self.root.update()
         self.root.withdraw()
         self.assertEqual(app.game.moves, [])
+
+    def test_board_shows_localized_focus_until_tab_moves_on(self):
+        app = self.make_app(locale="de")
+        self.root.deiconify()
+        self.root.update()
+        app.board.focus_force()
+        self.root.update()
+        self.assertEqual(app.interaction_text.get(), "Fokus e2 · Weiß, Bauer")
+        self.assertEqual(len(app.board.find_withtag("square-focus")), 2)
+
+        app.board.event_generate("<Return>")
+        self.assertEqual(app.interaction_text.get(), "e2 ausgewählt · 2 legale Zielfelder")
+        app.board.event_generate("<Up>")
+        app.board.event_generate("<Up>")
+        self.assertEqual(app.interaction_text.get(), "Fokus e4 · frei")
+        app.board.event_generate("<Return>")
+        self.assertEqual(app.game.moves, [Move.from_uci("e2e4")])
+        self.assertEqual(app.interaction_text.get(), "Fokus e4 · Weiß, Bauer")
+
+        app.board.event_generate("<Tab>")
+        self.root.update()
+        self.assertEqual(self.root.focus_get(), app.tab_rail.children["play"])
+        self.assertEqual(app.board.find_withtag("square-focus"), ())
 
     def test_play_panel_scrolls_to_focused_engine_settings_in_small_window(self):
         app = self.make_app(locale="de")

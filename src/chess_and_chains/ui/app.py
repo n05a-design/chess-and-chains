@@ -77,7 +77,7 @@ class TabRail(tk.Frame):
                 highlightbackground=ACETATE, padx=2, pady=8, takefocus=True,
             )
             self.grid_columnconfigure(index, weight=1)
-            button.grid(row=0, column=index, sticky="ew", padx=(0, 3))
+            button.grid(row=0, column=index, sticky="ew", padx=(0, 3 if index < len(tabs) - 1 else 0))
             button.bind("<Return>", lambda _event, tab=name: self._activate(tab))
             for key, step in (("Left", -1), ("Right", 1), ("Up", -1), ("Down", 1)):
                 target = self._tabs[(index + step) % len(self._tabs)]
@@ -225,11 +225,14 @@ class ChessApp:
                  ).grid(row=0, column=0, sticky="ew")
         self.board = BoardCanvas(board_sheet, lambda moves: app._on_move_requested(moves),
                                  lambda detail: app._on_selection_changed(detail),
-                                 artwork=self._board_artwork, renderer=piece_renderer)
+                                 artwork=self._board_artwork, renderer=piece_renderer, translator=t)
         self.board.grid(row=1, column=0, sticky="nsew", padx=12, pady=(0, 10))
-        tk.Label(board_sheet, textvariable=self.interaction_text, background=ACETATE, foreground=MUTED_INK,
-                 font=("TkDefaultFont", FONT_SIZES["caption"]), anchor="w", padx=14, pady=8,
-                 ).grid(row=2, column=0, sticky="ew")
+        board_status = tk.Label(
+            board_sheet, textvariable=self.interaction_text, background=ACETATE, foreground=MUTED_INK,
+            font=("TkDefaultFont", FONT_SIZES["caption"]), anchor="w", justify="left", padx=14, pady=8,
+        )
+        board_status.grid(row=2, column=0, sticky="ew")
+        board_sheet.bind("<Configure>", lambda event: board_status.configure(wraplength=max(1, event.width - 28)))
 
         side_sheet = self._sheet(body, 1)
         side_sheet.grid_rowconfigure(2, weight=1)
@@ -426,8 +429,8 @@ class ChessApp:
         list_frame.grid_columnconfigure(0, weight=1)
         self.move_list = tk.Listbox(
             list_frame, background=PAPER, foreground=INK, selectbackground=CHROME_YELLOW, selectforeground=INK,
-            font=("TkFixedFont", 11), relief="solid", borderwidth=1, highlightthickness=1,
-            highlightbackground=INK, highlightcolor=INK, exportselection=False,
+            font=("TkFixedFont", 11), relief="solid", borderwidth=1, highlightthickness=2,
+            highlightbackground=PAPER, highlightcolor=BRAND_BLUE, exportselection=False,
         )
         self.move_list.grid(row=0, column=0, sticky="nsew")
         scrollbar = tk.Scrollbar(list_frame, orient="vertical", command=self.move_list.yview,
@@ -507,12 +510,20 @@ class ChessApp:
         if role not in BUTTON_ROLES:
             raise ValueError(f"Unknown button role: {role}")
         background, foreground = BUTTON_ROLES[role]
-        return tk.Button(
+        button = tk.Button(
             master, text=label, command=command, background=background, foreground=foreground,
             activebackground=INK, activeforeground=ACETATE, disabledforeground=DISABLED_INK, relief="solid",
-            borderwidth=1, highlightthickness=1, highlightbackground=background, highlightcolor=INK,
+            borderwidth=1, highlightthickness=2, highlightbackground=background, highlightcolor=BRAND_BLUE,
             padx=10, pady=7, anchor="w", font=("TkDefaultFont", FONT_SIZES["body"], "bold"),
         )
+
+        def invoke(_event: tk.Event) -> str:
+            button.invoke()
+            return "break"
+
+        button.bind("<Return>", invoke)
+        button.bind("<KP_Enter>", invoke)
+        return button
 
     # ----- panels / modes ----------------------------------------------
     def _show_panel(self, name: str) -> None:

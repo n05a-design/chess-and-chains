@@ -5,7 +5,8 @@ from __future__ import annotations
 import tkinter as tk
 from typing import Callable, Literal, Sequence
 
-from ..chess import GameState, Move, Piece, PieceType
+from ..chess import GameState, Move, Piece, PieceType, square_name
+from ..i18n import Translator
 from .board_artwork import MAX_BOARD_PREVIEW_SIZE, BoardArtwork
 from .pieces import OwnerSvgPieces, PieceRenderer
 from .theme import (
@@ -77,6 +78,7 @@ class BoardCanvas(tk.Canvas):
         renderer: PieceRenderer | None = None,
         *,
         artwork: BoardArtwork | None = None,
+        translator: Translator | None = None,
     ) -> None:
         super().__init__(
             master,
@@ -87,6 +89,7 @@ class BoardCanvas(tk.Canvas):
         )
         self._on_move_requested = on_move_requested
         self._on_selection_changed = on_selection_changed
+        self.t = translator if translator is not None else Translator("en")
         self.renderer: PieceRenderer = OwnerSvgPieces() if renderer is None else renderer
         self._artwork = artwork
         self._hint_square: int | None = None
@@ -133,7 +136,7 @@ class BoardCanvas(tk.Canvas):
         self._hint_square = None
         self._drag_active = False
         self._drag_pointer = None
-        self._notify_selection("")
+        self._notify_focus()
         self.redraw()
 
     def set_hint(self, square: int | None) -> None:
@@ -155,7 +158,7 @@ class BoardCanvas(tk.Canvas):
         self._selected = None
         self._drag_active = False
         self._drag_pointer = None
-        self._notify_selection("")
+        self._notify_focus()
         self.redraw()
 
     def redraw(self) -> None:
@@ -173,6 +176,7 @@ class BoardCanvas(tk.Canvas):
         self._draw_board()
         if self._state is not None:
             self._draw_position()
+        self._draw_focus()
         self._draw_coordinates()
         outline = FOCUS_INK if self._has_focus else MUTED_INK
         self.create_rectangle(
@@ -229,16 +233,16 @@ class BoardCanvas(tk.Canvas):
                         stipple="gray25",
                         outline="",
                     )
-                if square == self._focused_square:
-                    self.create_rectangle(
-                        x1 + 5,
-                        y1 + 5,
-                        x1 + size - 5,
-                        y1 + size - 5,
-                        outline=FOCUS_INK,
-                        dash=(3, 2),
-                        width=2,
-                    )
+    def _draw_focus(self) -> None:
+        if not self._has_focus or self._focused_square is None:
+            return
+        column, row = screen_cell(self._focused_square, self._orientation)
+        size = self._square_size
+        x, y = self._board_x + column * size, self._board_y + row * size
+        inset = min(5, size / 4)
+        bounds = (x + inset, y + inset, x + size - inset, y + size - inset)
+        self.create_rectangle(*bounds, outline=PAPER, width=4, tags=("square-focus",))
+        self.create_rectangle(*bounds, outline=FOCUS_INK, dash=(4, 3), width=2, tags=("square-focus",))
 
     def _draw_position(self) -> None:
         if self._state is None:
@@ -399,7 +403,8 @@ class BoardCanvas(tk.Canvas):
 
     def _on_focus_in(self, _event: tk.Event) -> None:
         self._has_focus = True
-        self.redraw()
+        square = self._focused_square
+        self._set_focus_square(self._initial_focus_square() if square is None else square)
 
     def _on_focus_out(self, _event: tk.Event) -> None:
         self._has_focus = False
@@ -462,8 +467,7 @@ class BoardCanvas(tk.Canvas):
 
     def _move_focus(self, direction: str) -> None:
         if self._focused_square is None:
-            start = 12 if self._orientation == "white" else 52
-            self._set_focus_square(start)
+            self._set_focus_square(self._initial_focus_square())
             return
         column, row = screen_cell(self._focused_square, self._orientation)
         if direction == "Left":
@@ -516,18 +520,33 @@ class BoardCanvas(tk.Canvas):
     def _set_selection(self, square: int | None) -> None:
         self._selected = square
         if square is None:
-            self._notify_selection("")
+            self._notify_focus()
         else:
-            count = sum(move.from_square == square for move in self._legal_moves)
-            self._notify_selection(
-                f"Selected {self._square_name(square)}; {count} legal destinations."
-            )
+            count = len({move.to_square for move in self._legal_moves if move.from_square == square})
+            key = "board.selected_one" if count == 1 else "board.selected"
+            self._notify_selection(self.t(key, square=square_name(square), count=count))
         self.redraw()
+
+    def _initial_focus_square(self) -> int:
+        return 12 if self._orientation == "white" else 52  # e2 / e7
 
     def _set_focus_square(self, square: int) -> None:
         self._focused_square = square
-        self._notify_selection(f"Focus {self._square_name(square)}.")
+        self._notify_focus()
         self.redraw()
+
+    def _notify_focus(self) -> None:
+        square = self._focused_square
+        if not self._has_focus or square is None:
+            self._notify_selection("")
+            return
+        piece = self._state.board[square] if self._state is not None else None
+        if piece is None:
+            self._notify_selection(self.t("board.focus_empty", square=square_name(square)))
+        else:
+            color = self.t(f"side.{piece.color.name.lower()}")
+            name = self.t(f"piece.{piece.kind.name.lower()}")
+            self._notify_selection(self.t("board.focus_piece", square=square_name(square), color=color, piece=name))
 
     def _notify_selection(self, message: str) -> None:
         if self._on_selection_changed is not None:
@@ -547,7 +566,3 @@ class BoardCanvas(tk.Canvas):
         file_index = column if self._orientation == "white" else 7 - column
         rank_index = 7 - row if self._orientation == "white" else row
         return rank_index * 8 + file_index
-
-    @staticmethod
-    def _square_name(square: int) -> str:
-        return f"{chr(ord('a') + square % 8)}{square // 8 + 1}"
