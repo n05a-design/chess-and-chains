@@ -68,6 +68,8 @@ jobs:
         run: python -m unittest tests.test_puzzles -v
       - name: Storage
         run: python -m unittest tests.test_storage -v
+      - name: Local 3D board bridge and art contract
+        run: python -m unittest tests.test_marble_3d -v
       - name: Foundation checks on this platform (path handling, e.g. macOS /private symlinks)
         run: python -m unittest tests.test_foundation -v
 

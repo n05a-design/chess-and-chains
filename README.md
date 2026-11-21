@@ -69,6 +69,11 @@ With Tk 9, preview a local vector board for one session with `python -m chess_an
 
 Run `python -m chess_and_chains --piece-view top` to use the top-view pieces in play and puzzles. The usual launch uses the front view. Both sets use [editable individual SVGs with consistent dimensions within each view](assets/chess_pieces/source_svg/README.md) and a local PNG fallback for Tk without SVG support.
 
+Run `python app/marble_3d/server.py` from the checkout to open the
+[local 3D marble board](app/marble_3d/README.md) for two players on one
+device. It uses the same chess rules and exports games to PGN.
+[Editable artwork and studies](design/source/marmor-3d/README.md)
+
 ## Licensing and third-party rights
 
 Original starter source files are offered under [MPL-2.0](LICENSE). Engine binaries, libraries, fonts, artwork, puzzle data and third-party references may carry **separate terms**; nothing here grants rights to those materials. Official builds are intended to remain free of charge. Review [Third-Party Notices](THIRD_PARTY_NOTICES.md) and [Asset Register](docs/design/ASSET_REGISTER.csv) before redistribution. This repo is **not affiliated with Stockfish, Lichess or other chess services**.

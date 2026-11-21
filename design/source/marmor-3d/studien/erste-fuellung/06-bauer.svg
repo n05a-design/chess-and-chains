@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="26mm" height="26mm" viewBox="0 0 260 260" role="img" aria-labelledby="titel beschreibung">
+  <title id="titel">Bauer auf runder Platte</title>
+  <desc id="beschreibung">Schachfigur Bauer mit dunkel gefüllten Teilflächen auf einer runden Platte.</desc>
+  <g id="bauer">
+    <circle id="bauer-platte" cx="130" cy="130" r="115.3" fill="#fff" stroke="#1a1d22" stroke-width="9.4"/>
+    <path id="bauer-figur" fill="#1a1d22" fill-rule="evenodd" d="
+      M144.043 131.872 L115.956 131.872 C115.307 144.201 107.683 155.92 98.582 163.859 L86.217 173.427 C83.537 175.714 81.357 178.432 79.591 181.47 C77.83 184.499 76.419 187.838 75.804 191.307 L74.586 203 L185.414 203 L184.196 191.307 C182.985 184.474 179.028 177.912 173.783 173.427 C170.535 170.649 166.881 168.375 163.57 165.672 C153.503 157.454 144.745 145.241 144.043 131.872 Z
+      M156.617 83.615 A26.615 26.615 0 1 1 103.387 83.615 A26.615 26.615 0 1 1 156.617 83.615 Z
+      M162.126 118.582 L148.106 109 C137.375 116.669 122.625 116.669 111.894 109 L97.874 118.582 C98.352 121.627 99.312 124.69 101.001 127.29 L158.999 127.29 C160.689 124.691 161.648 121.626 162.126 118.582 Z"/>
+  </g>
+</svg>
