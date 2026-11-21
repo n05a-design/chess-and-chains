@@ -153,6 +153,7 @@ class ChessApp:
         self._game_headers: dict[str, str] = {}
         self._closed = False
         self.interaction_text = tk.StringVar(root)
+        self._board_feedback = ""
         self.panel_text = tk.StringVar(root)
         self.header_mode_text = tk.StringVar(root)
         self.action_state_text = tk.StringVar(root)
@@ -1097,7 +1098,9 @@ class ChessApp:
             self.empty_moves_label.grid()
 
     def _on_selection_changed(self, message: str) -> None:
-        self.interaction_text.set(message)
+        if message or self.interaction_text.get() == self._board_feedback:
+            self.interaction_text.set(message)
+        self._board_feedback = message
 
     # ----- lifecycle --------------------------------------------------------
     def close(self) -> None:

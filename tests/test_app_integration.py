@@ -642,6 +642,16 @@ class StorageAndLocaleUiTests(AppTestCase):
         self.root.update()
         self.assertEqual(self.root.focus_get(), app.tab_rail.children["play"])
         self.assertEqual(app.board.find_withtag("square-focus"), ())
+        self.assertEqual(app.interaction_text.get(), "")
+
+        app.tab_rail.children["play"].event_generate("<Shift-Tab>")
+        self.root.update()
+        self.assertEqual(self.root.focus_get(), app.board)
+        self.assertEqual(app.interaction_text.get(), "Fokus e4 · Weiß, Bauer")
+        app.interaction_text.set("Partie #1 in die Bibliothek importiert.")
+        app.board.event_generate("<Tab>")
+        self.root.update()
+        self.assertEqual(app.interaction_text.get(), "Partie #1 in die Bibliothek importiert.")
 
     def test_play_panel_scrolls_to_focused_engine_settings_in_small_window(self):
         app = self.make_app(locale="de")
