@@ -35,14 +35,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--max-rating-deviation", type=int, help="Maximum rating deviation (inclusive)")
     parser.add_argument("--min-popularity", type=int, help="Minimum popularity between -100 and 100 (inclusive)")
     parser.add_argument("--min-plays", type=int, help="Minimum number of plays (inclusive)")
-    parser.add_argument("--limit", type=int)
+    parser.add_argument("--limit", type=int, help="Maximum pack size")
+    parser.add_argument("--seed", type=int, help="Select from the full source with a reproducible seed (requires --limit)")
     parser.add_argument("--demo", action="store_true")
     args = parser.parse_args(argv)
     try:
         puzzles, report = import_lichess_file(
             args.source, min_rating=args.min_rating, max_rating=args.max_rating,
             max_rating_deviation=args.max_rating_deviation, min_popularity=args.min_popularity,
-            min_plays=args.min_plays, limit=args.limit, source=args.source_label,
+            min_plays=args.min_plays, limit=args.limit, seed=args.seed, source=args.source_label,
         )
     except PuzzleImportError as error:
         parser.error(str(error))

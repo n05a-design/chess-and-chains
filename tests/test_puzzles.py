@@ -82,6 +82,41 @@ class ImporterTests(unittest.TestCase):
         self.assertEqual(len(puzzles), 2)
         self.assertFalse(report.complete)
         self.assertIsNone(report.to_dict()["input_sha256"])
+        self.assertEqual([p.puzzle_id for p in puzzles], ["ccBR01", "ccSC01"])
+        self.assertEqual(report.to_dict()["selection"], {
+            "strategy": "input-order", "seed": None, "limit": 2, "selected": 2,
+        })
+
+    def test_seeded_selection_reads_all_rows_and_is_independent_of_order(self):
+        demo = ROOT / "data" / "source" / "demo_puzzles.csv"
+        header, *rows = demo.read_bytes().splitlines()
+        with tempfile.TemporaryDirectory() as tmp:
+            reordered = Path(tmp) / "reordered.csv"
+            reordered.write_bytes(b"\n".join([header, *reversed(rows)]) + b"\n")
+            for path in (demo, reordered):
+                for seed, expected_ids in ((0, ["ccSM02", "ccSC01"]), (17, ["ccFM01", "ccSM02"])):
+                    with self.subTest(path=path.name, seed=seed):
+                        puzzles, report = import_lichess_file(path, limit=2, seed=seed)
+                        self.assertEqual([p.puzzle_id for p in puzzles], expected_ids)
+                        self.assertTrue(report.complete)
+                        self.assertEqual(report.rows_read, 5)
+                        self.assertEqual(report.accepted, 5)
+                        self.assertEqual(report.rejected, {})
+                        self.assertEqual(report.to_dict()["input_sha256"], hashlib.sha256(path.read_bytes()).hexdigest())
+                        self.assertEqual(report.to_dict()["selection"], {
+                            "strategy": "sha256-top-k-v1", "seed": seed, "limit": 2, "selected": 2,
+                        })
+
+    def test_seeded_selection_respects_filters_and_requires_positive_limit(self):
+        for limit in (None, 0, -1):
+            with self.subTest(limit=limit), self.assertRaises(PuzzleImportError):
+                import_lichess_file(FIXTURE, limit=limit, seed=17)
+        puzzles, report = import_lichess_file(FIXTURE, min_rating=1200, min_popularity=1, limit=4, seed=17)
+        self.assertEqual([p.puzzle_id for p in puzzles], ["quote1"])
+        self.assertEqual(report.rows_read, 15)
+        self.assertEqual(report.accepted, 1)
+        self.assertEqual(sum(report.rejected.values()), 14)
+        self.assertEqual(report.to_dict()["selection"]["selected"], 1)
 
     def test_optional_quality_filters_apply_inclusive_thresholds_and_report_rejections(self):
         row = "{id},6k1/p4ppp/8/8/8/8/5PPP/3R2K1 b - - 0 1,a7a6 d1d8,1000,{values},mate,,\n"

@@ -19,6 +19,7 @@ import re
 from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from heapq import nsmallest
 from pathlib import Path
 from typing import BinaryIO, Iterator
 
@@ -80,12 +81,15 @@ class ImportReport:
     max_rating_deviation: int | None = field(default=None, kw_only=True)
     min_popularity: int | None = field(default=None, kw_only=True)
     min_plays: int | None = field(default=None, kw_only=True)
+    selection_limit: int | None = field(default=None, init=False)
+    selection_seed: int | None = field(default=None, init=False)
 
     def reject(self, reason: str, puzzle_id: str) -> None:
         self.rejected[reason] += 1
         self.examples.setdefault(reason, puzzle_id)
 
     def to_dict(self) -> dict:
+        selected = self.accepted if self.selection_limit is None else min(self.accepted, self.selection_limit)
         return {
             "source_name": self.source_name,
             "filters": {
@@ -99,6 +103,12 @@ class ImportReport:
             "finished_utc": self.finished_utc,
             "rows_read": self.rows_read,
             "accepted": self.accepted,
+            "selection": {
+                "strategy": "input-order" if self.selection_seed is None else "sha256-top-k-v1",
+                "seed": self.selection_seed,
+                "limit": self.selection_limit,
+                "selected": selected,
+            },
             "rejected": dict(sorted(self.rejected.items())),
             "rejected_examples": dict(sorted(self.examples.items())),
             "input_sha256": self.input_sha256 if self.complete else None,
@@ -180,6 +190,7 @@ def iter_lichess_csv(
         raise PuzzleImportError("Minimum play count must be non-negative.")
     if limit is not None and limit < 1:
         raise PuzzleImportError("Puzzle limit must be positive.")
+    report.selection_limit = limit
     required_quality_columns = tuple(column for column, threshold in (
         ("RatingDeviation", report.max_rating_deviation),
         ("Popularity", report.min_popularity),
@@ -287,12 +298,27 @@ def import_lichess_file(
     min_popularity: int | None = None,
     min_plays: int | None = None,
     limit: int | None = None,
+    seed: int | None = None,
     source: str = "lichess-puzzle-db",
 ) -> tuple[list[Puzzle], ImportReport]:
+    """Import in CSV order or select a reproducible subset from the whole source."""
+    if seed is not None and (limit is None or limit < 1):
+        raise PuzzleImportError("Seeded selection requires a positive puzzle limit.")
     report = ImportReport(
         path.name, min_rating, max_rating,
         max_rating_deviation=max_rating_deviation, min_popularity=min_popularity, min_plays=min_plays,
     )
     with open_puzzle_source(path) as stream:
-        puzzles = list(iter_lichess_csv(stream, report, source=source, limit=limit))
+        if seed is None:
+            return list(iter_lichess_csv(stream, report, source=source, limit=limit)), report
+
+        def rank(puzzle: Puzzle) -> tuple[bytes, str]:
+            puzzle_id = puzzle.puzzle_id
+            digest = hashlib.sha256(f"{seed}:{puzzle_id}".encode("ascii")).digest()
+            return digest, puzzle_id
+
+        # The selection heap is bounded by the pack limit. The reader still checks all rows.
+        puzzles = nsmallest(limit, iter_lichess_csv(stream, report, source=source), key=rank)
+        report.selection_seed = seed
+        report.selection_limit = limit
     return puzzles, report
