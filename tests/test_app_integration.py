@@ -99,19 +99,36 @@ class PromotionUiTests(AppTestCase):
         self.assertEqual(app.interaction_text.get(), "a7 ausgewählt · 1 legales Zielfeld")
         app.board.event_generate("<Up>")
 
-        def choose_rook():
-            dialog = next(child for child in self.root.winfo_children() if isinstance(child, tk.Toplevel))
-            try:
-                rook = next(child for child in dialog.winfo_children()
-                            if isinstance(child, tk.Button) and child.cget("text") == "Turm")
-                rook.focus_force()
-                rook.event_generate("<Return>")
-            finally:
-                if dialog.winfo_exists():
-                    dialog.destroy()
+        deadline = time.monotonic() + 5
+        focused_rook = False
+        pending = None
 
-        self.root.after(50, choose_rook)
-        app.board.event_generate("<Return>")
+        def choose_rook():
+            nonlocal focused_rook, pending
+            pending = None
+            dialog = next(child for child in self.root.winfo_children() if isinstance(child, tk.Toplevel))
+            rook = next(child for child in dialog.winfo_children()
+                        if isinstance(child, tk.Button) and child.cget("text") == "Turm")
+            if time.monotonic() >= deadline:
+                dialog.destroy()
+            elif not rook.winfo_viewable():
+                pending = self.root.after(10, choose_rook)
+            elif self.root.focus_get() is not rook:
+                rook.focus_force()
+                pending = self.root.after(10, choose_rook)
+            else:
+                focused_rook = True
+                # Aqua can still be processing focus events from the new toplevel.
+                rook.event_generate("<Return>", when="tail")
+                pending = self.root.after(1000, dialog.destroy)
+
+        pending = self.root.after(0, choose_rook)
+        try:
+            app.board.event_generate("<Return>")
+        finally:
+            if pending is not None:
+                self.root.after_cancel(pending)
+        self.assertTrue(focused_rook, "the mapped promotion button never received keyboard focus")
         self.assertEqual(app.game.moves, [Move.from_uci("a7a8r")])
 
     def test_promotion_dialog_applies_a_legal_underpromotion(self):

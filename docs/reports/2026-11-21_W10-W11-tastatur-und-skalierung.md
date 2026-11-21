@@ -4,7 +4,8 @@
 Der Arbeitsbranch `codex/chess-chains-w10-usability` basiert auf
 `d72c3f039ae32419233d30d0bca0001dbb04fd5f` (Merge von PR #8 in `main`).
 Die Code- und Teständerungen stehen in `a235a9f7c743cce21976cf2ee8e7ce6bef260717`
-(Tree `23969d1cb0c2bbbc5f8f7337d0b032693e4bd598`). Der Arbeitsbranch ist lokal.
+(Tree `23969d1cb0c2bbbc5f8f7337d0b032693e4bd598`). Der Branch ist als
+[PR #9 gegen main](https://github.com/n05a-design/chess-and-chains/pull/9) veröffentlicht.
 
 ## Befunde und Änderungen
 
@@ -57,6 +58,17 @@ Draufsicht. SHA-256 des geprüften Wheels
 Die erste Ausführung baute und installierte das Wheel erfolgreich und
 brach im GUI-Prüfskript wegen eines falschen Konstruktorarguments ab.
 Der korrigierte GUI-Aufruf bestand aus einem neuen Build desselben Trees.
+
+## Native macOS-CI auf PR #9
+
+Im ersten [Push-Job auf macOS mit Python 3.14.10](https://github.com/n05a-design/chess-and-chains/actions/runs/44861119209/job/136714495083)
+scheiterte der neue Unterverwandlungstest. Der Test hatte nach einem
+festen Timer ein synthetisches Enter gesendet und die Partie blieb beim
+Ausgangsstand. Der [parallele PR-Lauf](https://github.com/n05a-design/chess-and-chains/actions/runs/44861165625)
+bestand denselben macOS-GUI-Job. Der Korrekturlauf wartet im Test auf einen
+sichtbaren Button mit tatsächlichem Tk-Fokus, stellt Enter in die
+Ereigniswarteschlange und räumt die befristeten Callbacks auf. Die
+Prüfung der Unterverwandlung und der Zielfeldanzahl bleibt bestehen.
 
 ## Gemessene Farbpaare
 
