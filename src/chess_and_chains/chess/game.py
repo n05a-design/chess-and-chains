@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 
 from .model import (
@@ -47,6 +49,7 @@ class ChessGame:
         initial_state: GameState | None = None,
         *,
         rules: RulesPort | None = None,
+        adjudicate_forced_capture_draws: bool = True,
     ) -> None:
         self.rules = rules if rules is not None else ChessRules()
         self.initial_state = initial_state if initial_state is not None else self.rules.initial_state()
@@ -57,6 +60,17 @@ class ChessGame:
         self._termination: _Termination | None = None
         self._undo: list[_HistoryEntry] = []
         self._redo: list[_HistoryEntry] = []
+        self._adjudicate_forced_capture_draws = adjudicate_forced_capture_draws
+
+    @contextmanager
+    def replay_record(self) -> Iterator[None]:
+        """Validate an existing timeline with the original automatic draw checks."""
+        previous = self._adjudicate_forced_capture_draws
+        self._adjudicate_forced_capture_draws = False
+        try:
+            yield
+        finally:
+            self._adjudicate_forced_capture_draws = previous
 
     @property
     def can_undo(self) -> bool:
@@ -125,15 +139,18 @@ class ChessGame:
         ))
         return self.outcome()
 
-    def record_result(self, result: str) -> None:
-        """Apply a result from a validated record when the board alone has no outcome."""
+    def record_result(self, result: str, *, historical: bool = False) -> None:
+        """Apply a validated result, preserving a historical win recorded before this draw check."""
         winners = {"1-0": Color.WHITE, "0-1": Color.BLACK, "1/2-1/2": None}
         if result == "*":
             return
         if result not in winners:
             raise ChessError(f"Invalid game result: {result!r}.")
         outcome = self.outcome()
-        if outcome.status is not GameStatus.ACTIVE:
+        historical_win = (
+            historical and outcome.status is GameStatus.DRAW_DEAD_POSITION and winners[result] is not None
+        )
+        if outcome.status is not GameStatus.ACTIVE and not historical_win:
             if winners[result] is not outcome.winner:
                 raise ChessError("The declared result contradicts the game outcome.")
             return
@@ -155,6 +172,8 @@ class ChessGame:
             return MoveOutcome(status, self.state.turn.opposite if in_check else None, in_check)
         if self.rules.insufficient_material(self.state):
             return MoveOutcome(GameStatus.DRAW_INSUFFICIENT_MATERIAL, in_check=in_check)
+        if self._adjudicate_forced_capture_draws and self._forced_captures_leave_insufficient_material(legal):
+            return MoveOutcome(GameStatus.DRAW_DEAD_POSITION, in_check=in_check)
         key = self.rules.position_key(self.state)
         repetitions = self._repetitions.get(key, 0)
         if self.state.halfmove_clock >= 150:
@@ -167,6 +186,14 @@ class ChessGame:
         if repetitions >= 3:
             claims.add(DrawClaim.THREEFOLD_REPETITION)
         return MoveOutcome(GameStatus.ACTIVE, in_check=in_check, claimable_draws=frozenset(claims))
+
+    def _forced_captures_leave_insufficient_material(self, legal: tuple[Move, ...]) -> bool:
+        """Prove a dead position when every legal reply leaves insufficient material."""
+        state = self.state
+        # A quiet move cannot remove material. En passant always leaves a pawn.
+        if any(state.board[move.to_square] is None for move in legal):
+            return False
+        return all(self.rules.insufficient_material(self.rules.apply(state, move)) for move in legal)
 
     def undo(self) -> GameState:
         if not self._undo:

@@ -14,9 +14,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from chess_and_chains.chess import (  # noqa: E402
+    ChessError,
     ChessGame,
     ChessRules,
     GameStatus,
+    IllegalMoveError,
     Move,
     PGNError,
     export_pgn,
@@ -197,6 +199,60 @@ class PropertyTests(unittest.TestCase):
 
 
 class TerminationRuleTests(unittest.TestCase):
+    def test_forced_capture_ends_the_game_before_it_is_played(self):
+        initial = "8/8/8/8/8/8/1rk5/K7 b - - 0 1"
+        for fen, checking_move, forced_capture in (
+            (initial, "b2a2", "a1a2"),
+            (mirror_fen(initial), "b7a7", "a8a7"),
+        ):
+            with self.subTest(fen=fen):
+                game = ChessGame(parse_fen(fen))
+                self.assertIs(game.outcome().status, GameStatus.ACTIVE)
+                game.play_uci(checking_move)
+                self.assertEqual(game.rules.legal_moves(game.state), (Move.from_uci(forced_capture),))
+                self.assertFalse(game.rules.insufficient_material(game.state))
+                self.assertIs(game.outcome().status, GameStatus.DRAW_DEAD_POSITION)
+                self.assertIsNone(game.outcome().winner)
+                with self.assertRaises(IllegalMoveError):
+                    game.play_uci(forced_capture)
+                with self.assertRaises(ChessError):
+                    game.record_result("1-0")
+                game.undo()
+                self.assertIs(game.outcome().status, GameStatus.ACTIVE)
+                game.redo()
+                self.assertIs(game.outcome().status, GameStatus.DRAW_DEAD_POSITION)
+                document = parse_pgn(export_pgn(game))
+                self.assertEqual(document.result, "1/2-1/2")
+                self.assertEqual(document.moves, (Move.from_uci(checking_move),))
+                self.assertIs(document.new_game().outcome().status, GameStatus.DRAW_DEAD_POSITION)
+
+    def test_capture_only_proves_dead_when_every_reply_loses_mating_material(self):
+        for fen, replies, status in (
+            ("8/8/8/8/8/8/r2k4/K7 w - - 0 1", {"a1a2", "a1b1"}, GameStatus.ACTIVE),
+            ("8/8/8/8/4R3/8/r1k5/K7 w - - 0 1", {"a1a2"}, GameStatus.ACTIVE),
+            ("8/8/8/8/8/2k5/n7/Kr6 w - - 0 1", {"a1a2", "a1b1"}, GameStatus.ACTIVE),
+            ("8/8/8/8/8/2k5/n7/Kn6 w - - 0 1", {"a1a2", "a1b1"}, GameStatus.DRAW_DEAD_POSITION),
+        ):
+            with self.subTest(fen=fen):
+                game = ChessGame(parse_fen(fen))
+                self.assertEqual({move.to_uci() for move in game.rules.legal_moves(game.state)}, replies)
+                self.assertIs(game.outcome().status, status)
+
+    def test_legacy_pgn_keeps_capture_and_still_validates_board_legality(self):
+        header = '[SetUp "1"]\n[FEN "8/8/8/8/8/8/r1k5/K7 w - - 0 1"]\n\n'
+        document = parse_pgn(header + "1. Kxa2 1/2-1/2")
+        game = document.new_game()
+        self.assertEqual(game.moves, [Move.from_uci("a1a2")])
+        self.assertIs(game.outcome().status, GameStatus.DRAW_INSUFFICIENT_MATERIAL)
+        game.undo()
+        self.assertIs(game.outcome().status, GameStatus.DRAW_DEAD_POSITION)
+        game.redo()
+        self.assertEqual(game.moves, [Move.from_uci("a1a2")])
+        with self.assertRaises(PGNError):
+            parse_pgn(header + "1. Kb1 1/2-1/2")
+        with self.assertRaises(PGNError):
+            parse_pgn(header + "1. Kxa2 Kd3 1/2-1/2")
+
     def test_checkmate_on_move_that_reaches_75_move_limit_counts_as_mate(self):
         game = ChessGame(parse_fen("7k/8/6K1/8/8/8/8/R7 w - - 149 120"))
         game.play(Move.from_uci("a1a8"))

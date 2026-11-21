@@ -160,6 +160,17 @@ class PromotionUiTests(AppTestCase):
 
 
 class DrawClaimTests(AppTestCase):
+    def test_dead_position_ends_game_and_disables_move_entry(self):
+        app = self.make_app(locale="de")
+        app.controller.new_game(GameSetup(initial_fen="8/8/8/8/8/8/1rk5/K7 b - - 0 1"))
+        app._play_move(Move.from_uci("b2a2"))
+        self.assertEqual(app.panel_text.get(), "Remis durch tote Stellung")
+        self.assertEqual(app.board._legal_moves, ())
+        self.assertEqual(app.resign_button.cget("state"), tk.DISABLED)
+        app._undo()
+        self.assertEqual(app.panel_text.get(), "Schwarz am Zug")
+        self.assertIn(Move.from_uci("b2a2"), app.board._legal_moves)
+
     def test_claim_by_declared_move_preserves_position_and_supports_undo(self):
         app = self.make_app()
         for uci in ("g1f3", "g8f6", "f3g1", "f6g8", "g1f3", "g8f6", "f3g1"):

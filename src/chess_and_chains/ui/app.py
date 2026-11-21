@@ -1070,6 +1070,7 @@ class ChessApp:
         return t({
             GameStatus.STALEMATE: "status.stalemate",
             GameStatus.DRAW_INSUFFICIENT_MATERIAL: "status.insufficient",
+            GameStatus.DRAW_DEAD_POSITION: "status.dead_position",
             GameStatus.DRAW_FIVEFOLD_REPETITION: "status.fivefold",
             GameStatus.DRAW_SEVENTY_FIVE_MOVE: "status.seventyfive",
             GameStatus.DRAW_CLAIMED: "status.claimed",

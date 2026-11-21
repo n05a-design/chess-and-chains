@@ -111,13 +111,14 @@ class SavedGame:
 
     def to_game(self) -> ChessGame:
         game = ChessGame(parse_fen(self.initial_fen))
-        for move in self.moves:
-            game.play(move)
-        if self.resigned_by is not None:
-            game.resign(self.resigned_by)
-        elif self.draw_claim is not None:
-            game.claim_draw(self.draw_claim, self.declared_move)
-        game.record_result(self.result)
+        with game.replay_record():
+            for move in self.moves:
+                game.play(move)
+            if self.resigned_by is not None:
+                game.resign(self.resigned_by)
+            elif self.draw_claim is not None:
+                game.claim_draw(self.draw_claim, self.declared_move)
+        game.record_result(self.result, historical=True)
         return game
 
 

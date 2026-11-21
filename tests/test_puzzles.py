@@ -146,6 +146,17 @@ class SessionTests(unittest.TestCase):
         self.pack = load_demo_pack()
         self.by_id = {p.puzzle_id: p for p in self.pack.puzzles}
 
+    def test_training_can_replay_the_forced_capture_in_a_dead_position(self):
+        from chess_and_chains.puzzles.model import Puzzle
+
+        capture = Move.from_uci("a1a2")
+        puzzle = Puzzle("forced-capture", "8/8/8/8/8/8/1rk5/K7 b - - 0 1", Move.from_uci("b2a2"),
+                        (capture,), 1200, 0, 0, 0, (), "test")
+        session = PuzzleSession(puzzle)
+        self.assertEqual(session.legal_moves(), (capture,))
+        self.assertEqual(session.submit(capture).verdict, Verdict.SOLVED)
+        self.assertTrue(session.clean_solve)
+
     def test_mate_in_two_flow_with_scripted_reply(self):
         session = PuzzleSession(self.by_id["ccSM02"])
         self.assertEqual(session.submit(Move.from_uci("a1a2")).verdict, Verdict.ILLEGAL)

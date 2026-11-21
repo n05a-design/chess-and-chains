@@ -38,7 +38,8 @@ class PuzzleSession:
     def __init__(self, puzzle: Puzzle, *, clock=time.monotonic) -> None:
         self.puzzle = puzzle
         self._clock = clock
-        self.game = ChessGame(puzzle.initial_state())
+        # Training replays a supplied line of legal moves.
+        self.game = ChessGame(puzzle.initial_state(), adjudicate_forced_capture_draws=False)
         self.game.play(puzzle.setup_move)
         self._index = 0  # index into puzzle.solution of the next player move
         self.mistakes = 0
