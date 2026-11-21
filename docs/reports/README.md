@@ -10,6 +10,8 @@ Hier nur tatsächlich ausgeführte Prüfberichte/Agentenübergaben unter `YYYY-M
 
 [W10 – Rätselthemen in DE und EN](2026-11-21_W10-raetselthemen.md)
 
+[W10 – Brett als Text lesen und Züge spielen](2026-11-21_W10-brett-als-text.md)
+
 [W10 – Bibliotheksdialog per Tastatur bedienen](2026-11-21_W10-dialogtastatur.md)
 
 [W06 – Perspektivwechsel in der SVG-Brettvorschau](2026-11-21_W06-svg-brettcache.md)
