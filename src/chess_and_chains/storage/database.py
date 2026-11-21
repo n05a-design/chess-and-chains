@@ -24,6 +24,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from ..chess import ChessError, ChessGame, Color, DrawClaim, Move, export_pgn, parse_fen, parse_pgn, to_fen
+from ..chess.notation import read_pgn_headers
 from .exchange import write_atomic_export
 
 MAX_PGN_FILE_BYTES = 256 * 1024
@@ -120,6 +121,16 @@ class SavedGame:
                 game.claim_draw(self.draw_claim, self.declared_move)
         game.record_result(self.result, historical=True)
         return game
+
+
+@dataclass(frozen=True, slots=True)
+class GameSummary:
+    id: int
+    created_utc: str
+    result: str
+    white: str
+    black: str
+    event: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -351,6 +362,20 @@ class Database:
         return [tuple(r) for r in self._conn.execute(
             "SELECT id, created_utc, result, mode FROM games ORDER BY id DESC"
         )]
+
+    def game_summaries(self) -> list[GameSummary]:
+        summaries = []
+        for game_id, created, result, pgn in self._conn.execute(
+            "SELECT id, created_utc, result, pgn FROM games ORDER BY id DESC"
+        ):
+            try:
+                tags = read_pgn_headers(pgn)
+            except (ChessError, AttributeError, TypeError):
+                tags = {}
+            summaries.append(GameSummary(
+                game_id, created, result, tags.get("White", ""), tags.get("Black", ""), tags.get("Event", ""),
+            ))
+        return summaries
 
     def delete_game(self, game_id: int) -> None:
         self._conn.execute("DELETE FROM games WHERE id = ?", (game_id,))

@@ -799,6 +799,52 @@ class PositionExchangeUiTests(AppTestCase):
 
 
 class StorageAndLocaleUiTests(AppTestCase):
+    def test_library_search_keeps_open_and_export_bound_to_filtered_game(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp)
+            app = self.make_app(data_layout=DataLayout(path / "data"))
+            wanted = app.db.import_pgn('[White "Éva Szabó"]\n[Event "Club Cup"]\n\n1. e4 *')
+            app.db.import_pgn('[White "Other player"]\n\n1. d4 *')
+            errors = []
+
+            def choose(action):
+                dialog = self.root.grab_current()
+                try:
+                    content = dialog.winfo_children()[0]
+                    children = content.winfo_children()
+                    search = next(child for child in children if type(child) is ttk.Entry)
+                    selection = next(child for child in children if isinstance(child, ttk.Combobox))
+                    button = next(child for child in children if isinstance(child, ttk.Button)
+                                  and child.cget("text") == action)
+                    search.insert(0, "no matching player")
+                    self.assertTrue(button.instate(("disabled",)))
+                    search.delete(0, tk.END)
+                    search.insert(0, "ÉVA club")
+                    self.assertIn(f"#{wanted}", selection.get())
+                    self.assertFalse(button.instate(("disabled",)))
+                    button.invoke()
+                except Exception as error:
+                    errors.append(error)
+                finally:
+                    if dialog.winfo_exists():
+                        dialog.destroy()
+
+            try:
+                target = path / "filtered.pgn"
+                with patch("chess_and_chains.ui.app.filedialog.asksaveasfilename", return_value=str(target)):
+                    self.root.after(0, choose, app.t("library.export"))
+                    app.library_button.invoke()
+                if errors:
+                    raise errors[0]
+                self.assertIn("1. e4 *", target.read_text(encoding="utf-8"))
+                self.root.after(0, choose, app.t("library.open"))
+                app.library_button.invoke()
+                if errors:
+                    raise errors[0]
+                self.assertEqual(app.game.moves, [Move.from_uci("e2e4")])
+            finally:
+                app.close()
+
     def test_startup_reports_database_recovery_alongside_settings_warning(self):
         with tempfile.TemporaryDirectory() as tmp:
             layout = DataLayout(Path(tmp) / "data")

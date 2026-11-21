@@ -23,6 +23,7 @@
 - Accept platform aliases above the local puzzle-pack library and reject redirected library and pack directories.
 - Exchange the current position via FEN text or a local `.fen` file and start a two-player game from a validated position.
 - Browse occupied squares and legal destinations in a text board, with keyboard play for games, promotions and puzzles.
+- Find saved games by player, event, result or game number. Keep the selected game consistent when opening or exporting a filtered result.
 
 The dated entries below preserve the development history incorporated into this snapshot.
 

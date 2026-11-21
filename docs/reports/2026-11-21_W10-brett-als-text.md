@@ -22,8 +22,16 @@ an die fokussierten Widgets. Ein weiterer Test spielt eine Turmumwandlung
 und löst das erste Demo-Rätsel. Die Plattform-CI und die Screenreader-Probe
 sind eigene Nachweise. Ein Rollback erfordert keine Datenmigration.
 
+Der vollständige Windows-Lauf `python -m unittest discover -s tests -q`
+bestand 232 Tests auf `c5b22dd` (Exitcode 0). Je 14 Jobs bestanden im
+[PR](https://github.com/n05a-design/chess-and-chains/actions/runs/44930947282)
+und im [Push](https://github.com/n05a-design/chess-and-chains/actions/runs/44930920914).
+Auf dem macOS-Runner bestanden der Tastaturtest und je 64 Tk-Tests
+mit Python 3.11/Tk 8.6.13 und Python 3.14/Tk 9.0.5.
+Der [Lauf nach dem Merge auf main](https://github.com/n05a-design/chess-and-chains/actions/runs/44931230803)
+für `d8c321c` bestand ebenfalls alle 14 Jobs, darunter alle vier macOS-Jobs.
+
 ## Übergabe
 
-1. Plattform-CI mit Fokus auf Aqua-Tastatur und Fokusrückkehr verfolgen.
-2. Screenreader-Ansagen für Listen, Auswahl, Zugmeldung und Dialogfokus
+1. Screenreader-Ansagen für Listen, Auswahl, Zugmeldung und Dialogfokus
    auf den Zielsystemen prüfen.

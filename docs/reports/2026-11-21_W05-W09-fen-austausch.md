@@ -51,9 +51,12 @@ Der vollständige Wiederholungslauf prüfte den committed Stand mit Bericht.
 
 ## Übergabe
 
-1. Die Plattformmatrix für dieses Folgepaket nach beauftragtem Push
-   ausführen. Die grünen GitHub-Läufe von PR #13 betreffen den Ausgangspunkt.
-2. Systemdialoge auf den Zielsystemen und Tastaturbedienung mit
+1. [PR #14](https://github.com/n05a-design/chess-and-chains/pull/14) und
+   der [Lauf nach dem Merge](https://github.com/n05a-design/chess-and-chains/actions/runs/44916460337)
+   sind grün. Auf Aqua Tk 8.6.13 und 9.0.5 wurden Öffnen und Abbruch der
+   nativen FEN-Dateidialoge geprüft. Dateiauswahl und Speicherbestätigung
+   in den Systemdialogen stehen zur manuellen Abnahme aus.
+2. Tastaturbedienung mit
    Screenreader prüfen. Die Datenpfade mit alten SQLite-Bibliotheken
    bleiben durch die bestehenden Regressionen abgedeckt.
 3. Profilmodell und Gesamtfreigabe nach Q-012 und ADR-004 in der
