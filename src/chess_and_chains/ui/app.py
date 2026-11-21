@@ -689,7 +689,7 @@ class ChessApp:
         empty: str = "",
         actions: Sequence[tuple[str, Callable[[int | None], None], bool]] = (),
     ) -> int | None:
-        previous_focus = self.root.focus_get()
+        previous_focus = self.root.focus_lastfor()
         dialog = tk.Toplevel(self.root)
         dialog.title(title)
         dialog.transient(self.root)
@@ -704,12 +704,19 @@ class ChessApp:
         chosen = None
         action = None
 
+        def close(_event: tk.Event | None = None) -> None:
+            # Return focus while the dialog still owns it. Tk also remembers the
+            # target in the parent if the window manager has deactivated the app.
+            if previous_focus is not None and previous_focus.winfo_exists() and previous_focus.winfo_viewable():
+                previous_focus.focus_set()
+            dialog.destroy()
+
         def accept(callback: Callable[[int | None], None] | None = None) -> None:
             nonlocal chosen, action
             index = selection.current()
             chosen = index if index >= 0 else None
             action = callback
-            dialog.destroy()
+            close()
 
         confirm_button = ttk.Button(content, text=confirm, command=accept, state="normal" if labels else "disabled")
         confirm_button.grid(row=1, column=0, padx=4)
@@ -722,19 +729,17 @@ class ChessApp:
             _bind_button_enter(button)
             if initial_focus is None and state == "normal":
                 initial_focus = button
-        cancel_button = ttk.Button(content, text=self.t("button.cancel"), command=dialog.destroy)
+        cancel_button = ttk.Button(content, text=self.t("button.cancel"), command=close)
         cancel_button.grid(row=1, column=len(actions) + 1, padx=4)
         _bind_button_enter(cancel_button)
-        dialog.bind("<Escape>", lambda _event: dialog.destroy())
+        dialog.bind("<Escape>", close)
+        dialog.protocol("WM_DELETE_WINDOW", close)
         if labels:
             selection.bind("<Return>", lambda _event: accept())
             selection.bind("<KP_Enter>", lambda _event: accept())
         (initial_focus or cancel_button).focus_set()
         dialog.grab_set()
         self.root.wait_window(dialog)
-        if (not self._closed and previous_focus is not None and previous_focus.winfo_exists()
-                and previous_focus.winfo_viewable()):
-            previous_focus.focus_set()
         if action is not None:
             action(chosen)
             return None

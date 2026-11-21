@@ -50,10 +50,22 @@ Ziffernblocktaste ist mit dieser Probe daher nicht belegt.
 - Der Merge-Lauf bestand 14 von 14 Jobs, einschließlich nativer
   macOS-Tk-Jobs mit Python 3.11 und 3.14. Der lokale Dialogfix hat eigene
   Windows-Nachweise. [Merge-Lauf](https://github.com/n05a-design/chess-and-chains/actions/runs/44904083668)
-- Als nächste Abnahmen folgen GUI-CI für den lokalen Folgebranch,
-  Tastaturbedienung bei nativer Systemskalierung und die Prüfung mit
-  Screenreadern. W10/W11 bleiben entsprechend ihrem belegten Umfang
-  `TESTED`. [QA-Matrix](../qa/TEST_PLAN.md)
+- Auf `432fa36` scheiterte die Fokusrückkehr im Push-Lauf auf macOS mit
+  Python 3.11 und 3.14 sowie im PR-Lauf mit 3.14. Die Aktionen hatten den
+  Dialog geschlossen. Der Test wartete danach auf aktiven Fensterfokus,
+  den macOS unabhängig von der gemerkten Tk-Fokuszuordnung verwaltet.
+  [Push-Lauf](https://github.com/n05a-design/chess-and-chains/actions/runs/44904651157) ·
+  [PR-Lauf](https://github.com/n05a-design/chess-and-chains/actions/runs/44904690520)
+- Der Korrekturlauf übergibt den Fokus vor dem Zerstören des Dialogs an
+  das von Tk gemerkte Element des Hauptfensters. Die Regression prüft die
+  tatsächliche Übergabe und den Fokus, den Tk beim Aktivieren des
+  Hauptfensters setzt. Unter Windows bestanden erneut 17 gezielte Tk-Tests
+  mit Python 3.15.1 und die einzelne Regression mit Python 3.14.7. Der
+  Plattformstatus folgt im [PR #12](https://github.com/n05a-design/chess-and-chains/pull/12).
+  [Tkinter-Fokusmodell](https://docs.python.org/3/library/tkinter.html#tkinter.Misc.focus_set)
+- Als nächste Abnahmen folgen Tastaturbedienung bei nativer Systemskalierung
+  und die Prüfung mit Screenreadern. W10/W11 bleiben für ihren belegten
+  Umfang `TESTED`. [QA-Matrix](../qa/TEST_PLAN.md)
 
 Ein Rollback besteht aus der Rücknahme des Code- und Dokucommits. Es
 gibt keine Migration oder neue Laufzeitabhängigkeit.

@@ -655,14 +655,16 @@ class StorageAndLocaleUiTests(AppTestCase):
 
                 pending = self.root.after(0, press_when_focused)
                 try:
-                    app.library_button.invoke()
+                    with patch.object(app.library_button, "focus_set", wraps=app.library_button.focus_set) as restore:
+                        app.library_button.invoke()
                 finally:
                     if pending is not None:
                         self.root.after_cancel(pending)
                 self.assertTrue(sent, f"{label} did not receive focus")
                 self.assertFalse(timed_out, f"{key} did not close the chooser for {label}")
                 self.assertTrue(keypad_bound, f"{label} has no keypad Enter binding")
-                self.pump_until(lambda: self.root.focus_get() is app.library_button)
+                restore.assert_called_once_with()
+                self.assertIs(self.root.focus_lastfor(), app.library_button)
 
             with patch("chess_and_chains.ui.app.filedialog.askopenfilename", return_value=str(source)):
                 press_action("Import PGN…", "Return")
