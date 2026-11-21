@@ -9,7 +9,7 @@ Quelle: Lichess Open Database (CC0). Von jeder CSV-Zeile PuzzleID, FEN, Moves, R
 Keine Online-API als Pflicht. Datenimport in separatem Build/Preprocessing-Prozess; keine heruntergeladenen 100-MB-Dateien ins normale Git-Repository. Vor Binärpaketen Verteilung und Dateigröße prüfen.
 
 Der [Offline-Builder](../../data/puzzle_packs/README.md) implementiert die
-optionalen Qualitätsgrenzen und dokumentiert ihre Anwendung. Für ein
-Produktpaket stehen der freigegebene Realdatenimport, ein Datenprofil, die
-Grenzwertentscheidung, eine Seed-basierte Auswahl und Q-008/Q-009 aus.
-[W08-Prüfnachweis](../reports/2026-11-21_W08-puzzle-qualitaetsfilter.md)
+optionalen Qualitätsgrenzen und eine reproduzierbare Auswahl mit Seed.
+Für ein Produktpaket stehen der freigegebene Realdatenimport, ein
+Datenprofil, Grenzwerte, die Beurteilung der Stichprobe und Q-008/Q-009 aus.
+[W08-Prüfnachweis](../reports/2026-11-21_W08-puzzle-seed.md)

@@ -10,6 +10,8 @@ Hier nur tatsächlich ausgeführte Prüfberichte/Agentenübergaben unter `YYYY-M
 
 [W08 – Qualitätsfilter und Herkunft der Rätselpakete](2026-11-21_W08-puzzle-qualitaetsfilter.md)
 
+[W08 – Reproduzierbare Auswahl der Rätsel](2026-11-21_W08-puzzle-seed.md)
+
 [W05/W09 – Tote Stellungen und ältere Aufzeichnungen](2026-11-21_W05-tote-stellungen-und-altpartien.md)
 
 [W05 – Mehrzügige tote Stellungen](2026-11-21_W05-mehrzuegige-tote-stellungen.md)

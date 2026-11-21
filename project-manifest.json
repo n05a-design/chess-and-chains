@@ -215,7 +215,7 @@
       "gate": "Rechtssicherer Import, erste UCI-Aktion, Ratingminimum, Datenqualitätsberichte",
       "phase": "F3",
       "status": "TESTED",
-      "scope": "Puzzle model, offline CSV and .csv.zst import, optional quality thresholds and rejection report, versioned JSONL packs with per-puzzle provenance, puzzle session controller, theme/rating filters and progress; tested with project-authored fixtures only",
+      "scope": "Puzzle model, offline CSV and .csv.zst import, optional quality thresholds and rejection report, deterministic seeded selection, versioned JSONL packs with per-puzzle provenance, puzzle sessions and progress; tested with project-authored fixtures only",
       "status_evidence": [
         "docs/reports/2026-11-20_N02_functional-core.md",
         "src/chess_and_chains/puzzles/importer.py",
@@ -223,12 +223,13 @@
         "tests/test_puzzles.py",
         "tests/fixtures/puzzles_sample.csv",
         "docs/reports/2026-11-21_W08-puzzle-qualitaetsfilter.md",
+        "docs/reports/2026-11-21_W08-puzzle-seed.md",
         "docs/reports/2026-11-20_N02-follow-up.md",
         "tests/test_app_integration.py"
       ],
       "open_gate_items": [
         "Real Lichess export import run (owner opt-in download)",
-        "Quality profile, thresholds and seeded selection for a production pack",
+        "Quality profile, thresholds and sample assessment for a production pack",
         "Pack size decision Q-009",
         "Rating ceiling Q-008"
       ]
@@ -290,12 +291,13 @@
       "gate": "Echte CI/OS/Offline-/Lieferartefakt-Belege, offene Fehler, keine erfundenen Gates",
       "phase": "F5",
       "status": "TESTED",
-      "scope": "PR #9 passed on main. PR #10 passed the Windows, macOS and Linux matrix on push and PR. The W10 theme localization, wheel and native PGN smoke tests have local Windows evidence.",
+      "scope": "PR #10 passed the Windows, macOS and Linux matrix on push, PR and main. The local follow-up has Windows evidence for W10 theme localization, W05 forced play and W08 puzzle selection.",
       "status_evidence": [
         ".github/workflows/checks.yml",
         "tests/test_foundation.py",
         "tests/test_app_integration.py",
         "docs/reports/2026-11-21_W10-raetselthemen.md",
+        "docs/reports/2026-11-21_W08-puzzle-seed.md",
         "docs/reports/2026-11-21_W00-W12-paketabgleich.md",
         "docs/reports/2026-11-21_W10-W11-tastatur-und-skalierung.md",
         "docs/reports/2026-11-21_W11-v0.0.1-standsaudit.md",
