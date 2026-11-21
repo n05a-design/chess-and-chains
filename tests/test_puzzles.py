@@ -191,6 +191,22 @@ class ImporterTests(unittest.TestCase):
         puzzles, _ = parse(text)
         self.assertEqual(len(puzzles), 1)
 
+    def test_invalid_utf8_rejects_only_its_csv_record(self):
+        row = b"%s,6k1/p4ppp/8/8/8/8/5PPP/3R2K1 b - - 0 1,a7a6 d1d8,1000,0,0,0,mate,,%s\r\n"
+        raw = (HEADER.rstrip().encode() + b"\r\n"
+               + row % (b"first", b"Opening")
+               + row % (b"broken", b"Opening\xff")
+               + row % (b"last", '"Eröffnung\r\nVariante"'.encode("utf-8")))
+        report = ImportReport("damaged", 1000, None)
+        puzzles = list(iter_lichess_csv(io.BytesIO(raw), report))
+        self.assertEqual([puzzle.puzzle_id for puzzle in puzzles], ["first", "last"])
+        self.assertEqual(puzzles[-1].opening_tags, ("Eröffnung", "Variante"))
+        self.assertEqual(report.rows_read, 3)
+        self.assertEqual(report.rejected, {"unreadable_row": 1})
+        self.assertEqual(report.examples, {"unreadable_row": "row-2"})
+        self.assertTrue(report.complete)
+        self.assertEqual(report.input_sha256, hashlib.sha256(raw).hexdigest())
+
 
 class LichessSemanticsRegressionTests(unittest.TestCase):
     def test_first_uci_move_is_opponent_setup_and_applied_before_solving(self):

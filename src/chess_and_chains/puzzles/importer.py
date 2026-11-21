@@ -32,6 +32,7 @@ LICHESS_COLUMNS = (
 )
 _ID = re.compile(r"^[A-Za-z0-9]{3,16}$")
 _THEME = re.compile(r"^[A-Za-z0-9]+$")
+_INVALID_UTF8 = re.compile(r"[\udc80-\udcff]")
 MAX_SOLUTION_PLIES = 40
 
 
@@ -198,14 +199,17 @@ def iter_lichess_csv(
     ) if threshold is not None)
     chess_rules = rules or ChessRules()
     hashing = _HashingReader(stream)
-    text = io.TextIOWrapper(io.BufferedReader(hashing), encoding="utf-8", newline="")
+    # Keep invalid bytes attached to their CSV record even when the text reader buffers ahead.
+    text = io.TextIOWrapper(io.BufferedReader(hashing), encoding="utf-8", errors="surrogateescape", newline="")
     reader = csv.reader(text)
     try:
         header = next(reader)
     except StopIteration as error:
         raise PuzzleImportError("Empty puzzle file.") from error
-    except UnicodeDecodeError as error:
-        raise PuzzleImportError("Puzzle file is not UTF-8 text.") from error
+    except csv.Error as error:
+        raise PuzzleImportError("Cannot read the puzzle CSV header.") from error
+    if any(_INVALID_UTF8.search(name) for name in header):
+        raise PuzzleImportError("Puzzle CSV header is not UTF-8 text.")
     header = [name.strip().lstrip("﻿") for name in header]
     if (tuple(header[: len(LICHESS_COLUMNS)]) != LICHESS_COLUMNS
             or len(set(header)) != len(header)):
@@ -222,11 +226,14 @@ def iter_lichess_csv(
                 pass
             report.complete = True
             break
-        except (csv.Error, UnicodeDecodeError):
+        except csv.Error:
             report.rows_read += 1
             report.reject("unreadable_row", f"row-{report.rows_read}")
             continue
         report.rows_read += 1
+        if any(_INVALID_UTF8.search(value) for value in values):
+            report.reject("unreadable_row", f"row-{report.rows_read}")
+            continue
         if not values or values == [""]:
             report.reject("empty_row", f"row-{report.rows_read}")
             continue
