@@ -16,8 +16,8 @@
 | W07 | TESTED (Mock) | Adapter, Controller, Presets und asynchroner UCI-Bereitschaftstest mit Mock-Engine. Echte Engine, ADR-001 und Kalibrierung offen. [Bereitschaftstest](../reports/2026-11-21_W07-uci-verbindungstest.md) |
 | W08 | TESTED (Fixtures) | Importer, Packs, Session, Themen-/Ratingfilter und Fortschrittsanzeige; realer Lichess-Import, Q-008/Q-009 offen |
 | W09 | TESTED | Windows-PGN-Dateiaustausch belegt. SQLite-Rücksicherung prüft Partiedaten vor dem Austausch. Schreibfehler und unterbrochene Transfers wurden im isolierten Test geprüft. Native Abnahmen auf macOS/Linux, Q-012 und ADR-004 offen. [W09-Prüfnachweis](../reports/2026-11-21_W09-sichere-wiederherstellung.md) |
-| W10 | TESTED | DE/EN, Feldfokus und Tastaturabläufe in PR #9 geprüft. Lokale Korrektur der Fokusmeldung und native Sichtprobe bei 96 DPI. Systemskalierung bei 150/200 %, Screenreader und GUI-CI der Korrektur offen. |
-| W11 | TESTED | PR #9 mit je 14/14 Jobs auf Push, PR und `main`, je zwei native macOS-GUI-Jobs. Der lokale Folgestand hat Windows-Nachweise. Plattform-CI und die native Installations- und Offline-Abnahme stehen aus. |
+| W10 | TESTED | Feldfokus und Tastaturabläufe einschließlich Korrektur in PR #10 geprüft. DE/EN-Rätselthemen lokal im Filter und in den Rätseldetails geprüft. CI für den Folgebranch, native Systemskalierung bei 150/200 % und Screenreader stehen aus. [W10-Prüfnachweis](../reports/2026-11-21_W10-raetselthemen.md) |
+| W11 | TESTED | PR #9 mit erfolgreichem Lauf auf `main`. PR #10 mit je 14/14 Jobs auf Push und PR, einschließlich je zwei nativen macOS-GUI-Jobs. CI für den lokalen W10-Folgebranch sowie native Installations- und Offline-Abnahme stehen aus. [CI-Referenzen](../reports/2026-11-21_W10-raetselthemen.md#basis-und-plattform-ci) |
 | W12 | BLOCKED | Öffentliche Distribution wartet auf ADR-001, ADR-005, ADR-006 und manuelle W11-Abnahme. [Vertriebsstrategie](../release/RELEASE_STRATEGY.md) |
 
 | ID | Workstream | Prompt | Prerequisite | Verbindliches Gate | Zielphase |

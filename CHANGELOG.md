@@ -12,6 +12,7 @@
 - End live games automatically when every legal reply is a capture leading to insufficient material. Preserve the recorded moves in older games and supplied puzzle lines.
 - Validate saved games on a temporary copy of an SQLite backup before replacing the active library.
 - Show the preserved filename when the app creates a new library after database corruption. Verify repository asset paths and recorded hashes in the Foundation check.
+- Show localized demo puzzle themes in the filter and puzzle details. Keep custom theme identifiers visible and preserve the original identifiers used for filtering.
 
 The dated entries below preserve the development history incorporated into this snapshot.
 

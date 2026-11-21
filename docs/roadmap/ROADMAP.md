@@ -6,7 +6,7 @@
 
 | Priorität | Arbeit | Voraussetzung und nächster Nachweis |
 | --- | --- | --- |
-| 1 | W10 und W11 · Native Bedienabnahme | Die PR-#9-Matrix und die Windows-Sichtprobe bei 96 DPI sind dokumentiert. Folgestand in der GUI-CI prüfen. Fokusreihenfolge, Dialoge, Zugliste und Screenreader bei weiteren nativen Skalierungen abnehmen. [Paketabgleich](../reports/2026-11-21_W00-W12-paketabgleich.md) |
+| 1 | W10 und W11 · Native Bedienabnahme | PR #10 bestand die Plattformmatrix. Die DE/EN-Rätselthemen sind lokal geprüft. Den neuen Branch in der Plattform-CI prüfen und Fokusreihenfolge, Dialoge, Zugliste sowie Screenreader bei nativer Systemskalierung abnehmen. [W10-Prüfnachweis](../reports/2026-11-21_W10-raetselthemen.md) |
 | 2 | W06 · Individuelle Brettgestaltung | Finale SVG-Bretter des Inhabers mit Partie, Rätseln, Perspektivwechsel und V.02 prüfen. Die lokale SVG-Vorschau unterstützt die [vereinbarten Lieferformate](../../assets/boards/source/README.md). |
 | Parallel | W02/W07 · Echte Offline-Engine | Konkrete Engine- und Vertriebsstrategie für den sofort spielbaren Offline-Bot prüfen und in ADR-001 entscheiden lassen. Danach Test einer vollständigen Partie mit identifiziertem Binary und Offline-Nachweis. Die Mock-Tests dienen der Adapterprüfung. |
 | Parallel | W08 · Produktiver Rätselkatalog | Nach Opt-in Q-022 den realen Lichess-Export und den Setupzug prüfen. Q-008/Q-009 entscheiden Ratingbereich und Paketgröße. Die Demo und Fixture-Tests sind vorhanden. |
@@ -29,7 +29,7 @@ Die Aufwandswerte stammen aus der ursprünglichen Planung. Die Tabelle bildet Ab
 
 *Aufwand bei fokussierter Arbeit mit KI-Unterstützung, **nicht** verbindliche Kalenderwochen; Arbeit parallel zu Steps/Glide dauert länger.*
 
-## Stand nach PR #9
+## Entwicklung und CI-Stand
 
 Der Prototyp enthält lokale Zweispielerpartien, Mock-UCI mit Bereitschaftstest,
 fünf Demo-Rätsel, eine Partiebibliothek mit PGN-Austausch und Originalfiguren
@@ -37,7 +37,10 @@ in Vorderansicht V.02 und Draufsicht. Der [separate main-Lauf nach PR #9](https:
 schloss alle 14 Jobs erfolgreich ab. Den Stand und die offenen
 Abnahmekriterien pro Paket führt der [Paketabgleich](../reports/2026-11-21_W00-W12-paketabgleich.md).
 Der [Ablageabgleich](../reports/2026-11-21_W11-ablageabgleich.md) dokumentiert
-die lokalen Folge-Commits, Designquellen und archivierten OneDrive-Stände.
+die Folge-Commits, Designquellen und archivierten OneDrive-Stände. PR #10
+bestand die Plattformmatrix im Push- und PR-Lauf. Der lokale W10-Folgebranch
+ergänzt die Rätselthemen auf Deutsch und Englisch.
+[W10-Prüfnachweis und CI-Referenzen](../reports/2026-11-21_W10-raetselthemen.md)
 
 ## Kritischer Pfad
 
