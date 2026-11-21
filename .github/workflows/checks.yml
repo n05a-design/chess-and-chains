@@ -109,3 +109,7 @@ jobs:
       - name: GUI tests
         timeout-minutes: 3
         run: python -c "import faulthandler, unittest; faulthandler.dump_traceback_later(90, exit=True); unittest.main(module=None)" tests.test_board_ui tests.test_app_integration -v
+      - name: Native macOS FEN file panels
+        if: runner.os == 'macOS'
+        timeout-minutes: 2
+        run: python scripts/probe_macos_file_dialogs.py
