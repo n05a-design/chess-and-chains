@@ -144,6 +144,7 @@
         "docs/reports/2026-11-20_W06-originalfiguren.md",
         "docs/reports/2026-11-21_W06-figurenraster.md",
         "docs/reports/2026-11-21_W06-figurenschatten.md",
+        "docs/reports/2026-11-21_W06-figurenschatten-v02.md",
         "docs/reports/2026-11-20_W06-svg-brettvorschau.md",
         "src/chess_and_chains/ui/board.py",
         "tests/test_board_ui.py",

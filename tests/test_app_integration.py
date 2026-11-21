@@ -406,8 +406,10 @@ class OwnerPieceUiTests(AppTestCase):
         self.assertTrue(root.tk.getboolean(root.tk.call(white, "transparency", "get", 0, 0)))
         self.assertGreater(root.tk.call(white, "get", 24, 35)[0], 220)
         self.assertLess(root.tk.call(black, "get", 24, 35)[0], 80)
-        for image in (white, black):
-            self.assertLess(root.tk.call(image, "get", 35, 35)[0], root.tk.call(image, "get", 18, 35)[0])
+        for image, minimum_drop in ((white, 1), (black, 35)):
+            lit_side = root.tk.call(image, "get", 18, 35)[0]
+            shaded_side = root.tk.call(image, "get", 35, 35)[0]
+            self.assertGreaterEqual(lit_side - shaded_side, minimum_drop)
 
     def test_top_view_uses_its_own_artwork_in_play_and_puzzles(self):
         renderer = OwnerSvgPieces(top_view=True)
