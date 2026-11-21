@@ -100,9 +100,12 @@ class BoardArtworkUiTests(unittest.TestCase):
             color = root_element[0].get("fill")
             photo = tk.PhotoImage(master=master, width=size, height=size)
             photo.put(color, to=(0, 0, size, size))
+            if color == "#00aa00":
+                photo.put("#0000ff", to=(0, 0, 3, 4))
+                photo.transparency_set(size - 1, 0, True)
             return photo
 
-        with patch.object(artwork, "_photo", side_effect=render_square):
+        with patch.object(artwork, "_photo", side_effect=render_square) as render:
             board = BoardCanvas(root, lambda _moves: None, artwork=artwork)
             board._square_size = 24
             board._last_move = Move.from_uci("e2e4")
@@ -111,11 +114,38 @@ class BoardArtworkUiTests(unittest.TestCase):
                 self.assertEqual(mark.call_count, 2)
             background, = board.find_withtag("board-artwork")
             self.assertEqual(board.find_all()[64], background)
-            self.assertEqual(artwork.image(board, 24, flipped=False).get(12, 12), (0, 170, 0))
+            forward = artwork.image(board, 24, flipped=False)
+            self.assertEqual(forward.get(12, 12), (0, 170, 0))
             board.set_orientation("black")
             reversed_image = artwork.image(board, 24, flipped=True)
             self.assertEqual(reversed_image.get(180, 180), (0, 170, 0))
+            self.assertEqual(reversed_image.get(168, 168), (0, 0, 255))
+            self.assertTrue(reversed_image.transparency_get(191, 168))
             self.assertIs(artwork.image(board, 24, flipped=True), reversed_image)
+            self.assertIs(artwork.image(board, 24, flipped=False), forward)
+            self.assertEqual(render.call_count, 3)
+
+            larger = artwork.image(board, 32, flipped=True)
+            self.assertEqual(larger.width(), 256)
+            self.assertEqual(larger.get(224, 224), (0, 0, 255))
+            self.assertIsNot(artwork.image(board, 24, flipped=False), forward)
+            self.assertEqual(render.call_count, 9)
+
+    def test_full_board_caches_each_orientation_for_the_current_size(self):
+        root = create_root(self)
+        artwork = BoardArtwork(load_board_design(ROOT / "assets" / "boards" / "source" / "board-template.svg"))
+
+        def render_board(master, _content, size, *, flipped):
+            return tk.PhotoImage(master=master, width=size, height=size)
+
+        with patch.object(artwork, "_photo", side_effect=render_board) as render:
+            forward = artwork.image(root, 24, flipped=False)
+            flipped = artwork.image(root, 24, flipped=True)
+            self.assertIs(artwork.image(root, 24, flipped=False), forward)
+            self.assertIs(artwork.image(root, 24, flipped=True), flipped)
+            self.assertEqual([call.kwargs["flipped"] for call in render.call_args_list], [False, True])
+            self.assertEqual(artwork.image(root, 32, flipped=False).width(), 256)
+            self.assertIsNot(artwork.image(root, 24, flipped=True), flipped)
 
 
 class BoardGeometryTests(unittest.TestCase):
