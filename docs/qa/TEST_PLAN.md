@@ -1,9 +1,10 @@
 # QA-Matrix – Foundation / Produkt
 
-Stand **V.0.0.1**. Die automatisierte Plattformmatrix für PR #7 und seinen
-Merge auf `main` bestand. Die Matrix unten beschreibt die geprüften Pfade.
-Manuelle Windows-/macOS-/Linux-Sichtprüfungen, ein Test mit echter Engine und
-Installerabnahmen sind eigene Nachweise. [Standabgleich](../reports/2026-11-21_W11-v0.0.1-standsaudit.md)
+Stand **V.0.0.1**. Der Merge von PR #8 auf `main` bestand die automatisierte
+Plattformmatrix. Die nachfolgenden W10-Änderungen sind lokal unter Windows
+geprüft. Manuelle Windows-/macOS-/Linux-Sichtprüfungen, ein Test mit echter
+Engine und Installerabnahmen sind eigene Nachweise.
+[W10/W11-Bericht](../reports/2026-11-21_W10-W11-tastatur-und-skalierung.md)
 
 | Bereich | Testmodul | Umfang des automatisierten Nachweises |
 | --- | --- | --- |
@@ -16,12 +17,24 @@ Installerabnahmen sind eigene Nachweise. [Standabgleich](../reports/2026-11-21_W
 | UI | `test_board_ui`, `test_app_integration` | Brett, Umwandlung, Tastaturfokus, Partie/Rätsel, V.02 und Draufsicht, PNG-Fallback sowie UCI-Dialog. Nativ auf Windows/macOS und unter Xvfb auf Linux, jeweils Python 3.11 und 3.14 |
 | i18n | `test_i18n` | Schlüssel-/Platzhalter-Parität, UI-Abdeckung |
 | Security | `scripts/check_policy.py` | Kein `shell=True`, keine Netzwerk-Imports, keine Engine-Binaries |
-| Accessibility | – | Tastatur teilweise getestet; Kontrast/Screenreader/High-DPI OFFEN |
+| Bedienqualität | `test_app_integration` und Windows-Tk-Probe | Feldfokus, Zug, Unterverwandlung per Eingabetaste und Tab-Wechsel als Regressionen. Zugliste, Bibliotheksdialog und Puzzle mit Tk-Textskalierung 100/150/200 % geprüft. Farbkontrast ausgewählter Paare berechnet. Native DPI-/Screenreader-Prüfungen offen. |
 | Release | – | NICHT IMPLEMENTIERT |
 
 Lokale Gesamtläufe und Abgrenzung zur CI der Merge-Basis stehen in der [N02-Übergabe](../reports/2026-11-20_N02-follow-up.md).
 
-Nächste QA-Stufe sind native Tastatur-, Kontrast-, Screenreader- und
-Skalierungsproben bei 100/150/200 % mit dem versionierten Prototyp.
+Nächste QA-Stufe für W10/W11:
+
+1. Bei nativen Skalierungsstufen 100/150/200 % prüfen, soweit das jeweilige
+   System sie anbietet. OS, Tk-Version, Bildschirmauflösung und effektive
+   Skalierung protokollieren.
+2. Per Tab und Shift+Tab durch die Anwendung gehen. Einen legalen Zug,
+   eine Unterverwandlung, Rückgängig/Wiederholen und ein Demo-Rätsel nur mit
+   Tastatur ausführen. Sichtbaren Fokus, Rückkehr aus Dialogen und
+   erreichbare Inhalte bei kleinen Fenstern prüfen.
+3. Zugliste, Bibliothek und System-Dateidialoge mit dem Screenreader des
+   Zielsystems prüfen. Ansagen für Brettfeld, Belegung, Zugstatus und
+   Fokuswechsel mit Plattform und Toolversion dokumentieren.
+4. Vor der W06-Abnahme die Markierungen und Figuren auf den gelieferten
+   Inhaber-SVGs in beiden Brettorientierungen prüfen.
 
 Keine x/100-Testzahlen ohne tatsächlich gemessenen Lauf in einem datierten Bericht.
