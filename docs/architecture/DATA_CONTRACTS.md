@@ -16,8 +16,18 @@ automatisch. Eine beanspruchte Remispartie ist von einem noch laufenden Spiel
 unterschieden. FEN und PGN werden über die Domainfunktionen geparst/serialisiert;
 PGN importiert Tags und die legale Hauptvariante. Kommentare, NAGs und
 Nebenvarianten werden beim Einlesen übersprungen und beim Export nicht erzeugt.
-Für P-08 ist der Austausch der Hauptvariante nachgewiesen. Verlustfreier
-Annotierungsaustausch bleibt eine mögliche Erweiterung nach Scope-Entscheidung.
+Für P-08 sind der Austausch der PGN-Hauptvariante und der FEN-Roundtrip
+unter Windows nachgewiesen. Eine FEN-Datei enthält eine Stellung in einer
+Zeile und umfasst höchstens 4 KiB. Beim Lesen sind UTF-8-BOM und umgebender
+Leerraum zulässig. Die App schreibt die sechs kanonischen FEN-Felder
+in ASCII mit abschließendem Zeilenumbruch und ersetzt die Zieldatei atomar.
+Ein Start aus FEN beginnt einen lokalen Zweispielerverlauf ab der
+importierten Stellung. Darin gelten Figurensatz, Zugfarbe, Rochaderechte,
+en passant und Zähler aus der FEN. Die Vorgeschichte und ihre
+Wiederholungszählung gehören zum Partieformat. In einem anschließend
+exportierten PGN dokumentieren `SetUp` und `FEN` die abweichende
+Ausgangsstellung. Verlustfreier Annotierungsaustausch bleibt eine
+mögliche Erweiterung nach Scope-Entscheidung.
 
 Der Regelkern erkennt tote Stellungen in Folgen von bis zu vier Halbzügen,
 wenn jeweils nur ein Zug legal ist und die Folge in Patt oder ungenügendem
