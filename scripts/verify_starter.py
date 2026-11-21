@@ -108,7 +108,8 @@ def _check_asset_register(errors: list[str]) -> None:
             if not name:
                 continue  # Entries for external sources and future assets may omit a path.
             path = (ROOT / name).resolve()
-            if not path.is_relative_to(ROOT) or not path.exists():
+            # Resolve ROOT as well: on macOS /var and /tmp are symlinks to /private/...
+            if not path.is_relative_to(ROOT.resolve()) or not path.exists():
                 errors.append(f'Asset register {asset_id}: missing or invalid repository path {name}')
                 continue
             expected = asset['source_hash'].strip()

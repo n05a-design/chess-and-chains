@@ -15,9 +15,26 @@ Status: **PROPOSED**, nicht abgenommen.
 | P-09 | Die App auf Deutsch und Englisch bedienen | Kerntexte sind lokalisiert, Kataloge haben gleiche Schlüssel und keine stillen Fallbacks | W10; Startsprache noch offen | Katalogparität, Missing-Key- und Tastaturtests |
 | P-10 | Einen nachvollziehbar geprüften Desktop-Build erhalten | Installer, Quellen-/Lizenzhinweise und Prüfsummen passen zum tatsächlich getesteten Artefakt | W11/W12 + ADR-001/005/006 | Plattformbezogene Install-/Offline-/Update-/Uninstall-Nachweise |
 
-Die Nachweise sind Abnahmeanforderungen, keine aktuell bestandenen Tests.
+Die Spalte „Nachweis“ nennt Abnahmeanforderungen. Den tatsächlichen Stand zeigt der Abschnitt „Erfüllungsstand“.
 Akzeptanzkriterien sind vorgeschlagen und können ohne Issue/Owner-ADR nicht
 still erweitert werden.
+
+## Erfüllungsstand V.0.0.1 (21.11.2026)
+
+Abgleich der vorgeschlagenen Kriterien mit dem Code auf `main` (`1acd9bd`). „Automatisiert geprüft“ heißt: Tests bestehen in der 14-Job-Matrix. Es ersetzt weder native Abnahme noch Owner-Bestätigung.
+
+| ID | Stand | Beleg | Offen |
+| --- | --- | --- | --- |
+| P-01 | Automatisiert geprüft | [Brett-UI](../reports/2026-11-20_W06_board-ui.md), [Figuren V.02](../reports/2026-11-21_W06-figurenschatten-v02.md) | Native DPI- und Sichtprüfung |
+| P-02 | Automatisiert geprüft | [Regelkern](../reports/2026-11-20_W05_chess-core.md), [Bauernsperren](../reports/2026-11-21_W05-bauernsperren.md) | Allgemeine tote Stellungen, Owner-Abnahme |
+| P-03 | Nur mit Mock-Engine | [UCI-Bereitschaft](../reports/2026-11-21_W07-uci-verbindungstest.md) | Echte Engine nach ADR-001, Offline-Partie |
+| P-04 | Teilweise | Sechs Presets ohne Kalibrierung | Benchmark nach ADR-007 |
+| P-05 | Mit Fixtures geprüft | [Lokale Pakete](../reports/2026-11-21_W08-W09-lokale-raetselpakete.md), [Qualitätsfilter](../reports/2026-11-21_W08-puzzle-qualitaetsfilter.md) | Realdaten nach Q-022 |
+| P-06 | Automatisiert geprüft | [Rücksicherung](../reports/2026-11-21_W09-sichere-wiederherstellung.md) | Profile nach Q-012, benötigte Zeit je Rätsel prüfen |
+| P-07 | Teilweise | [SVG-Brettcache](../reports/2026-11-21_W06-svg-brettcache.md) | Finale Bretter, 150/200 % nativ |
+| P-08 | Automatisiert geprüft | [FEN-Austausch](../reports/2026-11-21_W05-W09-fen-austausch.md), [Bibliothekssuche](../reports/2026-11-21_W09-partiebibliothek-suche.md) | Native Dateidialoge macOS/Linux |
+| P-09 | Automatisiert geprüft | [Rätselthemen](../reports/2026-11-21_W10-raetselthemen.md), [Brett als Text](../reports/2026-11-21_W10-brett-als-text.md) | Startsprache Q-010, Screenreader |
+| P-10 | Nicht begonnen | – | W12 nach ADR-001, ADR-005, ADR-006 |
 
 ## Release-Blocker
 

@@ -56,7 +56,8 @@
       "status_evidence": [
         "docs/reports/2026-11-20_W00_bootstrap.md",
         "scripts/verify_starter.py",
-        "tests/test_foundation.py"
+        "tests/test_foundation.py",
+        "docs/reports/2026-11-21_W11-dokumentations-und-ablageaudit.md"
       ],
       "open_gate_items": [
         "Owner acceptance of W00 handoff"
@@ -162,7 +163,7 @@
       "gate": "Original-SVG-Rendering, Boardinteraktion, DPI/Keyboard, native UI-Gates",
       "phase": "F1",
       "status": "TESTED",
-      "scope": "Tk board with click/drag/keyboard input, original front V.02 and top SVG sets with PNG fallbacks, opt-in Tk 9 SVG board preview and local evidence for reusing both orientations.",
+      "scope": "Tk board with click/drag/keyboard input, original front V.02 and top SVG sets with PNG fallbacks, opt-in Tk 9 SVG board preview and local evidence for reusing both orientations. The SVG board cache passed the Windows, macOS and Linux matrix after the PR #13 merge.",
       "status_evidence": [
         "docs/reports/2026-11-20_W06_board-ui.md",
         "docs/reports/2026-11-20_W06-originalfiguren.md",
@@ -180,7 +181,6 @@
       ],
       "open_gate_items": [
         "Owner-supplied final board designs and their review",
-        "Cross-platform GUI CI for the local SVG board cache",
         "Manual native UI, high-DPI and accessibility acceptance"
       ]
     },
@@ -247,7 +247,7 @@
       "gate": "Getrennte Nutzerdaten, Migrations- und Restore-Proben, PGN/FEN-Roundtrip",
       "phase": "F4",
       "status": "TESTED",
-      "scope": "SQLite v3 migrations, game library including PGN file exchange, FEN position exchange and play, backup and restore, per-pack puzzle progress, last pack restoration and atomic JSON preferences. Verified on Windows with temporary data.",
+      "scope": "SQLite v3 migrations, searchable game library including PGN file exchange, FEN position exchange and play, backup and restore, per-pack puzzle progress, last pack restoration and atomic JSON preferences. Verified on Windows with temporary data.",
       "status_evidence": [
         "docs/reports/2026-11-20_N02_functional-core.md",
         "src/chess_and_chains/storage/database.py",
@@ -259,7 +259,8 @@
         "docs/reports/2026-11-21_W05-tote-stellungen-und-altpartien.md",
         "docs/reports/2026-11-21_W09-sichere-wiederherstellung.md",
         "docs/reports/2026-11-21_W08-W09-lokale-raetselpakete.md",
-        "docs/reports/2026-11-21_W05-W09-fen-austausch.md"
+        "docs/reports/2026-11-21_W05-W09-fen-austausch.md",
+        "docs/reports/2026-11-21_W09-partiebibliothek-suche.md"
       ],
       "open_gate_items": [
         "Native FEN file dialogs on Windows, macOS and Linux. Native PGN file and puzzle directory dialogs on macOS and Linux",
@@ -275,7 +276,7 @@
       "gate": "DE/EN-Katalogparität, Keyboard-/Kontrast-/Scaling-Abnahmen",
       "phase": "F4",
       "status": "TESTED",
-      "scope": "DE/EN catalog, puzzle labels and board keyboard flow through PR #11 CI. PR #12 tested the library chooser keyboard bindings and focus handoff in the platform matrix.",
+      "scope": "DE/EN catalog, puzzle labels and board keyboard flow through PR #11 CI. PR #12 tested the library chooser keyboard bindings and focus handoff in the platform matrix. PR #15 added the text board with keyboard play for games, promotions and puzzles.",
       "status_evidence": [
         "docs/reports/2026-11-20_N02_functional-core.md",
         "src/chess_and_chains/i18n/catalog.py",
@@ -284,7 +285,8 @@
         "docs/reports/2026-11-21_W10-raetselthemen.md",
         "docs/reports/2026-11-21_W10-dialogtastatur.md",
         "docs/reports/2026-11-21_W10-W11-tastatur-und-skalierung.md",
-        "docs/reports/2026-11-21_W00-W12-paketabgleich.md"
+        "docs/reports/2026-11-21_W00-W12-paketabgleich.md",
+        "docs/reports/2026-11-21_W10-brett-als-text.md"
       ],
       "open_gate_items": [
         "Native 150/200 percent scaling, full visual review, and screen reader acceptance",
@@ -299,7 +301,7 @@
       "gate": "Echte CI/OS/Offline-/Lieferartefakt-Belege, offene Fehler, keine erfundenen Gates",
       "phase": "F5",
       "status": "TESTED",
-      "scope": "PR #12 passed the Windows, macOS and Linux matrix on push, PR and main. Local evidence includes an offline wheel, OneDrive archive checksums and the SVG preview cache follow-up.",
+      "scope": "PRs #12 to #17 passed the Windows, macOS and Linux matrix (14/14 jobs) after each merge into main. Local evidence includes an offline wheel, OneDrive archive checksums and the documentation and local storage audit.",
       "status_evidence": [
         ".github/workflows/checks.yml",
         "tests/test_foundation.py",
@@ -314,10 +316,10 @@
         "docs/reports/2026-11-21_W11-ci-nach-pr6.md",
         "docs/reports/2026-11-21_W06-svg-brettcache.md",
         "docs/reports/2026-11-20_N02_functional-core.md",
-        "docs/reports/2026-11-20_N02-follow-up.md"
+        "docs/reports/2026-11-20_N02-follow-up.md",
+        "docs/reports/2026-11-21_W11-dokumentations-und-ablageaudit.md"
       ],
       "open_gate_items": [
-        "Cross-platform CI for the local W06 follow-up after the PR #12 merge",
         "Manual platform, offline installation and distributable artifact acceptance"
       ]
     },
@@ -329,8 +331,16 @@
       "gate": "Signierte/validierte Installer nach Owner-Freigabe; Paketmanager nur nach realer Distribution",
       "phase": "F5",
       "status": "BLOCKED",
-      "blocked_by": ["ADR-001", "ADR-005", "ADR-006", "W11 manual release acceptance"],
-      "status_evidence": ["docs/release/RELEASE_STRATEGY.md", "packaging/README.md"]
+      "blocked_by": [
+        "ADR-001",
+        "ADR-005",
+        "ADR-006",
+        "W11 manual release acceptance"
+      ],
+      "status_evidence": [
+        "docs/release/RELEASE_STRATEGY.md",
+        "packaging/README.md"
+      ]
     }
   ],
   "blocking_decision_ids": [

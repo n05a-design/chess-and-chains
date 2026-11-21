@@ -6,18 +6,18 @@
 
 | ID | Status | Umfang des Nachweises / offene Gate-Punkte |
 | --- | --- | --- |
-| W00 | TESTED | Struktur-/Statusprüfung; Owner-Abnahme offen |
+| W00 | TESTED | Struktur-, Status- und Linkprüfung; Dokumentations- und Ablageaudit vom 21.11.2026. Owner-Abnahme offen. [Audit](../reports/2026-11-21_W11-dokumentations-und-ablageaudit.md) |
 | W01 | IN_PROGRESS | MVP-Vertrag und Fragenregister ausgearbeitet. ADR-000 und weitere Scope-Entscheidungen offen. |
 | W02 | IN_PROGRESS | Rechte- und Engine-Vergleich dokumentiert. Konkrete Vertriebsentscheidung ADR-001 und Lieferinventar offen. |
 | W03 | IN_PROGRESS | Inventar mit aktuellem Glide-/Steps-Quellabgleich. Isolierte Verträge und Q-006 offen. |
 | W04 | IN_PROGRESS | Quellenrecherche, Connected System und Assetregister vorhanden. Freigabe der Markenexporte und Detailentscheidungen nach ADR-005 offen. |
 | W05 | TESTED | Regelkern mit Remisansprüchen, Perft, FEN und PGN-Hauptvariante geprüft. Tote Stellungen werden bei kurzen Zwangsfolgen und nachweisbar geschlossenen Bauernsperren erkannt. Allgemeine Erkennung und Gesamtregelabnahme stehen aus. [Zwangsfolgen](../reports/2026-11-21_W05-mehrzuegige-tote-stellungen.md) · [Bauernsperren](../reports/2026-11-21_W05-bauernsperren.md) |
-| W06 | TESTED | Tk-Brett mit V.02, Draufsicht, PNG-Fallbacks und Tk-9-Brettvorschau. Perspektivwechsel mit wiederverwendeten Feldbildern ist lokal geprüft. Finale Inhaber-Bretter, CI für den Folgebranch, native Sichtprüfung, High-DPI und Barrierefreiheit stehen aus. [Figuren V.02](../reports/2026-11-21_W06-figurenschatten-v02.md) · [Brettvorschau](../reports/2026-11-21_W06-svg-brettcache.md) |
+| W06 | TESTED | Tk-Brett mit V.02, Draufsicht, PNG-Fallbacks und Tk-9-Brettvorschau. Perspektivwechsel mit wiederverwendeten Feldbildern bestand nach PR #13 die Plattformmatrix. Finale Inhaber-Bretter, native Sichtprüfung, High-DPI und Barrierefreiheit stehen aus. [Figuren V.02](../reports/2026-11-21_W06-figurenschatten-v02.md) · [Brettvorschau](../reports/2026-11-21_W06-svg-brettcache.md) |
 | W07 | TESTED (Mock) | Adapter, Controller, Presets und asynchroner UCI-Bereitschaftstest mit Mock-Engine. Echte Engine, ADR-001 und Kalibrierung offen. [Bereitschaftstest](../reports/2026-11-21_W07-uci-verbindungstest.md) |
 | W08 | TESTED (Fixtures) | Offline-Builder mit Qualitätsgrenzen und Seed. Lokale Pakete werden vor der Installation geprüft und im Puzzle Lab geöffnet. Realdaten nach Q-022, Qualitätsprofil und Q-008/Q-009 offen. [W08/W09-Prüfnachweis](../reports/2026-11-21_W08-W09-lokale-raetselpakete.md) |
-| W09 | TESTED | PGN-Dateiaustausch, Stellungsaustausch mit FEN und SQLite-Rücksicherung unter Windows geprüft. Lokale Rätselpakete behalten getrennten Fortschritt und die letzte Auswahl über Neustarts. Native FEN-Dateidialoge, native PGN- und Ordnerdialoge auf macOS/Linux, Q-012 und ADR-004 offen. [FEN](../reports/2026-11-21_W05-W09-fen-austausch.md) · [Rätselpakete](../reports/2026-11-21_W08-W09-lokale-raetselpakete.md) · [Rücksicherung](../reports/2026-11-21_W09-sichere-wiederherstellung.md) |
-| W10 | TESTED | Feldfokus und DE/EN-Rätselthemen in `main` geprüft. PGN-Import, Export und Abbruch per Tastatur mit Fokusrückkehr in PR #12 geprüft. Native Systemskalierung, physischer Ziffernblock und Screenreader stehen aus. [W10-Prüfnachweis](../reports/2026-11-21_W10-dialogtastatur.md) |
-| W11 | TESTED | PR #12 mit 14/14 Jobs nach dem Merge in `main`, einschließlich nativer macOS-GUI für Python 3.11 und 3.14. Plattform-CI für den W06-Folgebranch sowie native Installations- und Offline-Abnahme stehen aus. [Merge-Lauf](https://github.com/n05a-design/chess-and-chains/actions/runs/44905214890) |
+| W09 | TESTED | PGN-Dateiaustausch, Bibliothekssuche (PR #16), Stellungsaustausch mit FEN und SQLite-Rücksicherung unter Windows geprüft. Lokale Rätselpakete behalten getrennten Fortschritt und die letzte Auswahl über Neustarts. Native FEN-Dateidialoge, native PGN- und Ordnerdialoge auf macOS/Linux, Q-012 und ADR-004 offen. [FEN](../reports/2026-11-21_W05-W09-fen-austausch.md) · [Suche](../reports/2026-11-21_W09-partiebibliothek-suche.md) · [Rätselpakete](../reports/2026-11-21_W08-W09-lokale-raetselpakete.md) · [Rücksicherung](../reports/2026-11-21_W09-sichere-wiederherstellung.md) |
+| W10 | TESTED | Feldfokus und DE/EN-Rätselthemen in `main` geprüft. PGN-Import, Export und Abbruch per Tastatur mit Fokusrückkehr in PR #12 geprüft. Brett als Text mit Tastaturzügen in PR #15. Native Systemskalierung, physischer Ziffernblock und Screenreader stehen aus. [Dialogtastatur](../reports/2026-11-21_W10-dialogtastatur.md) · [Brett als Text](../reports/2026-11-21_W10-brett-als-text.md) |
+| W11 | TESTED | PRs #12 bis #17 mit je 14/14 Jobs nach dem Merge in `main`, einschließlich nativer GUI-Tests auf Windows und macOS für Python 3.11 und 3.14. Native Installations-, Offline- und Artefaktabnahme stehen aus. [Merge-Lauf PR #17](https://github.com/n05a-design/chess-and-chains/actions/runs/44932980772) · [Ablageaudit](../reports/2026-11-21_W11-dokumentations-und-ablageaudit.md) |
 | W12 | BLOCKED | Öffentliche Distribution wartet auf ADR-001, ADR-005, ADR-006 und manuelle W11-Abnahme. [Vertriebsstrategie](../release/RELEASE_STRATEGY.md) |
 
 | ID | Workstream | Prompt | Prerequisite | Verbindliches Gate | Zielphase |
@@ -35,6 +35,24 @@
 | W10 | DE/EN, Accessibility und UX-Polish | [`prompts/10_I18N_ACCESSIBILITY.md`](../../prompts/10_I18N_ACCESSIBILITY.md) | W06/W09 | DE/EN-Katalogparität, Keyboard-/Kontrast-/Scaling-Abnahmen | F4 |
 | W11 | QA, Sicherheit und Nachweiskette | [`prompts/11_QA_CI_AUDIT.md`](../../prompts/11_QA_CI_AUDIT.md) | W05–W10 | Echte CI/OS/Offline-/Lieferartefakt-Belege, offene Fehler, keine erfundenen Gates | F5 |
 | W12 | Releases, WinGet, Homebrew, Webseite | [`prompts/12_RELEASE_HANDOFF.md`](../../prompts/12_RELEASE_HANDOFF.md) | W02/W11 | Signierte/validierte Installer nach Owner-Freigabe; Paketmanager nur nach realer Distribution | F5 |
+
+## Nächster Schritt je Paket
+
+| ID | Nächster Schritt | Wartet auf |
+| --- | --- | --- |
+| W00 | Owner-Abnahme der Struktur | Inhaber |
+| W01 | ADR-000 bestätigen, Q-010/Q-011 beantworten | Inhaber |
+| W02 | Weg A prüfen und ADR-001 entscheiden | Inhaber, Rechtsprüfung |
+| W03 | Q-006 entscheiden, danach isolierte Shell-Verträge | Inhaber |
+| W04 | Markenexporte nach ADR-005 freigeben | Inhaber |
+| W05 | Weitere verblockte Stellungen und längere Zwangsfolgen | – |
+| W06 | Finale Bretter prüfen, native Sichtprüfung | Bretter (Q-004), Gerät |
+| W07 | Echte Engine anbinden und kalibrieren | ADR-001, ADR-007 |
+| W08 | Realdatenimport mit Bericht | Q-022, Q-008, Q-009 |
+| W09 | Native Dialoge macOS/Linux, Profilmodell | Q-012, ADR-004 |
+| W10 | Skalierung, Screenreader, Ziffernblock nativ prüfen | Gerät |
+| W11 | Installations- und Offline-Abnahme | W12-Artefakte |
+| W12 | Installer bauen und prüfen | ADR-001, ADR-005, ADR-006 |
 
 ## Auftragsregeln
 

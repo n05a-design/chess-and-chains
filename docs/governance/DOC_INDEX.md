@@ -2,7 +2,7 @@
 
 `MANIFEST.md` definiert die autoritativen Dokumente. Dieser Index dient als Navigations-/Review-Liste für Agenten und Maintainer.
 
-**Dokumentationsstand V.0.0.1 · 21.11.2026.** [Version und Pflege](GOVERNANCE.md#projektversion) · [Änderungsverlauf](../../CHANGELOG.md) · [Aktueller Ablageabgleich](../reports/2026-11-21_W11-entwicklungsabgleich.md) · [Paketabgleich W00–W12](../reports/2026-11-21_W00-W12-paketabgleich.md)
+**Dokumentationsstand V.0.0.1 · 21.11.2026.** [Version und Pflege](GOVERNANCE.md#projektversion) · [Änderungsverlauf](../../CHANGELOG.md) · [Dokumentations- und Ablageaudit](../reports/2026-11-21_W11-dokumentations-und-ablageaudit.md) · [Paketabgleich W00–W12](../reports/2026-11-21_W00-W12-paketabgleich.md)
 
 **Einstieg:** [Start](../../START_HERE.md) · [Mastermanifest](../../MANIFEST.md) · [Agentenregeln](../../AGENTS.md) · [Maschinenmanifest](../../project-manifest.json). Die [GitHub-Einrichtung](../../GITHUB_SETUP.md) enthält zusätzlich die historische Neuanlage.
 
@@ -14,11 +14,13 @@
 
 **Design & Marke:** `docs/design/DESIGN_SYSTEM_BRIEF.md` · [Assetregister](../design/ASSET_REGISTER.csv) · [Historische Designquellen](../../design/brand_exploration/README.md) · `docs/marketing/LAUNCH_COPY.md` · `references/inspiration/REFERENCE_BOARD.md`.
 
-**Steuerung:** [Aktuelle Roadmap](../roadmap/ROADMAP.md) · [Work Packages](../roadmap/WORK_PACKAGES.md) · [Prompt-Aufträge](../../prompts/README.md) · [Nachweise](../reports/README.md).
+**Steuerung:** [Aktuelle Roadmap](../roadmap/ROADMAP.md) · [Work Packages](../roadmap/WORK_PACKAGES.md) · [Statusmodell](STATUS_MODEL.md) · [Governance](GOVERNANCE.md) · [Prompt-Aufträge](../../prompts/README.md) · [Nachweise](../reports/README.md) · [Übergabevorlage](AGENT_HANDOFF_TEMPLATE.md).
 
 **Prüfen & veröffentlichen:** `docs/qa/TEST_PLAN.md` · `docs/release/RELEASE_STRATEGY.md` · `THIRD_PARTY_NOTICES.md`.
 
-**Historische Arbeitsstände:** [OneDrive-Ablage und Prüfsummen](../archive/onedrive-2026-11-21/README.md).
+**Historische Arbeitsstände:** [OneDrive-Ablage und Prüfsummen](../archive/onedrive-2026-11-21/README.md) · [Einstiegsanleitung F0](../archive/f0-2026-11-19/START_HERE_F0.md).
+
+**GitHub:** [Issue-Vorlagen](../../.github/ISSUE_TEMPLATE/) · [PR-Vorlage](../../.github/pull_request_template.md) · [CI-Workflow](../../.github/workflows/checks.yml).
 
 ## Pflege nach Änderungen
 

@@ -25,6 +25,8 @@
 - Browse occupied squares and legal destinations in a text board, with keyboard play for games, promotions and puzzles.
 - Find saved games by player, event, result or game number. Keep the selected game consistent when opening or exporting a filtered result.
 - Recognize closed pawn barriers as dead positions when neither king can open the barrier or reach the other king.
+- Audit the local storage and documentation: restructure the roadmap with decision levers and proposed milestones, add next steps per work package and the MVP fulfilment status, index all reports, archive the F0 start guide, and add GitHub issue and pull request templates.
+- Fix the asset register path check on macOS, where temporary directories resolve through `/private`, and run the Foundation tests on every platform in CI.
 
 The dated entries below preserve the development history incorporated into this snapshot.
 
