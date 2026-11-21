@@ -89,6 +89,12 @@ unterschiedliche gelöste IDs. SQLite speichert Versuche mit `pack_id`,
 und optional `duration_ms`. Eine Korrektur der Paketherkunft mit denselben
 Paket- und Aufgabenkennungen lässt diesen Bezug bestehen.
 
+„Ungelöst“ umfasst Aufgaben ohne gespeicherten Erfolg. „Wiederholen“
+umfasst bereits versuchte Aufgaben ohne fehlerfreie Lösung. Fehlerfreie
+Lösungen haben null Fehler und null Hinweise. Die beste Lösungszeit nimmt
+das Minimum unter gelösten Versuchen mit Zeitwert. Der zuletzt gespeicherte
+Versuch wird innerhalb von Paket und Rätsel über seine SQLite-ID bestimmt.
+
 Der Puzzle-Lab-Import legt die geprüften Originalbytes des Manifests
 und der JSONL-Datei atomar unter `puzzle_packs/<pack_id>` in den
 Nutzerdaten ab. Die reservierte ID `demo` gehört zur mitgelieferten

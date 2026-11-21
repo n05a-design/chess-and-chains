@@ -247,7 +247,7 @@
       "gate": "Getrennte Nutzerdaten, Migrations- und Restore-Proben, PGN/FEN-Roundtrip",
       "phase": "F4",
       "status": "TESTED",
-      "scope": "SQLite v3 migrations, searchable game library including PGN file exchange, FEN position exchange and play, backup and restore, per-pack puzzle progress, last pack restoration and atomic JSON preferences. Verified on Windows with temporary data.",
+      "scope": "SQLite v3 migrations, searchable game library including PGN file exchange, FEN position exchange and play, backup and restore, per-pack puzzle progress and review filters, last attempt and best solve time, last pack restoration and atomic JSON preferences. Verified on Windows with temporary data.",
       "status_evidence": [
         "docs/reports/2026-11-20_N02_functional-core.md",
         "src/chess_and_chains/storage/database.py",
@@ -260,7 +260,8 @@
         "docs/reports/2026-11-21_W09-sichere-wiederherstellung.md",
         "docs/reports/2026-11-21_W08-W09-lokale-raetselpakete.md",
         "docs/reports/2026-11-21_W05-W09-fen-austausch.md",
-        "docs/reports/2026-11-21_W09-partiebibliothek-suche.md"
+        "docs/reports/2026-11-21_W09-partiebibliothek-suche.md",
+        "docs/reports/2026-11-21_W08-W09-wiederholtraining.md"
       ],
       "open_gate_items": [
         "Native FEN file dialogs on Windows, macOS and Linux. Native PGN file and puzzle directory dialogs on macOS and Linux",

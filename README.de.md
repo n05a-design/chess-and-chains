@@ -45,6 +45,11 @@ In der Partiebibliothek können mehrere Suchbegriffe kombiniert werden,
 etwa ein Spielername und eine Veranstaltung. Enter wechselt vom Suchfeld
 zur Trefferliste. Öffnen und PGN-Export verwenden die ausgewählte Partie.
 
+Im Rätsellabor zeigt „Lernstand“ alle Aufgaben, ungelöste Aufgaben oder
+bereits versuchte Aufgaben ohne fehlerfreie Lösung. Pro Aufgabe bleiben
+Versuchsanzahl, beste Lösungszeit und die Angaben zum letzten Versuch
+lokal verfügbar.
+
 ## Entwicklerstart
 
 ```bash
