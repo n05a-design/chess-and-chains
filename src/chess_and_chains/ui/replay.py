@@ -67,6 +67,8 @@ class ReplayDialog(tk.Toplevel):
         self.protocol("WM_DELETE_WINDOW", self._close)
         self.status.bind("<Configure>", lambda event: self.status.configure(wraplength=event.width))
         self.show(0)
+        self.update_idletasks()
+        panel.columnconfigure(1, minsize=sidebar.winfo_reqwidth())
         self.geometry("760x500")
         self.minsize(570, 400)
         if parent.winfo_viewable():
