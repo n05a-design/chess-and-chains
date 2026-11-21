@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Mapping
+from typing import TYPE_CHECKING, Iterator, Mapping
 
 from .model import (
     CastlingRights,
@@ -291,27 +291,31 @@ def parse_san(state: GameState, text: str, rules: ChessRules | None = None) -> M
     return matches[0]
 
 
-def parse_pgn(text: str, rules: ChessRules | None = None, *, max_plies: int | None = None) -> PGNDocument:
-    chess_rules = rules or ChessRules()
+def _split_pgn_headers(lines: Iterator[str]) -> tuple[dict[str, str], str]:
     tag_map: dict[str, str] = {}
-    lines = text.splitlines()
-    movetext_lines: list[str] = []
-    in_movetext = False
     for line in lines:
         stripped = line.strip()
-        if not in_movetext and not stripped:
+        if not stripped:
             continue
-        if not in_movetext:
-            match = _HEADER.match(stripped)
-            if match:
-                key, raw_value = match.groups()
-                value = re.sub(r'\\(["\\])', r"\1", raw_value)
-                if key in tag_map:
-                    raise PGNError(f"Duplicate PGN tag: {key}")
-                tag_map[key] = value
-                continue
-            in_movetext = True
-        movetext_lines.append(line)
+        match = _HEADER.match(stripped)
+        if not match:
+            return tag_map, line
+        key, raw_value = match.groups()
+        if key in tag_map:
+            raise PGNError(f"Duplicate PGN tag: {key}")
+        tag_map[key] = re.sub(r'\\(["\\])', r"\1", raw_value)
+    return tag_map, ""
+
+
+def read_pgn_headers(text: str) -> dict[str, str]:
+    """Read display metadata without parsing or replaying moves."""
+    return _split_pgn_headers(iter(text.splitlines()))[0]
+
+
+def parse_pgn(text: str, rules: ChessRules | None = None, *, max_plies: int | None = None) -> PGNDocument:
+    chess_rules = rules or ChessRules()
+    lines = iter(text.splitlines())
+    tag_map, first_move_line = _split_pgn_headers(lines)
     if "SetUp" in tag_map and tag_map["SetUp"] != "1":
         raise PGNError("PGN SetUp tag must be 1 when present.")
     if tag_map.get("SetUp") == "1" and "FEN" not in tag_map:
@@ -321,7 +325,7 @@ def parse_pgn(text: str, rules: ChessRules | None = None, *, max_plies: int | No
     except FenError as exc:
         raise PGNError(f"Invalid PGN starting position: {exc}") from exc
 
-    movetext = _remove_comments_and_variations("\n".join(movetext_lines))
+    movetext = _remove_comments_and_variations("\n".join((first_move_line, *lines)))
     tokens = re.sub(r"(\S)(\$\d+)", r"\1 \2", movetext).split()
     from .game import ChessGame
 

@@ -712,6 +712,7 @@ class ChessApp:
         empty: str = "",
         initial_index: int = 0,
         actions: Sequence[tuple[str, Callable[[int | None], None], bool]] = (),
+        searchable: bool = False,
     ) -> int | None:
         previous_focus = self.root.focus_lastfor()
         dialog = tk.Toplevel(self.root)
@@ -727,6 +728,7 @@ class ChessApp:
             selection.set(empty)
         chosen = None
         action = None
+        visible = list(range(len(labels)))
 
         def close(_event: tk.Event | None = None) -> None:
             # Return focus while the dialog still owns it. Tk also remembers the
@@ -738,7 +740,7 @@ class ChessApp:
         def accept(callback: Callable[[int | None], None] | None = None) -> None:
             nonlocal chosen, action
             index = selection.current()
-            chosen = index if index >= 0 else None
+            chosen = visible[index] if index >= 0 else None
             action = callback
             close()
 
@@ -746,11 +748,14 @@ class ChessApp:
         confirm_button.grid(row=1, column=0, padx=4)
         _bind_button_enter(confirm_button)
         initial_focus: tk.Widget | None = selection if labels else None
+        selection_actions = [confirm_button]
         for column, (label, callback, requires_selection) in enumerate(actions, 1):
             state = "disabled" if requires_selection and not labels else "normal"
             button = ttk.Button(content, text=label, command=lambda callback=callback: accept(callback), state=state)
             button.grid(row=1, column=column, padx=4)
             _bind_button_enter(button)
+            if requires_selection:
+                selection_actions.append(button)
             if initial_focus is None and state == "normal":
                 initial_focus = button
         cancel_button = ttk.Button(content, text=self.t("button.cancel"), command=close)
@@ -761,9 +766,52 @@ class ChessApp:
         if labels:
             selection.bind("<Return>", lambda _event: accept())
             selection.bind("<KP_Enter>", lambda _event: accept())
+        query = None
+        trace = None
+        if searchable and labels:
+            ttk.Label(content, text=self.t("library.search")).grid(row=0, column=0, columnspan=len(actions) + 2,
+                                                                   sticky="w")
+            query = tk.StringVar(dialog)
+            search = ttk.Entry(content, textvariable=query)
+            search.grid(row=1, column=0, columnspan=len(actions) + 2, sticky="ew", pady=(4, 8))
+            selection.grid_configure(row=2)
+            for child in content.winfo_children():
+                if isinstance(child, ttk.Button):
+                    child.grid_configure(row=3)
+            normalized = tuple(label.casefold() for label in labels)
+
+            def filter_games(*_trace: str) -> None:
+                terms = query.get().casefold().split()
+                current = selection.current()
+                previous = visible[current] if current >= 0 else None
+                visible[:] = [index for index, label in enumerate(normalized)
+                              if all(term in label for term in terms)]
+                selection.configure(values=[labels[index] for index in visible],
+                                    state="readonly" if visible else "disabled")
+                if visible:
+                    selection.current(visible.index(previous) if previous in visible else 0)
+                else:
+                    selection.set(self.t("library.no_matches"))
+                for button in selection_actions:
+                    button.configure(state="normal" if visible else "disabled")
+
+            def focus_matches(_event: tk.Event) -> str:
+                if visible:
+                    selection.focus_set()
+                return "break"
+
+            trace = query.trace_add("write", filter_games)
+            search.bind("<Down>", focus_matches)
+            search.bind("<Return>", focus_matches)
+            search.bind("<KP_Enter>", focus_matches)
+            initial_focus = search
         (initial_focus or cancel_button).focus_set()
         dialog.grab_set()
-        self.root.wait_window(dialog)
+        try:
+            self.root.wait_window(dialog)
+        finally:
+            if query is not None:
+                query.trace_remove("write", trace)
         if action is not None:
             action(chosen)
             return None
@@ -836,20 +884,26 @@ class ChessApp:
         if self.db is None:
             return
         try:
-            rows = self.db.list_games()
-            labels = [self.t("library.entry", id=game_id, date=created, result=result)
-                      for game_id, created, result, _mode in rows]
+            rows = self.db.game_summaries()
+            labels = []
+            for game in rows:
+                label = self.t("library.entry", id=game.id, date=game.created_utc[:10], result=game.result)
+                if game.white and game.black:
+                    label += "  ·  " + self.t("library.players", white=game.white, black=game.black)
+                if game.event and game.event not in ("*", "?"):
+                    label += "  ·  " + game.event
+                labels.append(label)
             chosen = self._choose_item(
-                self.t("button.library"), labels, self.t("library.open"), empty=self.t("library.empty"),
+                self.t("button.library"), labels, self.t("library.open"), empty=self.t("library.empty"), searchable=True,
                 actions=(
                     (self.t("library.import"), lambda _index: self._import_pgn_file(), False),
-                    (self.t("library.export"), lambda index: self._export_pgn_file(rows[index][0])
+                    (self.t("library.export"), lambda index: self._export_pgn_file(rows[index].id)
                      if index is not None else None, True),
                 ),
             )
             if chosen is None:
                 return
-            saved = self.db.load_game(rows[chosen][0])
+            saved = self.db.load_game(rows[chosen].id)
             game = saved.to_game()
             if (self.game.can_undo or self.game.can_redo) and not messagebox.askyesno(
                 self.t("library.open"), self.t("library.replace"), parent=self.root,

@@ -36,12 +36,16 @@ Der lokale Tk-Prototyp umfasst folgende Funktionen.
 
 Der Inhaber hat die Original-SVG-Figuren unter MPL-2.0 freigegeben. Tk 9 zeichnet ihre SVGs direkt. Ältere Tk-Versionen verwenden die daraus erzeugte PNG-Grafiktafel. Die eigenen Brettdesigns, eine getestete echte Engine, das geplante Rätselangebot und ein Installer gehören zur weiteren Entwicklung.
 
-## Entwicklerstart
-
 Über „Brett als Text…“ lassen sich in Partien und Rätseln besetzte Felder
 und legale Zielfelder als Listen lesen. Pfeiltasten wählen einen Eintrag.
 Enter wechselt von der Figur zum Ziel und spielt den dort gewählten Zug.
 Escape schließt das Textbrett.
+
+In der Partiebibliothek können mehrere Suchbegriffe kombiniert werden,
+etwa ein Spielername und eine Veranstaltung. Enter wechselt vom Suchfeld
+zur Trefferliste. Öffnen und PGN-Export verwenden die ausgewählte Partie.
+
+## Entwicklerstart
 
 ```bash
 python -m unittest discover -s tests -v
