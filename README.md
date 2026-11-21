@@ -26,7 +26,7 @@ The local Tk desktop prototype supports two-player play, a project-owned mock en
 | Capability | Status |
 | --- | --- |
 | Product requirements, folder structure and initial documentation | Scaffolded / proposed |
-| Headless rules domain (legal moves, FEN/SAN/PGN, draw rules, undo/redo) | Implemented and tested (perft + golden tests); owner acceptance open |
+| Headless rules domain (legal moves, FEN/SAN/PGN, draw rules, undo/redo) | Perft and golden tests cover the implemented rules, including dead positions with forced captures into insufficient material. General dead-position detection and owner acceptance remain open. |
 | Desktop board and local two-player UI | Tk prototype with Connected System branding, V.02 SVG front views and a separate top-view set |
 | UCI process adapter | Implemented; tested only against a project-owned mock engine |
 | Game controller + asynchronous bot (play as White or Black) | Implemented; tested with the mock engine, which is **not a chess AI** |

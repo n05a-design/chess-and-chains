@@ -10,11 +10,11 @@ haben eigene Gate-Punkte.
 | Bereich | Testmodul | Umfang des automatisierten Nachweises |
 | --- | --- | --- |
 | Foundation/Status | `test_foundation`, `scripts/verify_starter.py` | Struktur, Status-Evidenz und Versionskonsistenz über Laufzeit, Paketquelle, Manifest und Einstiegsdokumente |
-| Chess Core | `test_chess_core`, `test_chess_golden` | Perft (Start d4, CPW 2–6), Spiegel-Symmetrie, SAN, PGN-Fehlerfälle, Roundtrips, deklarierte Remisansprüche, Aufgabe gegen blanken König, Matt mit zwei Springern, Wiederholungszähler nach Undo/Redo und Abzweigung, Performance-Budget |
+| Chess Core | `test_chess_core`, `test_chess_golden` | Perft (Start d4, CPW 2–6), Spiegel-Symmetrie, SAN, PGN-Fehlerfälle, Roundtrips, deklarierte Remisansprüche, Aufgabe gegen blanken König, Matt mit zwei Springern, Wiederholungszähler nach Undo/Redo und Abzweigung, Performance-Budget. Tote Stellungen bei erzwungenen Schlägen lokal geprüft. [W05-Nachweis](../reports/2026-11-21_W05-tote-stellungen-und-altpartien.md) |
 | UCI | `test_uci_engine` | Nur Mock-Engine; echte Engine NICHT getestet |
 | Bot/Controller | `test_game_controller`, `test_bot_presets` | Vertical Slice, Crash, Timeout, verworfene Suchaufträge, UCI-Partiewechsel, Undo, Shutdown mit Mock-Engine |
 | Puzzle | `test_puzzles` | Rating ≥ 1000, Setup-Zug-Regression, Duplikate, Packs, Session, Themen-/Ratingfilter und gespeicherter Fortschritt mit projekteigenen Fixtures |
-| Storage | `test_storage` | Migration v1/v2→v3, Speichern der Terminierung, Backup/Restore inklusive Version 2 sowie fremder und fehlender Sicherungen, beschädigte Partiedaten, PGN-Datei-Roundtrip, Importgrenzen, atomarer Export und Settings in Temp-Verzeichnissen |
+| Storage | `test_storage` | Migration v1/v2→v3, Speichern der Terminierung, Backup/Restore inklusive Version 2 sowie fremder und fehlender Sicherungen, beschädigte Partiedaten, PGN-Datei-Roundtrip, Importgrenzen, atomarer Export und Settings in Temp-Verzeichnissen. Neue tote Stellung und alte Aufzeichnungen lokal im SQLite-Roundtrip geprüft. |
 | Windows-Dateiaustausch | Native Dialogprobe | PGN importiert und exportiert, Züge und Event-Tag erneut geprüft, SQLite-Sicherung in ein zweites Testprofil wiederhergestellt. |
 | UI | `test_board_ui`, `test_app_integration` | Brett, Umwandlung, Tastaturfokus, Partie/Rätsel, V.02 und Draufsicht, PNG-Fallback sowie UCI-Dialog. Nativ auf Windows/macOS und unter Xvfb auf Linux, jeweils Python 3.11 und 3.14 |
 | i18n | `test_i18n` | Schlüssel-/Platzhalter-Parität, UI-Abdeckung |

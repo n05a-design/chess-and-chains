@@ -19,6 +19,15 @@ Nebenvarianten werden beim Einlesen übersprungen und beim Export nicht erzeugt.
 Für P-08 ist der Austausch der Hauptvariante nachgewiesen. Verlustfreier
 Annotierungsaustausch bleibt eine mögliche Erweiterung nach Scope-Entscheidung.
 
+Eine Partie endet als tote Stellung, wenn in der aktuellen Stellung alle
+legalen Antworten unmittelbare Schläge in Stellungen mit ungenügendem
+Material sind. Der Remisgrund wird aus dem Brett neu abgeleitet. Die
+Wiedergabe alter PGN- und SQLite-Zugfolgen verwendet die bisherigen
+Abbruchprüfungen, damit bereits gespeicherte Züge und Endgründe erhalten
+bleiben. Für eine anschließend fortgesetzte Partie gilt die aktuelle
+Regel. Rätsel prüfen weiterhin den vorgegebenen taktischen Ablauf.
+[W05-Nachweis](../reports/2026-11-21_W05-tote-stellungen-und-altpartien.md)
+
 ## Engine
 
 Der Prototyp speichert einen Enginepfad in den Einstellungen. Der

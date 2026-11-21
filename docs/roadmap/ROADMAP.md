@@ -10,7 +10,7 @@
 | 2 | W06 · Individuelle Brettgestaltung | Finale SVG-Bretter des Inhabers mit Partie, Rätseln, Perspektivwechsel und V.02 prüfen. Die lokale SVG-Vorschau unterstützt die [vereinbarten Lieferformate](../../assets/boards/source/README.md). |
 | Parallel | W02/W07 · Echte Offline-Engine | Konkrete Engine- und Vertriebsstrategie für den sofort spielbaren Offline-Bot prüfen und in ADR-001 entscheiden lassen. Danach Test einer vollständigen Partie mit identifiziertem Binary und Offline-Nachweis. Die Mock-Tests dienen der Adapterprüfung. |
 | Parallel | W08 · Produktiver Rätselkatalog | Nach Opt-in Q-022 den realen Lichess-Export und den Setupzug prüfen. Q-008/Q-009 entscheiden Ratingbereich und Paketgröße. Die Demo und Fixture-Tests sind vorhanden. |
-| Parallel | W05/W09 · Regeln und Datenaustausch | Den belegten Remis-Gegenfall und alte PGN-Aufzeichnungen gemeinsam prüfen. Windows-Import, Export und Restore sind belegt. Native Dateidialoge auf macOS/Linux und Profile nach ADR-004/Q-012 bleiben offen. |
+| Parallel | W05/W09 · Regeln und Datenaustausch | Tote Stellungen bei erzwungenen Schlägen und ältere Aufzeichnungen sind geprüft. Weitere tote Stellungen untersuchen. Windows-Import, Export und Restore sind belegt. Native Dateidialoge auf macOS/Linux und Profile nach ADR-004/Q-012 bleiben offen. [W05-Nachweis](../reports/2026-11-21_W05-tote-stellungen-und-altpartien.md) |
 | Danach | W12 · Distribution | Installer, Lizenz- und Quellenbelege, Signaturen, Upgrade-/Offline-Tests und Inhaberfreigabe nach ADR-001, ADR-005 und ADR-006. Danach GitHub Releases und Software-Katalog. |
 
 ## Historische Phasenplanung F0 vom 19.11.2026

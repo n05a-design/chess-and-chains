@@ -21,7 +21,9 @@ GitHub ist der Entwicklungsort und beschreibt, wie das fertige Produkt funktioni
 
 ## Was bereits vorhanden ist
 
-Dokumentierte Projektbasis, ein **GUI-freier Python-Regelkern** (legale Züge, FEN/SAN/PGN, Remisregeln, Undo/Redo; Perft- und Golden-Tests) und ein lokaler Tk-Prototyp mit:
+Der **GUI-freie Python-Regelkern** unterstützt legale Züge, FEN/SAN/PGN, Remisregeln und Rückgängig/Wiederholen. Perft- und Golden-Tests decken die Umsetzung ab. Tote Stellungen mit erzwungenen Schlägen in ungenügendes Material werden erkannt. Allgemeine tote Stellungen und die Inhaberabnahme stehen aus.
+
+Der lokale Tk-Prototyp umfasst folgende Funktionen.
 
 - Partie für zwei Personen und **Bot-Modus** (Bot spielt Weiß oder Schwarz) über einen asynchronen Game-Controller,
 - **Connected System** mit eigener Wortmarke, Vorderansichten V.02 und separatem Draufsichtssatz als Original-SVGs,

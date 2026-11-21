@@ -9,6 +9,7 @@
 - Reconcile the current documentation with the code, archive prior planning snapshots, and record the next tasks and owner decisions. This is a development version.
 - Show keyboard focus when entering the board, localize square and selection feedback, and support Enter on action buttons, including promotion choices.
 - Clear the board focus message when keyboard focus leaves the board. Preserve newer action feedback and reject package acceptance records with unresolved blockers.
+- End live games automatically when every legal reply is a capture leading to insufficient material. Preserve the recorded moves in older games and supplied puzzle lines.
 
 The dated entries below preserve the development history incorporated into this snapshot.
 

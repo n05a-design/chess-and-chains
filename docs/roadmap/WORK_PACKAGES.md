@@ -11,7 +11,7 @@
 | W02 | IN_PROGRESS | Rechte- und Engine-Vergleich dokumentiert. Konkrete Vertriebsentscheidung ADR-001 und Lieferinventar offen. |
 | W03 | IN_PROGRESS | Inventar mit aktuellem Glide-/Steps-Quellabgleich. Isolierte Verträge und Q-006 offen. |
 | W04 | IN_PROGRESS | Quellenrecherche, Connected System und Assetregister vorhanden. Freigabe der Markenexporte und Detailentscheidungen nach ADR-005 offen. |
-| W05 | TESTED | Regelkern mit Remisansprüchen, Perft, FEN und PGN-Hauptvariante geprüft. Allgemeine tote Stellungen weiterhin offen. Der Paketabgleich enthält einen reproduzierbaren FEN-Gegenfall. |
+| W05 | TESTED | Regelkern mit Remisansprüchen, Perft, FEN und PGN-Hauptvariante geprüft. Tote Stellungen bei erzwungenen Schlägen werden erkannt. Ausstehend sind weitere tote Stellungen und die Gesamtregelabnahme. [W05-Nachweis](../reports/2026-11-21_W05-tote-stellungen-und-altpartien.md) |
 | W06 | TESTED | Tk-Brett mit Vorderansichten V.02, Draufsicht, PNG-Fallbacks und Tk-9-Brettvorschau. Automatisierte Plattformmatrix erfolgreich. Finale Inhaber-Bretter, native Sichtprüfung, High-DPI und Barrierefreiheit stehen aus. [Figuren V.02](../reports/2026-11-21_W06-figurenschatten-v02.md) · [Brettvorschau](../reports/2026-11-20_W06-svg-brettvorschau.md) |
 | W07 | TESTED (Mock) | Adapter, Controller, Presets und asynchroner UCI-Bereitschaftstest mit Mock-Engine. Echte Engine, ADR-001 und Kalibrierung offen. [Bereitschaftstest](../reports/2026-11-21_W07-uci-verbindungstest.md) |
 | W08 | TESTED (Fixtures) | Importer, Packs, Session, Themen-/Ratingfilter und Fortschrittsanzeige; realer Lichess-Import, Q-008/Q-009 offen |
