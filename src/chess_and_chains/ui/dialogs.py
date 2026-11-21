@@ -15,7 +15,7 @@ from ..i18n import Translator
 from ..storage.exchange import parse_fen_text, read_fen_file, write_fen_file
 
 
-def bind_button_enter(button: tk.Button | ttk.Button) -> None:
+def bind_button_enter(button: tk.Button | ttk.Button | ttk.Checkbutton) -> None:
     def invoke(_event: tk.Event) -> str:
         button.invoke()
         return "break"

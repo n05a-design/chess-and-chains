@@ -27,6 +27,7 @@ from chess_and_chains.puzzles import load_demo_pack, write_pack  # noqa: E402
 from chess_and_chains.storage import DataLayout, load_settings, update_settings  # noqa: E402
 from chess_and_chains.ui.app import ChessApp, EngineDialog  # noqa: E402
 from chess_and_chains.ui.branding import brand_image  # noqa: E402
+from chess_and_chains.ui.board import screen_cell  # noqa: E402
 from chess_and_chains.ui.dialogs import PositionDialog  # noqa: E402
 from chess_and_chains.ui.replay import ReplayDialog  # noqa: E402
 from chess_and_chains.ui.text_board import TextBoardDialog  # noqa: E402
@@ -890,6 +891,47 @@ class PositionExchangeUiTests(AppTestCase):
 
 
 class StorageAndLocaleUiTests(AppTestCase):
+    def test_marble_switch_preserves_game_and_uses_projected_move_targets(self):
+        app = self.make_app(locale="de")
+        self.root.deiconify()
+        self.root.update()
+        live = app.game
+        app._play_move(Move.from_uci("e2e4"))
+        app._undo()
+        before = app.controller.view()
+        self.assertTrue(before.can_redo)
+
+        app.marble_button.invoke()
+        self.assertTrue(app.board.marble)
+        self.assertEqual(app.controller.view(), before)
+        self.assertEqual(len(app.board.find_withtag("piece")), 32)
+        self.assertTrue(app.board.find_withtag("marble-board"))
+        app._redo()
+        self.assertEqual(app.game.moves, [Move.from_uci("e2e4")])
+        app.flip_button.invoke()
+        self.assertEqual(app.board.orientation, "black")
+
+        for square in ("e7", "e5"):
+            expected = parse_square(square)
+            col, row = screen_cell(expected, app.board.orientation)
+            x, y = app.board._point(col + 0.5, row + 0.5)
+            event = tk.Event()
+            event.x, event.y = round(x), round(y)
+            self.assertEqual(app.board._square_at(event.x, event.y), expected)
+            app.board._on_button_press(event)
+            app.board._on_button_release(event)
+
+        self.assertIs(app.game, live)
+        self.assertEqual(app.game.moves, [Move.from_uci("e2e4"), Move.from_uci("e7e5")])
+        recording = app._current_pgn()
+        app.marble_button.invoke()
+        self.assertFalse(app.board.marble)
+        self.assertFalse(app.board.find_withtag("marble-board"))
+        self.assertEqual(app.board.orientation, "black")
+        self.assertEqual(app._current_pgn(), recording)
+        app._undo()
+        self.assertTrue(app.game.can_redo)
+
     def test_saved_game_replay_keeps_active_game_and_handles_black_first(self):
         with tempfile.TemporaryDirectory() as tmp:
             app = self.make_app(data_layout=DataLayout(Path(tmp) / "data"))

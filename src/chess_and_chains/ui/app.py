@@ -31,10 +31,11 @@ from ..i18n import Translator
 from ..puzzles import DEMO_PACK_ID, PackError, PackLibrary, Puzzle, PuzzlePack, PuzzleSession, Verdict, load_demo_pack
 from ..storage import Database, DataLayout, Settings, SettingsError, StorageError, load_settings, save_settings
 from .atlas import PuzzleAtlas
-from .board import BoardCanvas, Orientation
+from .board import Orientation
 from .board_artwork import BoardArtwork, BoardArtworkError, BoardDesign
 from .branding import brand_image
 from .dialogs import PositionDialog, bind_button_enter as _bind_button_enter
+from .marble_board import MarbleBoardCanvas
 from .pieces import OwnerSvgPieces, PieceRenderer
 from .replay import ReplayDialog
 from .text_board import TextBoardDialog
@@ -243,16 +244,21 @@ class ChessApp:
         board_header = tk.Frame(board_sheet, background=ACETATE)
         board_header.grid(row=0, column=0, sticky="ew")
         board_header.columnconfigure(0, weight=1)
-        board_title = tk.Label(board_header, text=t("board.pieces"), background=ACETATE, foreground=INK,
+        self.board_title = board_title = tk.Label(board_header, text=t("board.pieces"), background=ACETATE, foreground=INK,
                  font=("TkDefaultFont", FONT_SIZES["caption"], "bold"), anchor="w", justify="left", padx=14, pady=9,
                  )
         board_title.grid(row=0, column=0, sticky="ew")
         self.text_board_button = self._button(board_header, t("text_board.button"), self._open_text_board)
         self.text_board_button.grid(row=0, column=1, padx=(0, 12), pady=4)
         board_title.bind("<Configure>", lambda event: board_title.configure(wraplength=max(1, event.width - 28)))
-        self.board = BoardCanvas(board_sheet, lambda moves: app._on_move_requested(moves),
-                                 lambda detail: app._on_selection_changed(detail),
-                                 artwork=self._board_artwork, renderer=piece_renderer, translator=t)
+        self.marble_view = tk.BooleanVar(self.root, value=False)
+        self.marble_button = ttk.Checkbutton(board_header, text=t("board.marble"), variable=self.marble_view,
+                                           command=self._toggle_marble_view)
+        self.marble_button.grid(row=1, column=0, columnspan=2, sticky="w", padx=14, pady=(0, 6))
+        _bind_button_enter(self.marble_button)
+        self.board = MarbleBoardCanvas(board_sheet, lambda moves: app._on_move_requested(moves),
+                                       lambda detail: app._on_selection_changed(detail),
+                                       artwork=self._board_artwork, renderer=piece_renderer, translator=t)
         self.board.grid(row=1, column=0, sticky="nsew", padx=12, pady=(0, 10))
         board_status = tk.Label(
             board_sheet, textvariable=self.interaction_text, background=ACETATE, foreground=MUTED_INK,
@@ -869,6 +875,17 @@ class ChessApp:
         self.orientation = "black" if self.orientation == "white" else "white"
         self.board.set_orientation(self.orientation)
         self.interaction_text.set(self.t("board.black_bottom" if self.orientation == "black" else "board.white_bottom"))
+
+    def _toggle_marble_view(self) -> None:
+        enabled = self.marble_view.get()
+        try:
+            self.board.set_marble(enabled)
+        except (OSError, tk.TclError):
+            self.marble_view.set(False)
+            self.board.set_marble(False)
+            self.interaction_text.set(self.t("board.marble_unavailable"))
+            enabled = False
+        self.board_title.configure(text=self.t("board.marble_pieces" if enabled else "board.pieces"))
 
     def _pgn_headers(self) -> dict[str, str]:
         view = self.controller.view()
