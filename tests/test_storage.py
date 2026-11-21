@@ -103,6 +103,23 @@ class DatabaseTests(TempDirTestCase):
         self.assertEqual(saved.moves, (Move.from_uci("b2a2"),))
         self.assertIs(saved.to_game().outcome().status, GameStatus.DRAW_DEAD_POSITION)
 
+    def test_old_record_can_replay_two_forced_moves_through_a_dead_position(self):
+        db = self.open_db()
+        # ECU arbiter's numeric reference position after Nc2+.
+        fen = "R7/7q/8/8/1p6/1P2p3/p1N1P3/k1K5 b - - 1 48"
+        pgn = f'[SetUp "1"]\n[FEN "{fen}"]\n[Result "1/2-1/2"]\n\n48... Qxc2+ 49. Kxc2 1/2-1/2'
+        saved = db.load_game(db.import_pgn(pgn))
+        self.assertEqual(saved.moves, (Move.from_uci("h7c2"), Move.from_uci("c1c2")))
+        self.assertEqual(saved.result, "1/2-1/2")
+        game = saved.to_game()
+        self.assertIs(game.outcome().status, GameStatus.STALEMATE)
+        game.undo()
+        game.undo()
+        self.assertIs(game.outcome().status, GameStatus.DRAW_DEAD_POSITION)
+        game.redo()
+        game.redo()
+        self.assertIs(game.outcome().status, GameStatus.STALEMATE)
+
     def test_migration_from_v1_creates_backup_and_keeps_data(self):
         path = self.tmp / "old.sqlite3"
         conn = sqlite3.connect(path)

@@ -253,6 +253,38 @@ class TerminationRuleTests(unittest.TestCase):
         with self.assertRaises(PGNError):
             parse_pgn(header + "1. Kxa2 Kd3 1/2-1/2")
 
+    def test_forced_two_ply_stalemate_is_already_a_dead_position(self):
+        # Numeric position from the ECU arbiter's example, after 48. Nc2+.
+        # https://www.europechess.org/dead-position/
+        initial = "R7/7q/8/8/1p6/1P2p3/p3P3/k1K1N3 w - - 0 48"
+        game = ChessGame(parse_fen(initial))
+        game.play_uci("e1c2")
+        self.assertIs(game.outcome().status, GameStatus.DRAW_DEAD_POSITION)
+        with self.assertRaises(IllegalMoveError):
+            game.play_uci("h7c2")
+        game.undo()
+        self.assertIs(game.outcome().status, GameStatus.ACTIVE)
+        game.redo()
+        self.assertIs(game.outcome().status, GameStatus.DRAW_DEAD_POSITION)
+        self.assertIs(ChessGame(parse_fen(mirror_fen(to_fen(game.state)))).outcome().status,
+                      GameStatus.DRAW_DEAD_POSITION)
+        self.assertEqual(parse_pgn(export_pgn(game)).result, "1/2-1/2")
+
+    def test_forced_mate_or_continuation_does_not_end_the_game_early(self):
+        mate = ChessGame(parse_fen("R7/7q/8/4B3/1p1n4/1P2p3/p1N1P3/k1K5 b - - 1 48"))
+        self.assertEqual(RULES.legal_moves(mate.state), (Move.from_uci("h7c2"),))
+        self.assertIs(mate.outcome().status, GameStatus.ACTIVE)
+        mate.play_uci("h7c2")
+        self.assertIs(mate.outcome().status, GameStatus.CHECKMATE)
+
+        open_file = ChessGame(parse_fen("R7/7q/8/8/1p6/4p3/p1N1P3/k1K5 b - - 1 48"))
+        for move in ("h7c2", "c1c2", "b4b3"):
+            self.assertEqual(RULES.legal_moves(open_file.state), (Move.from_uci(move),))
+            self.assertIs(open_file.outcome().status, GameStatus.ACTIVE)
+            open_file.play_uci(move)
+        self.assertGreater(len(RULES.legal_moves(open_file.state)), 1)
+        self.assertIs(open_file.outcome().status, GameStatus.ACTIVE)
+
     def test_checkmate_on_move_that_reaches_75_move_limit_counts_as_mate(self):
         game = ChessGame(parse_fen("7k/8/6K1/8/8/8/8/R7 w - - 149 120"))
         game.play(Move.from_uci("a1a8"))
