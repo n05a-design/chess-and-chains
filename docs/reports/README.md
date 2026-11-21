@@ -6,7 +6,17 @@ Hier nur tatsächlich ausgeführte Prüfberichte/Agentenübergaben unter `YYYY-M
 
 [W11 – Ablage, Code und GitHub abgleichen](2026-11-21_W11-ablageabgleich.md)
 
+[W11 – Lokale Folgecommits, Projektablage und GitHub abgleichen](2026-11-21_W11-entwicklungsabgleich.md)
+
+[W10 – Rätselthemen in DE und EN](2026-11-21_W10-raetselthemen.md)
+
+[W08 – Qualitätsfilter und Herkunft der Rätselpakete](2026-11-21_W08-puzzle-qualitaetsfilter.md)
+
+[W08 – Reproduzierbare Auswahl der Rätsel](2026-11-21_W08-puzzle-seed.md)
+
 [W05/W09 – Tote Stellungen und ältere Aufzeichnungen](2026-11-21_W05-tote-stellungen-und-altpartien.md)
+
+[W05 – Mehrzügige tote Stellungen](2026-11-21_W05-mehrzuegige-tote-stellungen.md)
 
 [W09 – Partiedaten vor der Rücksicherung prüfen](2026-11-21_W09-sichere-wiederherstellung.md)
 

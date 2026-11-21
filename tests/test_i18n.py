@@ -10,6 +10,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from chess_and_chains.engines.presets import load_presets  # noqa: E402
 from chess_and_chains.i18n import CATALOGS, SUPPORTED_LOCALES, Translator, system_locale  # noqa: E402
 from chess_and_chains.i18n.catalog import placeholders  # noqa: E402
+from chess_and_chains.puzzles.pack import load_demo_pack  # noqa: E402
 
 KEY_USE = re.compile(r"""\bself\.t\(\s*["']([a-z0-9_.]+)["']""")
 
@@ -56,6 +57,23 @@ class CatalogTests(unittest.TestCase):
         for locale in SUPPORTED_LOCALES:
             for text in CATALOGS[locale].values():
                 self.assertNotRegex(text, r"\b[DTLS][a-h][1-8]\b", "German piece letters must not be used in notation")
+
+    def test_demo_puzzle_themes_have_distinct_labels_in_both_locales(self):
+        themes = {theme for puzzle in load_demo_pack().puzzles for theme in puzzle.themes}
+        for locale in SUPPORTED_LOCALES:
+            with self.subTest(locale=locale):
+                t = Translator(locale)
+                labels = {t.puzzle_theme_label(theme) for theme in themes}
+                self.assertEqual(len(labels), len(themes))
+                self.assertNotIn(t("puzzle.all_themes"), labels)
+                for theme in themes:
+                    label = t.puzzle_theme_label(theme)
+                    self.assertEqual(label, t(f"puzzle.theme.{theme}"))
+                    self.assertNotEqual(label, theme)
+
+    def test_custom_puzzle_theme_keeps_its_identifier_in_the_label(self):
+        self.assertEqual(Translator("de").puzzle_theme_label("localStudy"), "Kennung: localStudy")
+        self.assertEqual(Translator("en").puzzle_theme_label("localStudy"), "Tag: localStudy")
 
 
 if __name__ == "__main__":

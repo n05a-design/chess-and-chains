@@ -23,6 +23,9 @@ from .model import (
 from .rules import ChessRules, RulesPort
 
 
+_FORCED_DRAW_MAX_PLIES = 4
+
+
 @dataclass(frozen=True, slots=True)
 class _Termination:
     status: GameStatus
@@ -60,17 +63,17 @@ class ChessGame:
         self._termination: _Termination | None = None
         self._undo: list[_HistoryEntry] = []
         self._redo: list[_HistoryEntry] = []
-        self._adjudicate_forced_capture_draws = adjudicate_forced_capture_draws
+        self._adjudicate_forced_draws = adjudicate_forced_capture_draws
 
     @contextmanager
     def replay_record(self) -> Iterator[None]:
         """Validate an existing timeline with the original automatic draw checks."""
-        previous = self._adjudicate_forced_capture_draws
-        self._adjudicate_forced_capture_draws = False
+        previous = self._adjudicate_forced_draws
+        self._adjudicate_forced_draws = False
         try:
             yield
         finally:
-            self._adjudicate_forced_capture_draws = previous
+            self._adjudicate_forced_draws = previous
 
     @property
     def can_undo(self) -> bool:
@@ -172,7 +175,7 @@ class ChessGame:
             return MoveOutcome(status, self.state.turn.opposite if in_check else None, in_check)
         if self.rules.insufficient_material(self.state):
             return MoveOutcome(GameStatus.DRAW_INSUFFICIENT_MATERIAL, in_check=in_check)
-        if self._adjudicate_forced_capture_draws and self._forced_captures_leave_insufficient_material(legal):
+        if self._adjudicate_forced_draws and self._dead_after_forced_play(legal):
             return MoveOutcome(GameStatus.DRAW_DEAD_POSITION, in_check=in_check)
         key = self.rules.position_key(self.state)
         repetitions = self._repetitions.get(key, 0)
@@ -187,13 +190,23 @@ class ChessGame:
             claims.add(DrawClaim.THREEFOLD_REPETITION)
         return MoveOutcome(GameStatus.ACTIVE, in_check=in_check, claimable_draws=frozenset(claims))
 
-    def _forced_captures_leave_insufficient_material(self, legal: tuple[Move, ...]) -> bool:
-        """Prove a dead position when every legal reply leaves insufficient material."""
+    def _dead_after_forced_play(self, legal: tuple[Move, ...]) -> bool:
+        """Prove a draw by following short forced lines without changing the timeline."""
         state = self.state
-        # A quiet move cannot remove material. En passant always leaves a pawn.
-        if any(state.board[move.to_square] is None for move in legal):
-            return False
-        return all(self.rules.insufficient_material(self.rules.apply(state, move)) for move in legal)
+        for _ in range(_FORCED_DRAW_MAX_PLIES):
+            if len(legal) > 1:
+                # At a choice, only test whether every reply is an immediate material draw.
+                # Quiet moves cannot remove material, and en passant leaves a pawn.
+                return all(state.board[move.to_square] is not None for move in legal) and all(
+                    self.rules.insufficient_material(self.rules.apply(state, move)) for move in legal
+                )
+            state = self.rules.apply(state, legal[0])
+            if self.rules.insufficient_material(state):
+                return True
+            legal = self.rules.legal_moves(state)
+            if not legal:
+                return not self.rules.is_in_check(state)
+        return False
 
     def undo(self) -> GameState:
         if not self._undo:

@@ -1,7 +1,7 @@
 """Streaming, validating importer for the Lichess puzzle CSV export.
 
 * Reads row by row; the multi-gigabyte export is never loaded into memory.
-* Computes a SHA-256 of the exact input bytes for provenance.
+* Computes a SHA-256 of the CSV stream for provenance when read to completion.
 * Rejects rows below ``min_rating`` (default 1000), duplicates, malformed
   fields, invalid FEN and any illegal setup/solution move.
 * Never downloads anything. Callers pass a local file the owner obtained.
@@ -19,6 +19,7 @@ import re
 from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from heapq import nsmallest
 from pathlib import Path
 from typing import BinaryIO, Iterator
 
@@ -31,6 +32,7 @@ LICHESS_COLUMNS = (
 )
 _ID = re.compile(r"^[A-Za-z0-9]{3,16}$")
 _THEME = re.compile(r"^[A-Za-z0-9]+$")
+_INVALID_UTF8 = re.compile(r"[\udc80-\udcff]")
 MAX_SOLUTION_PLIES = 40
 
 
@@ -77,19 +79,37 @@ class ImportReport:
     input_sha256: str | None = None
     input_bytes: int = 0
     complete: bool = False
+    max_rating_deviation: int | None = field(default=None, kw_only=True)
+    min_popularity: int | None = field(default=None, kw_only=True)
+    min_plays: int | None = field(default=None, kw_only=True)
+    selection_limit: int | None = field(default=None, init=False)
+    selection_seed: int | None = field(default=None, init=False)
 
     def reject(self, reason: str, puzzle_id: str) -> None:
         self.rejected[reason] += 1
         self.examples.setdefault(reason, puzzle_id)
 
     def to_dict(self) -> dict:
+        selected = self.accepted if self.selection_limit is None else min(self.accepted, self.selection_limit)
         return {
             "source_name": self.source_name,
-            "filters": {"min_rating": self.min_rating, "max_rating": self.max_rating},
+            "filters": {
+                "min_rating": self.min_rating,
+                "max_rating": self.max_rating,
+                "max_rating_deviation": self.max_rating_deviation,
+                "min_popularity": self.min_popularity,
+                "min_plays": self.min_plays,
+            },
             "started_utc": self.started_utc,
             "finished_utc": self.finished_utc,
             "rows_read": self.rows_read,
             "accepted": self.accepted,
+            "selection": {
+                "strategy": "input-order" if self.selection_seed is None else "sha256-top-k-v1",
+                "seed": self.selection_seed,
+                "limit": self.selection_limit,
+                "selected": selected,
+            },
             "rejected": dict(sorted(self.rejected.items())),
             "rejected_examples": dict(sorted(self.examples.items())),
             "input_sha256": self.input_sha256 if self.complete else None,
@@ -163,18 +183,33 @@ def iter_lichess_csv(
         raise PuzzleImportError(f"Published packs require Rating >= {MIN_PUBLISHED_RATING}.")
     if report.max_rating is not None and report.max_rating < report.min_rating:
         raise PuzzleImportError("Maximum rating is below the minimum.")
+    if report.max_rating_deviation is not None and report.max_rating_deviation < 0:
+        raise PuzzleImportError("Maximum rating deviation must be non-negative.")
+    if report.min_popularity is not None and not -100 <= report.min_popularity <= 100:
+        raise PuzzleImportError("Minimum popularity must be between -100 and 100.")
+    if report.min_plays is not None and report.min_plays < 0:
+        raise PuzzleImportError("Minimum play count must be non-negative.")
     if limit is not None and limit < 1:
         raise PuzzleImportError("Puzzle limit must be positive.")
+    report.selection_limit = limit
+    required_quality_columns = tuple(column for column, threshold in (
+        ("RatingDeviation", report.max_rating_deviation),
+        ("Popularity", report.min_popularity),
+        ("NbPlays", report.min_plays),
+    ) if threshold is not None)
     chess_rules = rules or ChessRules()
     hashing = _HashingReader(stream)
-    text = io.TextIOWrapper(io.BufferedReader(hashing), encoding="utf-8", newline="")
+    # Keep invalid bytes attached to their CSV record even when the text reader buffers ahead.
+    text = io.TextIOWrapper(io.BufferedReader(hashing), encoding="utf-8", errors="surrogateescape", newline="")
     reader = csv.reader(text)
     try:
         header = next(reader)
     except StopIteration as error:
         raise PuzzleImportError("Empty puzzle file.") from error
-    except UnicodeDecodeError as error:
-        raise PuzzleImportError("Puzzle file is not UTF-8 text.") from error
+    except csv.Error as error:
+        raise PuzzleImportError("Cannot read the puzzle CSV header.") from error
+    if any(_INVALID_UTF8.search(name) for name in header):
+        raise PuzzleImportError("Puzzle CSV header is not UTF-8 text.")
     header = [name.strip().lstrip("﻿") for name in header]
     if (tuple(header[: len(LICHESS_COLUMNS)]) != LICHESS_COLUMNS
             or len(set(header)) != len(header)):
@@ -191,11 +226,14 @@ def iter_lichess_csv(
                 pass
             report.complete = True
             break
-        except (csv.Error, UnicodeDecodeError):
+        except csv.Error:
             report.rows_read += 1
             report.reject("unreadable_row", f"row-{report.rows_read}")
             continue
         report.rows_read += 1
+        if any(_INVALID_UTF8.search(value) for value in values):
+            report.reject("unreadable_row", f"row-{report.rows_read}")
+            continue
         if not values or values == [""]:
             report.reject("empty_row", f"row-{report.rows_read}")
             continue
@@ -226,6 +264,18 @@ def iter_lichess_csv(
         except _RowError as error:
             report.reject(error.reason, puzzle_id)
             continue
+        if any(not row[column] for column in required_quality_columns):
+            report.reject("missing_quality_value", puzzle_id)
+            continue
+        if report.max_rating_deviation is not None and puzzle.rating_deviation > report.max_rating_deviation:
+            report.reject("above_max_rating_deviation", puzzle_id)
+            continue
+        if report.min_popularity is not None and puzzle.popularity < report.min_popularity:
+            report.reject("below_min_popularity", puzzle_id)
+            continue
+        if report.min_plays is not None and puzzle.plays < report.min_plays:
+            report.reject("below_min_plays", puzzle_id)
+            continue
         report.accepted += 1
         yield puzzle
     report.input_bytes = hashing.bytes_read
@@ -251,9 +301,31 @@ def import_lichess_file(
     *,
     min_rating: int = MIN_PUBLISHED_RATING,
     max_rating: int | None = None,
+    max_rating_deviation: int | None = None,
+    min_popularity: int | None = None,
+    min_plays: int | None = None,
     limit: int | None = None,
+    seed: int | None = None,
+    source: str = "lichess-puzzle-db",
 ) -> tuple[list[Puzzle], ImportReport]:
-    report = ImportReport(path.name, min_rating, max_rating)
+    """Import in CSV order or select a reproducible subset from the whole source."""
+    if seed is not None and (limit is None or limit < 1):
+        raise PuzzleImportError("Seeded selection requires a positive puzzle limit.")
+    report = ImportReport(
+        path.name, min_rating, max_rating,
+        max_rating_deviation=max_rating_deviation, min_popularity=min_popularity, min_plays=min_plays,
+    )
     with open_puzzle_source(path) as stream:
-        puzzles = list(iter_lichess_csv(stream, report, limit=limit))
+        if seed is None:
+            return list(iter_lichess_csv(stream, report, source=source, limit=limit)), report
+
+        def rank(puzzle: Puzzle) -> tuple[bytes, str]:
+            puzzle_id = puzzle.puzzle_id
+            digest = hashlib.sha256(f"{seed}:{puzzle_id}".encode("ascii")).digest()
+            return digest, puzzle_id
+
+        # The selection heap is bounded by the pack limit. The reader still checks all rows.
+        puzzles = nsmallest(limit, iter_lichess_csv(stream, report, source=source), key=rank)
+        report.selection_seed = seed
+        report.selection_limit = limit
     return puzzles, report

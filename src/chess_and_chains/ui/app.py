@@ -468,8 +468,9 @@ class ChessApp:
             t("puzzle.rating_from", rating=lower) if upper is None else f"{lower}–{upper}"
             for lower, upper in PUZZLE_RATING_RANGES
         ]
+        theme_labels = [t.puzzle_theme_label(theme) for theme in self._puzzle_themes]
         self.puzzle_theme_filter = ttk.Combobox(
-            filters, state="readonly", values=(t("puzzle.all_themes"), *self._puzzle_themes), width=12,
+            filters, state="readonly", values=(t("puzzle.all_themes"), *theme_labels), width=12,
         )
         self.puzzle_rating_filter = ttk.Combobox(
             filters, state="readonly", values=(t("puzzle.all_ratings"), *rating_labels), width=12,
@@ -1005,8 +1006,9 @@ class ChessApp:
         self.atlas_section.grid()
         self.panel_text.set(self.t("puzzle.title", index=self.puzzle_index + 1, count=len(self._puzzle_selection)))
         self.puzzle_title_text.set(self.t("puzzle.prompt", side=self._side(session.player_color)))
+        theme_labels = [self.t.puzzle_theme_label(theme) for theme in session.puzzle.themes[:3]]
         self.puzzle_meta_text.set(self.t("puzzle.meta", id=session.puzzle.puzzle_id, rating=session.puzzle.rating,
-                                         themes=", ".join(session.puzzle.themes[:3])))
+                                         themes=", ".join(theme_labels)))
         legal = session.legal_moves()
         self.board.set_position(session.state, legal, session.last_move, session.game.rules.is_in_check(session.state))
         state = tk.DISABLED if session.finished else tk.NORMAL

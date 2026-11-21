@@ -21,7 +21,7 @@ GitHub ist der Entwicklungsort und beschreibt, wie das fertige Produkt funktioni
 
 ## Was bereits vorhanden ist
 
-Der **GUI-freie Python-Regelkern** unterstützt legale Züge, FEN/SAN/PGN, Remisregeln und Rückgängig/Wiederholen. Perft- und Golden-Tests decken die Umsetzung ab. Tote Stellungen mit erzwungenen Schlägen in ungenügendes Material werden erkannt. Allgemeine tote Stellungen und die Inhaberabnahme stehen aus.
+Der **GUI-freie Python-Regelkern** unterstützt legale Züge, FEN/SAN/PGN, Remisregeln und Rückgängig/Wiederholen. Perft- und Golden-Tests decken die Umsetzung ab. Der Regelkern erkennt tote Stellungen in kurzen Zwangsfolgen zu Patt oder ungenügendem Material. Die allgemeine Erkennung und die Inhaberabnahme stehen aus.
 
 Der lokale Tk-Prototyp umfasst folgende Funktionen.
 

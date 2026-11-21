@@ -136,7 +136,7 @@
       "gate": "Regelkonformer FEN/PGN-Zugablauf mit vollständigen Prüfungen, ohne GUI/Engine-Verflechtung",
       "phase": "F1",
       "status": "TESTED",
-      "scope": "Headless rules domain, FEN/SAN/PGN mainline, legal moves, repetition-safe undo/redo, draw claims, and dead positions with forced captures into insufficient material; perft and golden tests",
+      "scope": "Headless rules domain, FEN/SAN/PGN mainline, legal moves, repetition-safe undo/redo, draw claims, and dead positions with short forced continuations to stalemate or insufficient material; perft and golden tests",
       "status_evidence": [
         "docs/reports/2026-11-20_W05_chess-core.md",
         "src/chess_and_chains/chess/rules.py",
@@ -144,12 +144,13 @@
         "docs/reports/2026-11-20_N02-follow-up.md",
         "tests/test_chess_golden.py",
         "docs/reports/2026-11-21_W00-W12-paketabgleich.md",
-        "docs/reports/2026-11-21_W05-tote-stellungen-und-altpartien.md"
+        "docs/reports/2026-11-21_W05-tote-stellungen-und-altpartien.md",
+        "docs/reports/2026-11-21_W05-mehrzuegige-tote-stellungen.md"
       ],
       "open_gate_items": [
         "Owner acceptance",
         "PGN variations/comments are skipped, not preserved (documented limitation)",
-        "General dead-position adjudication beyond known material patterns and immediate forced captures"
+        "General dead-position adjudication beyond known material patterns and short forced continuations"
       ]
     },
     {
@@ -214,18 +215,21 @@
       "gate": "Rechtssicherer Import, erste UCI-Aktion, Ratingminimum, Datenqualitätsberichte",
       "phase": "F3",
       "status": "TESTED",
-      "scope": "Puzzle model, streaming Lichess CSV importer, versioned JSONL packs, puzzle session controller, theme/rating filters and progress; tested with project-authored fixtures only",
+      "scope": "Puzzle model, offline CSV and .csv.zst import, optional quality thresholds and rejection report, deterministic seeded selection, versioned JSONL packs with per-puzzle provenance, puzzle sessions and progress; tested with project-authored fixtures only",
       "status_evidence": [
         "docs/reports/2026-11-20_N02_functional-core.md",
         "src/chess_and_chains/puzzles/importer.py",
         "src/chess_and_chains/puzzles/session.py",
         "tests/test_puzzles.py",
         "tests/fixtures/puzzles_sample.csv",
+        "docs/reports/2026-11-21_W08-puzzle-qualitaetsfilter.md",
+        "docs/reports/2026-11-21_W08-puzzle-seed.md",
         "docs/reports/2026-11-20_N02-follow-up.md",
         "tests/test_app_integration.py"
       ],
       "open_gate_items": [
         "Real Lichess export import run (owner opt-in download)",
+        "Quality profile, thresholds and sample assessment for a production pack",
         "Pack size decision Q-009",
         "Rating ceiling Q-008"
       ]
@@ -264,18 +268,19 @@
       "gate": "DE/EN-Katalogparität, Keyboard-/Kontrast-/Scaling-Abnahmen",
       "phase": "F4",
       "status": "TESTED",
-      "scope": "DE/EN catalog, board keyboard flow and focus visibility in PR #9 CI. Windows text-scale probes and one native 96-DPI observation",
+      "scope": "DE/EN catalog, board keyboard flow and focus feedback through PR #10 CI. Local Windows coverage for DE/EN demo puzzle themes and Tk text scaling.",
       "status_evidence": [
         "docs/reports/2026-11-20_N02_functional-core.md",
         "src/chess_and_chains/i18n/catalog.py",
         "tests/test_i18n.py",
         "tests/test_app_integration.py",
+        "docs/reports/2026-11-21_W10-raetselthemen.md",
         "docs/reports/2026-11-21_W10-W11-tastatur-und-skalierung.md",
         "docs/reports/2026-11-21_W00-W12-paketabgleich.md"
       ],
       "open_gate_items": [
         "Native 150/200 percent scaling, full visual review, and screen reader acceptance",
-        "Cross-platform GUI CI for the local focus-message correction after PR #9"
+        "Cross-platform GUI CI for the local puzzle theme localization"
       ]
     },
     {
@@ -286,20 +291,23 @@
       "gate": "Echte CI/OS/Offline-/Lieferartefakt-Belege, offene Fehler, keine erfundenen Gates",
       "phase": "F5",
       "status": "TESTED",
-      "scope": "PR #9 passed the Windows, macOS and Linux matrix on push, PR and main. The W10 follow-up, wheel and native PGN smoke tests have local Windows evidence.",
+      "scope": "PR #10 passed the Windows, macOS and Linux matrix on push, PR and main. Follow-up evidence covers Windows tests, offline wheel installation and the contents and checksums of the OneDrive archive.",
       "status_evidence": [
         ".github/workflows/checks.yml",
         "tests/test_foundation.py",
         "tests/test_app_integration.py",
+        "docs/reports/2026-11-21_W10-raetselthemen.md",
+        "docs/reports/2026-11-21_W08-puzzle-seed.md",
         "docs/reports/2026-11-21_W00-W12-paketabgleich.md",
         "docs/reports/2026-11-21_W10-W11-tastatur-und-skalierung.md",
         "docs/reports/2026-11-21_W11-v0.0.1-standsaudit.md",
+        "docs/reports/2026-11-21_W11-entwicklungsabgleich.md",
         "docs/reports/2026-11-21_W11-ci-nach-pr6.md",
         "docs/reports/2026-11-20_N02_functional-core.md",
         "docs/reports/2026-11-20_N02-follow-up.md"
       ],
       "open_gate_items": [
-        "Cross-platform GUI CI for changes after PR #9",
+        "Cross-platform CI for the local follow-up after the PR #10 head",
         "Manual platform, offline installation and distributable artifact acceptance"
       ]
     },
