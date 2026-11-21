@@ -4,6 +4,8 @@ Hier nur tatsächlich ausgeführte Prüfberichte/Agentenübergaben unter `YYYY-M
 
 **Aktueller Stand V.0.0.1** · [Paketabgleich W00–W12](2026-11-21_W00-W12-paketabgleich.md) · [W10/W11 – Tastatur, Fokus und Textskalierung](2026-11-21_W10-W11-tastatur-und-skalierung.md). Der [Versions- und Standabgleich](2026-11-21_W11-v0.0.1-standsaudit.md), die [N02-Nacharbeit](2026-11-20_N02-follow-up.md) und [N02 Functional Core](2026-11-20_N02_functional-core.md) dokumentieren frühere Stände.
 
+[W11 – Ablage, Code und GitHub abgleichen](2026-11-21_W11-ablageabgleich.md)
+
 [W05/W09 – Tote Stellungen und ältere Aufzeichnungen](2026-11-21_W05-tote-stellungen-und-altpartien.md)
 
 [W09 – Partiedaten vor der Rücksicherung prüfen](2026-11-21_W09-sichere-wiederherstellung.md)

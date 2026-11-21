@@ -1,0 +1,13 @@
+Eine Mischung aus Link Lab und dem Design hier im Anhang mit aktualisierten Logo und Gestaltungselementen. "Atlas of Moves" Gestaltungssprache finde ich sehr interessant für die Puzzles die ja auch in Chess & Chains angeboten werden sollen.
+
+„Think in connections.“
+
+Markenidee: Eine kreative Werkstatt für Schach, Strategie und visuelle Individualität. Chess & Chains wird als intelligentes, veränderbares System verstanden.
+
+Designsystem: Aus einem einzigen konstruierten 2D-Kettenglied entstehen Logos, Rahmen, Icons, Muster und ganze Layoutstrukturen. Jedes Element folgt einer konsistenten modularen Geometrie.
+
+Logo: Zwei orthogonal verbundene Glieder, die zugleich als Bildzeichen und Ausgangspunkt des Gestaltungsrasters dienen.
+
+Typografie: Space Grotesk / IBM Plex Mono.
+
+Anwendung: Variables UI-Theme-System, modulare Website, wechselnde geometrische Kampagnenmotive.

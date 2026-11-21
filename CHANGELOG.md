@@ -11,6 +11,7 @@
 - Clear the board focus message when keyboard focus leaves the board. Preserve newer action feedback and reject package acceptance records with unresolved blockers.
 - End live games automatically when every legal reply is a capture leading to insufficient material. Preserve the recorded moves in older games and supplied puzzle lines.
 - Validate saved games on a temporary copy of an SQLite backup before replacing the active library.
+- Show the preserved filename when the app creates a new library after database corruption. Verify repository asset paths and recorded hashes in the Foundation check.
 
 The dated entries below preserve the development history incorporated into this snapshot.
 

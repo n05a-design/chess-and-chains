@@ -24,4 +24,10 @@ Der Owner hat am 20.11.2026 den Push und einen Pull Request für den KI-unterst�
 
 ## Figuren im lokalen Prototyp
 
+Die [historischen Designquellen](../../design/brand_exploration/README.md)
+wurden am 21.11.2026 auf Auftrag des Inhabers für den Ablageabgleich
+ins Repository übernommen. Das Assetregister dokumentiert die getrennte
+Herkunft der lokalen Fontfassung und der App-Wortmarke. Die Abnahme von
+Marken- und Release-Assets folgt den oben genannten Freigaben.
+
 Die 24 [bearbeitbaren App-Exporte](../../assets/chess_pieces/source_svg/README.md) verwenden eine 64 × 64 SVG-Fläche. Der Inhaber hat am 21.11.2026 gleiche sichtbare Breite und Höhe je Figurentyp innerhalb einer Ansicht bestätigt und die Draufsicht visuell freigegeben. Die Draufsicht verwendet 52 × 52 Einheiten inklusive Kontur. Für die Vorderansicht gilt die nachgereichte Inhaberfassung einschließlich ihrer 1,14 Einheiten breiten Kontur. Ihre Pfade tragen eigene Innenschatten. Tk 9 liest die SVGs. Tk ohne SVG-Lesefunktion nutzt die vorab erzeugte PNG-Grafiktafel der gewählten Ansicht. Partie und Rätsel unterstützen beide Sätze. Sichtprüfung der Schattierung und Plattformabnahme bleiben offen.

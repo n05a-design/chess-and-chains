@@ -4,13 +4,16 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'src'))
 sys.path.insert(0, str(ROOT))
 from chess_and_chains import DISPLAY_VERSION, __version__  # noqa: E402
+from scripts import verify_starter  # noqa: E402
 from scripts.verify_starter import parse_dependencies, verify  # noqa: E402
 
 MANIFEST = json.loads((ROOT / 'project-manifest.json').read_text(encoding='utf-8'))
@@ -27,6 +30,30 @@ def _with(work_id, **changes):
 class FoundationTests(unittest.TestCase):
     def test_manifest_and_expected_files(self):
         self.assertEqual(verify(), [])
+
+    def test_asset_register_rejects_missing_paths_and_changed_bytes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            register = root / "docs/design/ASSET_REGISTER.csv"
+            register.parent.mkdir(parents=True)
+            (root / "drawing.svg").write_bytes(b"<svg/>")
+            register.write_text(
+                "asset_id,planned_path,source_hash\n"
+                f"drawing,drawing.svg,{'0' * 64}\n"
+                "drawing,missing.svg,\n",
+                encoding="utf-8",
+            )
+            problems = []
+            with patch.object(verify_starter, "ROOT", root):
+                verify_starter._check_asset_register(problems)
+        self.assertEqual(
+            problems,
+            [
+                "Asset register drawing: SHA-256 mismatch for drawing.svg",
+                "Asset register: duplicate ID drawing",
+                "Asset register drawing: missing or invalid repository path missing.svg",
+            ],
+        )
 
     def test_project_version_matches_runtime(self):
         self.assertEqual(__version__, MANIFEST['project_version'])

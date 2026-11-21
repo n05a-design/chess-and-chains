@@ -12,11 +12,13 @@
 
 **Entscheiden:** `docs/questions/OPEN_QUESTIONS.md` · `docs/decisions/ADR_INDEX.md` · `docs/legal/LICENSE_STRATEGY.md`.
 
-**Design & Marke:** `docs/design/DESIGN_SYSTEM_BRIEF.md` · `ASSET_REGISTER.csv` · `docs/marketing/LAUNCH_COPY.md` · `references/inspiration/REFERENCE_BOARD.md`.
+**Design & Marke:** `docs/design/DESIGN_SYSTEM_BRIEF.md` · [Assetregister](../design/ASSET_REGISTER.csv) · [Historische Designquellen](../../design/brand_exploration/README.md) · `docs/marketing/LAUNCH_COPY.md` · `references/inspiration/REFERENCE_BOARD.md`.
 
 **Steuerung:** [Aktuelle Roadmap](../roadmap/ROADMAP.md) · [Work Packages](../roadmap/WORK_PACKAGES.md) · [Prompt-Aufträge](../../prompts/README.md) · [Nachweise](../reports/README.md).
 
 **Prüfen & veröffentlichen:** `docs/qa/TEST_PLAN.md` · `docs/release/RELEASE_STRATEGY.md` · `THIRD_PARTY_NOTICES.md`.
+
+**Historische Arbeitsstände:** [OneDrive-Ablage und Prüfsummen](../archive/onedrive-2026-11-21/README.md).
 
 ## Pflege nach Änderungen
 

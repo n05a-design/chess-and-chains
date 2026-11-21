@@ -36,6 +36,8 @@ fünf Demo-Rätsel, eine Partiebibliothek mit PGN-Austausch und Originalfiguren
 in Vorderansicht V.02 und Draufsicht. Der [separate main-Lauf nach PR #9](https://github.com/n05a-design/chess-and-chains/actions/runs/44869510471)
 schloss alle 14 Jobs erfolgreich ab. Den Stand und die offenen
 Abnahmekriterien pro Paket führt der [Paketabgleich](../reports/2026-11-21_W00-W12-paketabgleich.md).
+Der [Ablageabgleich](../reports/2026-11-21_W11-ablageabgleich.md) dokumentiert
+die lokalen Folge-Commits, Designquellen und archivierten OneDrive-Stände.
 
 ## Kritischer Pfad
 
