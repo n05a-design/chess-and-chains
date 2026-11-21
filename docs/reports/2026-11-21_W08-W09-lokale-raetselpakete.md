@@ -51,11 +51,30 @@ Windows 11 Pro x64 (10.0.26300), Tk 9.0.4. Unittest-Läufe mit
 | Synthetischer Import mit 2.000 Aufgaben | 665.600 Byte JSONL, 10,518 s bis zum geladenen Paket. Währenddessen 116 Tk-Callbacks mit 78,7 ms medianem und 560,6 ms maximalem Abstand. Die installierten Dateien stimmten byteweise mit ihren Quellen überein. Exitcode 0. Einzelmessung mit wiederholten projekteigenen Stellungen. |
 | Statische Prüfungen | `verify_starter.py`, `verify_document_links.py`, `check_policy.py`, `python -m compileall -q src app scripts tests` und `git diff --check` jeweils Exitcode 0. |
 
+### Plattformfehler im ersten GitHub-Lauf
+
+Der [Push-Lauf](https://github.com/n05a-design/chess-and-chains/actions/runs/44907999017)
+zu `d18a55e0a904e2a0ab96554200f8f3fb2aacbaa5` endete mit 10 von
+14 erfolgreichen Jobs. Die Puzzle-Pipeline auf macOS und Windows
+meldete je zwei Fehlschläge und einen Fehler. Die Pfadprüfung verglich den
+aufgelösten Paketpfad mit dem ursprünglichen Pfad. Dadurch bewertete sie
+auch einen abweichend aufgelösten übergeordneten Datenpfad als Umleitung.
+Die Korrektur kanonisiert zuerst den Datenstamm und vergleicht erst
+darunter die Bibliothek und das Paket. Verlinkte Bibliotheks- und
+Paketordner werden weiterhin abgewiesen.
+
+Der neue Aliastest reproduzierte den Fehler lokal auf Windows mit Exitcode 1.
+Mit der Korrektur liefen `py -3.14 -m unittest tests.test_puzzles -v`
+(29 Tests, einschließlich der beiden Verzeichnislinks) und
+`python -m unittest tests.test_app_integration.PuzzleUiTests -q`
+(7 Tests mit Python 3.15.1 und Tk 9.0.4) mit Exitcode 0. Der
+[PR #13](https://github.com/n05a-design/chess-and-chains/pull/13)
+enthält die Plattformprüfung des Korrekturstands.
+
 ## Übergabe
 
-1. Plattform-CI für den W06/W08/W09-Folgestand ausführen, sobald der
-   Branch-Push beauftragt ist. Nativen Ordnerdialog und Screenreader auf
-   den Zielsystemen prüfen.
+1. Plattform-CI des Korrekturstands in PR #13 verifizieren. Nativen
+   Ordnerdialog und Screenreader auf den Zielsystemen prüfen.
 2. Nach Freigabe Q-022 einen produktiven Export verarbeiten und Größe,
    Laufzeit, Validierungsfehler und Zusammensetzung messen. Die synthetische
    Messung belegt keinen Produktionsdatensatz.

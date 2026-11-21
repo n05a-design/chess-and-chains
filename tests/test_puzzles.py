@@ -407,6 +407,42 @@ class PackTests(unittest.TestCase):
                 library.load("../source")
             self.assertEqual(library.ids(), ())
 
+    def test_local_library_accepts_an_alias_in_the_data_root(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "source"
+            puzzles = load_demo_pack().puzzles[:1]
+            write_pack(source, puzzles, pack_id="local-study", version="1",
+                       source="Project positions", license_note="MPL-2.0")
+            library = PackLibrary(root.parent / root.name / ".." / root.name / "library")
+
+            installed = library.install(source)
+            self.assertEqual(library.ids(), ("local-study",))
+            self.assertEqual(library.load("local-study"), installed)
+
+    def test_local_library_rejects_redirected_library_and_pack_folders(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "outside" / "local-study"
+            puzzles = load_demo_pack().puzzles[:1]
+            write_pack(source, puzzles, pack_id="local-study", version="1",
+                       source="Project positions", license_note="MPL-2.0")
+            library = root / "library"
+            library.mkdir()
+            try:
+                (root / "redirected-library").symlink_to(source.parent, target_is_directory=True)
+                (library / "local-study").symlink_to(source, target_is_directory=True)
+            except OSError as error:
+                self.skipTest(f"Directory symlinks unavailable: {error}")
+
+            for path in (library, root / "redirected-library"):
+                with self.subTest(path=path):
+                    packs = PackLibrary(path)
+                    with self.assertRaisesRegex(PackError, "must not be redirected"):
+                        packs.load("local-study")
+                    with self.assertRaisesRegex(PackError, "must not be redirected"):
+                        packs.install(source)
+
     def test_local_library_publishes_only_one_of_two_concurrent_imports(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

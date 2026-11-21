@@ -218,8 +218,9 @@ class PackLibrary:
     def _location(self, pack_id: str) -> Path:
         if not isinstance(pack_id, str) or pack_id == DEMO_PACK_ID or not _PACK_ID.fullmatch(pack_id):
             raise PackError(f"Invalid or reserved local pack id: {pack_id!r}.")
-        path = self.directory / pack_id
         try:
+            # The data root can have an OS-provided alias (e.g. macOS temporary paths).
+            path = self.directory.parent.resolve() / self.directory.name / pack_id
             resolved = path.resolve()
         except (OSError, RuntimeError) as error:
             raise PackError(f"Cannot resolve the local puzzle pack folder: {error}") from error
