@@ -19,14 +19,16 @@ Nebenvarianten werden beim Einlesen übersprungen und beim Export nicht erzeugt.
 Für P-08 ist der Austausch der Hauptvariante nachgewiesen. Verlustfreier
 Annotierungsaustausch bleibt eine mögliche Erweiterung nach Scope-Entscheidung.
 
-Eine Partie endet als tote Stellung, wenn in der aktuellen Stellung alle
-legalen Antworten unmittelbare Schläge in Stellungen mit ungenügendem
-Material sind. Der Remisgrund wird aus dem Brett neu abgeleitet. Die
+Der Regelkern erkennt tote Stellungen in Folgen von bis zu vier Halbzügen,
+wenn jeweils nur ein Zug legal ist und die Folge in Patt oder ungenügendem
+Material endet. Bei mehreren legalen Zügen gilt der Nachweis, wenn alle
+unmittelbare Schläge in Stellungen mit ungenügendem Material sind. Der
+Remisgrund wird aus dem Brett neu abgeleitet. Die
 Wiedergabe alter PGN- und SQLite-Zugfolgen verwendet die bisherigen
 Abbruchprüfungen, damit bereits gespeicherte Züge und Endgründe erhalten
 bleiben. Für eine anschließend fortgesetzte Partie gilt die aktuelle
 Regel. Rätsel prüfen weiterhin den vorgegebenen taktischen Ablauf.
-[W05-Nachweis](../reports/2026-11-21_W05-tote-stellungen-und-altpartien.md)
+[W05-Nachweis](../reports/2026-11-21_W05-mehrzuegige-tote-stellungen.md)
 
 ## Engine
 

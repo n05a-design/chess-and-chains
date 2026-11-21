@@ -12,6 +12,8 @@ Hier nur tatsächlich ausgeführte Prüfberichte/Agentenübergaben unter `YYYY-M
 
 [W05/W09 – Tote Stellungen und ältere Aufzeichnungen](2026-11-21_W05-tote-stellungen-und-altpartien.md)
 
+[W05 – Mehrzügige tote Stellungen](2026-11-21_W05-mehrzuegige-tote-stellungen.md)
+
 [W09 – Partiedaten vor der Rücksicherung prüfen](2026-11-21_W09-sichere-wiederherstellung.md)
 
 [Connected System – Varianten, App-Integration und Prüfnachweis](2026-11-20_N02-connected-system.md)

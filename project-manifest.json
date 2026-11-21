@@ -136,7 +136,7 @@
       "gate": "Regelkonformer FEN/PGN-Zugablauf mit vollständigen Prüfungen, ohne GUI/Engine-Verflechtung",
       "phase": "F1",
       "status": "TESTED",
-      "scope": "Headless rules domain, FEN/SAN/PGN mainline, legal moves, repetition-safe undo/redo, draw claims, and dead positions with forced captures into insufficient material; perft and golden tests",
+      "scope": "Headless rules domain, FEN/SAN/PGN mainline, legal moves, repetition-safe undo/redo, draw claims, and dead positions with short forced continuations to stalemate or insufficient material; perft and golden tests",
       "status_evidence": [
         "docs/reports/2026-11-20_W05_chess-core.md",
         "src/chess_and_chains/chess/rules.py",
@@ -144,12 +144,13 @@
         "docs/reports/2026-11-20_N02-follow-up.md",
         "tests/test_chess_golden.py",
         "docs/reports/2026-11-21_W00-W12-paketabgleich.md",
-        "docs/reports/2026-11-21_W05-tote-stellungen-und-altpartien.md"
+        "docs/reports/2026-11-21_W05-tote-stellungen-und-altpartien.md",
+        "docs/reports/2026-11-21_W05-mehrzuegige-tote-stellungen.md"
       ],
       "open_gate_items": [
         "Owner acceptance",
         "PGN variations/comments are skipped, not preserved (documented limitation)",
-        "General dead-position adjudication beyond known material patterns and immediate forced captures"
+        "General dead-position adjudication beyond known material patterns and short forced continuations"
       ]
     },
     {
