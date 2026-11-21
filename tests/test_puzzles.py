@@ -83,6 +83,40 @@ class ImporterTests(unittest.TestCase):
         self.assertFalse(report.complete)
         self.assertIsNone(report.to_dict()["input_sha256"])
 
+    def test_optional_quality_filters_apply_inclusive_thresholds_and_report_rejections(self):
+        row = "{id},6k1/p4ppp/8/8/8/8/5PPP/3R2K1 b - - 0 1,a7a6 d1d8,1000,{values},mate,,\n"
+        text = HEADER + "".join(row.format(id=puzzle_id, values=values) for puzzle_id, values in (
+            ("match", "80,15,100"),
+            ("spread", "81,15,100"),
+            ("unliked", "80,14,100"),
+            ("unplayed", "80,15,99"),
+            ("unplayed", "80,15,150"),
+            ("nospread", ",15,100"),
+            ("nopop", "80,,100"),
+            ("noplays", "80,15,"),
+        ))
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "quality.csv"
+            path.write_bytes(text.encode("utf-8"))
+            unfiltered, _ = import_lichess_file(path)
+            puzzles, report = import_lichess_file(path, max_rating_deviation=80, min_popularity=15, min_plays=100)
+        self.assertEqual(len(unfiltered), 7)
+        self.assertEqual([p.puzzle_id for p in puzzles], ["match"])
+        self.assertEqual(dict(report.rejected), {
+            "above_max_rating_deviation": 1, "below_min_popularity": 1,
+            "below_min_plays": 1, "duplicate_id": 1, "missing_quality_value": 3,
+        })
+        self.assertEqual(report.to_dict()["filters"], {
+            "min_rating": 1000, "max_rating": None,
+            "max_rating_deviation": 80, "min_popularity": 15, "min_plays": 100,
+        })
+
+    def test_invalid_quality_thresholds_are_rejected(self):
+        for filters in ({"max_rating_deviation": -1}, {"min_popularity": -101},
+                        {"min_popularity": 101}, {"min_plays": -1}):
+            with self.subTest(filters=filters), self.assertRaises(PuzzleImportError):
+                import_lichess_file(FIXTURE, **filters)
+
     def test_streaming_does_not_require_full_file(self):
         """A generator consumer can stop after the first puzzle of a huge stream."""
         body = HEADER + "ccBR01,6k1/p4ppp/8/8/8/8/5PPP/3R2K1 b - - 0 1,a7a6 d1d8,1000,0,0,0,mate,,\n"
@@ -223,6 +257,7 @@ class PackTests(unittest.TestCase):
         self.assertEqual(pack.manifest.count, 5)
         self.assertIn("not measured", pack.manifest.license_note)
         self.assertGreaterEqual(pack.manifest.min_rating, 1000)
+        self.assertEqual({puzzle.source for puzzle in pack.puzzles}, {pack.manifest.source})
 
     def test_round_trip_and_tamper_detection(self):
         puzzles, report = import_lichess_file(FIXTURE)

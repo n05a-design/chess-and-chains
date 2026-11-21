@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "pack_id": "demo",
-  "version": "1",
+  "version": "2",
   "count": 5,
-  "sha256": "27b601733e76bf0497a3c31736fd9a1f280963c2462745b9b04b203c3f086a02",
+  "sha256": "99af40743130c691e204070c6c44b0940181b09c84e810ac6182884b09dc0eeb",
   "min_rating": 1000,
   "source": "Chess & Chains project-authored demo positions",
   "license_note": "MPL-2.0 (project-authored); ratings are fixture values, not measured",
-  "created_utc": "2026-11-20T12:35:15+00:00",
+  "created_utc": "2026-11-21T06:19:37+00:00",
   "demo": true
 }
