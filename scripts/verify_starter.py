@@ -5,10 +5,12 @@ check of the manifest, not a chess, GUI or engine acceptance test.
 """
 from __future__ import annotations
 
-from pathlib import Path
 import json
 import re
+import runpy
 import sys
+import tomllib
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 NEEDED = [
@@ -21,6 +23,14 @@ NEEDED = [
     'docs/governance/STATUS_MODEL.md',
     'integrations/glide_shell/INTEGRATION_GATE.md',
 ]
+VERSIONED_DOCS = (
+    'README.md', 'README.de.md', 'MANIFEST.md', 'PRODUCT.md', 'CHANGELOG.md',
+    'docs/architecture/ARCHITECTURE.md', 'docs/governance/DOC_INDEX.md',
+    'docs/marketing/LAUNCH_COPY.md', 'docs/product/PRODUCT_BRIEF.md',
+    'docs/qa/TEST_PLAN.md', 'docs/questions/OPEN_QUESTIONS.md',
+    'docs/release/RELEASE_STRATEGY.md', 'docs/reports/README.md',
+    'docs/roadmap/ROADMAP.md', 'docs/roadmap/WORK_PACKAGES.md', 'prompts/README.md',
+)
 
 # Ordered from least to most mature; BLOCKED is orthogonal and ranks with IN_PROGRESS.
 STATUS_ORDER = {
@@ -44,6 +54,39 @@ BASELINE = {
     'product_status': 'FOUNDATION_ONLY_NOT_PLAYABLE',
     'work_package_status': 'NOT_STARTED',
 }
+
+
+def _check_project_version(manifest: dict, errors: list[str], check_paths: bool) -> None:
+    version = manifest.get('project_version')
+    if not isinstance(version, str) or not re.fullmatch(r'(?:0|[1-9]\d*)(?:\.(?:0|[1-9]\d*)){2}', version):
+        errors.append('project_version must be a numeric MAJOR.MINOR.PATCH version')
+        return
+    if not check_paths:
+        return
+
+    try:
+        runtime = runpy.run_path(str(ROOT / 'src/chess_and_chains/__init__.py'))
+        packaging = tomllib.loads((ROOT / 'pyproject.toml').read_text(encoding='utf-8'))
+    except (OSError, SyntaxError, ValueError) as error:
+        errors.append(f'Unable to verify project version: {error}')
+        return
+    label = f'V.{version}'
+    if runtime.get('__version__') != version or runtime.get('DISPLAY_VERSION') != label:
+        errors.append(f'Runtime and project-manifest.json disagree on project version {version}')
+    project = packaging.get('project', {})
+    dynamic = packaging.get('tool', {}).get('setuptools', {}).get('dynamic', {})
+    if 'version' in project or 'version' not in project.get('dynamic', []) or dynamic.get('version') != {
+        'attr': 'chess_and_chains.__version__',
+    }:
+        errors.append('Package version must be read from chess_and_chains.__version__')
+    for name in VERSIONED_DOCS:
+        path = ROOT / name
+        if not path.is_file():
+            errors.append(f'Missing versioned document: {name}')
+            continue
+        versions = re.findall(r'V\.\d+\.\d+\.\d+', path.read_text(encoding='utf-8'))
+        if not versions or versions[0] != label:
+            errors.append(f'{name}: first project version marker must be {label}')
 
 
 def parse_dependencies(text: str) -> list[str]:
@@ -122,6 +165,10 @@ def verify(manifest: dict | None = None) -> list[str]:
         for name in NEEDED:
             if not (ROOT / name).is_file():
                 errors.append(f'Missing required file: {name}')
+        for topic, path in manifest.get('canonical_docs', {}).items():
+            if not (ROOT / path).is_file():
+                errors.append(f'Canonical document {topic}: missing file {path}')
+    _check_project_version(manifest, errors, check_paths)
     works = manifest.get('work_packages', [])
     ids = [x.get('id') for x in works]
     expected_ids = [f'W{n:02d}' for n in range(13)]

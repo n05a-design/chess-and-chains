@@ -4,16 +4,16 @@
 
 Auf GitHub wird entwickelt und erklärt, wie die fertige App funktionieren soll. [Englische README](../../README.md) und [deutsche README](../../README.de.md) zeigen Zielbild und aktuellen Entwicklungsstand. Nach Fertigstellung und Freigabe erscheint die App auf GitHub sowie im hauseigenen Software-Katalog kostenlos neben den anderen Programmen. Launch-Materialien werden erst zu einem späteren Zeitpunkt beauftragt. [Vertriebsentscheidung](../decisions/ADR-006_DISTRIBUTION.md)
 
-Die folgenden Vorabtexte und Claim-Optionen dokumentieren die früheren Entwürfe.
+Für den aktuellen Stand V.0.0.1 gilt der Inhalt der beiden READMEs. Der Prototyp
+enthält lokales Spiel, Demo-Rätsel und V.02-SVG-Figuren. Die folgenden Texte und
+Claims sind historische Entwürfe aus W04.
 
 ## GitHub About (EN) – ursprünglicher Vorschlag, für öffentliche Nutzung zu konkret
 
 `Chess & Chains — a planned free, offline-first desktop chess and tactical puzzle app with customizable SVG boards and local engines.`
 
-Dieser frühere Entwurf beschreibt Zielmerkmale, die noch nicht implementiert
-oder abgenommen sind; „free“ ist ebenfalls nicht als Vertriebsentscheidung
-bestätigt. Für den aktuellen Repository-Stand gilt der folgende vorsichtige
-W04-Vorschlag.
+Der Entwurf beschreibt den damaligen Zielzustand. Die spätere Entscheidung zum
+kostenlosen offiziellen Vertrieb ist oben dokumentiert.
 
 ## GitHub About, Topics und SEO (W04-Vorschlag)
 

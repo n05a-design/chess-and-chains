@@ -6,6 +6,8 @@ This file is a concise design-tool context projection. The project's canonical
 requirements, decisions, and open questions remain in `docs/product/`,
 `docs/decisions/`, and `docs/questions/`.
 
+Development snapshot **V.0.0.1**. See the [project manifest](MANIFEST.md).
+
 ## Platform
 
 adaptive
@@ -49,24 +51,24 @@ bot play must not be claimed until a real engine is tested (ADR-001).
   Shell and its code remain unapproved.
 - Stockfish/GPL distribution is unresolved. No automatic network access or
   engine installation.
-- Existing SVGs and brand assets are not provided or rights-approved. The
-  owner-selected “Layered reference manual” direction applies to W06 only;
-  palette and typography remain provisional. Temporary pieces are visibly
-  identified as test placeholders.
+- Connected System is the owner-selected brand direction. The board uses
+  owner SVG pieces in front view V.02 and a selectable top view. The
+  prototype can preview the owner's local SVG boards with Tk 9.
 - Keyboard operation, focus visibility, scaling, and reduced-motion behavior
   are required W06 checks; screen-reader conformance remains unverified.
 
 ## Brand Commitments
 
-`Chess & Chains` is the working name. No logo, final board colors, or typeface
-has been approved. The selected W06 direction is not permanent branding. See
-`docs/design/DESIGN_SYSTEM_BRIEF.md` and Q-003/Q-004/Q-014.
+`Chess & Chains` is the working name. Manufacturing Consent is the chosen
+display face and appears as vector outlines in the app wordmark. The supplied
+piece designs are cleared for the app under MPL-2.0. Final owner board designs
+and individual release approvals are tracked in Q-004, Q-014 and ADR-005.
 
 ## Evidence on Hand
 
-Repository documentation, the tested headless rules core, and a visually
-inspected local macOS prototype are available. No screenshot is checked in;
-there is no approved artwork, installer, or third-party engine.
+The rules, mock UCI, puzzle fixtures, storage and GUI have automated test
+evidence. PR #7 passed the GitHub Actions matrix on Windows, macOS and Linux.
+Manual accessibility, native installer and real-engine acceptance remain open.
 
 ## Product Principles
 

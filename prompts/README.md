@@ -1,6 +1,6 @@
 # Copilot-Auftragskette
 
-Die Prompts sind für GitHub Copilot im Agentenmodus formuliert. Du kannst sie einzeln kopieren oder als Dateien referenzieren. **Start immer mit `00_MASTER_BOOTSTRAP.md`.** Bitte nie zwölf Prompts in einem unkontrollierten PR mischen; kleinere Prüfgates beschleunigen Korrekturen.
+Die Prompts beschreiben Aufträge und Abnahmeziele. Für einen neuen Checkout zuerst `00_MASTER_BOOTSTRAP.md` als Inventur verwenden. Vor einer Fortsetzung den tatsächlichen [Status je Paket](../docs/roadmap/WORK_PACKAGES.md) und die [aktuelle Reihenfolge](../docs/roadmap/ROADMAP.md) prüfen. Der [Standabgleich V.0.0.1](../docs/reports/2026-11-21_W11-v0.0.1-standsaudit.md) ordnet die letzten Arbeiten und offenen Gates zu.
 
 | Reihenfolge | Prompt | Ergebnis |
 | --- | --- | --- |

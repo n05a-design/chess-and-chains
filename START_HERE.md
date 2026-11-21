@@ -1,10 +1,11 @@
 # Chess & Chains – Einstieg
 
-Der aktuelle Entwicklungsstand steht im [Mastermanifest](MANIFEST.md). Der
-lokale Tk-Prototyp lässt sich wie in der [deutschen README](README.de.md)
-beschrieben starten. Die [Agentenberichte](docs/reports/README.md) enthalten
-die Git- und Testnachweise. Für neue Arbeit im vorhandenen Repository gilt
-[AGENTS.md](AGENTS.md).
+Der aktuelle Entwicklungsstand steht im [Mastermanifest](MANIFEST.md). Die
+[deutsche README](README.de.md) erklärt den Start der Tk-App. Mit
+`python -m chess_and_chains --version` lässt sich die Version nach der
+Installation prüfen. Für neue Arbeit im vorhandenen Repository gelten
+[AGENTS.md](AGENTS.md) und die Prioritäten der [Roadmap](docs/roadmap/ROADMAP.md).
+Die [Agentenberichte](docs/reports/README.md) enthalten Git- und Testnachweise.
 
 ## Historische Foundation-Anleitung (F0)
 

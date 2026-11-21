@@ -2,11 +2,12 @@
 import argparse
 from pathlib import Path
 
-from . import __version__
+from . import DISPLAY_VERSION
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Chess & Chains local chess prototype")
+    parser.add_argument("--version", action="version", version=f"Chess & Chains {DISPLAY_VERSION}")
     parser.add_argument(
         "--headless-check",
         action="store_true",
@@ -27,7 +28,7 @@ def main(argv: list[str] | None = None) -> int:
             parser.error(str(error))
     if args.headless_check:
         print(
-            f"Chess & Chains {__version__} — local GUI prototype available "
+            f"Chess & Chains {DISPLAY_VERSION} — local GUI prototype available "
             "(two players, mock bot, demo puzzles); no engine bundled."
         )
         return 0

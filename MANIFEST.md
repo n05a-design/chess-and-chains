@@ -1,6 +1,6 @@
 # MASTER MANIFEST – Chess & Chains
 
-**Stand:** 2026-11-20 (N02) · **Version:** Foundation F0 + N02 Functional Core · **Status:** PROTOTYPE_LOCAL_PLAY_NOT_RELEASED. Nicht als Produktrelease verstehen. Arbeitspaket-Status siehe `project-manifest.json` und `docs/governance/STATUS_MODEL.md`; F0-Planungsstand bleibt dort als `foundation_baseline` erhalten.
+**V.0.0.1 · Stand 21.11.2026 · Entwicklungsprototyp.** Der Stand umfasst den lokalen Regelkern, Tk mit Figurensatz V.02, Mock-UCI mit lokalem Bereitschaftstest, Demo-Puzzle-Lab und SQLite-Bibliothek. [Work Packages](docs/roadmap/WORK_PACKAGES.md) und [Statusmodell](docs/governance/STATUS_MODEL.md) erklären Umfang und Abnahme. `foundation_baseline` im Maschinenmanifest bleibt der historische Planungsstand.
 
 ## Single Sources of Truth (SSOT)
 
@@ -20,6 +20,7 @@
 | Quellen (mit Datum) | `docs/research/SOURCES.md` |
 | Releases / Paketmanager | `docs/release/RELEASE_STRATEGY.md` |
 | Branch-/PR-/Dokumentationspflege | `docs/governance/GOVERNANCE.md` |
+| Projektversion und Änderungen | `src/chess_and_chains/__init__.py`, `CHANGELOG.md` |
 | Arbeitsverträge für Agenten | `AGENTS.md` + `.github/copilot-instructions.md` |
 | Maschinenlesbares Paketverzeichnis | `project-manifest.json` |
 | Statusmodell und Nachweispflichten | `docs/governance/STATUS_MODEL.md` |
@@ -34,11 +35,13 @@
 - **RELEASED**: herunterladbares, korrekt paketiertes und getestetes Artefakt, separat öffentlich freigegeben.
 - **BLOCKED**: Sicherheits-, Lizenz- oder Qualitätsgate offen.
 
-## Reihenfolge
+## Abhängigkeiten
 
 `W00` (Repository/SSOT) → `W01` (Owner-Fragen und MVP) → `W02` (Rechte & Engine-Strategie) / `W03` (Shell-Audit) / `W04` (Konkurrenz & UX) → `W05` (Schachregeln) → `W06` (UI-Board) → `W07` (lokale UCI-Engine) → `W08` (Rätselimport) → `W09` (Lokalspeicher) → `W10` (i18n/Accessibility) → `W11` (CI/Sicherheit/QA) → `W12` (Release-Vorbereitung).
 
 **Regel:** Die Freigabe für den eigenen MPL-2.0-Regelkern und die Entwicklung mit projekteigener Mock-Engine sind in der [Lizenzstrategie](docs/legal/LICENSE_STRATEGY.md) dokumentiert. Engine-Bündelung und Release warten auf ADR-001. Die [Nacharbeit zu N02](docs/reports/2026-11-20_N02-follow-up.md) dokumentiert die lokale Implementierung und die Baseline-CI getrennt.
+
+Die [Roadmap](docs/roadmap/ROADMAP.md) führt die nächsten Aufgaben in ihrer aktuellen Reihenfolge. Die Datenformate behalten ihre eigenen Schemaversionen. [Versionspflege](docs/governance/GOVERNANCE.md#projektversion)
 
 ## Artefaktgrenzen
 

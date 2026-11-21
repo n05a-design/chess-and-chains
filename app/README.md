@@ -1,3 +1,7 @@
 # Desktop host
 
-Future Tk/Tk9-compatible window, UI controllers, SVG board and views. Keep game rules in a headless `src/chess_and_chains/` module, never in UI event callbacks. Do not import Glide's monolithic `ListApp`.
+`main.py` delegates to the same entry point as `python -m chess_and_chains`.
+See the [quick start](../README.md#quick-start-for-contributors) for source
+and installed use. The Tk host lives in [`src/chess_and_chains/ui/`](../src/chess_and_chains/ui/).
+Chess rules live separately in [`src/chess_and_chains/chess/`](../src/chess_and_chains/chess/).
+The [Glide Shell integration gate](../integrations/glide_shell/INTEGRATION_GATE.md) describes the reuse decision.

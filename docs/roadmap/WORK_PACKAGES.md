@@ -2,20 +2,20 @@
 
 **Historische Baseline (F0, 2026-11-19):** alle W00–W12 NOT_STARTED (in `project-manifest.json` als `foundation_baseline` erhalten).
 
-**Aktueller Stand (N02, 2026-11-20)** – maßgeblich ist `project-manifest.json` nach [Statusmodell](../governance/STATUS_MODEL.md); kein Paket ist `ACCEPTED`:
+**Aktueller Stand V.0.0.1 vom 21.11.2026.** Maßgeblich ist `project-manifest.json` nach [Statusmodell](../governance/STATUS_MODEL.md). Formale Paketabnahmen stehen weiterhin aus.
 
 | ID | Status | Umfang des Nachweises / offene Gate-Punkte |
 | --- | --- | --- |
 | W00 | TESTED | Struktur-/Statusprüfung; Owner-Abnahme offen |
 | W01–W04 | IN_PROGRESS | Berichte vorhanden; Owner-Fragen offen |
 | W05 | TESTED | Regelkern, Remisansprüche, Remis bei Aufgabe gegen den blanken König, Undo/Redo mit inkrementellen Wiederholungszählern und Perft/Golden-Tests. PGN-Import verarbeitet die Hauptvariante |
-| W06 | IMPLEMENTED | Tk-Brett mit Original-SVG-Figuren in Vorder- und Draufsicht unter MPL-2.0 samt PNG-Fallbacks. Vorderansicht V.02 mit optischem Ausgleich und editierbaren Innenschatten. Lokale Tk-9-Vorschau für Gesamtbrett und Feld-SVGs. Konkrete Inhaber-Bretter, manuelle Plattform- und High-DPI-Abnahme offen. [Figuren V.02](../reports/2026-11-21_W06-figurenschatten-v02.md) · [Brettvorschau](../reports/2026-11-20_W06-svg-brettvorschau.md) |
+| W06 | TESTED | Tk-Brett mit Vorderansichten V.02, Draufsicht, PNG-Fallbacks und Tk-9-Brettvorschau. Automatisierte Plattformmatrix erfolgreich. Finale Inhaber-Bretter, native Sichtprüfung, High-DPI und Barrierefreiheit stehen aus. [Figuren V.02](../reports/2026-11-21_W06-figurenschatten-v02.md) · [Brettvorschau](../reports/2026-11-20_W06-svg-brettvorschau.md) |
 | W07 | TESTED (Mock) | Adapter, Controller, Presets und asynchroner UCI-Bereitschaftstest mit Mock-Engine. Echte Engine, ADR-001 und Kalibrierung offen. [Bereitschaftstest](../reports/2026-11-21_W07-uci-verbindungstest.md) |
 | W08 | TESTED (Fixtures) | Importer, Packs, Session, Themen-/Ratingfilter und Fortschrittsanzeige; realer Lichess-Import, Q-008/Q-009 offen |
 | W09 | TESTED | Lokale Bibliothek mit PGN-Dateiaustausch und lokalem Partieendgrund, Migration auf Schema 3, Sicherung und Wiederherstellung, Settings. Manuelle Plattformabnahme, Q-012 und ADR-004 offen |
-| W10 | IN_PROGRESS | DE/EN-Kataloge; Accessibility-Abnahmen offen |
-| W11 | IN_PROGRESS | PR #6 vor Merge mit 14/14 Jobs grün. Anschließender `main`-Lauf mit 12/14 durch zwei native Tk-Abstürze auf macOS. Windows-Gegenlauf zur lokalen Tk-Lifecycle-Korrektur dokumentiert. [CI-Nachweis](../reports/2026-11-21_W11-ci-nach-pr6.md) |
-| W12 | NOT_STARTED | – |
+| W10 | IN_PROGRESS | DE/EN-Kataloge mit automatischer Sprachauswahl und Tastaturregressionen. Manuelle Kontrast-, Skalierungs- und Screenreader-Abnahmen stehen aus. |
+| W11 | TESTED | PR #7 mit je 14/14 Jobs auf Branch, PR und `main`. Native macOS-Tests für Python 3.11 und 3.14 bestanden. Manuelle Installations- und Offline-Abnahme steht aus. [Standabgleich](../reports/2026-11-21_W11-v0.0.1-standsaudit.md) |
+| W12 | BLOCKED | Öffentliche Distribution wartet auf ADR-001, ADR-005, ADR-006 und manuelle W11-Abnahme. [Vertriebsstrategie](../release/RELEASE_STRATEGY.md) |
 
 | ID | Workstream | Prompt | Prerequisite | Verbindliches Gate | Zielphase |
 | --- | --- | --- | --- | --- | --- |

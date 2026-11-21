@@ -21,11 +21,19 @@ Annotierungsaustausch bleibt eine mögliche Erweiterung nach Scope-Entscheidung.
 
 ## Engine
 
-`EngineProfile {id, display_name, executable_path, vendor, detected_uci_options, approved_bundle, license_record}`. Benutzerpfad nie ungeprüft als Shell-Kommando ausführen. Keine direkt in SQLite geschriebenen Engine-Binaries.
+Der Prototyp speichert einen Enginepfad in den Einstellungen. Der
+Adapter ermittelt Name und Optionen beim UCI-Handshake. Ein gespeichertes
+`EngineProfile` mit Anbieter, Lizenznachweis und Bundle-Freigabe gehört
+zum Zielmodell. [UCI-Vertrag](UCI_CONTRACT.md)
 
 ## Game
 
-`Game {id, created_at_utc, initial_fen, moves_uci[], optional_pgn, result, time_control, engine_profile_id, schema_version}`. SQLite lädt eine Partie erst, wenn Ausgangs-FEN, UCI-Züge und Ergebnis mit dem validierten PGN übereinstimmen. Die Bibliothek öffnet Spiele lokal für zwei Personen. Aus dem Brett ableitbare Partieenden behalten ihren Grund.
+`games` speichert `id`, `created_utc`, `initial_fen`, `moves_uci`, `pgn`,
+`result`, `mode`, `bot_color`, `bot_name` und `bot_preset` sowie die ab
+Schema 3 ergänzten Endgründe. SQLite lädt eine Partie erst, wenn
+Ausgangs-FEN, UCI-Züge und Ergebnis mit dem validierten PGN übereinstimmen.
+Die Bibliothek öffnet Spiele lokal für zwei Personen. Aus dem Brett
+ableitbare Partieenden behalten ihren Grund.
 
 SQLite v3 speichert bei einer lokalen Aufgabe die Farbe der aufgebenden
 Person. Bei einem Remisanspruch speichert es die Anspruchsregel und einen
@@ -47,6 +55,14 @@ erst nach vollständigem Schreiben im selben Verzeichnis ersetzt.
 
 ## Einstellungen
 
-`Settings {schema_version, locale, theme_id, piece_set_id, board_id, engine_profile_id, data_path}`. App-interne Pfade müssen portabel/migrierbar sein.
+Die aktuelle Settings-Datei enthält `schema_version`, `locale`, `theme_id`,
+`piece_set_id`, `board_orientation`, `engine_path`, `bot_preset_id`,
+`play_mode` und `last_pack_id`. `locale=null` folgt dem System mit dem
+Fallback aus `i18n/catalog.py`. `theme_id`, `piece_set_id`,
+`board_orientation` und `last_pack_id` sind Felder des Formats. Der
+Brett- und Figurenwechsel wird im aktuellen CLI-Aufruf gewählt. Der
+Datenpfad folgt der Plattform oder `CHESS_AND_CHAINS_DATA_DIR`.
 
 **Implementierungsvorschlag N02 (ADR-004 weiterhin PROPOSED):** SQLite `PRAGMA user_version` = 3 (`storage/database.py`: Tabellen `games`, `puzzle_attempts`, View `puzzle_progress`), Settings-JSON `schema_version` 1 (`storage/settings.py`), Puzzle-Packs `schema` 1 (`puzzles/pack.py`: `manifest.json` mit SHA-256 + `puzzles.jsonl` + `import_report.json`). Migrationen sichern bestehende DBs vorher (`*.pre-vN-*.bak`); neuere Schemata bleiben geschützt. Bestätigt beschädigte Dateien werden umbenannt. Bei einer Wiederherstellung wird eine nur lesend geöffnete Sicherung in einer temporären Datenbank geprüft und migriert. Erst danach wird der aktive Stand gesichert und in einer SQLite-Backup-Transaktion ersetzt. Endgültige Festlegung durch Owner über ADR-004.
+
+Die Projektversion V.0.0.1 lässt diese Schemaversionen unverändert.

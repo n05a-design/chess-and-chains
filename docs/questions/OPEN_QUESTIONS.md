@@ -1,6 +1,6 @@
 # Offene Rückfragen & Entscheidungsregister
 
-**Single Source of Truth für offene Owner-Fragen.** Stand: 20.11.2026. Fragen zuerst sammeln, nicht durch Copilot als beschlossene Fakten ausgeben. Entscheidung nach Owner-Antwort in passendes ADR übertragen, danach hier als `CLOSED` mit Link markieren.
+**Single Source of Truth für offene Owner-Fragen.** Stand V.0.0.1 · 21.11.2026. Entscheidungen nach Owner-Antwort mit Referenz im passenden ADR und hier dokumentieren.
 
 | ID | Priorität | Rückfrage an Owner | Vorgeschlagene Default-Richtung | Gate/Status |
 | --- | --- | --- | --- | --- |
@@ -20,7 +20,7 @@
 | Q-014 | LOW | Welche Wort-/Bildmarke für `Chess & Chains` und welche Kleingrößenvariante werden für die öffentliche Anwendung freigegeben? | Der Inhaber wählt Connected System und Manufacturing Consent für die Wortmarke. Kleingrößenvariante und Freigabe der konkreten Exporte bleiben offen. [ADR-005](../decisions/ADR-005_BRAND_ASSETS.md) | ADR-005 / PARTIALLY DECIDED |
 | Q-015 | HIGH | Wessen Name/Organisation steht im **Copyright-/Marken-/Impressum-Kontext**? | Inhaber und Schachfiguren-Urheber Tim von Trostorff. Herausgeberangabe nach dem öffentlich dokumentierten Glide-Vorbild. Der Inhaber erteilt die Freigaben. Die konkreten Angaben für ein späteres Impressum separat belegen. | ADR-005 / PARTIALLY DECIDED |
 | Q-016 | MEDIUM | Ist eine bezahlte **Apple Developer ID** für signierten/notarisierten Mac-Vertrieb vorhanden? | Nicht voraussetzen | Release / OPEN |
-| Q-017 | MEDIUM | Soll das Projekt erst privat in GitHub entstehen und später public werden? | Öffentlich erst nach Asset-/Lizenzprüfung | Repo / OPEN |
+| Q-017 | MEDIUM | Ist die öffentliche Repository-Sichtbarkeit im aktuellen Stand ausdrücklich freigegeben? | GitHub führt das Repository als öffentlich. Produktrelease und einzelne Asset-/Lizenzfreigaben werden separat entschieden. | Repo / OPEN für die dokumentierte Owner-Bestätigung |
 | Q-018 | MEDIUM | Gibt es einen bestimmten **OneDrive-Quellordner** für editierbare Artwork-/Marketing-Dateien, der ausschließlich verlinkt werden soll? | Local/Cloud nur per explizitem Pfad | Assets / OPEN |
 | Q-019 | HIGH | Sollen Copilot/andere Agenten GitHub **pushen und PRs erstellen** dürfen oder nur lokal vorbereiten? | Keine externen Writes ohne Erlaubnis | Governance / OPEN |
 | Q-020 | MEDIUM | Über welche Kanäle soll Chess & Chains entwickelt, vorgestellt und veröffentlicht werden? | GitHub für Entwicklung, Zielbild und fertigen Release. Die fertige App wird im hauseigenen Software-Katalog gemeinsam mit den anderen Programmen kostenlos zum Download angeboten. Launch-Materialien folgen später. | ADR-006 / CLOSED am 20.11.2026 für die Kanalentscheidung |

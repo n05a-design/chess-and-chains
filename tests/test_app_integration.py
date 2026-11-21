@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT))
 
+from chess_and_chains import DISPLAY_VERSION  # noqa: E402
 from chess_and_chains.chess import Color, DrawClaim, GameStatus, Move, Piece, PieceType, parse_square  # noqa: E402
 from chess_and_chains.engines.bot import EngineConfig, UCIBot  # noqa: E402
 from chess_and_chains.engines.mock_engine import ENGINE_NAME  # noqa: E402
@@ -559,6 +560,7 @@ class StorageAndLocaleUiTests(AppTestCase):
         self.assertEqual(app.panel_text.get(), "Weiß am Zug")
         self.assertIn("ZWEI PERSONEN", app.header_mode_text.get())
         self.assertEqual(app.new_game_button.cget("text"), "Neue Partie")
+        self.assertEqual(self.root.title(), f'{app.t("app.window_title")} · {DISPLAY_VERSION}')
 
     def test_keyboard_shortcut_undo(self):
         app = self.make_app()

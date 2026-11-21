@@ -2,6 +2,10 @@
 
 **Status: PROPOSED, kein öffentlicher Download.**
 
+**V.0.0.1** ist der versionierte Entwicklungsstand. Die Quell- und Wheel-Version
+kann mit `--version` geprüft werden. Die Distribution wartet weiterhin auf die
+unten stehenden Gates. [Versionspflege](../governance/GOVERNANCE.md#projektversion)
+
 ## Zielkanal
 
 GitHub Releases mit pro Plattform signierten/validierten Paketen, Hashes, klaren Versionsnummern und nachvollziehbarem Quellstand. Website verlinkt dasselbe Release. Erst *danach* WinGet-Community-Repository und Homebrew-Tap.
@@ -34,4 +38,6 @@ Headless-Core, Quellstart und gegebenenfalls AppImage/Flatpak mit getrenntem Rel
 
 ## Kein Packaging in Foundation F0
 
-`packaging/*` enthält noch keine freigegebenen Installerskripte, keine gültigen WinGet/Homebrew-Definitionen und keine erzeugten Artefakte. Zuerst v0.1/v0.2-Prototyp abnehmen.
+`packaging/*` enthält Pläne für Installer und Paketmanager. Das separat lokal
+baubare Python-Wheel dient der Entwicklerprüfung. Die Reihenfolge der
+ausstehenden Abnahmen steht in der [aktuellen Roadmap](../roadmap/ROADMAP.md).

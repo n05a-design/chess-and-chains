@@ -1,6 +1,10 @@
 # Product Brief – Chess & Chains
 
-Status: **VORGESCHLAGEN** · 19.11.2026
+Status der Produktvision: **VORGESCHLAGEN** · F0 vom 19.11.2026, Iststand geprüft für V.0.0.1.
+
+Der [aktuelle Prototyp](../../README.de.md#was-bereits-vorhanden-ist) enthält
+lokales Zweispieler-Spiel, Mock-UCI, fünf eigene Demo-Rätsel und die lokale
+Partiebibliothek. Die folgenden Abläufe beschreiben den Zielzustand.
 
 ## Vision
 
@@ -46,7 +50,8 @@ Diese Abläufe beschreiben geplante Erfahrungen, nicht implementierte Funktionen
    freigegebenes Puzzle-Pack und Filter. Die App richtet die Position vor dem
    ersten Gegnerzug ein, spielt diesen Zug zuerst ab und fragt anschließend
    nach der Lösung. Ungültige Züge werden abgewiesen; Ergebnis und Verlauf
-   bleiben lokal. Im Starter ist kein Puzzle-Datensatz enthalten.
+   bleiben lokal. Der Prototyp bringt fünf projekteigene Demos mit. Ein
+   veröffentlichter Lichess-Katalog steht aus.
 
 ## Kernprinzipien
 
@@ -58,7 +63,11 @@ Online-Multiplayer, Cloud-Synchronisation, Benutzerkonten, Social Feed, KI-Abos,
 
 ## Designidentität
 
-Arbeitsname **Chess & Chains**. „Chains“ kann für Zug- und Denkketten, Taktikfolgen und den Fortschritt stehen. Branding wird nicht aus fremden Schachportalen abgeleitet. Bereits vorhandene SVG-Figuren sind ein eigener Input, aber noch nicht im Starterpaket enthalten. Farbwelt und Typografie bleiben ausdrücklich offen.
+Arbeitsname **Chess & Chains**. „Chains“ steht für Zug- und Denkketten,
+Taktikfolgen und Fortschritt. Der Inhaber bestätigte Connected System und
+Manufacturing Consent für Wortmarke und große Überschriften. Die App enthält
+eigene Vorderansichten V.02 und einen Draufsichtssatz unter MPL-2.0.
+Finale Brettmotive und weitere Freigaben behandelt [ADR-005](../decisions/ADR-005_BRAND_ASSETS.md).
 
 ## Erfolgskriterien des MVP
 
@@ -74,5 +83,5 @@ Arbeitsname **Chess & Chains**. „Chains“ kann für Zug- und Denkketten, Takt
 6. Geprüfter Paketbau für Windows/macOS und Linux-Quellstart mit expliziten
    Plattformgrenzen.
 
-Die Metriken und Kriterien sind Vorschläge für spätere Abnahmen. Es gibt noch
-keine Messergebnisse, Plattformtests oder Owner-Freigabe.
+Die Kriterien bleiben Vorschläge für die Produktabnahme. Den belegten Stand
+automatisierter Plattformprüfungen und offene Gates führt die [QA-Matrix](../qa/TEST_PLAN.md).

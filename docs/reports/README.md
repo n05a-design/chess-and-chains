@@ -2,7 +2,7 @@
 
 Hier nur tatsächlich ausgeführte Prüfberichte/Agentenübergaben unter `YYYY-MM-DD_WXX_kurz.md` veröffentlichen. **Keine fiktiven grünen Testprotokolle.** Vorlage: [Agent-Handover](../governance/AGENT_HANDOFF_TEMPLATE.md).
 
-Aktueller Stand der [N02-Nacharbeit](2026-11-20_N02-follow-up.md). Historischer Stand vor dem Merge in [N02 Functional Core](2026-11-20_N02_functional-core.md).
+**Aktueller Stand:** [Versions- und Standabgleich V.0.0.1](2026-11-21_W11-v0.0.1-standsaudit.md). [N02-Nacharbeit](2026-11-20_N02-follow-up.md) und [N02 Functional Core](2026-11-20_N02_functional-core.md) dokumentieren frühere Stände.
 
 [Connected System – Varianten, App-Integration und Prüfnachweis](2026-11-20_N02-connected-system.md)
 

@@ -2,8 +2,10 @@
   "schema_version": "2.0",
   "project": "Chess & Chains",
   "slug": "chess-and-chains",
+  "repository": "n05a-design/chess-and-chains",
   "proposed_repository": "n05a-design/chess-and-chains",
-  "snapshot_date": "2026-11-20",
+  "snapshot_date": "2026-11-21",
+  "project_version": "0.0.1",
   "foundation_version": "F0",
   "product_status": "PROTOTYPE_LOCAL_PLAY_NOT_RELEASED",
   "language_policy": {
@@ -24,6 +26,8 @@
   ],
   "canonical_docs": {
     "manifest": "MANIFEST.md",
+    "versioning": "docs/governance/GOVERNANCE.md",
+    "changelog": "CHANGELOG.md",
     "product": "docs/product/PRODUCT_BRIEF.md",
     "mvp": "docs/product/MVP_CONTRACT.md",
     "questions": "docs/questions/OPEN_QUESTIONS.md",
@@ -48,7 +52,7 @@
       "gate": "Clone/HEAD, F0-Struktur, README/MANIFEST/AGENTS, Link- und Manifestprüfung protokolliert",
       "phase": "F0",
       "status": "TESTED",
-      "scope": "Repository inventory, F0 structure, manifest/link verification scripts",
+      "scope": "Repository inventory, F0 structure, project-version consistency, manifest/link checks",
       "status_evidence": [
         "docs/reports/2026-11-20_W00_bootstrap.md",
         "scripts/verify_starter.py",
@@ -137,8 +141,8 @@
       "depends_on": "W03/W05",
       "gate": "Original-SVG-Rendering, Boardinteraktion, DPI/Keyboard, native UI-Gates",
       "phase": "F1",
-      "status": "IMPLEMENTED",
-      "scope": "Tk board with click/drag/keyboard input, front and top original SVG piece sets with consistent dimensions per view and offline PNG fallbacks, and an opt-in Tk 9 preview for local SVG boards",
+      "status": "TESTED",
+      "scope": "Tk board with click/drag/keyboard input, front V.02 and top original SVG sets with PNG fallbacks, and opt-in Tk 9 preview for local SVG boards. Automated Windows, macOS and Linux runs passed",
       "status_evidence": [
         "docs/reports/2026-11-20_W06_board-ui.md",
         "docs/reports/2026-11-20_W06-originalfiguren.md",
@@ -154,9 +158,8 @@
         "tests/test_app_integration.py"
       ],
       "open_gate_items": [
-        "Original owner SVG piece rendering (ADR-005 asset gate)",
-        "Native Windows/Linux UI acceptance",
-        "High-DPI acceptance"
+        "Owner-supplied final board designs and their review",
+        "Manual native UI, high-DPI and accessibility acceptance"
       ]
     },
     {
@@ -182,7 +185,7 @@
       "open_gate_items": [
         "Real third-party engine offline test (ADR-001)",
         "Bot strength calibration (ADR-007)",
-        "Native UI acceptance of bot mode on Windows/Linux"
+        "Manual native UI acceptance of bot mode on the release targets"
       ]
     },
     {
@@ -253,12 +256,19 @@
       "depends_on": "W05–W10",
       "gate": "Echte CI/OS/Offline-/Lieferartefakt-Belege, offene Fehler, keine erfundenen Gates",
       "phase": "F5",
-      "status": "IN_PROGRESS",
+      "status": "TESTED",
+      "scope": "Automated foundation, policy, core and Tk integration checks on Windows, macOS and Linux; PR #7 and its main merge passed",
       "status_evidence": [
         ".github/workflows/checks.yml",
+        "tests/test_foundation.py",
+        "tests/test_app_integration.py",
+        "docs/reports/2026-11-21_W11-v0.0.1-standsaudit.md",
         "docs/reports/2026-11-21_W11-ci-nach-pr6.md",
         "docs/reports/2026-11-20_N02_functional-core.md",
         "docs/reports/2026-11-20_N02-follow-up.md"
+      ],
+      "open_gate_items": [
+        "Manual platform, offline installation and distributable artifact acceptance"
       ]
     },
     {
@@ -268,7 +278,9 @@
       "depends_on": "W02/W11",
       "gate": "Signierte/validierte Installer nach Owner-Freigabe; Paketmanager nur nach realer Distribution",
       "phase": "F5",
-      "status": "NOT_STARTED"
+      "status": "BLOCKED",
+      "blocked_by": ["ADR-001", "ADR-005", "ADR-006", "W11 manual release acceptance"],
+      "status_evidence": ["docs/release/RELEASE_STRATEGY.md", "packaging/README.md"]
     }
   ],
   "blocking_decision_ids": [
@@ -294,7 +306,7 @@
     "stockfish_binary",
     "chess_rules_dependency",
     "full_puzzle_datasets",
-    "user_svg_assets",
+    "final_owner_board_assets",
     "website",
     "installers",
     "winget_package",
