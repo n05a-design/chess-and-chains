@@ -609,35 +609,64 @@ class StorageAndLocaleUiTests(AppTestCase):
             self.assertTrue(app._current_pgn().endswith("1/2-1/2"))
             app.close()
 
-    def test_library_imports_into_an_empty_collection_and_exports_selected_game(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            directory = Path(tmp)
+    def test_library_keyboard_import_and_export_restore_focus(self):
+        with ExitStack() as stack:
+            directory = Path(stack.enter_context(tempfile.TemporaryDirectory()))
             app = self.make_app(data_layout=DataLayout(directory / "data"))
+            stack.callback(app.close)
             source, target = directory / "game.pgn", directory / "saved.pgn"
             source.write_text("1. e4 e5 *", encoding="utf-8")
+            self.root.deiconify()
+            self.root.update()
+            app.library_button.focus_force()
+            self.root.update()
 
-            def invoke_action(label):
-                dialog = next(child for child in self.root.winfo_children() if isinstance(child, tk.Toplevel))
-                try:
+            def press_action(label, key):
+                deadline = time.monotonic() + 5
+                pending = None
+                sent = False
+                keypad_bound = False
+
+                def press_when_focused():
+                    nonlocal pending, sent, keypad_bound
+                    pending = None
+                    dialog = self.root.grab_current()
                     content = dialog.winfo_children()[0]
                     button = next(child for child in content.winfo_children()
                                   if isinstance(child, ttk.Button) and child.cget("text") == label)
-                    button.invoke()
-                finally:
-                    if dialog.winfo_exists():
+                    if time.monotonic() >= deadline:
                         dialog.destroy()
+                    elif not button.winfo_viewable():
+                        pending = self.root.after(10, press_when_focused)
+                    elif self.root.focus_get() is not button:
+                        button.focus_force()
+                        pending = self.root.after(10, press_when_focused)
+                    else:
+                        sent = True
+                        keypad_bound = bool(button.bind("<KP_Enter>"))
+                        button.event_generate(f"<{key}>", when="tail")
+                        pending = self.root.after(1000, dialog.destroy)
+
+                pending = self.root.after(0, press_when_focused)
+                try:
+                    app.library_button.invoke()
+                finally:
+                    if pending is not None:
+                        self.root.after_cancel(pending)
+                self.assertTrue(sent, f"{label} did not receive focus")
+                self.assertTrue(keypad_bound, f"{label} has no keypad Enter binding")
+                self.pump_until(lambda: self.root.focus_get() is app.library_button)
 
             with patch("chess_and_chains.ui.app.filedialog.askopenfilename", return_value=str(source)):
-                self.root.after(0, invoke_action, "Import PGN…")
-                app.library_button.invoke()
+                press_action("Import PGN…", "Return")
             self.assertEqual(app.game.moves, [])
             self.assertIn("Imported game #1", app.interaction_text.get())
 
             with patch("chess_and_chains.ui.app.filedialog.asksaveasfilename", return_value=str(target)):
-                self.root.after(0, invoke_action, "Export PGN…")
-                app.library_button.invoke()
+                # Win32 Tk cannot synthesize this keysym (it produces keycode 0).
+                press_action("Export PGN…", "Return")
             self.assertIn("1. e4 e5 *", target.read_text(encoding="utf-8"))
-            app.close()
+            press_action("Cancel", "Escape")
 
     def test_without_data_layout_nothing_is_written(self):
         app = self.make_app()
