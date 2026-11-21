@@ -73,6 +73,9 @@
       "status_evidence": [
         "docs/reports/2026-11-20_W01_scope.md",
         "docs/product/MVP_CONTRACT.md"
+      ],
+      "open_gate_items": [
+        "Owner acceptance of ADR-000 and the remaining MVP decisions"
       ]
     },
     {
@@ -86,6 +89,9 @@
       "status_evidence": [
         "docs/reports/2026-11-20_W02_license.md",
         "docs/legal/LICENSE_STRATEGY.md"
+      ],
+      "open_gate_items": [
+        "ADR-001 engine distribution decision and concrete delivery inventory"
       ]
     },
     {
@@ -97,7 +103,11 @@
       "phase": "F0",
       "status": "IN_PROGRESS",
       "status_evidence": [
-        "docs/reports/2026-11-20_W03_glide-audit.md"
+        "docs/reports/2026-11-20_W03_glide-audit.md",
+        "docs/reports/2026-11-21_W00-W12-paketabgleich.md"
+      ],
+      "open_gate_items": [
+        "Q-006 shell integration decision and independent contract tests before any reuse"
       ]
     },
     {
@@ -109,7 +119,13 @@
       "phase": "F0",
       "status": "IN_PROGRESS",
       "status_evidence": [
-        "docs/reports/2026-11-20_W04_competitor-design.md"
+        "docs/reports/2026-11-20_W04_competitor-design.md",
+        "docs/design/CONNECTED_SYSTEM.md",
+        "docs/design/ASSET_REGISTER.csv",
+        "docs/decisions/ADR-005_BRAND_ASSETS.md"
+      ],
+      "open_gate_items": [
+        "Remaining asset and typography decisions and owner review of the concrete exports"
       ]
     },
     {
@@ -126,7 +142,8 @@
         "src/chess_and_chains/chess/rules.py",
         "tests/test_chess_core.py",
         "docs/reports/2026-11-20_N02-follow-up.md",
-        "tests/test_chess_golden.py"
+        "tests/test_chess_golden.py",
+        "docs/reports/2026-11-21_W00-W12-paketabgleich.md"
       ],
       "open_gate_items": [
         "Owner acceptance",
@@ -220,17 +237,18 @@
       "gate": "Getrennte Nutzerdaten, Migrations- und Restore-Proben, PGN/FEN-Roundtrip",
       "phase": "F4",
       "status": "TESTED",
-      "scope": "SQLite v3 migrations, validated backup/restore, local library with resignation and draw-claim details and bounded PGN file exchange, puzzle progress, atomic JSON settings; locally tested",
+      "scope": "SQLite v3 migrations, local library, puzzle progress and atomic JSON settings. Native Windows PGN file exchange and backup/restore verified with transient data",
       "status_evidence": [
         "docs/reports/2026-11-20_N02_functional-core.md",
         "src/chess_and_chains/storage/database.py",
         "src/chess_and_chains/storage/settings.py",
         "tests/test_storage.py",
         "docs/reports/2026-11-20_N02-follow-up.md",
-        "tests/test_app_integration.py"
+        "tests/test_app_integration.py",
+        "docs/reports/2026-11-21_W00-W12-paketabgleich.md"
       ],
       "open_gate_items": [
-        "Manual native platform acceptance, including system file pickers",
+        "Native file-dialog acceptance on macOS and Linux; Windows smoke tested",
         "Profile model decision Q-012",
         "ADR-004 acceptance"
       ]
@@ -242,16 +260,19 @@
       "depends_on": "W06/W09",
       "gate": "DE/EN-Katalogparität, Keyboard-/Kontrast-/Scaling-Abnahmen",
       "phase": "F4",
-      "status": "IN_PROGRESS",
+      "status": "TESTED",
+      "scope": "DE/EN catalog, board keyboard flow and focus visibility in PR #9 CI. Windows text-scale probes and one native 96-DPI observation",
       "status_evidence": [
         "docs/reports/2026-11-20_N02_functional-core.md",
         "src/chess_and_chains/i18n/catalog.py",
         "tests/test_i18n.py",
         "tests/test_app_integration.py",
-        "docs/reports/2026-11-21_W10-W11-tastatur-und-skalierung.md"
+        "docs/reports/2026-11-21_W10-W11-tastatur-und-skalierung.md",
+        "docs/reports/2026-11-21_W00-W12-paketabgleich.md"
       ],
       "open_gate_items": [
-        "Native system scaling, visual review, and screen reader acceptance"
+        "Native 150/200 percent scaling, full visual review, and screen reader acceptance",
+        "Cross-platform GUI CI for the local focus-message correction after PR #9"
       ]
     },
     {
@@ -262,11 +283,12 @@
       "gate": "Echte CI/OS/Offline-/Lieferartefakt-Belege, offene Fehler, keine erfundenen Gates",
       "phase": "F5",
       "status": "TESTED",
-      "scope": "PR #8 main merge passed the Windows, macOS and Linux matrix. W10 follow-up passed local Windows tests and a wheel smoke test.",
+      "scope": "PR #9 passed the Windows, macOS and Linux matrix on push, PR and main. The W10 follow-up, wheel and native PGN smoke tests have local Windows evidence.",
       "status_evidence": [
         ".github/workflows/checks.yml",
         "tests/test_foundation.py",
         "tests/test_app_integration.py",
+        "docs/reports/2026-11-21_W00-W12-paketabgleich.md",
         "docs/reports/2026-11-21_W10-W11-tastatur-und-skalierung.md",
         "docs/reports/2026-11-21_W11-v0.0.1-standsaudit.md",
         "docs/reports/2026-11-21_W11-ci-nach-pr6.md",
@@ -274,7 +296,7 @@
         "docs/reports/2026-11-20_N02-follow-up.md"
       ],
       "open_gate_items": [
-        "Cross-platform GUI CI for the W10 follow-up",
+        "Cross-platform GUI CI for changes after PR #9",
         "Manual platform, offline installation and distributable artifact acceptance"
       ]
     },

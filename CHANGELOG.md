@@ -8,6 +8,7 @@
 - Stabilize Tk test cleanup and enable crash diagnostics. Branch, PR and post-merge CI for PR #7 passed on Windows, macOS and Linux.
 - Reconcile the current documentation with the code, archive prior planning snapshots, and record the next tasks and owner decisions. This is a development version.
 - Show keyboard focus when entering the board, localize square and selection feedback, and support Enter on action buttons, including promotion choices.
+- Clear the board focus message when keyboard focus leaves the board. Preserve newer action feedback and reject package acceptance records with unresolved blockers.
 
 The dated entries below preserve the development history incorporated into this snapshot.
 

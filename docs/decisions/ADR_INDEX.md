@@ -9,8 +9,8 @@ Only the owner may change status from **PROPOSED** to **ACCEPTED**. Approved dec
 | ADR-002 | Python-/Tk-Shell und Glide-Reuse | PROPOSED | W03/W06 |
 | ADR-003 | Offline-Puzzle-Datenbank und >=1000 | PROPOSED | W08 |
 | ADR-004 | Datenhaltung, Backup und Nutzerpfade | PROPOSED | W09 |
-| ADR-005 | Branding, Assets und Design-Eigentum | OPEN | W04/W06 |
-| ADR-006 | Plattform-/Release-Matrix | PROPOSED | W12 |
+| ADR-005 | Branding, Assets und Design-Eigentum | PARTIALLY DECIDED | W04/W06 |
+| ADR-006 | Plattform-/Release-Matrix | PARTIALLY DECIDED | W12 |
 | ADR-007 | Bot-Profile und Schwierigkeitskalibrierung | OPEN | W07 |
 
 Do not silently treat README suggestions as accepted ADRs. Use `ADR_TEMPLATE.md` for new decisions.
