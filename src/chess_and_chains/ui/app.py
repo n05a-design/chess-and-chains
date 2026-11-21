@@ -36,6 +36,7 @@ from .board_artwork import BoardArtwork, BoardArtworkError, BoardDesign
 from .branding import brand_image
 from .dialogs import PositionDialog, bind_button_enter as _bind_button_enter
 from .pieces import OwnerSvgPieces, PieceRenderer
+from .text_board import TextBoardDialog
 from .theme import (
     ACETATE,
     BRAND_BLUE,
@@ -158,6 +159,7 @@ class ChessApp:
         self._provider_stale = False
         self._game_headers: dict[str, str] = {}
         self._closed = False
+        self._text_board: TextBoardDialog | None = None
         self.interaction_text = tk.StringVar(root)
         self._board_feedback = ""
         self.panel_text = tk.StringVar(root)
@@ -234,9 +236,14 @@ class ChessApp:
         board_sheet = self._sheet(body, 0, padx=(0, 14))
         board_sheet.grid_rowconfigure(1, weight=1)
         board_sheet.grid_columnconfigure(0, weight=1)
-        tk.Label(board_sheet, text=t("board.pieces"), background=ACETATE, foreground=INK,
+        board_header = tk.Frame(board_sheet, background=ACETATE)
+        board_header.grid(row=0, column=0, sticky="ew")
+        board_header.columnconfigure(0, weight=1)
+        tk.Label(board_header, text=t("board.pieces"), background=ACETATE, foreground=INK,
                  font=("TkDefaultFont", FONT_SIZES["caption"], "bold"), anchor="w", padx=14, pady=9,
                  ).grid(row=0, column=0, sticky="ew")
+        self.text_board_button = self._button(board_header, t("text_board.button"), self._open_text_board)
+        self.text_board_button.grid(row=0, column=1, padx=(0, 12), pady=4)
         self.board = BoardCanvas(board_sheet, lambda moves: app._on_move_requested(moves),
                                  lambda detail: app._on_selection_changed(detail),
                                  artwork=self._board_artwork, renderer=piece_renderer, translator=t)
@@ -1110,6 +1117,15 @@ class ChessApp:
     def _open_engine_dialog(self) -> None:
         EngineDialog(self)
 
+    def _open_text_board(self) -> None:
+        dialog = TextBoardDialog(self.root, self.t, self._play_move)
+        self._text_board = dialog
+        try:
+            self._refresh()
+            self.root.wait_window(dialog)
+        finally:
+            self._text_board = None
+
     # ----- rendering ------------------------------------------------------
     def _side(self, color: Color) -> str:
         return self.t("side.white" if color is Color.WHITE else "side.black")
@@ -1143,6 +1159,8 @@ class ChessApp:
             self.puzzle_title_text.set("")
             self.puzzle_meta_text.set("")
             self.board.set_position(None, (), None, False)
+            if self._text_board is not None:
+                self._text_board.show_position(None, (), self.panel_text.get())
             self.hint_button.configure(state=tk.DISABLED)
             self.solution_button.configure(state=tk.DISABLED)
             return
@@ -1154,6 +1172,9 @@ class ChessApp:
                                          themes=", ".join(theme_labels)))
         legal = session.legal_moves()
         self.board.set_position(session.state, legal, session.last_move, session.game.rules.is_in_check(session.state))
+        if self._text_board is not None:
+            self._text_board.show_position(session.state, legal, self.puzzle_title_text.get(),
+                                           self.puzzle_feedback_text.get())
         state = tk.DISABLED if session.finished else tk.NORMAL
         self.hint_button.configure(state=state)
         self.solution_button.configure(state=state)
@@ -1177,6 +1198,13 @@ class ChessApp:
         else:
             notice = f"\n{t('bot.mock_notice')}" if view.bot_is_mock else ""
             self.bot_text.set(t("bot.idle", bot=bot) + notice)
+        if self._text_board is not None:
+            feedback = ""
+            if view.bot_status in (BotStatus.THINKING, BotStatus.ERROR):
+                feedback = self.bot_text.get()
+            elif view.san_moves:
+                feedback = t("text_board.last", move=view.san_moves[-1])
+            self._text_board.show_position(view.state, view.legal_moves, self.panel_text.get(), feedback)
         self.retry_bot_button.configure(state=tk.NORMAL if view.bot_status is BotStatus.ERROR else tk.DISABLED)
         if not self.game.moves and view.can_redo:
             action_state = t("action.redo_only")

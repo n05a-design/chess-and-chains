@@ -38,6 +38,11 @@ Der Inhaber hat die Original-SVG-Figuren unter MPL-2.0 freigegeben. Tk 9 zeichne
 
 ## Entwicklerstart
 
+Über „Brett als Text…“ lassen sich in Partien und Rätseln besetzte Felder
+und legale Zielfelder als Listen lesen. Pfeiltasten wählen einen Eintrag.
+Enter wechselt von der Figur zum Ziel und spielt den dort gewählten Zug.
+Escape schließt das Textbrett.
+
 ```bash
 python -m unittest discover -s tests -v
 python scripts/verify_starter.py

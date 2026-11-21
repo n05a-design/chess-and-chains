@@ -7,6 +7,7 @@
 | Priorität | Arbeit | Voraussetzung und nächster Nachweis |
 | --- | --- | --- |
 | 1 | W10 und W11 · Native Bedienabnahme | PR #12 mit den Tastaturwegen für PGN-Import, Export und Abbruch ist in `main` und bestand den Merge-Lauf. Native Skalierung, physischer Ziffernblock und Screenreader stehen zur Abnahme aus. [W10-Prüfnachweis](../reports/2026-11-21_W10-dialogtastatur.md) |
+| Parallel | W10 · Brett als Text | Besetzte Felder und legale Züge in Partie und Puzzle über Tastatur auswählen. [Prüfnachweis](../reports/2026-11-21_W10-brett-als-text.md) |
 | 2 | W06 · Individuelle Brettgestaltung | Die Wiederverwendung der beiden Perspektiven ist lokal geprüft. Finale SVG-Bretter des Inhabers mit Partie, Rätseln und V.02 prüfen. [Lieferformate](../../assets/boards/source/README.md) · [W06-Prüfnachweis](../reports/2026-11-21_W06-svg-brettcache.md) |
 | Parallel | W02/W07 · Echte Offline-Engine | Konkrete Engine- und Vertriebsstrategie für den sofort spielbaren Offline-Bot prüfen und in ADR-001 entscheiden lassen. Danach Test einer vollständigen Partie mit identifiziertem Binary und Offline-Nachweis. Die Mock-Tests dienen der Adapterprüfung. |
 | Parallel | W08 · Produktiver Rätselkatalog | Lokale Pakete können importiert, gewechselt und beim Neustart wieder geöffnet werden. Nach Opt-in Q-022 den realen Export, Datenprofil und Stichprobe prüfen. Q-008/Q-009 entscheiden Ratingbereich und Paketgröße. [W08/W09-Prüfnachweis](../reports/2026-11-21_W08-W09-lokale-raetselpakete.md) |

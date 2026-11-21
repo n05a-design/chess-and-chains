@@ -28,6 +28,7 @@ from chess_and_chains.storage import DataLayout, load_settings, update_settings 
 from chess_and_chains.ui.app import ChessApp, EngineDialog  # noqa: E402
 from chess_and_chains.ui.branding import brand_image  # noqa: E402
 from chess_and_chains.ui.dialogs import PositionDialog  # noqa: E402
+from chess_and_chains.ui.text_board import TextBoardDialog  # noqa: E402
 from chess_and_chains.ui.pieces import (  # noqa: E402
     PIECE_FALLBACK_SIZES,
     PIECE_FILE_NAMES,
@@ -627,6 +628,87 @@ class OwnerPieceUiTests(AppTestCase):
                                if not tile.transparency_get(x, y)]
                     xs, ys = zip(*visible)
                     self.assertEqual((min(xs), min(ys), max(xs), max(ys)), bounds)
+
+
+class TextBoardUiTests(AppTestCase):
+    def test_real_keys_select_move_and_escape_restores_focus(self):
+        app = self.make_app()
+        app.controller.new_game(GameSetup(initial_fen="4k3/8/8/8/8/8/8/RR2K3 w - - 0 1"))
+        self.root.deiconify()
+        self.root.update()
+        app.text_board_button.focus_force()
+        self.root.update()
+        errors = []
+
+        def drive():
+            dialog = app._text_board
+            try:
+                self.assertIsInstance(dialog, TextBoardDialog)
+                dialog.pieces.focus_force()
+                self.root.update()
+                self.assertIs(self.root.focus_get(), dialog.pieces)
+                initial_index = dialog.pieces.curselection()[0]
+                dialog.pieces.event_generate("<Down>", when="tail")
+                self.root.update()
+                self.assertEqual(dialog.pieces.curselection(), (initial_index + 1,))
+                dialog.pieces.event_generate("<Return>", when="tail")
+                self.root.update()
+                self.assertIs(self.root.focus_get(), dialog.targets)
+                self.assertTrue(dialog.targets.bind("<KP_Enter>"))
+                expected = dialog._targets[0]
+                dialog.targets.event_generate("<Return>", when="tail")
+                self.root.update()
+                self.assertEqual(app.game.moves, [expected])
+                self.assertIs(self.root.focus_get(), dialog.pieces)
+                dialog.pieces.event_generate("<Escape>", when="tail")
+                self.root.update()
+                self.assertFalse(dialog.winfo_exists())
+            except Exception as error:
+                errors.append(error)
+            finally:
+                if dialog is not None and dialog.winfo_exists():
+                    dialog.destroy()
+
+        self.root.after(0, drive)
+        app.text_board_button.invoke()
+        if errors:
+            raise errors[0]
+        self.assertIs(self.root.focus_lastfor(), app.text_board_button)
+
+    def test_text_board_plays_a_promotion_and_a_puzzle_via_the_same_controller(self):
+        app = self.make_app(locale="de")
+        app.controller.new_game(GameSetup(initial_fen="4k3/P7/8/8/8/8/8/4K3 w - - 0 1"))
+        dialog = TextBoardDialog(self.root, app.t, app._play_move)
+        app._text_board = dialog
+        try:
+            app._refresh()
+            index = dialog._sources.index(parse_square("a7"))
+            dialog.pieces.selection_clear(0, tk.END)
+            dialog.pieces.selection_set(index)
+            dialog._select_piece()
+            self.assertIn("a8 · Turm", dialog.targets.get(0, tk.END))
+            index = dialog._targets.index(Move.from_uci("a7a8r"))
+            dialog.targets.selection_clear(0, tk.END)
+            dialog.targets.selection_set(index)
+            dialog.play_button.invoke()
+            self.assertEqual(app.game.moves, [Move.from_uci("a7a8r")])
+
+            app.tab_rail.set_active("puzzles")
+            expected = app.puzzle.expected_move
+            index = dialog._sources.index(expected.from_square)
+            dialog.pieces.selection_clear(0, tk.END)
+            dialog.pieces.selection_set(index)
+            dialog._select_piece()
+            index = dialog._targets.index(expected)
+            dialog.targets.selection_clear(0, tk.END)
+            dialog.targets.selection_set(index)
+            dialog.play_button.invoke()
+            self.assertTrue(app.puzzle.solved)
+            self.assertEqual(dialog.targets.size(), 0)
+            self.assertTrue(dialog.play_button.instate(("disabled",)))
+        finally:
+            app._text_board = None
+            dialog.destroy()
 
 
 class PositionExchangeUiTests(AppTestCase):
