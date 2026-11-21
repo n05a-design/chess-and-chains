@@ -2,19 +2,22 @@
 
 **Historische Baseline (F0, 2026-11-19):** alle W00–W12 NOT_STARTED (in `project-manifest.json` als `foundation_baseline` erhalten).
 
-**Aktueller Stand V.0.0.1 vom 21.11.2026.** Maßgeblich ist `project-manifest.json` nach [Statusmodell](../governance/STATUS_MODEL.md). Formale Paketabnahmen stehen weiterhin aus.
+**Aktueller Stand V.0.0.1 vom 21.11.2026.** Acht Pakete haben geprüfte Teilumfänge, vier sind in Arbeit und eines ist blockiert. Für kein Paket ist eine vollständige Abnahme belegt. Maßgeblich sind [Maschinenmanifest](../../project-manifest.json) und [Statusmodell](../governance/STATUS_MODEL.md). [Nachweise für W00–W12](../reports/2026-11-21_W00-W12-paketabgleich.md)
 
 | ID | Status | Umfang des Nachweises / offene Gate-Punkte |
 | --- | --- | --- |
 | W00 | TESTED | Struktur-/Statusprüfung; Owner-Abnahme offen |
-| W01–W04 | IN_PROGRESS | Berichte vorhanden; Owner-Fragen offen |
-| W05 | TESTED | Regelkern, Remisansprüche, Remis bei Aufgabe gegen den blanken König, Undo/Redo mit inkrementellen Wiederholungszählern und Perft/Golden-Tests. PGN-Import verarbeitet die Hauptvariante |
+| W01 | IN_PROGRESS | MVP-Vertrag und Fragenregister ausgearbeitet. ADR-000 und weitere Scope-Entscheidungen offen. |
+| W02 | IN_PROGRESS | Rechte- und Engine-Vergleich dokumentiert. Konkrete Vertriebsentscheidung ADR-001 und Lieferinventar offen. |
+| W03 | IN_PROGRESS | Inventar mit aktuellem Glide-/Steps-Quellabgleich. Isolierte Verträge und Q-006 offen. |
+| W04 | IN_PROGRESS | Quellenrecherche, Connected System und Assetregister vorhanden. Freigabe der Markenexporte und Detailentscheidungen nach ADR-005 offen. |
+| W05 | TESTED | Regelkern mit Remisansprüchen, Perft, FEN und PGN-Hauptvariante geprüft. Tote Stellungen bei erzwungenen Schlägen werden erkannt. Ausstehend sind weitere tote Stellungen und die Gesamtregelabnahme. [W05-Nachweis](../reports/2026-11-21_W05-tote-stellungen-und-altpartien.md) |
 | W06 | TESTED | Tk-Brett mit Vorderansichten V.02, Draufsicht, PNG-Fallbacks und Tk-9-Brettvorschau. Automatisierte Plattformmatrix erfolgreich. Finale Inhaber-Bretter, native Sichtprüfung, High-DPI und Barrierefreiheit stehen aus. [Figuren V.02](../reports/2026-11-21_W06-figurenschatten-v02.md) · [Brettvorschau](../reports/2026-11-20_W06-svg-brettvorschau.md) |
 | W07 | TESTED (Mock) | Adapter, Controller, Presets und asynchroner UCI-Bereitschaftstest mit Mock-Engine. Echte Engine, ADR-001 und Kalibrierung offen. [Bereitschaftstest](../reports/2026-11-21_W07-uci-verbindungstest.md) |
 | W08 | TESTED (Fixtures) | Importer, Packs, Session, Themen-/Ratingfilter und Fortschrittsanzeige; realer Lichess-Import, Q-008/Q-009 offen |
-| W09 | TESTED | Lokale Bibliothek mit PGN-Dateiaustausch und lokalem Partieendgrund, Migration auf Schema 3, Sicherung und Wiederherstellung, Settings. Manuelle Plattformabnahme, Q-012 und ADR-004 offen |
-| W10 | IN_PROGRESS | Lokalisierte Brettmeldungen, sichtbarer Feldfokus und Eingabetaste für Aktionsbuttons. Windows-Probe bei drei Tk-Textskalierungen und Kontrastberechnung bestanden. Native Skalierung und Screenreader stehen zur Abnahme aus. [W10/W11-Bericht](../reports/2026-11-21_W10-W11-tastatur-und-skalierung.md) |
-| W11 | TESTED | PR #8 auf `main` mit 14/14 Jobs inklusive nativer macOS-GUI für Python 3.11 und 3.14. Folgearbeit mit lokaler Windows-Suite und installiertem Wheel geprüft. Die Folgeänderungen brauchen noch GUI-CI auf den weiteren Plattformen. Die native Installations- und Offline-Abnahme steht aus. [W10/W11-Bericht](../reports/2026-11-21_W10-W11-tastatur-und-skalierung.md) |
+| W09 | TESTED | Windows-PGN-Dateiaustausch belegt. SQLite-Rücksicherung prüft Partiedaten vor dem Austausch. Schreibfehler und unterbrochene Transfers wurden im isolierten Test geprüft. Native Abnahmen auf macOS/Linux, Q-012 und ADR-004 offen. [W09-Prüfnachweis](../reports/2026-11-21_W09-sichere-wiederherstellung.md) |
+| W10 | TESTED | DE/EN, Feldfokus und Tastaturabläufe in PR #9 geprüft. Lokale Korrektur der Fokusmeldung und native Sichtprobe bei 96 DPI. Systemskalierung bei 150/200 %, Screenreader und GUI-CI der Korrektur offen. |
+| W11 | TESTED | PR #9 mit je 14/14 Jobs auf Push, PR und `main`, je zwei native macOS-GUI-Jobs. Der lokale Folgestand hat Windows-Nachweise. Plattform-CI und die native Installations- und Offline-Abnahme stehen aus. |
 | W12 | BLOCKED | Öffentliche Distribution wartet auf ADR-001, ADR-005, ADR-006 und manuelle W11-Abnahme. [Vertriebsstrategie](../release/RELEASE_STRATEGY.md) |
 
 | ID | Workstream | Prompt | Prerequisite | Verbindliches Gate | Zielphase |

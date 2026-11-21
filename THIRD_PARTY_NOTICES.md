@@ -1,6 +1,6 @@
 # Third-party notices and provenance ledger
 
-**No third-party engines, chess libraries, downloaded puzzle datasets, fonts or competitor assets are included in this starter ZIP.** The only LICENSE file applies to original starter code/text, not implicitly to assets added later.
+**Runtime inventory for V.0.0.1.** The Python package uses the original rules and mock engine, the owner's pieces, and the Connected System runtime assets. Design sources and their individual attribution are recorded in the [asset register](docs/design/ASSET_REGISTER.csv).
 
 | Component / source | Current status | License reported by source | Release obligation |
 | --- | --- | --- | --- |
@@ -10,7 +10,7 @@
 | Lichess puzzle CSV | Candidate; NOT downloaded | CC0 | Preserve dataset source/date and apply rules carefully |
 | Glide Shell modules | Proposed only; NOT copied | Original files often MPL-2.0, dependencies may differ | Verify source/version/third-party assets individually |
 | User SVG pieces | Owner-created vector master, 24 derived SVGs in front and top views, two PNG atlases | MPL-2.0, approved by Tim von Trostorff on 20 November 2026 | Preserve the [master provenance](assets/chess_pieces/source_svg/masters/PROVENANCE.md) and [runtime attribution](src/chess_and_chains/ui/piece_assets/PROVENANCE.md) |
-| Manufacturing Consent Regular | Source for editable wordmark masters and the derived SVG outline and PNG in the app | OFL-1.1 per [upstream at 80c3d82](https://github.com/googlefonts/manufacturing-consent-font/blob/80c3d822c2459ac0d76f8cb9d7ca1ca89a068f3b/OFL.txt) | Font binary is not included. Version and source hash are recorded in the [asset register](docs/design/ASSET_REGISTER.csv). |
+| Manufacturing Consent Regular | Wordmark source and derived SVG outline and PNG in the app. A separate version 3.000 font file is stored among the historical design sources. | OFL-1.1 per [upstream at 80c3d82](https://github.com/googlefonts/manufacturing-consent-font/blob/80c3d822c2459ac0d76f8cb9d7ca1ca89a068f3b/OFL.txt) | The repository archive includes the supplied license text. The installed application uses the rendered wordmark. Both font hashes are recorded in the [asset register](docs/design/ASSET_REGISTER.csv). |
 | CairoSVG 2.9.1 | Research candidate; not a project dependency; temporary evaluation only | LGPL-3.0-or-later per PyPI | Runtime adoption requires dependency/license inventory and native Cairo packaging review |
 | cairocffi 1.7.1 | Research candidate; not a project dependency; temporary evaluation only | BSD per PyPI | Native Cairo is separately required; verify exact bundled versions and notices |
 | CairoSVG transitive Python dependencies | Temporary research environment only; not project dependencies | Not yet individually inventoried | Verify licenses and versions before any runtime integration |

@@ -6,11 +6,11 @@
 
 | Priorität | Arbeit | Voraussetzung und nächster Nachweis |
 | --- | --- | --- |
-| 1 | W10 und W11 · Native Bedienabnahme | Der [Windows-Tk-Prüflauf](../reports/2026-11-21_W10-W11-tastatur-und-skalierung.md) deckt DE/EN bei 100/150/200 % Tk-Textskalierung ab. Als Nächstes den neuen Stand plattformübergreifend in der GUI-CI prüfen und Fokusreihenfolge, Dialoge, Zugliste und Screenreader bei nativer Systemskalierung abnehmen. |
+| 1 | W10 und W11 · Native Bedienabnahme | Die PR-#9-Matrix und die Windows-Sichtprobe bei 96 DPI sind dokumentiert. Folgestand in der GUI-CI prüfen. Fokusreihenfolge, Dialoge, Zugliste und Screenreader bei weiteren nativen Skalierungen abnehmen. [Paketabgleich](../reports/2026-11-21_W00-W12-paketabgleich.md) |
 | 2 | W06 · Individuelle Brettgestaltung | Finale SVG-Bretter des Inhabers mit Partie, Rätseln, Perspektivwechsel und V.02 prüfen. Die lokale SVG-Vorschau unterstützt die [vereinbarten Lieferformate](../../assets/boards/source/README.md). |
 | Parallel | W02/W07 · Echte Offline-Engine | Konkrete Engine- und Vertriebsstrategie für den sofort spielbaren Offline-Bot prüfen und in ADR-001 entscheiden lassen. Danach Test einer vollständigen Partie mit identifiziertem Binary und Offline-Nachweis. Die Mock-Tests dienen der Adapterprüfung. |
 | Parallel | W08 · Produktiver Rätselkatalog | Nach Opt-in Q-022 den realen Lichess-Export und den Setupzug prüfen. Q-008/Q-009 entscheiden Ratingbereich und Paketgröße. Die Demo und Fixture-Tests sind vorhanden. |
-| Parallel | W05/W09 · Regeln und Datenaustausch | Allgemeine tote Stellungen weiter prüfen sowie nativen Dateiimport, Backup/Restore und Profile nach ADR-004/Q-012 abnehmen. Der PGN-Dateiaustausch unterstützt eine Hauptvariante pro Vorgang. |
+| Parallel | W05/W09 · Regeln und Datenaustausch | Weitere tote Stellungen untersuchen. Windows-PGN-Import und -Export sind belegt. Rücksicherung mit widersprüchlichen Partiedaten und simulierten Schreibfehlern geprüft. Native Dateidialoge auf macOS/Linux und Profile nach ADR-004/Q-012 stehen aus. [W05-Nachweis](../reports/2026-11-21_W05-tote-stellungen-und-altpartien.md) · [W09-Nachweis](../reports/2026-11-21_W09-sichere-wiederherstellung.md) |
 | Danach | W12 · Distribution | Installer, Lizenz- und Quellenbelege, Signaturen, Upgrade-/Offline-Tests und Inhaberfreigabe nach ADR-001, ADR-005 und ADR-006. Danach GitHub Releases und Software-Katalog. |
 
 ## Historische Phasenplanung F0 vom 19.11.2026
@@ -29,14 +29,15 @@ Die Aufwandswerte stammen aus der ursprünglichen Planung. Die Tabelle bildet Ab
 
 *Aufwand bei fokussierter Arbeit mit KI-Unterstützung, **nicht** verbindliche Kalenderwochen; Arbeit parallel zu Steps/Glide dauert länger.*
 
-## Stand nach PR #8
+## Stand nach PR #9
 
 Der Prototyp enthält lokale Zweispielerpartien, Mock-UCI mit Bereitschaftstest,
 fünf Demo-Rätsel, eine Partiebibliothek mit PGN-Austausch und Originalfiguren
-in Vorderansicht V.02 und Draufsicht. Der [separate main-Lauf nach PR #8](https://github.com/n05a-design/chess-and-chains/actions/runs/44845219578)
-schloss alle 14 Jobs erfolgreich ab. Der [Standabgleich](../reports/2026-11-21_W11-v0.0.1-standsaudit.md)
-dokumentiert die Einführung von V.0.0.1. Der [W10/W11-Bericht](../reports/2026-11-21_W10-W11-tastatur-und-skalierung.md)
-führt die lokalen Folgeänderungen und ihre Prüfgrenzen.
+in Vorderansicht V.02 und Draufsicht. Der [separate main-Lauf nach PR #9](https://github.com/n05a-design/chess-and-chains/actions/runs/44869510471)
+schloss alle 14 Jobs erfolgreich ab. Den Stand und die offenen
+Abnahmekriterien pro Paket führt der [Paketabgleich](../reports/2026-11-21_W00-W12-paketabgleich.md).
+Der [Ablageabgleich](../reports/2026-11-21_W11-ablageabgleich.md) dokumentiert
+die lokalen Folge-Commits, Designquellen und archivierten OneDrive-Stände.
 
 ## Kritischer Pfad
 

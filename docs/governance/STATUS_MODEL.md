@@ -17,7 +17,7 @@ unveränderliche historische Baseline `foundation_baseline` in
 | `BLOCKED` | Arbeit wartet auf Owner-/Lizenz-/Asset-Entscheidung | `status_evidence`, `blocked_by` |
 | `IMPLEMENTED` | Code für einen **benannten** Umfang vorhanden | `status_evidence`, `scope`, `open_gate_items` |
 | `TESTED` | Automatisierte Tests für diesen Umfang bestehen lokal/CI | wie IMPLEMENTED + mind. ein `tests/`-Pfad |
-| `ACCEPTED` | Owner hat das Gate abgenommen | `acceptance.by/date/reference`, keine offenen Gate-Punkte, alle Abhängigkeiten ACCEPTED |
+| `ACCEPTED` | Owner hat das Gate abgenommen | `acceptance.by/date/reference`, leere `open_gate_items` und `blocked_by`, alle Abhängigkeiten ACCEPTED oder RELEASED |
 | `RELEASED` | Öffentlich ausgeliefert | wie ACCEPTED + `release.tag` |
 
 Weitere maschinell geprüfte Regeln:

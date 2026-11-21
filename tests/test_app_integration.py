@@ -160,6 +160,17 @@ class PromotionUiTests(AppTestCase):
 
 
 class DrawClaimTests(AppTestCase):
+    def test_dead_position_ends_game_and_disables_move_entry(self):
+        app = self.make_app(locale="de")
+        app.controller.new_game(GameSetup(initial_fen="8/8/8/8/8/8/1rk5/K7 b - - 0 1"))
+        app._play_move(Move.from_uci("b2a2"))
+        self.assertEqual(app.panel_text.get(), "Remis durch tote Stellung")
+        self.assertEqual(app.board._legal_moves, ())
+        self.assertEqual(app.resign_button.cget("state"), tk.DISABLED)
+        app._undo()
+        self.assertEqual(app.panel_text.get(), "Schwarz am Zug")
+        self.assertIn(Move.from_uci("b2a2"), app.board._legal_moves)
+
     def test_claim_by_declared_move_preserves_position_and_supports_undo(self):
         app = self.make_app()
         for uci in ("g1f3", "g8f6", "f3g1", "f6g8", "g1f3", "g8f6", "f3g1"):
@@ -500,6 +511,25 @@ class OwnerPieceUiTests(AppTestCase):
 
 
 class StorageAndLocaleUiTests(AppTestCase):
+    def test_startup_reports_database_recovery_alongside_settings_warning(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            layout = DataLayout(Path(tmp) / "data")
+            damaged = b"not a SQLite database" * 20
+            layout.database.write_bytes(damaged)
+            layout.settings.write_text("{", encoding="utf-8")
+            app = self.make_app(data_layout=layout, locale="de")
+            try:
+                recovered = app.db.recovered_from
+                self.assertEqual(recovered.read_bytes(), damaged)
+                self.assertIn(
+                    f"Beschädigte Bibliothek gesichert als {recovered.name}",
+                    app.interaction_text.get(),
+                )
+                self.assertIn("settings.json.invalid-", app.interaction_text.get())
+                self.assertEqual(app.db.list_games(), [])
+            finally:
+                app.close()
+
     def test_app_variables_belong_to_its_root_with_another_window_open(self):
         other_root = create_root(self)
         app = self.make_app()
@@ -642,6 +672,16 @@ class StorageAndLocaleUiTests(AppTestCase):
         self.root.update()
         self.assertEqual(self.root.focus_get(), app.tab_rail.children["play"])
         self.assertEqual(app.board.find_withtag("square-focus"), ())
+        self.assertEqual(app.interaction_text.get(), "")
+
+        app.tab_rail.children["play"].event_generate("<Shift-Tab>")
+        self.root.update()
+        self.assertEqual(self.root.focus_get(), app.board)
+        self.assertEqual(app.interaction_text.get(), "Fokus e4 · Weiß, Bauer")
+        app.interaction_text.set("Partie #1 in die Bibliothek importiert.")
+        app.board.event_generate("<Tab>")
+        self.root.update()
+        self.assertEqual(app.interaction_text.get(), "Partie #1 in die Bibliothek importiert.")
 
     def test_play_panel_scrolls_to_focused_engine_settings_in_small_window(self):
         app = self.make_app(locale="de")

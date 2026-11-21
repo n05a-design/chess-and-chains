@@ -51,9 +51,10 @@ class PGNDocument:
         from .game import ChessGame
 
         game = ChessGame(self.initial_state, rules=rules)
-        for move in self.moves:
-            game.play(move)
-        game.record_result(self.result)
+        with game.replay_record():
+            for move in self.moves:
+                game.play(move)
+        game.record_result(self.result, historical=True)
         return game
 
 
@@ -326,41 +327,40 @@ def parse_pgn(text: str, rules: ChessRules | None = None, *, max_plies: int | No
 
     game = ChessGame(initial, rules=chess_rules)
     result_token: str | None = None
-    for token_index, raw_token in enumerate(tokens):
-        token = re.sub(r"^\d+\.(?:\.\.)?", "", raw_token)
-        if not token or token == "...":
-            continue
-        if token.startswith("$") and token[1:].isdigit():
-            continue
-        if token in _RESULTS:
-            result_token = token
-            if any(re.sub(r"^\d+\.(?:\.\.)?", "", trailing) for trailing in tokens[token_index + 1 :]):
-                raise PGNError("Unexpected movetext after the game result.")
-            break
-        if max_plies is not None and len(game.moves) >= max_plies:
-            raise PGNError(f"PGN exceeds the limit of {max_plies} half-moves.")
-        try:
-            game.play(parse_san(game.state, token, chess_rules))
-        except ChessError as exc:
-            raise PGNError(f"Invalid PGN move {token!r}: {exc}") from exc
-    tag_result = tag_map.get("Result")
-    if tag_result is not None and tag_result not in _RESULTS:
-        raise PGNError(f"Invalid PGN Result tag: {tag_result!r}")
-    if result_token is not None and tag_result not in (None, "*", result_token):
-        raise PGNError("PGN movetext result conflicts with the Result tag.")
-    result = result_token or tag_result or "*"
-    if result_token is None and not tokens:
-        result = tag_result or "*"
-    final = game.outcome()
-    if result != "*" and final.status is not GameStatus.ACTIVE and final.status not in (
-        GameStatus.DRAW_CLAIMED,
-        GameStatus.RESIGNED,
-    ):
-        expected = _game_result(game)
-        if result != expected:
-            raise PGNError(
-                f"PGN result {result} contradicts the final position ({final.status.name.lower()})."
-            )
+    with game.replay_record():
+        for token_index, raw_token in enumerate(tokens):
+            token = re.sub(r"^\d+\.(?:\.\.)?", "", raw_token)
+            if not token or token == "...":
+                continue
+            if token.startswith("$") and token[1:].isdigit():
+                continue
+            if token in _RESULTS:
+                result_token = token
+                if any(re.sub(r"^\d+\.(?:\.\.)?", "", trailing) for trailing in tokens[token_index + 1 :]):
+                    raise PGNError("Unexpected movetext after the game result.")
+                break
+            if max_plies is not None and len(game.moves) >= max_plies:
+                raise PGNError(f"PGN exceeds the limit of {max_plies} half-moves.")
+            try:
+                game.play(parse_san(game.state, token, chess_rules))
+            except ChessError as exc:
+                raise PGNError(f"Invalid PGN move {token!r}: {exc}") from exc
+        tag_result = tag_map.get("Result")
+        if tag_result is not None and tag_result not in _RESULTS:
+            raise PGNError(f"Invalid PGN Result tag: {tag_result!r}")
+        if result_token is not None and tag_result not in (None, "*", result_token):
+            raise PGNError("PGN movetext result conflicts with the Result tag.")
+        result = result_token or tag_result or "*"
+        final = game.outcome()
+        if result != "*" and final.status is not GameStatus.ACTIVE and final.status not in (
+            GameStatus.DRAW_CLAIMED,
+            GameStatus.RESIGNED,
+        ):
+            expected = _game_result(game)
+            if result != expected:
+                raise PGNError(
+                    f"PGN result {result} contradicts the final position ({final.status.name.lower()})."
+                )
     return PGNDocument(tuple(tag_map.items()), initial, tuple(game.moves), result)
 
 

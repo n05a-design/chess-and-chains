@@ -65,6 +65,44 @@ class DatabaseTests(TempDirTestCase):
         self.assertIsNone(db.recovered_from)
         self.assertIsNone(db.migration_backup)
 
+    def test_old_records_replay_and_keep_their_result_in_newly_dead_positions(self):
+        db = self.open_db()
+        for movetext, moves_uci, result, resigned, draw_claim, expected in (
+            ("1. Kxa2 1/2-1/2", "a1a2", "1/2-1/2", None, None, GameStatus.DRAW_INSUFFICIENT_MATERIAL),
+            ("0-1", "", "0-1", "w", None, GameStatus.RESIGNED),
+            ("0-1", "", "0-1", None, None, GameStatus.RECORDED_RESULT),
+            ("1/2-1/2", "", "1/2-1/2", None, "FIFTY_MOVE_RULE", GameStatus.DRAW_CLAIMED),
+            ("*", "", "*", None, None, GameStatus.DRAW_DEAD_POSITION),
+        ):
+            with self.subTest(movetext=movetext, resigned=resigned, draw_claim=draw_claim):
+                clock = 100 if draw_claim else 0
+                fen = f"8/8/8/8/8/8/r1k5/K7 w - - {clock} 1"
+                pgn = f'[SetUp "1"]\n[FEN "{fen}"]\n[Result "{result}"]\n\n{movetext}\n'
+                inserted = db._conn.execute(
+                    "INSERT INTO games (created_utc, initial_fen, moves_uci, pgn, result, mode, resigned_by, draw_claim)"
+                    " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    ("2026-11-20", fen, moves_uci, pgn, result, "human-vs-human", resigned, draw_claim),
+                )
+                saved = db.load_game(inserted.lastrowid)
+                game = saved.to_game()
+                self.assertEqual(saved.pgn, pgn)
+                self.assertEqual(saved.result, result)
+                self.assertEqual([move.to_uci() for move in game.moves], moves_uci.split())
+                outcome = game.outcome()
+                self.assertIs(outcome.status, expected)
+                self.assertIs(outcome.winner, Color.BLACK if result == "0-1" else None)
+                self.assertIs(outcome.resigned_by, Color.WHITE if resigned else None)
+                self.assertIs(outcome.claimed_draw, DrawClaim.FIFTY_MOVE_RULE if draw_claim else None)
+
+    def test_saving_a_new_dead_position_keeps_the_automatic_draw(self):
+        db = self.open_db()
+        game = ChessGame(parse_fen("8/8/8/8/8/8/1rk5/K7 b - - 0 1"))
+        game.play_uci("b2a2")
+        saved = db.load_game(db.save_game(game, mode="human-vs-human"))
+        self.assertEqual(saved.result, "1/2-1/2")
+        self.assertEqual(saved.moves, (Move.from_uci("b2a2"),))
+        self.assertIs(saved.to_game().outcome().status, GameStatus.DRAW_DEAD_POSITION)
+
     def test_migration_from_v1_creates_backup_and_keeps_data(self):
         path = self.tmp / "old.sqlite3"
         conn = sqlite3.connect(path)
@@ -274,12 +312,21 @@ class DatabaseTests(TempDirTestCase):
 
     def test_backup_and_restore_round_trip(self):
         db = self.open_db()
+        game_id = db.import_pgn("1. e4 e5 *")
         db.record_puzzle_attempt("demo", "a", solved=False, mistakes=1, hints_used=0, duration_ms=500)
         backup = db.backup(self.tmp / "backups" / "b1.sqlite3")
+        backup_before = backup.read_bytes()
+        newer_id = db.import_pgn("1. d4 d5 *")
         db.record_puzzle_attempt("demo", "a", solved=True, mistakes=0, hints_used=0, duration_ms=300)
         self.assertEqual(db.puzzle_progress("demo", "a").attempts, 2)
         safety = db.restore(backup)
         self.assertTrue(safety.exists())
+        self.assertEqual(backup.read_bytes(), backup_before)
+        self.assertEqual([row[0] for row in db.list_games()], [game_id])
+        self.assertEqual(db.load_game(game_id).moves, (Move.from_uci("e2e4"), Move.from_uci("e7e5")))
+        with Database.open(safety) as previous:
+            self.assertEqual([row[0] for row in previous.list_games()], [newer_id, game_id])
+            self.assertTrue(previous.puzzle_progress("demo", "a").solved)
         self.assertEqual(db.puzzle_progress("demo", "a").attempts, 1)
         self.assertFalse(db.puzzle_progress("demo", "a").solved)
         (self.tmp / "junk.sqlite3").write_bytes(b"junk" * 200)
@@ -305,6 +352,79 @@ class DatabaseTests(TempDirTestCase):
         with self.assertRaises(StorageError):
             db.backup(db.path)
         self.assertEqual(db.statistics().games_saved, 1)
+
+    def test_restore_rejects_inconsistent_game_records_before_replacing_the_active_database(self):
+        for name, change in (
+            ("moves", "UPDATE games SET moves_uci = 'g1f3'"),
+            ("termination", "UPDATE games SET result = '1-0', pgn = '1. d4 1-0', resigned_by = 'w'"),
+        ):
+            with self.subTest(name=name):
+                db = self.open_db(f"live-{name}.sqlite3")
+                game_id = db.import_pgn("1. e4 *")
+                db.record_puzzle_attempt("demo", "a", solved=True, mistakes=0, hints_used=0, duration_ms=400)
+                source = self.tmp / f"candidate-{name}.sqlite3"
+                with Database.open(source) as candidate:
+                    damaged_id = candidate.import_pgn("1. d4 *")
+                    candidate._conn.execute(change)
+                source_before = source.read_bytes()
+                live_before = db.path.read_bytes()
+
+                with self.assertRaisesRegex(StorageError, f"Cannot restore backup .*Saved game {damaged_id}"):
+                    db.restore(source)
+
+                self.assertEqual(source.read_bytes(), source_before)
+                self.assertEqual(db.path.read_bytes(), live_before)
+                self.assertEqual(db.load_game(game_id).moves, (Move.from_uci("e2e4"),))
+                self.assertEqual(db.solved_puzzle_ids("demo"), {"a"})
+                self.assertEqual(list(self.tmp.glob(f"{db.path.name}.pre-restore-*.bak")), [])
+                self.assertEqual(list(self.tmp.glob(".restore-*")), [])
+
+    def test_restore_preserves_live_data_when_the_safety_copy_cannot_be_written(self):
+        db = self.open_db()
+        game_id = db.import_pgn("1. e4 *")
+        source = db.backup(self.tmp / "previous.sqlite3")
+        db.import_pgn("1. d4 *")
+        before = db.path.read_bytes()
+        with patch.object(Path, "replace", side_effect=PermissionError("test write protection")):
+            with self.assertRaisesRegex(StorageError, "test write protection"):
+                db.restore(source)
+        self.assertEqual(db.path.read_bytes(), before)
+        self.assertEqual(db.load_game(game_id).moves, (Move.from_uci("e2e4"),))
+        self.assertEqual(db.statistics().games_saved, 2)
+        self.assertEqual(list(self.tmp.glob(f".{db.path.name}.pre-restore-*")), [])
+        self.assertEqual(list(self.tmp.glob(".restore-*")), [])
+
+    def test_interrupted_restore_rolls_back_the_live_copy_and_keeps_the_safety_backup(self):
+        db = self.open_db()
+        original_id = db.import_pgn("1. e4 *")
+        source = db.backup(self.tmp / "previous.sqlite3")
+        newer_id = db.import_pgn("1. d4 *")
+        connect = sqlite3.connect
+
+        class InterruptedCopy(sqlite3.Connection):
+            def backup(self, target):
+                def interrupt(_status, remaining, _total):
+                    if remaining:
+                        raise sqlite3.OperationalError("test interruption during live copy")
+
+                super().backup(target, pages=1, progress=interrupt)
+
+        def connect_with_interruption(path, **kwargs):
+            if Path(path).name == "staged.sqlite3":
+                kwargs["factory"] = InterruptedCopy
+            return connect(path, **kwargs)
+
+        before = db.path.read_bytes()
+        with patch("chess_and_chains.storage.database.sqlite3.connect", side_effect=connect_with_interruption):
+            with self.assertRaisesRegex(StorageError, "test interruption during live copy"):
+                db.restore(source)
+        self.assertEqual(db.path.read_bytes(), before)
+        self.assertEqual(db.load_game(original_id).moves, (Move.from_uci("e2e4"),))
+        self.assertEqual(db.load_game(newer_id).moves, (Move.from_uci("d2d4"),))
+        safety_path, = self.tmp.glob(f"{db.path.name}.pre-restore-*.bak")
+        with Database.open(safety_path) as safety:
+            self.assertEqual(safety.list_games(), db.list_games())
+        self.assertEqual(list(self.tmp.glob(".restore-*")), [])
 
     def test_open_does_not_quarantine_on_transient_database_error(self):
         path = self.tmp / "untouched.sqlite3"

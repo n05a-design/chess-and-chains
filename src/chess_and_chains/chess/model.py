@@ -63,6 +63,7 @@ class GameStatus(Enum):
     DRAW_CLAIMED = auto()
     RESIGNED = auto()
     RECORDED_RESULT = auto()
+    DRAW_DEAD_POSITION = auto()
 
 
 class DrawClaim(Enum):

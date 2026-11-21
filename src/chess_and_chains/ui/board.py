@@ -408,6 +408,7 @@ class BoardCanvas(tk.Canvas):
 
     def _on_focus_out(self, _event: tk.Event) -> None:
         self._has_focus = False
+        self._notify_selection("")
         self.redraw()
 
     def _on_button_press(self, event: tk.Event) -> None:

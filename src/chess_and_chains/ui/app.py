@@ -125,6 +125,7 @@ class ChessApp:
         self._board_artwork = board_artwork
         self.layout = data_layout
         self.settings_warning: str | None = None
+        database_warning: str | None = None
         if data_layout is not None:
             self.settings, self.settings_warning = load_settings(data_layout.settings)
             try:
@@ -132,7 +133,7 @@ class ChessApp:
             except StorageError as error:
                 # Never modify a database we cannot handle; run without persistence.
                 self.db = None
-                self.settings_warning = str(error)
+                database_warning = str(error)
         else:
             self.settings, self.db = Settings(), None
         self.t = Translator(locale or self.settings.locale)
@@ -153,6 +154,7 @@ class ChessApp:
         self._game_headers: dict[str, str] = {}
         self._closed = False
         self.interaction_text = tk.StringVar(root)
+        self._board_feedback = ""
         self.panel_text = tk.StringVar(root)
         self.header_mode_text = tk.StringVar(root)
         self.action_state_text = tk.StringVar(root)
@@ -171,8 +173,10 @@ class ChessApp:
         self.root.protocol("WM_DELETE_WINDOW", self.close)
         self._refresh()
         self._poll_job = self.root.after(POLL_MS, self._poll)
-        if self.settings_warning:
-            self.interaction_text.set(self.settings_warning)
+        if self.db is not None and self.db.recovered_from is not None:
+            database_warning = self.t("library.recovered", file=self.db.recovered_from.name)
+        startup_messages = (database_warning, self.settings_warning)
+        self.interaction_text.set("\n".join(message for message in startup_messages if message))
 
     # ----- compatibility with W06 API ---------------------------------
     @property
@@ -1069,6 +1073,7 @@ class ChessApp:
         return t({
             GameStatus.STALEMATE: "status.stalemate",
             GameStatus.DRAW_INSUFFICIENT_MATERIAL: "status.insufficient",
+            GameStatus.DRAW_DEAD_POSITION: "status.dead_position",
             GameStatus.DRAW_FIVEFOLD_REPETITION: "status.fivefold",
             GameStatus.DRAW_SEVENTY_FIVE_MOVE: "status.seventyfive",
             GameStatus.DRAW_CLAIMED: "status.claimed",
@@ -1097,7 +1102,9 @@ class ChessApp:
             self.empty_moves_label.grid()
 
     def _on_selection_changed(self, message: str) -> None:
-        self.interaction_text.set(message)
+        if message or self.interaction_text.get() == self._board_feedback:
+            self.interaction_text.set(message)
+        self._board_feedback = message
 
     # ----- lifecycle --------------------------------------------------------
     def close(self) -> None:

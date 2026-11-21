@@ -111,13 +111,14 @@ class SavedGame:
 
     def to_game(self) -> ChessGame:
         game = ChessGame(parse_fen(self.initial_fen))
-        for move in self.moves:
-            game.play(move)
-        if self.resigned_by is not None:
-            game.resign(self.resigned_by)
-        elif self.draw_claim is not None:
-            game.claim_draw(self.draw_claim, self.declared_move)
-        game.record_result(self.result)
+        with game.replay_record():
+            for move in self.moves:
+                game.play(move)
+            if self.resigned_by is not None:
+                game.resign(self.resigned_by)
+            elif self.draw_claim is not None:
+                game.claim_draw(self.draw_claim, self.declared_move)
+        game.record_result(self.result, historical=True)
         return game
 
 
@@ -258,7 +259,7 @@ class Database:
         return destination
 
     def restore(self, source: Path) -> Path:
-        """Validate and migrate a backup before replacing live data."""
+        """Validate and migrate a backup, including its game records, before replacing live data."""
         source = Path(source)
         try:
             with closing(self._connect_checked(source, read_only=True)) as candidate:
@@ -266,7 +267,8 @@ class Database:
                 if not 1 <= version <= SCHEMA_VERSION:
                     raise StorageError(f"Backup {source} has unsupported schema v{version}.")
                 with tempfile.TemporaryDirectory(prefix=".restore-", dir=self.path.parent) as directory:
-                    with closing(sqlite3.connect(Path(directory) / "staged.sqlite3", isolation_level=None)) as staged:
+                    staged_path = Path(directory) / "staged.sqlite3"
+                    with closing(sqlite3.connect(staged_path, isolation_level=None)) as staged:
                         candidate.backup(staged)
                         self._migrate(staged, version)
                         staged.execute("SELECT id, created_utc, initial_fen, moves_uci, pgn, result, mode, "
@@ -275,10 +277,13 @@ class Database:
                                        "hints_used, duration_ms FROM puzzle_attempts LIMIT 0")
                         staged.execute("SELECT pack_id, puzzle_id, attempts, solved, clean_solves, "
                                        "best_duration_ms, last_attempt_utc FROM puzzle_progress LIMIT 0")
+                        staged_db = Database(staged, staged_path, recovered_from=None, migration_backup=None)
+                        for (game_id,) in staged.execute("SELECT id FROM games"):
+                            staged_db.load_game(game_id)
                         safety = self.path.with_name(f"{self.path.name}.pre-restore-{_stamp()}.bak")
                         self._copy(self._conn, safety)
                         staged.backup(self._conn)
-        except (OSError, sqlite3.Error) as error:
+        except (OSError, sqlite3.Error, StorageError) as error:
             raise StorageError(f"Cannot restore backup {source}: {error}") from error
         return safety
 

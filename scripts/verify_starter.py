@@ -5,6 +5,8 @@ check of the manifest, not a chess, GUI or engine acceptance test.
 """
 from __future__ import annotations
 
+import csv
+import hashlib
 import json
 import re
 import runpy
@@ -89,6 +91,29 @@ def _check_project_version(manifest: dict, errors: list[str], check_paths: bool)
             errors.append(f'{name}: first project version marker must be {label}')
 
 
+def _check_asset_register(errors: list[str]) -> None:
+    register = ROOT / 'docs/design/ASSET_REGISTER.csv'
+    if not register.is_file():
+        return  # Already reported as a missing required file.
+    seen: set[str] = set()
+    with register.open(encoding='utf-8', newline='') as stream:
+        for asset in csv.DictReader(stream):
+            asset_id = asset['asset_id']
+            if asset_id in seen:
+                errors.append(f'Asset register: duplicate ID {asset_id}')
+            seen.add(asset_id)
+            name = asset['planned_path'].strip()
+            if not name:
+                continue  # Entries for external sources and future assets may omit a path.
+            path = (ROOT / name).resolve()
+            if not path.is_relative_to(ROOT) or not path.exists():
+                errors.append(f'Asset register {asset_id}: missing or invalid repository path {name}')
+                continue
+            expected = asset['source_hash'].strip()
+            if expected and (not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != expected):
+                errors.append(f'Asset register {asset_id}: SHA-256 mismatch for {name}')
+
+
 def parse_dependencies(text: str) -> list[str]:
     """Expand ``W01/W02`` and ranges such as ``W05–W10`` into work IDs."""
     if not text or text.strip().lower() in ('keine', 'none', '-'):
@@ -133,7 +158,7 @@ def _check_work(work: dict, by_id: dict[str, dict], errors: list[str], check_pat
         acceptance = work.get('acceptance') or {}
         if not all(acceptance.get(k) for k in ('by', 'date', 'reference')):
             errors.append(f'{wid}: {status} requires acceptance.by/date/reference from the owner')
-        if work.get('open_gate_items'):
+        if work.get('open_gate_items') or work.get('blocked_by'):
             errors.append(f'{wid}: {status} cannot have open gate items')
     if status == 'RELEASED' and not (work.get('release') or {}).get('tag'):
         errors.append(f'{wid}: RELEASED requires release.tag')
@@ -168,6 +193,7 @@ def verify(manifest: dict | None = None) -> list[str]:
         for topic, path in manifest.get('canonical_docs', {}).items():
             if not (ROOT / path).is_file():
                 errors.append(f'Canonical document {topic}: missing file {path}')
+        _check_asset_register(errors)
     _check_project_version(manifest, errors, check_paths)
     works = manifest.get('work_packages', [])
     ids = [x.get('id') for x in works]
