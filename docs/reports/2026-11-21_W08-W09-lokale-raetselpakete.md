@@ -71,10 +71,22 @@ Mit der Korrektur liefen `py -3.14 -m unittest tests.test_puzzles -v`
 [PR #13](https://github.com/n05a-design/chess-and-chains/pull/13)
 enthält die Plattformprüfung des Korrekturstands.
 
+Für `dd47f2238c992906ce34302dfef5d1c1e24187d4` schlossen sowohl der
+[Push-Lauf](https://github.com/n05a-design/chess-and-chains/actions/runs/44908406125)
+als auch der
+[PR-Lauf](https://github.com/n05a-design/chess-and-chains/actions/runs/44908410466)
+alle 14 Jobs erfolgreich ab. Auf macOS liefen in der PR-Matrix je 60
+native Tk-Tests und 142 Kern-, UCI-, Puzzle- und Speichertests mit
+Python 3.11 und 3.14. Die Tests für umgeleitete Paketordner liefen auf
+macOS ohne Skip.
+
+Der [Merge-Lauf für `main`](https://github.com/n05a-design/chess-and-chains/actions/runs/44908853250)
+zum anschließenden Merge `12a86e0e225955c73a828efb70941aa231c8d72e`
+bestand ebenfalls alle 14 Jobs einschließlich der vier macOS-Jobs.
+
 ## Übergabe
 
-1. Plattform-CI des Korrekturstands in PR #13 verifizieren. Nativen
-   Ordnerdialog und Screenreader auf den Zielsystemen prüfen.
+1. Nativen Ordnerdialog und Screenreader auf den Zielsystemen prüfen.
 2. Nach Freigabe Q-022 einen produktiven Export verarbeiten und Größe,
    Laufzeit, Validierungsfehler und Zusammensetzung messen. Die synthetische
    Messung belegt keinen Produktionsdatensatz.

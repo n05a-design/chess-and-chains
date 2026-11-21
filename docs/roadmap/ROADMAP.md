@@ -10,7 +10,7 @@
 | 2 | W06 · Individuelle Brettgestaltung | Die Wiederverwendung der beiden Perspektiven ist lokal geprüft. Finale SVG-Bretter des Inhabers mit Partie, Rätseln und V.02 prüfen. [Lieferformate](../../assets/boards/source/README.md) · [W06-Prüfnachweis](../reports/2026-11-21_W06-svg-brettcache.md) |
 | Parallel | W02/W07 · Echte Offline-Engine | Konkrete Engine- und Vertriebsstrategie für den sofort spielbaren Offline-Bot prüfen und in ADR-001 entscheiden lassen. Danach Test einer vollständigen Partie mit identifiziertem Binary und Offline-Nachweis. Die Mock-Tests dienen der Adapterprüfung. |
 | Parallel | W08 · Produktiver Rätselkatalog | Lokale Pakete können importiert, gewechselt und beim Neustart wieder geöffnet werden. Nach Opt-in Q-022 den realen Export, Datenprofil und Stichprobe prüfen. Q-008/Q-009 entscheiden Ratingbereich und Paketgröße. [W08/W09-Prüfnachweis](../reports/2026-11-21_W08-W09-lokale-raetselpakete.md) |
-| Parallel | W05/W09 · Regeln und Datenaustausch | Kurze Zwangsfolgen mit Remis und historische Aufzeichnungen geprüft. Verblockte Stellungen und längere oder verzweigte Zwangsfolgen weiter untersuchen. Rücksicherung mit widersprüchlichen Partiedaten und simulierten Schreibfehlern geprüft. Native Dateidialoge auf macOS/Linux und Profile nach ADR-004/Q-012 stehen aus. [W05-Nachweis](../reports/2026-11-21_W05-mehrzuegige-tote-stellungen.md) · [W09-Nachweis](../reports/2026-11-21_W09-sichere-wiederherstellung.md) |
+| Parallel | W05/W09 · Regeln und Datenaustausch | FEN aus dem Spiel kopieren, als Datei austauschen und die Stellung zu zweit weiterspielen. Dateien, Zugrechte und Spielfortsetzung unter Windows geprüft. Native Systemdialoge und Profile nach ADR-004/Q-012 stehen aus. Kurze Zwangsfolgen mit Remis und historische Aufzeichnungen sind geprüft. Verblockte Stellungen und längere oder verzweigte Zwangsfolgen weiter untersuchen. [FEN](../reports/2026-11-21_W05-W09-fen-austausch.md) · [Regeln](../reports/2026-11-21_W05-mehrzuegige-tote-stellungen.md) · [Rücksicherung](../reports/2026-11-21_W09-sichere-wiederherstellung.md) |
 | Danach | W12 · Distribution | Installer, Lizenz- und Quellenbelege, Signaturen, Upgrade-/Offline-Tests und Inhaberfreigabe nach ADR-001, ADR-005 und ADR-006. Danach GitHub Releases und Software-Katalog. |
 
 ## Historische Phasenplanung F0 vom 19.11.2026
@@ -32,7 +32,7 @@ Die Aufwandswerte stammen aus der ursprünglichen Planung. Die Tabelle bildet Ab
 ## Entwicklung und CI-Stand
 
 Der Prototyp enthält lokale Zweispielerpartien, Mock-UCI mit Bereitschaftstest,
-fünf Demo-Rätsel, eine Partiebibliothek mit PGN-Austausch und Originalfiguren
+fünf Demo-Rätsel, eine Partiebibliothek mit PGN-Austausch, FEN-Stellungen und Originalfiguren
 in Vorderansicht V.02 und Draufsicht. Der [separate main-Lauf nach PR #9](https://github.com/n05a-design/chess-and-chains/actions/runs/44869510471)
 schloss alle 14 Jobs erfolgreich ab. Den Stand und die offenen
 Abnahmekriterien pro Paket führt der [Paketabgleich](../reports/2026-11-21_W00-W12-paketabgleich.md).

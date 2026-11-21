@@ -35,6 +35,7 @@ The local Tk desktop prototype supports two-player play, a project-owned mock en
 | Draw claims | Claim threefold repetition or the 50-move rule in the current position or by declaring a legal move. |
 | Puzzle Lab (importer, packs, solving) | Five project-authored demo puzzles. Import and open local folders from **Puzzle packs…**. The app restores the last pack and tracks progress separately. The [offline builder](data/puzzle_packs/README.md) enforces Rating ≥ 1000. |
 | Local storage (SQLite games, puzzle progress, settings) | Save and reopen games in two-player mode, including local resignation and draw-claim details. Import or export one UTF-8 PGN file per action in the local library. |
+| Position exchange | Open “Position exchange…” in Play to paste, copy, open or save a FEN position. “Play position” starts a local two-player game from that position with a fresh move history. |
 | English/German UI | Implemented catalogues with parity tests |
 | Windows/macOS/Linux installers | Not implemented |
 | WinGet / Homebrew distribution | Not published |

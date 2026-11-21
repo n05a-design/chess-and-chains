@@ -19,7 +19,7 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT))
 
 from chess_and_chains import DISPLAY_VERSION  # noqa: E402
-from chess_and_chains.chess import Color, DrawClaim, GameStatus, Move, Piece, PieceType, parse_square  # noqa: E402
+from chess_and_chains.chess import Color, DrawClaim, GameStatus, Move, Piece, PieceType, parse_square, to_fen  # noqa: E402
 from chess_and_chains.engines.bot import EngineConfig, UCIBot  # noqa: E402
 from chess_and_chains.engines.mock_engine import ENGINE_NAME  # noqa: E402
 from chess_and_chains.game import BotStatus, GameSetup  # noqa: E402
@@ -27,6 +27,7 @@ from chess_and_chains.puzzles import load_demo_pack, write_pack  # noqa: E402
 from chess_and_chains.storage import DataLayout, load_settings, update_settings  # noqa: E402
 from chess_and_chains.ui.app import ChessApp, EngineDialog  # noqa: E402
 from chess_and_chains.ui.branding import brand_image  # noqa: E402
+from chess_and_chains.ui.dialogs import PositionDialog  # noqa: E402
 from chess_and_chains.ui.pieces import (  # noqa: E402
     PIECE_FALLBACK_SIZES,
     PIECE_FILE_NAMES,
@@ -626,6 +627,93 @@ class OwnerPieceUiTests(AppTestCase):
                                if not tile.transparency_get(x, y)]
                     xs, ys = zip(*visible)
                     self.assertEqual((min(xs), min(ys), max(xs), max(ys)), bounds)
+
+
+class PositionExchangeUiTests(AppTestCase):
+    def test_position_file_copy_save_and_continue_from_black_to_move(self):
+        fen = "r3k2r/8/8/8/3pP3/8/8/R3K2R b KQkq e3 0 17"
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            source, target = folder / "start.fen", folder / "exchange.fen"
+            source.write_text(fen, encoding="utf-8-sig")
+            app = self.make_app(data_layout=DataLayout(folder / "data"))
+            self.root.deiconify()
+            self.root.update()
+            original_game = app.game
+            app._play_move(Move.from_uci("e2e4"))
+            original_position = to_fen(app.game.state)
+            callback_errors = []
+
+            def use_dialog():
+                dialog = self.root.grab_current()
+                assert isinstance(dialog, PositionDialog)
+                try:
+                    self.assertEqual(dialog.draft.get(), original_position)
+                    dialog.draft.set("invalid")
+                    dialog._play()
+                    self.assertTrue(dialog.entry.instate(("invalid",)))
+                    self.assertIs(app.game, original_game)
+                    dialog._open()
+                    self.assertEqual(dialog.draft.get(), fen)
+                    dialog._copy()
+                    self.assertEqual(self.root.clipboard_get(), fen)
+                    dialog._save()
+                    self.assertEqual(target.read_bytes(), (fen + "\n").encode("ascii"))
+                    dialog._play()  # Decline replacing the active game.
+                    self.assertTrue(dialog.winfo_exists())
+                    self.assertIs(app.game, original_game)
+                    self.assertEqual(dialog.draft.get(), fen)
+                    dialog._play()
+                except Exception as error:
+                    callback_errors.append(error)
+                finally:
+                    if dialog.winfo_exists():
+                        dialog.destroy()
+
+            try:
+                with (
+                    patch("chess_and_chains.ui.dialogs.filedialog.askopenfilename", return_value=str(source)),
+                    patch("chess_and_chains.ui.dialogs.filedialog.asksaveasfilename", return_value=str(target)),
+                    patch("chess_and_chains.ui.app.messagebox.askyesno", side_effect=[False, True]) as confirm,
+                ):
+                    self.root.after(0, use_dialog)
+                    app.position_button.invoke()
+                if callback_errors:
+                    raise callback_errors[0]
+                self.assertEqual(confirm.call_count, 2)
+                self.assertEqual(to_fen(app.game.state), fen)
+                self.assertEqual(app.game.state.turn, Color.BLACK)
+                self.assertIn(f'[FEN "{fen}"]', app._current_pgn())
+                app._play_move(Move.from_uci("d4e3"))
+                self.assertIsNone(app.game.state.board[parse_square("e4")])
+                game_id = app._save_game()
+                self.assertIsNotNone(game_id)
+                self.assertEqual(to_fen(app.db.load_game(game_id).to_game().initial_state), fen)
+                app._undo()
+                self.assertEqual(to_fen(app.game.state), fen)
+            finally:
+                app.close()
+
+    def test_position_escape_restores_focus_and_does_not_replace_game(self):
+        app = self.make_app()
+        self.root.deiconify()
+        self.root.update()
+        app.position_button.focus_force()
+        self.root.update()
+        game = app.game
+        dialog = PositionDialog(self.root, app.t, game.state, lambda _parent: True)
+        self.root.update()
+        dialog.entry.focus_force()
+        self.root.update()
+        dialog.draft.set("not applied")
+
+        with patch.object(app.position_button, "focus_set", wraps=app.position_button.focus_set) as restore:
+            dialog.entry.event_generate("<Escape>", when="tail")
+            self.root.update()
+        self.assertFalse(dialog.winfo_exists())
+        restore.assert_called_once_with()
+        self.assertIs(self.root.focus_lastfor(), app.position_button)
+        self.assertIs(app.game, game)
 
 
 class StorageAndLocaleUiTests(AppTestCase):

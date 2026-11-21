@@ -20,6 +20,8 @@
 - Support Enter on library and draw-claim dialog buttons and restore the previous keyboard focus when the chooser closes.
 - Reuse SVG board backgrounds for both orientations at the current size and reuse rendered tiles when changing perspective.
 - Import verified local puzzle packs from the Puzzle Lab. Keep progress by pack and restore the last selected pack on restart.
+- Accept platform aliases above the local puzzle-pack library and reject redirected library and pack directories.
+- Exchange the current position via FEN text or a local `.fen` file and start a two-player game from a validated position.
 
 The dated entries below preserve the development history incorporated into this snapshot.
 

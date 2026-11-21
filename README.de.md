@@ -32,6 +32,7 @@ Der lokale Tk-Prototyp umfasst folgende Funktionen.
 - **Puzzle Lab** mit fünf projekteigenen Demo-Rätseln und Import eigener Paketordner. Unter **Rätselpakete…** lassen sich lokale Pakete öffnen. Die App merkt sich das zuletzt geöffnete Paket und speichert den Fortschritt je Paket. Der [Offline-Builder](data/puzzle_packs/README.md) verarbeitet CSV im Lichess-Format ab Rating 1000,
 - Remisanspruch bei dreifacher Wiederholung oder nach der 50-Züge-Regel, auch durch Ansage eines legalen Zugs,
 - lokaler SQLite-Speicherung für Rätselfortschritt und Partien. Die Partiebibliothek öffnet gespeicherte Partien im Zweispielermodus und übernimmt das PGN-Ergebnis. Bei neu gespeicherten Partien bleiben Aufgabe, Remisanspruch und ein eventuell angesagter Zug erhalten. Über die Bibliothek lässt sich pro Vorgang eine UTF-8-PGN-Datei importieren oder exportieren. Einstellungen liegen in JSON, die Oberfläche ist auf Deutsch und Englisch verfügbar.
+- Stellungsaustausch unter „Spielen“ → „Stellung austauschen…“. Die aktuelle FEN steht beim Öffnen im Eingabefeld. Eine FEN lässt sich einfügen, kopieren oder als `.fen` öffnen und speichern. „Stellung spielen“ startet eine lokale Partie zu zweit ab dieser Position mit neuem Zugverlauf.
 
 Der Inhaber hat die Original-SVG-Figuren unter MPL-2.0 freigegeben. Tk 9 zeichnet ihre SVGs direkt. Ältere Tk-Versionen verwenden die daraus erzeugte PNG-Grafiktafel. Die eigenen Brettdesigns, eine getestete echte Engine, das geplante Rätselangebot und ein Installer gehören zur weiteren Entwicklung.
 

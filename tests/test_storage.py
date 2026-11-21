@@ -10,7 +10,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from chess_and_chains.chess import ChessGame, Color, DrawClaim, GameStatus, Move, PGNError, parse_fen  # noqa: E402
+from chess_and_chains.chess import ChessGame, Color, DrawClaim, FenError, GameStatus, Move, PGNError, parse_fen  # noqa: E402
 from chess_and_chains.storage import (  # noqa: E402
     SCHEMA_VERSION,
     DataLayout,
@@ -25,6 +25,9 @@ from chess_and_chains.storage import (  # noqa: E402
     update_settings,
 )
 from chess_and_chains.storage.database import MAX_PGN_FILE_BYTES, MIGRATIONS  # noqa: E402
+from chess_and_chains.storage.exchange import (  # noqa: E402
+    MAX_FEN_FILE_BYTES, parse_fen_text, read_fen_file, write_fen_file,
+)
 
 
 class TempDirTestCase(unittest.TestCase):
@@ -467,6 +470,49 @@ class DatabaseTests(TempDirTestCase):
         self.assertEqual((stats.puzzles_attempted, stats.puzzles_solved, stats.puzzles_clean), (2, 2, 1))
         with self.assertRaises(sqlite3.IntegrityError):
             db.record_puzzle_attempt("demo", "c", solved=True, mistakes=-1, hints_used=0, duration_ms=1)
+
+
+class PositionFileTests(TempDirTestCase):
+    FEN = "r3k2r/8/8/8/3pP3/8/8/R3K2R b KQkq e3 0 17"
+
+    def test_fen_file_round_trip_keeps_turn_castling_en_passant_and_counters(self):
+        source, target = self.tmp / "source.fen", self.tmp / "target.FEN"
+        source.write_bytes(f"  {self.FEN}\r\n".encode("utf-8-sig"))
+        position = read_fen_file(source)
+        self.assertEqual(position, parse_fen(self.FEN))
+        write_fen_file(position, target)
+        self.assertEqual(target.read_bytes(), f"{self.FEN}\n".encode("ascii"))
+        self.assertEqual(read_fen_file(target), position)
+
+    def test_fen_files_reject_large_invalid_and_multi_position_inputs(self):
+        source = self.tmp / "source.fen"
+        for data, error in (
+            (b" " * (MAX_FEN_FILE_BYTES + 1), FenError),
+            (b"\xff", UnicodeDecodeError),
+            (b"\0" + self.FEN.encode(), FenError),
+            (f"{self.FEN}\n{self.FEN}".encode(), FenError),
+            (b"8/8/8/8/8/8/8/8 w - - 0 1", FenError),
+        ):
+            with self.subTest(size=len(data), prefix=data[:8]):
+                source.write_bytes(data)
+                with self.assertRaises(error):
+                    read_fen_file(source)
+        with self.assertRaises(FenError):
+            read_fen_file(self.tmp)
+        with self.assertRaises(FenError):
+            parse_fen_text(" " * MAX_FEN_FILE_BYTES + self.FEN)
+
+    def test_failed_fen_export_preserves_existing_file_and_removes_staging_file(self):
+        position = parse_fen(self.FEN)
+        target = self.tmp / "old.fen"
+        target.write_bytes(b"existing file")
+        with patch.object(Path, "replace", side_effect=PermissionError("test rename failure")):
+            with self.assertRaises(PermissionError):
+                write_fen_file(position, target)
+        with self.assertRaises(FenError):
+            write_fen_file(position, self.tmp / "old.pgn")
+        self.assertEqual(target.read_bytes(), b"existing file")
+        self.assertEqual(list(self.tmp.iterdir()), [target])
 
 
 class SettingsTests(TempDirTestCase):
