@@ -15,6 +15,7 @@ import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+ONEDRIVE_ARCHIVE = 'docs/archive/onedrive-2026-11-21/SOURCES.csv'
 NEEDED = [
     'START_HERE.md', 'GITHUB_SETUP.md', 'README.md', 'README.de.md', 'MANIFEST.md',
     'AGENTS.md', 'LICENSE', 'pyproject.toml',
@@ -22,6 +23,7 @@ NEEDED = [
     'docs/decisions/ADR_INDEX.md', 'docs/governance/DOC_INDEX.md', 'docs/questions/OPEN_QUESTIONS.md',
     'docs/research/COMPETITOR_ANALYSIS.md', 'docs/legal/LICENSE_STRATEGY.md',
     'docs/design/ASSET_REGISTER.csv', 'docs/roadmap/WORK_PACKAGES.md',
+    ONEDRIVE_ARCHIVE,
     'docs/governance/STATUS_MODEL.md',
     'integrations/glide_shell/INTEGRATION_GATE.md',
 ]
@@ -114,6 +116,21 @@ def _check_asset_register(errors: list[str]) -> None:
                 errors.append(f'Asset register {asset_id}: SHA-256 mismatch for {name}')
 
 
+def _check_archive_hashes(errors: list[str]) -> None:
+    sources = ROOT / ONEDRIVE_ARCHIVE
+    if not sources.is_file():
+        return  # Already reported as a missing required file.
+    archive = sources.parent.resolve()
+    with sources.open(encoding='utf-8', newline='') as stream:
+        for entry in csv.DictReader(stream):
+            name = entry['archive_path']
+            path = (archive / name).resolve()
+            if not path.is_relative_to(archive) or not path.is_file():
+                errors.append(f'OneDrive archive: missing or invalid snapshot path {name}')
+            elif hashlib.sha256(path.read_bytes()).hexdigest() != entry['archive_sha256']:
+                errors.append(f'OneDrive archive: SHA-256 mismatch for {name}')
+
+
 def parse_dependencies(text: str) -> list[str]:
     """Expand ``W01/W02`` and ranges such as ``W05–W10`` into work IDs."""
     if not text or text.strip().lower() in ('keine', 'none', '-'):
@@ -194,6 +211,7 @@ def verify(manifest: dict | None = None) -> list[str]:
             if not (ROOT / path).is_file():
                 errors.append(f'Canonical document {topic}: missing file {path}')
         _check_asset_register(errors)
+        _check_archive_hashes(errors)
     _check_project_version(manifest, errors, check_paths)
     works = manifest.get('work_packages', [])
     ids = [x.get('id') for x in works]

@@ -59,6 +59,25 @@ class FoundationTests(unittest.TestCase):
         self.assertEqual(__version__, MANIFEST['project_version'])
         self.assertEqual(DISPLAY_VERSION, f'V.{__version__}')
 
+    def test_archive_check_reports_changed_or_missing_snapshots(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            sources = root / verify_starter.ONEDRIVE_ARCHIVE
+            sources.parent.mkdir(parents=True)
+            (sources.parent / 'changed.txt').write_bytes(b'changed snapshot')
+            sources.write_text(
+                'archive_path,archive_sha256\n'
+                f"changed.txt,{'0' * 64}\nmissing.txt,{'0' * 64}\n",
+                encoding='utf-8',
+            )
+            problems = []
+            with patch.object(verify_starter, 'ROOT', root):
+                verify_starter._check_archive_hashes(problems)
+        self.assertEqual(problems, [
+            'OneDrive archive: SHA-256 mismatch for changed.txt',
+            'OneDrive archive: missing or invalid snapshot path missing.txt',
+        ])
+
     def test_project_version_rejects_display_label_in_machine_manifest(self):
         errors = verify({**MANIFEST, 'project_version': DISPLAY_VERSION})
         self.assertTrue(any('project_version must be a numeric' in error for error in errors))
