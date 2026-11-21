@@ -17,6 +17,6 @@ python scripts/build_marble_tk.py --chrome 'C:/Program Files/Google/Chrome/Appli
 
 | Datei | SHA-256 |
 | --- | --- |
-| `white.png` | `bf0a4cefc7d3aac275b3cbcf70da7c0e444eb48c059271dfe06a6ce5b7abaeba` |
+| `white.png` | `bf0a4cefc7d3aac275b3cbbf70da7c0e444eb48c059271dfe06a6ce5b7abaeba` |
 | `black.png` | `8dbe129ead224c08474368b9667506dd7c0eb1b4146c09a38693ea43ffe7267f` |
 | `plates.png` | `6cba2a9d53c365525bc7acc9784ae03a181c39a7c00dac3b6d568c572b2ee9e1` |

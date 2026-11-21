@@ -39,6 +39,7 @@ The local Tk desktop prototype supports two-player play, a project-owned mock en
 | Puzzle review | Combine theme and rating with unsolved puzzles or attempts without a clean solve. See the attempt count, best solve time and latest result for each puzzle. |
 | Puzzle retry and hints | Try the current puzzle again from its original setup. Reveal the moving piece and destination in two steps. |
 | Game replay | Browse the played positions of the current game or a saved record in a separate board with a keyboard-operated move list. |
+| 3D marble board | Use the switch above the game board to change between the normal board and a tilted marble view in the desktop window. The current game and undo/redo stay available. |
 | Position exchange | Open “Position exchange…” in Play to paste, copy, open or save a FEN position. “Play position” starts a local two-player game from that position with a fresh move history. |
 | Text board | Open “Board as text…” to browse occupied squares and legal destinations in games and puzzles. Use the arrow keys to select an entry, Enter to move from the piece to the target or play the move, and Escape to close. |
 | English/German UI | Implemented catalogues with parity tests |

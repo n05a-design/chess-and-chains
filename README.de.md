@@ -55,6 +55,10 @@ Aufbauzug zurück. Hinweise zeigen zuerst die Figur und dann das Zielfeld.
 Unter „Züge“ oder in der Partiebibliothek öffnet „Partie nachspielen…“ eine
 eigene Ansicht. Die Zugliste und die Links-/Rechts-Tasten wechseln die Stellung.
 
+Über dem Brett schaltet **Marmorbrett in 3D** die schräge Marmoransicht
+ein und aus. Beide Ansichten spielen dieselbe Partie. Die Ansicht
+übernimmt Zugrechte, Orientierung, Zugliste und Rückgängig-Verlauf.
+
 ## Entwicklerstart
 
 ```bash

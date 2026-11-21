@@ -32,6 +32,7 @@
 - Restart the current puzzle and reveal the source piece and target square in two stages. Wrap the piece label at high text scaling.
 - Add PGN import and FEN exchange to the local 3D marble board.
 - Replay the 3D marble position history with a keyboard-adjustable timeline and return to the live game.
+- Switch between the normal board and the projected 3D marble board inside Tk while preserving the live game and move history.
 
 The dated entries below preserve the development history incorporated into this snapshot.
 

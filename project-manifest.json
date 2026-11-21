@@ -163,7 +163,7 @@
       "gate": "Original-SVG-Rendering, Boardinteraktion, DPI/Keyboard, native UI-Gates",
       "phase": "F1",
       "status": "TESTED",
-      "scope": "Tk board with click/drag/keyboard input, original front V.02 and top SVG sets with PNG fallbacks, opt-in Tk 9 SVG board preview and local evidence for reusing both orientations. The SVG board cache passed the Windows, macOS and Linux matrix after the PR #13 merge.",
+      "scope": "Tk board with click/drag/keyboard input, original front V.02 and top SVG sets with PNG fallbacks, opt-in Tk 9 SVG board preview, and in-window switching to a projected 3D marble board. The SVG board cache passed the Windows, macOS and Linux matrix after PR #13. The integrated marble view has local Windows evidence.",
       "status_evidence": [
         "docs/reports/2026-11-20_W06_board-ui.md",
         "docs/reports/2026-11-20_W06-originalfiguren.md",
@@ -172,6 +172,7 @@
         "docs/reports/2026-11-21_W06-figurenschatten-v02.md",
         "docs/reports/2026-11-20_W06-svg-brettvorschau.md",
         "docs/reports/2026-11-21_W06-svg-brettcache.md",
+        "docs/reports/2026-11-21_W06-marmoransicht-tk.md",
         "src/chess_and_chains/ui/board.py",
         "tests/test_board_ui.py",
         "src/chess_and_chains/ui/pieces.py",

@@ -40,3 +40,8 @@ Marmorfeldern. Die GitHub-Bereitstellung der Figurenaufbereitung, des
 3D-Prototyps und der Studien wurde im Chat beauftragt. Für Produktpakete
 und die endgültige Auswahl des App-Bretts gelten die offenen Release-
 und Designentscheidungen. [Provenienz der Marmor-Dateien](../../design/source/marmor-3d/PROVENANCE.md)
+
+Auf Auftrag des Inhabers ergänzt der Tk-Entwicklungsstand einen
+direkten Ansichtswechsel während der Partie. Die Tk-Texturen sind
+abgeleitete Laufzeitdateien aus dem unveränderten SVG-Spielsatz.
+[Tk-Texturen und Reproduktion](../../src/chess_and_chains/ui/marble_assets/PROVENANCE.md)

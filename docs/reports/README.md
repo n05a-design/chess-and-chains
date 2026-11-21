@@ -29,6 +29,8 @@ Neue Berichte bitte in der passenden Gruppe ergänzen. `scripts/verify_document_
 
 ## W06 · Brett, Figuren, Design
 
+- 2026-11-21 · [W06 · Marmoransicht im Tk-Spielfenster](2026-11-21_W06-marmoransicht-tk.md)
+
 - 2026-11-21 · [W06 – Spielbares Marmorbrett in 3D](2026-11-21_W06_marmorbrett-3d.md)
 - 2026-11-21 · [W06 – Perspektivwechsel in der SVG-Brettvorschau](2026-11-21_W06-svg-brettcache.md)
 - 2026-11-21 · [W06 · Figurenschatten für die überarbeiteten Vorderansichten](2026-11-21_W06-figurenschatten.md)

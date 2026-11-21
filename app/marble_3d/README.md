@@ -1,5 +1,10 @@
 # Lokales Marmorbrett in 3D
 
+Die Tk-App bietet über dem Brett den direkten Ansichtswechsel
+**Marmorbrett in 3D**. Diese Ansicht nutzt dieselben Marmor-SVGs als
+Grafikquelle und bleibt mit der geöffneten Tk-Partie verbunden.
+Die folgenden Hinweise gelten für den separaten WebGL-Prototyp.
+
 Der Browser-Prototyp stellt eine Partie für zwei Personen mit der vorhandenen
 Schachdomäne und dem vorhandenen `GameController` dar. Das separate
 Startskript öffnet einen Browser mit WebGL. Der Python-Prozess lauscht
