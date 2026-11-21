@@ -25,6 +25,11 @@ und der erreichbaren Git-Historie verglichen.
 | Früherer Claude-Worktree in der OneDrive-Ablage | Seine Git-Verknüpfung verweist auf einen nicht erreichbaren Rechnerpfad. Der Inhaltsvergleich erfasste 168 Projektdateien. Alle 168 sind in der erreichbaren Historie enthalten. |
 | Lokale Hilfsdateien | Buildordner, Python-Caches, Toolzustand und Sperrdatei bleiben in der lokalen Arbeitsablage. |
 
+Im erneuten Vergleich gegen den konsolidierten Branch blieben nur die
+Sperrdatei und die vollständigen Bytes des Berichts mit dem gekürzten
+Rechnerpfad ohne identischen Git-Blob. Der Bericht selbst ist im Archiv
+erhalten. Die 19 Designquellen umfassen 15.557.810 Byte.
+
 Die GitHub-Veröffentlichung der Projektinhalte folgt dem aktuellen
 Inhaberauftrag. Die Dateien der Designexploration wurden kopiert und
 byteweise geprüft. Die aktiven OneDrive-Dateien und der Index blieben
@@ -60,6 +65,34 @@ Vertriebsfreigaben für die App folgen ADR-005 und ADR-006.
 - Dokumentationsindex, Marken-ADR, Datenvertrag und Drittquellenhinweise
   verweisen auf die übernommenen Quellen und den aktuellen Laufzeitstand.
   Für Einstiegsdokumente, Quellversion und Paketmetadaten gilt V.0.0.1.
+
+## Prüfergebnisse
+
+Geprüfter Commit nach Quellenübernahme ist `64063b13fea389da360aa1642a31ece72c84fa5e`,
+Tree `b0414d4eb1ba845628588bbbd6f27ef3a4563532`. Der Startfix ist
+`de193afdb7c23a9ad76282ad0b8e5d35dc0110c5`.
+
+- `python -m unittest discover -s tests -q` unter Windows 11 Pro x64
+  mit Python 3.15.1/Tk 9.0.4, `CHESS_AND_CHAINS_REQUIRE_DISPLAY=1`,
+  `PYTHONWARNINGS=error::ResourceWarning` und `PYTHONFAULTHANDLER=1`.
+  **204 Tests bestanden**, Exitcode 0 (103,868 Sekunden).
+- Mit Python 3.14.7 bestanden
+  `tests.test_app_integration.StorageAndLocaleUiTests.test_startup_reports_database_recovery_alongside_settings_warning`,
+  `tests.test_storage` und `tests.test_i18n` in einem gezielten
+  `py -3.14 -m unittest … -q`-Lauf. 36 Tests, Exitcode 0.
+- `verify_starter.py`, `verify_document_links.py`, `check_policy.py`,
+  `python -m compileall -q src app scripts tests` und
+  `git diff --cached --check` endeten mit Exitcode 0.
+  57 Asset- und sechs Archiv-Prüfsummen wurden gegen die Bytes im
+  Git-Index geprüft. Der Index enthielt 126 Markdown-Dateien.
+- `pip wheel --no-build-isolation --no-deps --no-index` auf einem
+  temporären `git archive` des geprüften Trees erzeugte
+  `chess_and_chains-0.0.1-py3-none-any.whl`. Die Inhaltsprüfung bestätigte
+  24 Figuren-SVGs und die Ablagegrenze der Designquellen.
+  `pip install --no-deps --no-index --target <Temp>` und
+  `python -m chess_and_chains --version` bestanden. Der gemessene
+  SHA-256 des Wheels war
+  `9e61318881e8501a798da45051831cf3b3e6b43a14a1de5b49c35baa9668dcca`.
 
 ## Prüfgrenzen und Übergabe
 
