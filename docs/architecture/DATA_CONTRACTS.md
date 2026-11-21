@@ -53,6 +53,11 @@ zum Zielmodell. [UCI-Vertrag](UCI_CONTRACT.md)
 
 ## Game
 
+Die Wiedergabe verwendet einen Schnappschuss der Anfangsstellung und der
+bereits gespielten Positionen. Sie ändert weder den Spielverlauf noch
+gespeicherte Aufzeichnungen. Bei einem historischen Datensatz wird das
+Endergebnis am letzten Halbzug angezeigt.
+
 `games` speichert `id`, `created_utc`, `initial_fen`, `moves_uci`, `pgn`,
 `result`, `mode`, `bot_color`, `bot_name` und `bot_preset` sowie die ab
 Schema 3 ergänzten Endgründe. SQLite lädt eine Partie erst, wenn
@@ -94,6 +99,11 @@ umfasst bereits versuchte Aufgaben ohne fehlerfreie Lösung. Fehlerfreie
 Lösungen haben null Fehler und null Hinweise. Die beste Lösungszeit nimmt
 das Minimum unter gelösten Versuchen mit Zeitwert. Der zuletzt gespeicherte
 Versuch wird innerhalb von Paket und Rätsel über seine SQLite-ID bestimmt.
+Der erste Hinweis eines Spielerzugs zeigt das Startfeld. Der zweite zeigt
+das Zielfeld und bei Bedarf die Umwandlungsfigur. Jeder angeforderte
+Hinweis zählt zum aktuellen Versuch. Ein Neustart setzt diesen Versuch
+auf die Stellung nach dem Aufbauzug zurück. Abgeschlossene Versuche
+bleiben erhalten.
 
 Der Puzzle-Lab-Import legt die geprüften Originalbytes des Manifests
 und der JSONL-Datei atomar unter `puzzle_packs/<pack_id>` in den

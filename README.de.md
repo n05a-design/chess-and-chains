@@ -50,6 +50,11 @@ bereits versuchte Aufgaben ohne fehlerfreie Lösung. Pro Aufgabe bleiben
 Versuchsanzahl, beste Lösungszeit und die Angaben zum letzten Versuch
 lokal verfügbar.
 
+„Rätsel neu starten“ setzt dieselbe Aufgabe auf die Startstellung nach dem
+Aufbauzug zurück. Hinweise zeigen zuerst die Figur und dann das Zielfeld.
+Unter „Züge“ oder in der Partiebibliothek öffnet „Partie nachspielen…“ eine
+eigene Ansicht. Die Zugliste und die Links-/Rechts-Tasten wechseln die Stellung.
+
 ## Entwicklerstart
 
 ```bash
