@@ -9,6 +9,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 
+from .dead_positions import closed_pawn_barrier
 from .model import (
     ChessError,
     Color,
@@ -175,7 +176,9 @@ class ChessGame:
             return MoveOutcome(status, self.state.turn.opposite if in_check else None, in_check)
         if self.rules.insufficient_material(self.state):
             return MoveOutcome(GameStatus.DRAW_INSUFFICIENT_MATERIAL, in_check=in_check)
-        if self._adjudicate_forced_draws and self._dead_after_forced_play(legal):
+        if self._adjudicate_forced_draws and (
+            self._dead_after_forced_play(legal) or closed_pawn_barrier(self.state)
+        ):
             return MoveOutcome(GameStatus.DRAW_DEAD_POSITION, in_check=in_check)
         key = self.rules.position_key(self.state)
         repetitions = self._repetitions.get(key, 0)

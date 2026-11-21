@@ -28,6 +28,8 @@ Hier nur tatsächlich ausgeführte Prüfberichte/Agentenübergaben unter `YYYY-M
 
 [W05 – Mehrzügige tote Stellungen](2026-11-21_W05-mehrzuegige-tote-stellungen.md)
 
+[W05 – Tote Stellungen mit geschlossener Bauernsperre](2026-11-21_W05-bauernsperren.md)
+
 [W09 – Partiedaten vor der Rücksicherung prüfen](2026-11-21_W09-sichere-wiederherstellung.md)
 
 [W09 – Gespeicherte Partien suchen](2026-11-21_W09-partiebibliothek-suche.md)

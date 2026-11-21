@@ -24,6 +24,7 @@
 - Exchange the current position via FEN text or a local `.fen` file and start a two-player game from a validated position.
 - Browse occupied squares and legal destinations in a text board, with keyboard play for games, promotions and puzzles.
 - Find saved games by player, event, result or game number. Keep the selected game consistent when opening or exporting a filtered result.
+- Recognize closed pawn barriers as dead positions when neither king can open the barrier or reach the other king.
 
 The dated entries below preserve the development history incorporated into this snapshot.
 

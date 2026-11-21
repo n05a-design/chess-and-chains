@@ -31,6 +31,7 @@ from chess_and_chains.chess import (  # noqa: E402
 from chess_and_chains.chess.notation import parse_san  # noqa: E402
 
 RULES = ChessRules()
+PAWN_BARRIER = "7k/8/1p1p1p1p/pPpPpPpP/P1P1P1P1/8/8/K7 w - - 0 1"
 
 
 def mirror_fen(fen: str) -> str:
@@ -295,6 +296,46 @@ class TerminationRuleTests(unittest.TestCase):
         self.assertFalse(RULES.insufficient_material(parse_fen("4k3/8/8/3b4/8/8/5B2/4K3 w - - 0 1")))
         self.assertFalse(RULES.insufficient_material(parse_fen("4k3/8/8/3n4/8/8/5B2/4K3 w - - 0 1")))
         self.assertFalse(RULES.insufficient_material(parse_fen("4k3/8/8/8/8/8/2NN4/4K3 w - - 0 1")))
+
+    def test_closed_pawn_barrier_is_dead_for_both_sides_despite_legal_king_moves(self):
+        for fen in (PAWN_BARRIER, mirror_fen(PAWN_BARRIER), PAWN_BARRIER.replace(" w ", " b ")):
+            with self.subTest(fen=fen):
+                game = ChessGame(parse_fen(fen))
+                self.assertGreater(len(RULES.legal_moves(game.state)), 1)
+                self.assertIs(game.outcome().status, GameStatus.DRAW_DEAD_POSITION)
+
+    def test_closing_a_pawn_barrier_ends_live_play_and_round_trips(self):
+        opening = "7k/8/1p1p1p1p/pPpPpPp1/P1P1P1PP/8/8/K7 w - - 0 1"
+        game = ChessGame(parse_fen(opening))
+        self.assertIs(game.outcome().status, GameStatus.ACTIVE)
+        game.play_uci("h4h5")
+        self.assertIs(game.outcome().status, GameStatus.DRAW_DEAD_POSITION)
+        with self.assertRaises(IllegalMoveError):
+            game.play_uci("h8h7")
+        game.undo()
+        self.assertIs(game.outcome().status, GameStatus.ACTIVE)
+        game.redo()
+        document = parse_pgn(export_pgn(game))
+        self.assertEqual(document.result, "1/2-1/2")
+        self.assertIs(document.new_game().outcome().status, GameStatus.DRAW_DEAD_POSITION)
+
+    def test_pawn_barrier_does_not_adjudicate_a_possible_breakthrough(self):
+        for fen in (
+            "7k/8/1p1p1p2/pPpPpPpP/P1P1P1P1/8/8/K7 w - - 0 1",  # pawn can advance
+            "7k/8/1p1p1p2/pPpPpPpp/P1P1P1PP/8/8/K7 w - - 0 1",  # diagonal capture
+            "8/8/1p1p1p1p/pPpPpPpP/P1P1P1P1/8/7k/K7 w - - 0 1",  # black king can reach a white pawn
+            "8/8/8/3pP3/8/8/8/K6k w - d6 0 2",  # en passant
+        ):
+            with self.subTest(fen=fen):
+                self.assertIs(ChessGame(parse_fen(fen)).outcome().status, GameStatus.ACTIVE)
+
+    def test_legacy_pgn_can_replay_king_moves_behind_the_barrier(self):
+        document = parse_pgn(f'[SetUp "1"]\n[FEN "{PAWN_BARRIER}"]\n\n1. Ka2 Kh7 1/2-1/2')
+        game = document.new_game()
+        self.assertEqual(game.moves, [Move.from_uci("a1a2"), Move.from_uci("h8h7")])
+        game.undo()
+        game.undo()
+        self.assertIs(game.outcome().status, GameStatus.DRAW_DEAD_POSITION)
 
     def test_castling_rights_lost_when_rook_is_captured(self):
         game = ChessGame(parse_fen("r3k2r/8/8/8/8/8/6b1/R3K2R b KQkq - 0 1"))
