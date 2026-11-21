@@ -77,6 +77,11 @@ canvas.is-grabbing { cursor: grabbing }
 }
 #move-list li { display: grid; grid-template-columns: 2.5em 1fr 1fr; gap: 4px; padding: 4px; font-size: 15px }
 #move-list li:nth-child(odd) { background: #f0ece3 }
+#move-list [aria-current="step"] { background: var(--gold); font-weight: 650 }
+#replay { margin-top: 8px; width: 100% }
+.replay-controls { display: grid; gap: 8px; padding-block: 8px }
+.replay-controls input { width: 100%; accent-color: var(--focus) }
+.replay-controls input:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px }
 .actions { display: grid; gap: 8px; margin-top: 12px }
 .files { border-block: 1px solid var(--line); padding-block: 8px }
 .files summary { cursor: pointer; min-height: 32px; padding: 4px }

@@ -23,6 +23,23 @@ from chess_and_chains.ui.piece_contract import validate_svg_piece_set  # noqa: E
 
 
 class MarbleGameTests(unittest.TestCase):
+    def test_replay_keeps_live_revision_and_uses_exact_played_positions(self):
+        game = LocalGame("r3k2r/8/8/8/3pP3/8/8/R3K2R b KQkq e3 0 17")
+        game.apply({"revision": 0, "action": "move", "move": "d4e3"})
+        live = game.apply({"revision": 1, "action": "move", "move": "e1g1"})
+        original = game.pgn()
+        replay = game.replay()
+        self.assertEqual(replay["revision"], live["revision"])
+        self.assertEqual([frame["last"] for frame in replay["frames"]], [None, "d4e3", "e1g1"])
+        self.assertEqual(replay["frames"][0]["turn"], "b")
+        self.assertEqual(replay["frames"][0]["board"][28], "wP")
+        self.assertIsNone(replay["frames"][1]["board"][28])
+        self.assertEqual(replay["frames"][2]["board"], live["board"])
+        self.assertEqual(game.snapshot(), live)
+        self.assertEqual(game.pgn(), original)
+        game.apply({"revision": 2, "action": "undo"})
+        self.assertEqual(len(game.replay()["frames"]), 2)
+
     def test_file_import_preserves_record_metadata_and_is_atomic(self):
         game = LocalGame()
         game.apply({"revision": 0, "action": "move", "move": "d2d4"})
@@ -128,6 +145,11 @@ class MarbleRequestTests(unittest.TestCase):
                     with urlopen(server.origin + "/api/stellung.fen", timeout=4) as response:
                         self.assertEqual(response.headers.get_filename(), "chess-and-chains.fen")
                         self.assertEqual(response.read(), fen + b"\n")
+                    with urlopen(server.origin + "/api/replay", timeout=4) as response:
+                        replay = json.load(response)
+                        self.assertEqual(replay["revision"], 1)
+                        self.assertEqual(len(replay["frames"]), 1)
+                        self.assertEqual(replay["frames"][0]["turn"], "b")
                 finally:
                     server.shutdown()
                     worker.join(timeout=4)

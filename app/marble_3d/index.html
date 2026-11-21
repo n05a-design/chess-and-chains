@@ -41,8 +41,17 @@
         <h3>Zugliste</h3>
         <p class="empty" id="empty">Noch keine Züge</p>
         <ol id="move-list" aria-label="Zugliste"></ol>
+        <div class="replay-controls" id="replay-controls" hidden>
+          <label for="replay-ply">Stellung <output id="replay-step" for="replay-ply"></output></label>
+          <input id="replay-ply" type="range" min="0" max="0" value="0">
+          <div class="timeline">
+            <button id="replay-back" type="button">Voriger Zug</button>
+            <button id="replay-forward" type="button">Nächster Zug</button>
+          </div>
+        </div>
+        <button id="replay" type="button" disabled>Partie nachspielen</button>
       </div>
-      <div class="actions">
+      <div class="actions" id="live-actions">
         <div class="timeline">
           <button id="undo" type="button" disabled>Zurück</button>
           <button id="redo" type="button" disabled>Wiederholen</button>

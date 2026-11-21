@@ -24,6 +24,7 @@ const claimNames={THREEFOLD_REPETITION:"Dreifache Wiederholung",FIFTY_MOVE_RULE:
 const cells=new Map();
 let state=null, scene=null, busy=false, selected=null, cursor="e2", keyboard=false, pointer=null;
 let carry=null;
+let replay=null, replayPly=0;
 
 for (let rank=8;rank>=1;rank--) {
   const row=document.createElement("div");
@@ -40,7 +41,7 @@ for (let rank=8;rank>=1;rank--) {
 }
 
 function candidates(source=selected) {
-  return source&&state?state.moves.filter(move=>move.startsWith(source)):[];
+  return source&&state&&!replay?state.moves.filter(move=>move.startsWith(source)):[];
 }
 
 function message(text="") {
@@ -50,12 +51,13 @@ function message(text="") {
 
 function refreshBoard() {
   if (!state) return;
+  const shown=replay?replay[replayPly]:state;
   const targets=new Set(candidates().map(move=>move.slice(2,4)));
   for (const [square,cell] of cells) {
-    const figure=state.board[squareIndex(square)];
+    const figure=shown.board[squareIndex(square)];
     let label=`${square}, ${figure?`${pieceName[figure[1]]} (${sideName[figure[0]]})`:"frei"}`;
     if (targets.has(square)) label+=", legales Ziel";
-    if (state.check===square) label+=", im Schach";
+    if (shown.check===square) label+=", im Schach";
     cell.setAttribute("aria-label",label);
     cell.setAttribute("aria-selected",String(square===selected));
   }
@@ -65,8 +67,9 @@ function refreshBoard() {
 
 function paintBoard(targets=new Set(candidates().map(move=>move.slice(2,4)))) {
   if (!state) return;
-  scene?.update(state.board,{
-    selected,last:state.last,check:state.check,targets,
+  const shown=replay?replay[replayPly]:state;
+  scene?.update(shown.board,{
+    selected,last:shown.last,check:shown.check,targets,
     focus:keyboard&&document.activeElement===grid?cursor:null,carry,
   });
 }
@@ -79,25 +82,44 @@ function showMoves() {
   for (let i=0;i<entries.length;i+=2) {
     const row=document.createElement("li");
     const entriesForRow=[`${state.firstMove+i/2}.`,entries[i]||"…",entries[i+1]||""];
-    for (const entry of entriesForRow) {
+    for (const [column,entry] of entriesForRow.entries()) {
       const field=document.createElement("span");
       field.textContent=entry;
+      const offset=state.firstTurn==="b"?1:0;
+      if (replay&&column&&entry&&i+column-offset===replayPly) field.setAttribute("aria-current","step");
       row.append(field);
     }
     container.append(row);
   }
-  container.scrollTop=container.scrollHeight;
+  const current=container.querySelector("[aria-current=step]");
+  if (current) {
+    container.scrollTop+=current.getBoundingClientRect().top-container.getBoundingClientRect().top;
+  } else container.scrollTop=replay?0:container.scrollHeight;
 }
 
 function showGame() {
   if (!state) return;
-  const side=sideName[state.turn];
+  const shown=replay?replay[replayPly]:state;
+  const side=sideName[shown.turn];
   const status=state.status;
   let description=outcomes[status]??"Partie beendet";
   if (status==="ACTIVE") description=state.check?`${side} steht im Schach`:`${side} am Zug`;
   if (status==="CHECKMATE") description=`Schachmatt · ${sideName[state.winner]} gewinnt`;
-  byId("turn").textContent=description;
-  byId("side-stone").classList.toggle("dark",state.turn==="b");
+  const finished=replay&&replayPly===replay.length-1&&status!=="ACTIVE";
+  const reviewing=shown.check?`${side} steht im Schach`:`${side} am Zug`;
+  byId("turn").textContent=replay&&!finished?`Wiedergabe · ${reviewing}`:description;
+  byId("side-stone").classList.toggle("dark",shown.turn==="b");
+  byId("replay").disabled=busy||(!state.san.length&&!replay);
+  byId("replay").textContent=replay?"Zur laufenden Partie":"Partie nachspielen";
+  byId("live-actions").hidden=Boolean(replay);
+  byId("replay-controls").hidden=!replay;
+  if (replay) {
+    byId("replay-ply").max=String(replay.length-1);
+    byId("replay-ply").value=String(replayPly);
+    byId("replay-step").textContent=`${replayPly} von ${replay.length-1}`;
+    byId("replay-back").disabled=replayPly===0;
+    byId("replay-forward").disabled=replayPly===replay.length-1;
+  }
   byId("undo").disabled=busy||!state.undo;
   byId("redo").disabled=busy||!state.redo;
   byId("new").disabled=busy;
@@ -109,7 +131,7 @@ function showGame() {
 }
 
 async function send(action,extra={},file=null) {
-  if (!state||busy) return;
+  if (!state||busy||replay) return;
   endPointer();
   busy=true;
   message();
@@ -175,7 +197,7 @@ function playDestination(square,moves) {
 }
 
 function selectSquare(square) {
-  if (!state||busy||!square||state.status!=="ACTIVE") return;
+  if (!state||busy||!square||replay||state.status!=="ACTIVE") return;
   cursor=square;
   if (playDestination(square,candidates())) return;
   const piece=state.board[squareIndex(square)];
@@ -242,7 +264,8 @@ canvas.addEventListener("pointerdown",event=>{
   event.preventDefault();
   const {clientX:x,clientY:y}=event;
   const source=scene.pick(x,y);
-  const occupant=source&&state.board[squareIndex(source)];
+  const shown=replay?replay[replayPly]:state;
+  const occupant=source&&shown.board[squareIndex(source)];
   const offset=!busy&&occupant?.[0]===state.turn&&candidates(source).length
     ?scene.grabOffset(source,x,y):null;
   pointer={
@@ -307,6 +330,47 @@ for (const type of ["pointercancel","lostpointercapture"]) canvas.addEventListen
   if (event.pointerId===pointer?.id) cancelPointer();
 });
 window.addEventListener("blur",cancelPointer);
+
+function seekReplay(step) {
+  if (!replay) return;
+  replayPly=Math.max(0,Math.min(step,replay.length-1));
+  showGame();
+}
+
+byId("replay").addEventListener("click",async()=>{
+  if (!state||busy) return;
+  endPointer();
+  selected=null;
+  busy=true;
+  message();
+  showGame();
+  try {
+    const response=await fetch(replay?"/api/game":"/api/replay");
+    if (!response.ok) throw new Error();
+    const result=await response.json();
+    if (replay) {
+      state=result;
+      replay=null;
+    } else if (result.revision===state.revision) {
+      replay=result.frames;
+      replayPly=0;
+    } else {
+      const live=await fetch("/api/game");
+      if (!live.ok) throw new Error();
+      state=await live.json();
+      message("Die Partie hat sich geändert. Öffne die Wiedergabe erneut.");
+    }
+  } catch {
+    message("Die lokale Partie konnte nicht gelesen werden.");
+  } finally {
+    busy=false;
+    showGame();
+    if (document.activeElement===document.body) byId("replay").focus();
+  }
+});
+byId("replay-ply").addEventListener("input",event=>seekReplay(event.target.valueAsNumber));
+byId("replay-back").addEventListener("click",()=>seekReplay(replayPly-1));
+byId("replay-forward").addEventListener("click",()=>seekReplay(replayPly+1));
 
 byId("undo").addEventListener("click",()=>send("undo"));
 byId("redo").addEventListener("click",()=>send("redo"));

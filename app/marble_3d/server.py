@@ -18,7 +18,7 @@ DEFAULT_ASSETS = ROOT / "design" / "source" / "marmor-3d" / "spielsatz"
 sys.path.insert(0, str(ROOT / "src"))
 
 from chess_and_chains.chess import (  # noqa: E402
-    ChessError, ChessGame, DrawClaim, GameStatus, Move, export_pgn, parse_pgn, square_name, to_fen,
+    ChessError, ChessGame, DrawClaim, GameState, GameStatus, Move, export_pgn, parse_pgn, square_name, to_fen,
 )
 from chess_and_chains.game.controller import GameController, GameSetup  # noqa: E402
 from chess_and_chains.storage.database import MAX_PGN_FILE_BYTES, MAX_PGN_FILE_PLIES  # noqa: E402
@@ -62,14 +62,31 @@ class LocalGame:
         self.revision += 1
         return self.snapshot()
 
+    def replay(self) -> dict:
+        game = self.controller.game
+        positions = game.played_positions()
+        frames = []
+        for index, position in enumerate(positions):
+            in_check = game.rules.is_in_check(position)
+            frames.append({
+                "board": self.board_tokens(position),
+                "turn": position.turn.value,
+                "check": square_name(position.king_square(position.turn)) if in_check else None,
+                "last": game.moves[index - 1].to_uci() if index else None,
+            })
+        return {"revision": self.revision, "frames": frames}
+
+    @staticmethod
+    def board_tokens(position: GameState) -> list[str | None]:
+        return [piece.color.value + piece.kind.value.upper() if piece else None for piece in position.board]
+
     def snapshot(self) -> dict:
         view = self.controller.view()
         state = view.state
         outcome = view.outcome
         return {
             "revision": self.revision,
-            "board": [piece.color.value + piece.kind.value.upper() if piece else None
-                      for piece in state.board],
+            "board": self.board_tokens(state),
             "turn": state.turn.value,
             "status": outcome.status.name,
             "winner": outcome.winner.value if outcome.winner else None,
@@ -151,6 +168,9 @@ class MarbleRequest(BaseHTTPRequestHandler):
             return
         if self.path == "/api/game":
             self.reply_json(self.server.game.snapshot())
+            return
+        if self.path == "/api/replay":
+            self.reply_json(self.server.game.replay())
             return
         if self.path == "/api/partie.pgn":
             self.respond(
