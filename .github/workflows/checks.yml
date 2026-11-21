@@ -68,6 +68,8 @@ jobs:
         run: python -m unittest tests.test_puzzles -v
       - name: Storage
         run: python -m unittest tests.test_storage -v
+      - name: Foundation checks on this platform (path handling, e.g. macOS /private symlinks)
+        run: python -m unittest tests.test_foundation -v
 
   gui-linux:
     name: Tk GUI tests under Xvfb (py${{ matrix.python }})

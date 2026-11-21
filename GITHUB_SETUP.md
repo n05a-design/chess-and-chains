@@ -6,6 +6,23 @@ Die GitHub-Kurzbeschreibung nennt das lokale Zweispieler-Spiel, Demo-Rätsel
 und die eigenen SVG-Figuren des Entwicklungsprototyps. Den aktuellen
 Versions- und Funktionsstand führen die READMEs.
 
+## Aktuelle GitHub-Konfiguration (geprüft 21.11.2026)
+
+| Einstellung | Stand | Empfehlung (Owner-Entscheidung) |
+| --- | --- | --- |
+| Sichtbarkeit | Öffentlich | Bestätigung offen (Q-017) |
+| Beschreibung | Prototyp mit Zweispieler-Partien, Demo-Rätseln und eigenen SVG-Figuren | aktuell |
+| Topics | `chess`, `offline-first`, `python`, `desktop-app`, `chess-puzzles`, `tkinter`, `uci`, `open-source` | gesetzt beim Ablageaudit |
+| Branches | nur `main`; abgeschlossene Branches sind entfernt | – |
+| Branch-Schutz für `main` | nicht aktiv | Pflichtprüfungen der Matrix und PR-Pflicht aktivieren |
+| Branch nach Merge löschen | aus | einschalten, hält das Repository aufgeräumt |
+| Private Sicherheitsmeldungen | aus | einschalten, damit `SECURITY.md` einen Meldeweg hat |
+| Issue- und PR-Vorlagen | `.github/ISSUE_TEMPLATE/`, `.github/pull_request_template.md` | – |
+| Wiki | aktiviert, ungenutzt | deaktivieren; Dokumentation lebt im Repository |
+| Releases | keine | erst nach W12-Gate |
+
+Sicherheits- und Schutzeinstellungen ändert nur der Inhaber.
+
 ## Historische Anlageanleitung F0
 
 Die folgenden Schritte beschreiben die ursprüngliche Neuanlage aus dem Starter-ZIP. Sie bleiben als Archiv der Einrichtung erhalten.

@@ -1,20 +1,88 @@
-# Chess & Chains – Abhängigkeitsbasierte Roadmap
+# Chess & Chains – Roadmap
 
-**V.0.0.1 · Stand 21.11.2026.** Der lokale Desktop-Prototyp ist als Entwicklungsstand versioniert. Automatisierte Prüfungen und die noch offenen Abnahmen stehen in den [Work Packages](WORK_PACKAGES.md).
+**V.0.0.1 · Stand 21.11.2026 · `main` = `1acd9bd` (PR #17).** Der lokale Desktop-Prototyp ist als Entwicklungsstand versioniert und nicht veröffentlicht. Der [Merge-Lauf von PR #17](https://github.com/n05a-design/chess-and-chains/actions/runs/44932980772) bestand 14 von 14 Jobs auf Windows, macOS und Linux. Status und offene Gate-Punkte je Paket stehen in den [Work Packages](WORK_PACKAGES.md), die Anforderungen im [MVP-Vertrag](../product/MVP_CONTRACT.md).
+
+## Wo das Projekt steht
+
+| Bereich | Erreicht | Fehlt bis zur Abnahme |
+| --- | --- | --- |
+| Regeln (W05) | Legale Züge, FEN/SAN/PGN, Remisregeln, Perft, tote Stellungen bei kurzen Zwangsfolgen und geschlossenen Bauernsperren | Allgemeine Erkennung toter Stellungen, Owner-Abnahme |
+| Brett und Figuren (W06) | Tk-Brett, Figuren V.02 und Draufsicht, PNG-Fallback, SVG-Brettvorschau mit Cache | Finale Inhaber-Bretter, native Sicht- und High-DPI-Prüfung |
+| Bot (W07) | UCI-Adapter, asynchroner Controller, sechs Presets, Bereitschaftstest | Echte Engine nach ADR-001, Kalibrierung, Offline-Partie |
+| Rätsel (W08) | Offline-Builder mit Rating ≥ 1000, Qualitätsfilter, Seed, lokale Pakete im Puzzle Lab | Realdaten nach Q-022, Paketgröße und Ratingbereich (Q-008/Q-009) |
+| Daten (W09) | SQLite v3, Bibliothek mit Suche, PGN- und FEN-Austausch, geprüfte Rücksicherung | Profile (Q-012), ADR-004, native Dialoge macOS/Linux |
+| Bedienung (W10) | DE/EN, Tastaturwege, Brett als Text, Fokusrückgabe | Native Skalierung 150/200 %, Screenreader, Ziffernblock |
+| Qualität (W11) | 14-Job-Matrix nach jedem Merge, Policy-, Link- und Manifestprüfung | Installations-, Offline- und Artefaktabnahme |
+| Vertrieb (W12) | Strategie dokumentiert | BLOCKED durch ADR-001, ADR-005, ADR-006 |
+
+## Entscheidungen mit dem größten Hebel
+
+Diese Owner-Entscheidungen geben die meiste blockierte Arbeit frei. Antwortformat und Vorschläge: [Offene Fragen](../questions/OPEN_QUESTIONS.md).
+
+| Rang | Entscheidung | Gibt frei | Referenz |
+| --- | --- | --- | --- |
+| 1 | Engine- und Vertriebslizenz (Weg A: GPL-konformer Gesamtvertrieb, oder Alternative) | Echte Offline-Engine, Bot-Kalibrierung, jeder Installer | [ADR-001](../decisions/ADR-001_ENGINE_LICENSE.md), Q-001 |
+| 2 | Opt-in für den lokalen Download des Lichess-Exports (CC0) zu Prüfzwecken | Realdatenprüfung des Rätselimports | Q-022, [ADR-003](../decisions/ADR-003_PUZZLE_POLICY.md) |
+| 3 | Ratingbereich und Paketgröße | Zuschnitt des mitgelieferten Rätselpakets | Q-008, Q-009 |
+| 4 | Profilmodell (ein oder mehrere Profile) | Abschluss von W09, ADR-004 | Q-012, [ADR-004](../decisions/ADR-004_STORAGE.md) |
+| 5 | Mock-Bot in Vorschau-Builds sichtbar oder ausgeblendet | Verhalten des Bot-Modus ohne echte Engine | Q-021 |
+| 6 | Finale SVG-Bretter liefern | Abschluss der Brettgestaltung in W06 | Q-004, [Lieferformate](../../assets/boards/source/README.md) |
+| 7 | Plattformpriorität und Apple Developer ID | Reihenfolge und Signatur der Installer | Q-007, Q-016, [ADR-006](../decisions/ADR-006_DISTRIBUTION.md) |
+| 8 | Ablage des Arbeitsrepositorys außerhalb von OneDrive | Weniger Konfliktkopien und Phantom-Änderungen | Q-025 |
 
 ## Nächste Aufgaben
 
-| Priorität | Arbeit | Voraussetzung und nächster Nachweis |
+Nur offene Arbeit. Erledigte Punkte stehen unten unter „Abgeschlossen“.
+
+| Priorität | Arbeit | Nächster Nachweis |
 | --- | --- | --- |
-| 1 | W10 und W11 · Native Bedienabnahme | PR #12 mit den Tastaturwegen für PGN-Import, Export und Abbruch ist in `main` und bestand den Merge-Lauf. Native Skalierung, physischer Ziffernblock und Screenreader stehen zur Abnahme aus. [W10-Prüfnachweis](../reports/2026-11-21_W10-dialogtastatur.md) |
-| Parallel | W10 · Brett als Text | Besetzte Felder und legale Züge in Partie und Puzzle über Tastatur auswählen. [Prüfnachweis](../reports/2026-11-21_W10-brett-als-text.md) |
-| Parallel | W09 · Partiebibliothek | Partien nach Spielern, Veranstaltung und Ergebnis finden. Treffer über ihre Partiekennung öffnen und als PGN exportieren. [Prüfnachweis](../reports/2026-11-21_W09-partiebibliothek-suche.md) |
-| Parallel | W05 · Geschlossene Bauernsperren | Geschlossene Königs- und Bauernstellungen mit getrennten Königsbereichen können automatisch remis enden. Weitere verblockte Materialkombinationen und längere Zwangsfolgen bleiben offen. [Prüfnachweis](../reports/2026-11-21_W05-bauernsperren.md) |
-| 2 | W06 · Individuelle Brettgestaltung | Die Wiederverwendung der beiden Perspektiven ist lokal geprüft. Finale SVG-Bretter des Inhabers mit Partie, Rätseln und V.02 prüfen. [Lieferformate](../../assets/boards/source/README.md) · [W06-Prüfnachweis](../reports/2026-11-21_W06-svg-brettcache.md) |
-| Parallel | W02/W07 · Echte Offline-Engine | Konkrete Engine- und Vertriebsstrategie für den sofort spielbaren Offline-Bot prüfen und in ADR-001 entscheiden lassen. Danach Test einer vollständigen Partie mit identifiziertem Binary und Offline-Nachweis. Die Mock-Tests dienen der Adapterprüfung. |
-| Parallel | W08 · Produktiver Rätselkatalog | Lokale Pakete können importiert, gewechselt und beim Neustart wieder geöffnet werden. Nach Opt-in Q-022 den realen Export, Datenprofil und Stichprobe prüfen. Q-008/Q-009 entscheiden Ratingbereich und Paketgröße. [W08/W09-Prüfnachweis](../reports/2026-11-21_W08-W09-lokale-raetselpakete.md) |
-| Parallel | W05/W09 · Regeln und Datenaustausch | FEN aus dem Spiel kopieren, als Datei austauschen und die Stellung zu zweit weiterspielen. Dateien, Zugrechte und Spielfortsetzung unter Windows geprüft. Native Systemdialoge und Profile nach ADR-004/Q-012 stehen aus. Kurze Zwangsfolgen mit Remis und historische Aufzeichnungen sind geprüft. Verblockte Stellungen und längere oder verzweigte Zwangsfolgen weiter untersuchen. [FEN](../reports/2026-11-21_W05-W09-fen-austausch.md) · [Regeln](../reports/2026-11-21_W05-mehrzuegige-tote-stellungen.md) · [Rücksicherung](../reports/2026-11-21_W09-sichere-wiederherstellung.md) |
-| Danach | W12 · Distribution | Installer, Lizenz- und Quellenbelege, Signaturen, Upgrade-/Offline-Tests und Inhaberfreigabe nach ADR-001, ADR-005 und ADR-006. Danach GitHub Releases und Software-Katalog. |
+| 1 | W10/W11 · Native Bedienabnahme | Manuelle Prüfung auf Windows und macOS bei 100/150/200 %, Screenreader-Stichprobe, physischer Ziffernblock. Protokoll mit Gerät, Betriebssystem und Commit. [Tastatur und Skalierung](../reports/2026-11-21_W10-W11-tastatur-und-skalierung.md) |
+| 2 | W06 · Finale Brettgestaltung | Nach Lieferung der Inhaber-SVGs: Partie, Rätsel und beide Figurenansichten mit den Brettern prüfen, Assetregister mit Hashes ergänzen. |
+| 3 | W05 · Tote Stellungen allgemein | Weitere verblockte Materialkombinationen und längere oder verzweigte Zwangsfolgen. Golden-Fixtures mit Quelle. [Bauernsperren](../reports/2026-11-21_W05-bauernsperren.md) |
+| 4 | W09 · Native Dialoge | FEN-, PGN- und Ordnerdialoge auf macOS und Linux nativ prüfen. Profile nach Q-012. [FEN-Austausch](../reports/2026-11-21_W05-W09-fen-austausch.md) |
+| Nach ADR-001 | W02/W07 · Echte Offline-Engine | Identifiziertes Binary mit Hash, vollständige Partie ohne Netz, Abbruch- und Absturzverhalten, Kalibrierplan für die sechs Stufen. |
+| Nach Q-022 | W08 · Produktiver Rätselkatalog | Realer Export außerhalb des Repos, Datenprofil, Stichprobe, Prüfsumme und Importbericht. [Lokale Pakete](../reports/2026-11-21_W08-W09-lokale-raetselpakete.md) |
+| Danach | W12 · Distribution | Installer, Lizenz- und Quellenbelege, Signaturen, Upgrade- und Offline-Tests, Inhaberfreigabe. Danach GitHub Releases und Software-Katalog. [Vertriebsstrategie](../release/RELEASE_STRATEGY.md) |
+
+## Meilensteine bis 1.0 (PROPOSED)
+
+Vorschlag zur Fortschreibung der historischen Zielmarken. Die Nummern gelten erst nach Owner-Bestätigung; bis dahin bleibt die Entwicklungsnummer V.0.0.1 nach der [Versionspflege](../governance/GOVERNANCE.md#projektversion).
+
+| Meilenstein | Inhalt | Ausgangskriterium | Blockiert durch |
+| --- | --- | --- | --- |
+| 0.1.0 · Interner Prototyp | Regeln, Brett, Bibliothek, Demo-Rätsel, DE/EN | W05, W06, W09, W10 ohne offene native Prüfpunkte; Owner-Abnahme der Bedienung | Native Abnahme, finale Bretter (optional als 0.1.x nachziehen) |
+| 0.2.0 · Offline-Bot | Echte lokale Engine, kalibrierte Stufen | Vollständige Offline-Partie mit identifiziertem Binary; Kalibrierbericht | ADR-001, ADR-007, Q-021, Q-023 |
+| 0.3.0 · Puzzle-MVP | Mitgeliefertes Rätselpaket, Profile, Fortschritt | Realdatenimport mit Bericht; P-05/P-06 erfüllt | Q-008, Q-009, Q-012, Q-022, ADR-003, ADR-004 |
+| 0.9.0 · Release Candidate | Installer Windows/macOS, Lizenzhinweise, SBOM | Installations-, Update-, Deinstallations- und Offline-Nachweise je Plattform | ADR-005, ADR-006, Q-007, Q-016 |
+| 1.0.0 · Release | GitHub Release und Software-Katalog | Ausdrückliches Owner-Release-Gate | Alle vorherigen |
+
+## Abgeschlossen seit Einführung von V.0.0.1
+
+| PR | Inhalt | Merge-Lauf |
+| --- | --- | --- |
+| [#17](https://github.com/n05a-design/chess-and-chains/pull/17) | W05 · Tote Stellungen bei geschlossener Bauernsperre | [14/14](https://github.com/n05a-design/chess-and-chains/actions/runs/44932980772) |
+| [#16](https://github.com/n05a-design/chess-and-chains/pull/16) | W09 · Gespeicherte Partien in der Bibliothek suchen | [14/14](https://github.com/n05a-design/chess-and-chains/actions/runs/44932023205) |
+| [#15](https://github.com/n05a-design/chess-and-chains/pull/15) | W10 · Brett als Text, Züge per Tastatur | [14/14](https://github.com/n05a-design/chess-and-chains/actions/runs/44931230803) |
+| [#14](https://github.com/n05a-design/chess-and-chains/pull/14) | W05/W09 · FEN-Stellungen austauschen und spielen | [14/14](https://github.com/n05a-design/chess-and-chains/actions/runs/44916460337) |
+| [#13](https://github.com/n05a-design/chess-and-chains/pull/13) | W06/W08/W09 · SVG-Brettcache und lokale Rätselpakete | [14/14](https://github.com/n05a-design/chess-and-chains/actions/runs/44909381782) |
+| [#12](https://github.com/n05a-design/chess-and-chains/pull/12) | W10 · Auswahldialoge per Enter, Fokusrückgabe | [14/14](https://github.com/n05a-design/chess-and-chains/actions/runs/44905214890) |
+| [#11](https://github.com/n05a-design/chess-and-chains/pull/11) | W05/W08/W10 · Folgecommits und Ablageabgleich | [14/14](https://github.com/n05a-design/chess-and-chains/actions/runs/44904083668) |
+| [#10](https://github.com/n05a-design/chess-and-chains/pull/10) | W11 · Projektquellen und OneDrive-Stände zusammengeführt | [14/14](https://github.com/n05a-design/chess-and-chains/actions/runs/44901076786) |
+| [#9](https://github.com/n05a-design/chess-and-chains/pull/9) | W10 · Brettfokus und Tastaturbedienung | [14/14](https://github.com/n05a-design/chess-and-chains/actions/runs/44869510471) |
+| [#8](https://github.com/n05a-design/chess-and-chains/pull/8) | V.0.0.1 eingeführt, Roadmap abgeglichen | – |
+
+Den Stand je Paket führt der [Paketabgleich](../reports/2026-11-21_W00-W12-paketabgleich.md), die lokale Ablage das [Dokumentations- und Ablageaudit](../reports/2026-11-21_W11-dokumentations-und-ablageaudit.md).
+
+## Kritischer Pfad und Risiken
+
+Lizenz-Gate → echte Engine → Kalibrierung → Installer → native Plattformabnahme → Release. Design, Rätselkatalog und Bedienabnahme laufen parallel. Keine Veröffentlichung vor Legal-, Quellen- und QA-Freigabe.
+
+| Risiko | Wirkung | Gegenmaßnahme |
+| --- | --- | --- |
+| ADR-001 bleibt offen | Kein Bot, kein Installer | Entscheidung priorisieren; Mock-Tests halten den Adapter bereit |
+| Git-Repository in OneDrive | Konfliktkopien, Moduswechsel, veraltete lokale Branches | Q-025; vor jedem Commit `git fetch` und Statusprüfung |
+| Native Abnahme nur manuell möglich | TESTED ohne Plattformbeleg | Prüfprotokolle je Gerät unter `docs/reports/` |
+| Kein Apple Developer ID | Unsigniertes macOS-Paket | Q-016 vor 0.9.0 klären |
 
 ## Historische Phasenplanung F0 vom 19.11.2026
 
@@ -31,31 +99,6 @@ Die Aufwandswerte stammen aus der ursprünglichen Planung. Die Tabelle bildet Ab
 | V1.1+ | Analysetools, Chain Training, weitere Engines, Öffnungs-Bibliothek | TBD | Neu entscheiden |
 
 *Aufwand bei fokussierter Arbeit mit KI-Unterstützung, **nicht** verbindliche Kalenderwochen; Arbeit parallel zu Steps/Glide dauert länger.*
-
-## Entwicklung und CI-Stand
-
-Der Prototyp enthält lokale Zweispielerpartien, Mock-UCI mit Bereitschaftstest,
-fünf Demo-Rätsel, eine Partiebibliothek mit PGN-Austausch, FEN-Stellungen und Originalfiguren
-in Vorderansicht V.02 und Draufsicht. Der [separate main-Lauf nach PR #9](https://github.com/n05a-design/chess-and-chains/actions/runs/44869510471)
-schloss alle 14 Jobs erfolgreich ab. Den Stand und die offenen
-Abnahmekriterien pro Paket führt der [Paketabgleich](../reports/2026-11-21_W00-W12-paketabgleich.md).
-Der [Ablageabgleich](../reports/2026-11-21_W11-ablageabgleich.md) dokumentiert
-die Folge-Commits, Designquellen und archivierten OneDrive-Stände. PR #10
-bestand die Plattformmatrix im Push- und PR-Lauf sowie nach dem Merge auf
-`main`. Die lokalen Folgecommits ergänzen die Rätselthemen auf Deutsch und
-Englisch, Qualitätsfilter, kurze Zwangsfolgen und die Auswahl per Seed.
-Diese Folgecommits sind mit PR #11 in `main` und bestanden dort 14 von
-14 Jobs. Die Dialogtastatur folgte mit PR #12 und 14 erfolgreichen Jobs
-nach dem Merge. Der lokale W06-Folgebranch beschleunigt die Drehung in
-der SVG-Brettvorschau.
-[Merge-Lauf PR #10](https://github.com/n05a-design/chess-and-chains/actions/runs/44901076786) ·
-[Merge-Lauf PR #11](https://github.com/n05a-design/chess-and-chains/actions/runs/44904083668) ·
-[Merge-Lauf PR #12](https://github.com/n05a-design/chess-and-chains/actions/runs/44905214890) ·
-[W06-Prüfstand](../reports/2026-11-21_W06-svg-brettcache.md)
-
-## Kritischer Pfad
-
-Lizenz-Gate + Schachregeln + Engine-Fähigkeit + Rendering/Interaktion + Puzzle-Korrektheit + native Paketprüfung. Design und Marktanalyse parallel möglich; keine Veröffentlichung vor Legal/Source/QA-Freigabe.
 
 ## Historische Zielmarken und Versionspflege
 

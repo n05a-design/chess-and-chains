@@ -6,7 +6,7 @@
 
 Chess & Chains soll eine **dauerhaft kostenlos angebotene, quelloffene und offlinefähige Desktop-Schach-App** werden: lokal spielbare Computergegner mit einstellbarer Schwierigkeit, anspruchsvolle Taktikaufgaben und ein eigenständiges Design auf Basis eigener SVG-Schachfiguren und Bretter.
 
-[English](README.md) · [Manifest](MANIFEST.md) · [Roadmap](docs/roadmap/ROADMAP.md) · [Offene Fragen](docs/questions/OPEN_QUESTIONS.md)
+[English](README.md) · [Einstieg](START_HERE.md) · [Manifest](MANIFEST.md) · [Roadmap](docs/roadmap/ROADMAP.md) · [Offene Fragen](docs/questions/OPEN_QUESTIONS.md) · [Mitwirken](CONTRIBUTING.md)
 
 ## Geplanter Funktionsumfang
 
@@ -21,7 +21,7 @@ GitHub ist der Entwicklungsort und beschreibt, wie das fertige Produkt funktioni
 
 ## Was bereits vorhanden ist
 
-Der **GUI-freie Python-Regelkern** unterstützt legale Züge, FEN/SAN/PGN, Remisregeln und Rückgängig/Wiederholen. Perft- und Golden-Tests decken die Umsetzung ab. Der Regelkern erkennt tote Stellungen in kurzen Zwangsfolgen zu Patt oder ungenügendem Material. Die allgemeine Erkennung und die Inhaberabnahme stehen aus.
+Der **GUI-freie Python-Regelkern** unterstützt legale Züge, FEN/SAN/PGN, Remisregeln und Rückgängig/Wiederholen. Perft- und Golden-Tests decken die Umsetzung ab. Der Regelkern erkennt tote Stellungen in kurzen Zwangsfolgen zu Patt oder ungenügendem Material sowie geschlossene Bauernsperren, die kein König öffnen kann. Die allgemeine Erkennung und die Inhaberabnahme stehen aus.
 
 Der lokale Tk-Prototyp umfasst folgende Funktionen.
 
