@@ -5,11 +5,11 @@
 
 from .importer import ImportReport, PuzzleImportError, import_lichess_file, iter_lichess_csv
 from .model import MIN_PUBLISHED_RATING, Puzzle, ValidationStatus
-from .pack import PackError, PackManifest, PuzzlePack, load_demo_pack, read_pack, write_pack
+from .pack import DEMO_PACK_ID, PackError, PackLibrary, PackManifest, PuzzlePack, load_demo_pack, read_pack, write_pack
 from .session import Feedback, PuzzleSession, Verdict
 
 __all__ = [
-    "Feedback", "ImportReport", "MIN_PUBLISHED_RATING", "PackError", "PackManifest",
+    "DEMO_PACK_ID", "Feedback", "ImportReport", "MIN_PUBLISHED_RATING", "PackError", "PackLibrary", "PackManifest",
     "Puzzle", "PuzzleImportError", "PuzzlePack", "PuzzleSession", "ValidationStatus",
     "Verdict", "import_lichess_file", "iter_lichess_csv", "load_demo_pack", "read_pack",
     "write_pack",

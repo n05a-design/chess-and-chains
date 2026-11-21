@@ -1,5 +1,26 @@
 # Rätselpakete lokal erzeugen
 
+## In der App verwenden
+
+Im Puzzle Lab **Rätselpakete… → Paketordner importieren…** wählen und den
+Ordner mit `manifest.json` und `puzzles.jsonl` angeben. Die App prüft
+Prüfsumme, Paketkennung, Rating und spielbare Zugfolgen im Hintergrund.
+Anschließend speichert sie beide Dateien unter
+`puzzle_packs/<pack_id>` im [Nutzerdatenordner](../../docs/architecture/DATA_CONTRACTS.md)
+und öffnet das Paket.
+
+Über dieselbe Auswahl lässt sich zwischen installierten Paketen und der
+mitgelieferten Demo wechseln. Die App öffnet beim Neustart die letzte
+Auswahl und speichert Fortschritt je Paket. Bei einem nicht verfügbaren
+Paket bleibt die Demo nutzbar. Ein Import mit bereits installierter oder
+reservierter Kennung meldet einen Fehler. Installierte Daten und der
+Quellordner bleiben dabei erhalten.
+
+Der Desktop-Import liest bis zu 64 KiB Manifest und 64 MiB Rätseldaten.
+Die optionale Prüfdatei `import_report.json` bleibt im Build-Ordner.
+
+## Offline-Builder
+
 Der Offline-Builder liest lokale CSV-Dateien im Lichess-Layout. Python ab
 3.14 unterstützt im Builder auch `.csv.zst`. Aus der projekteigenen
 [Demo-CSV](../source/demo_puzzles.csv) entstand die mitgelieferte

@@ -21,6 +21,11 @@ python -m chess_and_chains --board-design assets/boards/source/board-template.sv
 
 Als Argument funktioniert auch ein Ordner mit `board.svg`, mit `light.svg` und `dark.svg` samt optionalen Sonderfeldern oder mit allen 64 benannten Feldern. Eine `board.svg` im Ordner hat Vorrang. Beim Drehen dreht sich ein Gesamtbrett um 180 Grad. Einzelne Feldmotive bleiben aufrecht und folgen ihrer Schachkoordinate. Figuren, Auswahl und Zugmarkierungen bleiben darüber sichtbar.
 
+Die Vorschau hält beide Perspektiven der aktuellen Brettgröße für
+erneutes Drehen vor. Bei Feld-SVGs verwendet sie bereits gerenderte
+Feldbilder für die andere Ansicht. Eine neue Brettgröße baut den Cache
+neu auf. [W06-Prüfbericht](../../../docs/reports/2026-11-21_W06-svg-brettcache.md)
+
 Die Vorschau gilt für den Programmaufruf. Die App liest die SVG-Dateien vor Ort und lässt die Masterdateien unverändert. Der Standardstart bleibt bei der bisherigen Brettdarstellung.
 
 Komplexe Muster und Ebenen können in der editierbaren Masterdatei bleiben. Der Vorschau-Export unterstützt grundlegende Vektorformen, Gruppen, Transformationen und lokale Farbverläufe. Schrift, eingebettete Bilder, externe Quellen, Filter und eigenständige Stylesheets benötigen für diese Vorschau einen entsprechend aufbereiteten Export. `--headless-check --board-design <Pfad>` prüft das Format, ohne ein Fenster zu öffnen.

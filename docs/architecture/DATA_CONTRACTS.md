@@ -75,15 +75,25 @@ unterschiedliche gelöste IDs. SQLite speichert Versuche mit `pack_id`,
 und optional `duration_ms`. Eine Korrektur der Paketherkunft mit denselben
 Paket- und Aufgabenkennungen lässt diesen Bezug bestehen.
 
+Der Puzzle-Lab-Import legt die geprüften Originalbytes des Manifests
+und der JSONL-Datei atomar unter `puzzle_packs/<pack_id>` in den
+Nutzerdaten ab. Die reservierte ID `demo` gehört zur mitgelieferten
+Demo. Paketordner sind Katalogdaten. Der veränderliche Trainingsstand
+bleibt in SQLite. Die Paketprüfung nutzt dieselben Abbruchregeln wie
+eine Trainingseinheit, einschließlich der Anwendung des Aufbauzugs.
+[Lokale Rätselpakete](../../data/puzzle_packs/README.md#in-der-app-verwenden)
+
 ## Einstellungen
 
 Die aktuelle Settings-Datei enthält `schema_version`, `locale`, `theme_id`,
 `piece_set_id`, `board_orientation`, `engine_path`, `bot_preset_id`,
 `play_mode` und `last_pack_id`. `locale=null` folgt dem System mit dem
-Fallback aus `i18n/catalog.py`. `theme_id`, `piece_set_id`,
-`board_orientation` und `last_pack_id` sind Felder des Formats. Der
-Brett- und Figurenwechsel wird im aktuellen CLI-Aufruf gewählt. Der
-Datenpfad folgt der Plattform oder `CHESS_AND_CHAINS_DATA_DIR`.
+Fallback aus `i18n/catalog.py`. `last_pack_id` enthält die letzte
+Rätselpaketwahl und wird beim Start wieder geladen. Fehlt das Paket oder
+ist es ungültig, zeigt die App die Demo und meldet den Grund.
+`theme_id`, `piece_set_id` und `board_orientation` sind Felder des
+Formats. Der Brett- und Figurenwechsel wird im aktuellen CLI-Aufruf
+gewählt. Der Datenpfad folgt der Plattform oder `CHESS_AND_CHAINS_DATA_DIR`.
 
 **Implementierungsvorschlag N02 (ADR-004 weiterhin PROPOSED)**. SQLite
 `PRAGMA user_version` = 3 (`games`, `puzzle_attempts`, View

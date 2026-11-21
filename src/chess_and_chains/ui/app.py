@@ -13,6 +13,7 @@ from __future__ import annotations
 import sqlite3
 import threading
 import tkinter as tk
+from functools import partial
 from queue import Empty, SimpleQueue
 from weakref import proxy
 from dataclasses import replace
@@ -27,8 +28,8 @@ from ..engines.presets import BotPreset, load_presets
 from ..engines.uci import UCIEngineError
 from ..game import BotStatus, GameController, GameSetup, GameView, PlayMode
 from ..i18n import Translator
-from ..puzzles import PuzzlePack, PuzzleSession, Verdict, load_demo_pack
-from ..storage import Database, DataLayout, Settings, StorageError, load_settings, save_settings
+from ..puzzles import DEMO_PACK_ID, PackError, PackLibrary, PuzzlePack, PuzzleSession, Verdict, load_demo_pack
+from ..storage import Database, DataLayout, Settings, SettingsError, StorageError, load_settings, save_settings
 from .atlas import PuzzleAtlas
 from .board import BoardCanvas, Orientation
 from .board_artwork import BoardArtwork, BoardArtworkError, BoardDesign
@@ -152,6 +153,9 @@ class ChessApp:
         self._unsubscribe_view = self.controller.subscribe(self._on_view)
         self.orientation: Orientation = "white"
         self.active_panel = "play"
+        self._pack_library = PackLibrary(data_layout.packs) if data_layout is not None else None
+        self._pack_results: SimpleQueue[PuzzlePack | str] = SimpleQueue()
+        self._pack_loading = False
         self.pack = puzzle_pack or load_demo_pack()
         self._puzzle_selection = self.pack.puzzles
         self._puzzle_themes = sorted({theme for puzzle in self.pack.puzzles for theme in puzzle.themes})
@@ -172,6 +176,8 @@ class ChessApp:
         self.puzzle_meta_text = tk.StringVar(root)
         self.puzzle_feedback_text = tk.StringVar(root)
         self.puzzle_progress_text = tk.StringVar(root)
+        self.puzzle_pack_text = tk.StringVar(root)
+        self.puzzle_pack_feedback = tk.StringVar(root)
         self.mode_var = tk.StringVar(root, value=self.settings.play_mode)
         preset_ids = [p.id for p in self.presets]
         initial_preset = self.settings.bot_preset_id if self.settings.bot_preset_id in preset_ids else preset_ids[2]
@@ -186,6 +192,9 @@ class ChessApp:
             database_warning = self.t("library.recovered", file=self.db.recovered_from.name)
         startup_messages = (database_warning, self.settings_warning)
         self.interaction_text.set("\n".join(message for message in startup_messages if message))
+        saved_pack = self.settings.last_pack_id
+        if puzzle_pack is None and self._pack_library is not None and saved_pack not in (None, DEMO_PACK_ID):
+            self._start_pack_task(partial(self._pack_library.load, saved_pack))
 
     # ----- compatibility with W06 API ---------------------------------
     @property
@@ -456,10 +465,18 @@ class ChessApp:
         t = self.t
         self.puzzle_viewport, canvas, self.puzzle_panel = self._scrollable_panel()
         panel = self.puzzle_panel
-        self._label(panel, var=self.puzzle_title_text, role="body", bold=True).grid(row=0, column=0, sticky="ew")
-        self._label(panel, var=self.puzzle_meta_text, role="caption", muted=True).grid(row=1, column=0, sticky="ew", pady=(2, 8))
-        if self.pack.manifest.demo:
-            self._label(panel, text=t("puzzle.demo_notice"), role="caption", muted=True).grid(row=2, column=0, sticky="ew", pady=(0, 8))
+        pack_section = tk.Frame(panel, background=ACETATE)
+        pack_section.grid_columnconfigure(0, weight=1)
+        self.puzzle_pack_button = self._button(pack_section, t("puzzle.packs"), self._open_puzzle_packs)
+        if self._pack_library is not None:
+            pack_section.grid(row=0, column=0, sticky="ew", pady=(0, 8))
+            self.puzzle_pack_button.grid(row=0, column=0, sticky="ew")
+        self.puzzle_pack_feedback_label = self._label(pack_section, var=self.puzzle_pack_feedback, role="caption")
+        self.puzzle_pack_feedback_label.grid(row=1, column=0, sticky="ew", pady=(4, 0))
+        self.puzzle_pack_feedback_label.grid_remove()
+        self.puzzle_pack_text.set(self._pack_description())
+        self._label(panel, var=self.puzzle_title_text, role="body", bold=True).grid(row=1, column=0, sticky="ew")
+        self._label(panel, var=self.puzzle_meta_text, role="caption", muted=True).grid(row=2, column=0, sticky="ew", pady=(2, 8))
         self.puzzle_feedback_label = self._label(panel, var=self.puzzle_feedback_text, role="body")
         self.puzzle_feedback_label.grid(row=3, column=0, sticky="ew", pady=(4, 12))
         self.hint_button = self._button(panel, t("button.hint"), self._puzzle_hint)
@@ -498,11 +515,14 @@ class ChessApp:
             self._label(panel, var=self.puzzle_progress_text, role="caption", muted=True).grid(
                 row=9, column=0, sticky="ew", pady=(6, 0),
             )
-        controls = (self.hint_button, self.solution_button, self.next_puzzle_button,
-                    self.puzzle_theme_filter, self.puzzle_rating_filter)
+        self._label(panel, var=self.puzzle_pack_text, role="caption", muted=True).grid(
+            row=10, column=0, sticky="ew", pady=(8, 0),
+        )
+        buttons = (self.puzzle_pack_button, self.hint_button, self.solution_button, self.next_puzzle_button)
+        controls = (*buttons, self.puzzle_theme_filter, self.puzzle_rating_filter)
 
         def resize_buttons(width: int) -> None:
-            for button in controls[:3]:
+            for button in buttons:
                 button.configure(wraplength=max(1, width - 32), justify="left")
 
         self._bind_panel_scroll(canvas, panel, controls, resize_buttons)
@@ -687,6 +707,7 @@ class ChessApp:
         confirm: str,
         *,
         empty: str = "",
+        initial_index: int = 0,
         actions: Sequence[tuple[str, Callable[[int | None], None], bool]] = (),
     ) -> int | None:
         previous_focus = self.root.focus_lastfor()
@@ -698,7 +719,7 @@ class ChessApp:
         selection = ttk.Combobox(content, values=labels, state="readonly" if labels else "disabled", width=46)
         selection.grid(row=0, column=0, columnspan=len(actions) + 2, sticky="ew", pady=(0, 10))
         if labels:
-            selection.current(0)
+            selection.current(initial_index)
         else:
             selection.set(empty)
         chosen = None
@@ -880,6 +901,96 @@ class ChessApp:
         self.interaction_text.set(self.t("pgn.copied"))
 
     # ----- puzzles --------------------------------------------------------
+    def _pack_description(self) -> str:
+        manifest = self.pack.manifest
+        if manifest.pack_id == DEMO_PACK_ID:
+            return self.t("puzzle.demo_notice")
+        return self.t("puzzle.pack_info", version=manifest.version, source=manifest.source)
+
+    def _set_pack_feedback(self, message: str) -> None:
+        self.puzzle_pack_feedback.set(message)
+        if message:
+            self.puzzle_pack_feedback_label.grid()
+        else:
+            self.puzzle_pack_feedback_label.grid_remove()
+
+    def _open_puzzle_packs(self) -> None:
+        library = self._pack_library
+        if library is None or self._pack_loading:
+            return
+        try:
+            pack_ids = (DEMO_PACK_ID, *library.ids())
+        except PackError as error:
+            self._set_pack_feedback(self.t("puzzle.pack_error", error=error))
+            return
+        current = self.pack.manifest.pack_id
+        chosen = self._choose_item(
+            self.t("puzzle.packs"),
+            (self.t("puzzle.demo_name"), *pack_ids[1:]),
+            self.t("puzzle.pack_open"),
+            initial_index=pack_ids.index(current) if current in pack_ids else 0,
+            actions=((self.t("puzzle.pack_install"), lambda _index: self._pick_pack_folder(), False),),
+        )
+        if chosen is None or pack_ids[chosen] == current:
+            return
+        if pack_ids[chosen] == DEMO_PACK_ID:
+            self._activate_pack(load_demo_pack())
+        else:
+            self._start_pack_task(partial(library.load, pack_ids[chosen]))
+
+    def _pick_pack_folder(self) -> None:
+        library = self._pack_library
+        if library is None:
+            return
+        folder = filedialog.askdirectory(parent=self.root, title=self.t("puzzle.pack_install"), mustexist=True)
+        if folder:
+            self._start_pack_task(partial(library.install, Path(folder)))
+
+    def _start_pack_task(self, task: Callable[[], PuzzlePack]) -> None:
+        worker = threading.Thread(target=_read_local_pack, args=(task, self._pack_results),
+                                  name="puzzle-pack", daemon=True)
+        try:
+            worker.start()
+        except RuntimeError as error:
+            self._set_pack_feedback(self.t("puzzle.pack_error", error=error))
+            return
+        self._pack_loading = True
+        self.puzzle_pack_button.configure(state=tk.DISABLED)
+        self._set_pack_feedback(self.t("puzzle.pack_loading"))
+
+    def _poll_pack_task(self) -> None:
+        try:
+            result = self._pack_results.get_nowait()
+        except Empty:
+            return
+        self._pack_loading = False
+        self.puzzle_pack_button.configure(state=tk.NORMAL)
+        if isinstance(result, str):
+            self._set_pack_feedback(self.t("puzzle.pack_error", error=result))
+        else:
+            self._activate_pack(result)
+
+    def _activate_pack(self, pack: PuzzlePack) -> None:
+        self.pack = pack
+        self._puzzle_selection = pack.puzzles
+        self._puzzle_themes = sorted({theme for puzzle in pack.puzzles for theme in puzzle.themes})
+        labels = [self.t.puzzle_theme_label(theme) for theme in self._puzzle_themes]
+        self.puzzle_theme_filter.configure(values=(self.t("puzzle.all_themes"), *labels))
+        self.puzzle_theme_filter.current(0)
+        self.puzzle_rating_filter.current(0)
+        self.puzzle = None
+        self.puzzle_index = 0
+        self.puzzle_pack_text.set(self._pack_description())
+        self._set_pack_feedback("")
+        self._update_puzzle_progress()
+        if self.active_panel == "puzzles":
+            self._start_puzzle(0)
+        if self.settings.last_pack_id != pack.manifest.pack_id:
+            try:
+                self._store_settings(last_pack_id=pack.manifest.pack_id)
+            except (OSError, SettingsError):
+                self._set_pack_feedback(self.t("puzzle.pack_preference_error"))
+
     def _apply_puzzle_filters(self, _event: tk.Event | None = None) -> None:
         theme_choice = self.puzzle_theme_filter.current()
         theme = self._puzzle_themes[theme_choice - 1] if theme_choice > 0 else None
@@ -998,6 +1109,8 @@ class ChessApp:
         if self._closed:
             return
         self.controller.poll()
+        if self._pack_loading:
+            self._poll_pack_task()
         self._poll_job = self.root.after(POLL_MS, self._poll)
 
     def _refresh(self) -> None:
@@ -1143,6 +1256,13 @@ class ChessApp:
             self.root.destroy()
         except tk.TclError:
             pass
+
+
+def _read_local_pack(task: Callable[[], PuzzlePack], results: SimpleQueue[PuzzlePack | str]) -> None:
+    try:
+        results.put(task())
+    except (PackError, OSError) as error:
+        results.put(str(error))
 
 
 def _probe_connection(config: EngineConfig, results: SimpleQueue[tuple[str, int] | str]) -> None:

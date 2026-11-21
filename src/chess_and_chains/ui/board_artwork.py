@@ -115,31 +115,53 @@ def _svg_bytes(root: ET.Element) -> bytes:
 
 
 class BoardArtwork:
-    """Cache the last rendered board background independently of game state."""
+    """Cache both board backgrounds at the current size, independent of game state."""
 
     def __init__(self, design: BoardDesign) -> None:
         self._design = design
-        self._image: tk.PhotoImage | None = None
-        self._key: tuple[int, bool] | None = None
+        self._images: dict[bool, tk.PhotoImage] = {}
+        self._key: tuple[object, int] | None = None
 
     def image(self, master: tk.Misc, tile_size: int, *, flipped: bool) -> tk.PhotoImage:
-        key = tile_size, flipped
-        if self._image is not None and self._key == key:
-            return self._image
+        key = master.tk, tile_size
+        if self._key != key:
+            self._images.clear()
+            self._key = key
+        cached = self._images.get(flipped)
+        if cached is not None:
+            return cached
         size = tile_size * 8
         if self._design.full is not None:
             image = self._photo(master, self._design.full, size, flipped=flipped)
         else:
             image = tk.PhotoImage(master=master, width=size, height=size)
-            tiles = reversed(self._design.tiles) if flipped else self._design.tiles
-            decoded: dict[bytes, tk.PhotoImage] = {}
-            for position, source in enumerate(tiles):
-                if source not in decoded:
-                    decoded[source] = self._photo(master, source, tile_size)
-                row, column = divmod(position, 8)
-                master.tk.call(image, "copy", decoded[source], "-to", column * tile_size, row * tile_size)
-        self._image, self._key = image, key
+            other = self._images.get(not flipped)
+            if other is None:
+                self._render_tiles(master, image, tile_size, flipped=flipped)
+            else:
+                self._copy_reversed_tiles(master, image, other, tile_size)
+        self._images[flipped] = image
         return image
+
+    def _render_tiles(self, master: tk.Misc, image: tk.PhotoImage, tile_size: int, *, flipped: bool) -> None:
+        tiles = reversed(self._design.tiles) if flipped else self._design.tiles
+        decoded: dict[bytes, tk.PhotoImage] = {}
+        for position, source in enumerate(tiles):
+            if source not in decoded:
+                decoded[source] = self._photo(master, source, tile_size)
+            row, column = divmod(position, 8)
+            master.tk.call(image, "copy", decoded[source], "-to", column * tile_size, row * tile_size)
+
+    @staticmethod
+    def _copy_reversed_tiles(master: tk.Misc, target: tk.PhotoImage, source: tk.PhotoImage, tile_size: int) -> None:
+        for position in range(64):
+            row, column = divmod(position, 8)
+            source_x = (7 - column) * tile_size
+            source_y = (7 - row) * tile_size
+            master.tk.call(
+                target, "copy", source, "-from", source_x, source_y, source_x + tile_size, source_y + tile_size,
+                "-to", column * tile_size, row * tile_size, "-compositingrule", "set",
+            )
 
     @staticmethod
     def _photo(master: tk.Misc, content: bytes, size: int, *, flipped: bool = False) -> tk.PhotoImage:

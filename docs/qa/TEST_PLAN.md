@@ -1,12 +1,13 @@
 # QA-Matrix – Foundation / Produkt
 
-Stand **V.0.0.1**. Der Merge von PR #11 auf `main` bestand die
+Stand **V.0.0.1**. Der Merge von PR #12 auf `main` bestand die
 Plattformmatrix. Der Entwicklungsabgleich belegt die Prüfung der
 Folgecommits, das installierte Wheel und den Vergleich mit OneDrive.
 Die native Windows-Probe für PGN-Dateidialoge, Backup/Restore und
 Brettfokus ist separat dokumentiert.
 [Entwicklungsabgleich](../reports/2026-11-21_W11-entwicklungsabgleich.md) ·
-[W10-Dialogtastatur](../reports/2026-11-21_W10-dialogtastatur.md)
+[W10-Dialogtastatur](../reports/2026-11-21_W10-dialogtastatur.md) ·
+[W06-SVG-Brettvorschau](../reports/2026-11-21_W06-svg-brettcache.md)
 
 | Bereich | Testmodul | Umfang des automatisierten Nachweises |
 | --- | --- | --- |
@@ -14,7 +15,7 @@ Brettfokus ist separat dokumentiert.
 | Chess Core | `test_chess_core`, `test_chess_golden` | Perft (Start d4, CPW 2–6), Spiegel-Symmetrie, SAN, PGN-Fehlerfälle, Roundtrips, deklarierte Remisansprüche, Aufgabe gegen blanken König, Matt mit zwei Springern, Wiederholungszähler nach Undo/Redo und Abzweigung, Performance-Budget. Tote Stellungen in kurzen Zwangsfolgen zum Patt oder Materialremis mit Matt und Zugwahl als Gegenproben. [W05-Nachweis](../reports/2026-11-21_W05-mehrzuegige-tote-stellungen.md) |
 | UCI | `test_uci_engine` | Nur Mock-Engine; echte Engine NICHT getestet |
 | Bot/Controller | `test_game_controller`, `test_bot_presets` | Vertical Slice, Crash, Timeout, verworfene Suchaufträge, UCI-Partiewechsel, Undo, Shutdown mit Mock-Engine |
-| Puzzle | `test_puzzles`, `test_app_integration` | Rating ≥ 1000, Setup-Zug-Regression, Duplikate, Importgrenzen, Seed-Auswahl, Demo-Herkunft, Packs und Session. Themen-/Ratingfilter, DE/EN-Themenanzeige und gespeicherter Fortschritt mit projekteigenen Fixtures. [W08-Prüfnachweis](../reports/2026-11-21_W08-puzzle-seed.md) |
+| Puzzle | `test_puzzles`, `test_app_integration` | Rating ≥ 1000, Setup-Zug-Regression, Importgrenzen, Seed-Auswahl und Demo-Herkunft. Lokale Paketinstallation mit Prüfung von Zugfolgen, parallelen Importen, Fortschrittszuordnung und Neustart. [W08/W09-Prüfnachweis](../reports/2026-11-21_W08-W09-lokale-raetselpakete.md) |
 | Storage | `test_storage` | Migration v1/v2→v3, gespeicherte Partieenden, PGN-Dateiaustausch, Importgrenzen und atomare Einstellungen. Rücksicherung prüft widersprüchliche Partien vor dem Austausch. Simulierte Schreibfehler und abgebrochener SQLite-Transfer erhalten den aktiven Stand. [W09-Prüfnachweis](../reports/2026-11-21_W09-sichere-wiederherstellung.md) |
 | Windows-Dateiaustausch | Native Dialogprobe | PGN importiert und exportiert, Züge und Event-Tag erneut geprüft, SQLite-Sicherung in ein zweites Testprofil wiederhergestellt. |
 | UI | `test_board_ui`, `test_app_integration` | Brett, Umwandlung, Tastaturfokus, Partie/Rätsel, V.02 und Draufsicht, PNG-Fallback sowie UCI-Dialog. Nativ auf Windows/macOS und unter Xvfb auf Linux, jeweils Python 3.11 und 3.14 |

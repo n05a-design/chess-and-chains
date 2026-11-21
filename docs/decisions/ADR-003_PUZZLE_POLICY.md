@@ -12,4 +12,6 @@ Der [Offline-Builder](../../data/puzzle_packs/README.md) implementiert die
 optionalen Qualitätsgrenzen und eine reproduzierbare Auswahl mit Seed.
 Für ein Produktpaket stehen der freigegebene Realdatenimport, ein
 Datenprofil, Grenzwerte, die Beurteilung der Stichprobe und Q-008/Q-009 aus.
-[W08-Prüfnachweis](../reports/2026-11-21_W08-puzzle-seed.md)
+Fertig erzeugte Pakete können im Puzzle Lab lokal geprüft, installiert
+und wieder geöffnet werden.
+[W08/W09-Prüfnachweis](../reports/2026-11-21_W08-W09-lokale-raetselpakete.md)

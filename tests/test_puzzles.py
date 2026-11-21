@@ -9,6 +9,8 @@ import json
 import sys
 import tempfile
 import unittest
+from dataclasses import replace
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,6 +20,7 @@ from chess_and_chains.chess import Color, Move, parse_fen, to_fen  # noqa: E402
 from chess_and_chains.puzzles import (  # noqa: E402
     ImportReport,
     PackError,
+    PackLibrary,
     PuzzleImportError,
     PuzzleSession,
     ValidationStatus,
@@ -361,6 +364,106 @@ class PackTests(unittest.TestCase):
                 write_pack(Path(tmp), [low], pack_id="low", version="1", source="s", license_note="l")
             with self.assertRaises(PackError):
                 read_pack(Path(tmp) / "missing")
+
+    def test_local_library_installs_verified_bytes_and_does_not_replace_existing_pack(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            library = PackLibrary(root / "library")
+            source = root / "source"
+            first = load_demo_pack().puzzles[:1]
+            self.assertEqual(library.ids(), ())
+            manifest = write_pack(source, first, pack_id="local-study", version="1",
+                                  source="Project positions", license_note="MPL-2.0")
+            self.assertEqual(library.install(source).manifest, manifest)
+            self.assertEqual(library.ids(), ("local-study",))
+            self.assertEqual(library.load("local-study").puzzles, first)
+            target = library.directory / "local-study"
+            for name in ("manifest.json", "puzzles.jsonl"):
+                self.assertEqual((target / name).read_bytes(), (source / name).read_bytes())
+            write_pack(source, first, pack_id="local-study", version="2",
+                       source="Project positions", license_note="MPL-2.0")
+            with self.assertRaisesRegex(PackError, "already installed"):
+                library.install(source)
+            self.assertEqual(library.load("local-study").manifest.version, "1")
+            self.assertEqual(tuple(library.directory.iterdir()), (target,))
+
+    def test_local_library_rejects_reserved_id_empty_pack_and_unplayable_history(self):
+        puzzle = load_demo_pack().puzzles[0]
+        already_drawn = replace(puzzle, fen=puzzle.fen.replace(" 0 1", " 150 1"))
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            library = PackLibrary(root / "library")
+            source = root / "source"
+            for pack_id, puzzles, error in (
+                ("demo", [puzzle], "reserved"),
+                ("empty-pack", [], "at least one"),
+                ("drawn-pack", [already_drawn], "already ended"),
+            ):
+                with self.subTest(pack_id=pack_id):
+                    write_pack(source, puzzles, pack_id=pack_id, version="1", source="fixture", license_note="test")
+                    with self.assertRaisesRegex(PackError, error):
+                        library.install(source)
+            with self.assertRaisesRegex(PackError, "Invalid or reserved"):
+                library.load("../source")
+            self.assertEqual(library.ids(), ())
+
+    def test_local_library_accepts_an_alias_in_the_data_root(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "source"
+            puzzles = load_demo_pack().puzzles[:1]
+            write_pack(source, puzzles, pack_id="local-study", version="1",
+                       source="Project positions", license_note="MPL-2.0")
+            library = PackLibrary(root.parent / root.name / ".." / root.name / "library")
+
+            installed = library.install(source)
+            self.assertEqual(library.ids(), ("local-study",))
+            self.assertEqual(library.load("local-study"), installed)
+
+    def test_local_library_rejects_redirected_library_and_pack_folders(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "outside" / "local-study"
+            puzzles = load_demo_pack().puzzles[:1]
+            write_pack(source, puzzles, pack_id="local-study", version="1",
+                       source="Project positions", license_note="MPL-2.0")
+            library = root / "library"
+            library.mkdir()
+            try:
+                (root / "redirected-library").symlink_to(source.parent, target_is_directory=True)
+                (library / "local-study").symlink_to(source, target_is_directory=True)
+            except OSError as error:
+                self.skipTest(f"Directory symlinks unavailable: {error}")
+
+            for path in (library, root / "redirected-library"):
+                with self.subTest(path=path):
+                    packs = PackLibrary(path)
+                    with self.assertRaisesRegex(PackError, "must not be redirected"):
+                        packs.load("local-study")
+                    with self.assertRaisesRegex(PackError, "must not be redirected"):
+                        packs.install(source)
+
+    def test_local_library_publishes_only_one_of_two_concurrent_imports(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            library = PackLibrary(root / "library")
+            puzzle = replace(load_demo_pack().puzzles[0], source="Project\u2028study")
+            for version in ("1", "2"):
+                write_pack(root / version, [puzzle], pack_id="local-study", version=version,
+                           source=puzzle.source, license_note="MPL-2.0")
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                futures = [executor.submit(library.install, root / version) for version in ("1", "2")]
+                results, errors = [], []
+                for future in futures:
+                    try:
+                        results.append(future.result())
+                    except PackError as error:
+                        errors.append(error)
+            self.assertEqual(len(results), 1)
+            self.assertEqual(len(errors), 1)
+            self.assertEqual(library.load("local-study"), results[0])
+            self.assertEqual(results[0].puzzles[0].source, puzzle.source)
+            self.assertEqual(tuple(library.directory.iterdir()), (library.directory / "local-study",))
 
 
 if __name__ == "__main__":
