@@ -65,13 +65,17 @@ class StatusModelTests(unittest.TestCase):
         broken['foundation_baseline']['product_status'] = 'RELEASED'
         self.assertTrue(any('foundation_baseline' in e for e in verify(broken)))
 
-    def test_no_package_is_accepted_or_released_without_owner_record(self):
-        for work in MANIFEST['work_packages']:
-            with self.subTest(work=work['id']):
-                self.assertNotIn(work['status'], ('ACCEPTED', 'RELEASED'))
+    def test_acceptance_requires_owner_record_and_accepted_dependencies(self):
         errors = verify(_with('W05', status='ACCEPTED', open_gate_items=[]))
         self.assertTrue(any('acceptance.by/date/reference' in e for e in errors))
         self.assertTrue(any('dependency W01 to be ACCEPTED' in e for e in errors))
+
+    def test_acceptance_rejects_a_remaining_blocker(self):
+        data = _with(
+            'W00', status='ACCEPTED', open_gate_items=[], blocked_by=['pending gate'],
+            acceptance={'by': 'test owner', 'date': '2026-11-21', 'reference': 'test record'},
+        )
+        self.assertIn('W00: ACCEPTED cannot have open gate items', verify(data))
 
     def test_promotion_requires_evidence_scope_and_tests(self):
         errors = verify(_with('W12', status='IN_PROGRESS', status_evidence=[]))

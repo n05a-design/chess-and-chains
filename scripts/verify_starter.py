@@ -133,7 +133,7 @@ def _check_work(work: dict, by_id: dict[str, dict], errors: list[str], check_pat
         acceptance = work.get('acceptance') or {}
         if not all(acceptance.get(k) for k in ('by', 'date', 'reference')):
             errors.append(f'{wid}: {status} requires acceptance.by/date/reference from the owner')
-        if work.get('open_gate_items'):
+        if work.get('open_gate_items') or work.get('blocked_by'):
             errors.append(f'{wid}: {status} cannot have open gate items')
     if status == 'RELEASED' and not (work.get('release') or {}).get('tag'):
         errors.append(f'{wid}: RELEASED requires release.tag')
