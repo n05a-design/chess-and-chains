@@ -137,6 +137,17 @@ CATALOGS: dict[str, dict[str, str]] = {
         "puzzle.filter_theme": "Theme",
         "puzzle.filter_rating": "Rating",
         "puzzle.all_themes": "All themes",
+        "puzzle.theme.mate": "Mate",
+        "puzzle.theme.mateIn1": "Mate in 1",
+        "puzzle.theme.mateIn2": "Mate in 2",
+        "puzzle.theme.backRankMate": "Back-rank mate",
+        "puzzle.theme.smotheredMate": "Smothered mate",
+        "puzzle.theme.oneMove": "One move",
+        "puzzle.theme.short": "Short puzzle",
+        "puzzle.theme.opening": "Opening",
+        "puzzle.theme.middlegame": "Middlegame",
+        "puzzle.theme.sacrifice": "Sacrifice",
+        "puzzle.theme_custom": "Tag: {theme}",
         "puzzle.all_ratings": "All ratings",
         "puzzle.rating_from": "{rating} and higher",
         "puzzle.no_matches": "No puzzles match the filters.",
@@ -270,6 +281,17 @@ CATALOGS: dict[str, dict[str, str]] = {
         "puzzle.filter_theme": "Thema",
         "puzzle.filter_rating": "Wertung",
         "puzzle.all_themes": "Alle Themen",
+        "puzzle.theme.mate": "Matt",
+        "puzzle.theme.mateIn1": "Matt in 1",
+        "puzzle.theme.mateIn2": "Matt in 2",
+        "puzzle.theme.backRankMate": "Grundreihenmatt",
+        "puzzle.theme.smotheredMate": "Ersticktes Matt",
+        "puzzle.theme.oneMove": "Ein Zug",
+        "puzzle.theme.short": "Kurze Aufgabe",
+        "puzzle.theme.opening": "Eröffnung",
+        "puzzle.theme.middlegame": "Mittelspiel",
+        "puzzle.theme.sacrifice": "Opfer",
+        "puzzle.theme_custom": "Kennung: {theme}",
         "puzzle.all_ratings": "Alle Wertungen",
         "puzzle.rating_from": "Ab {rating}",
         "puzzle.no_matches": "Keine passenden Rätsel.",
@@ -315,3 +337,9 @@ class Translator:
         if text is None:
             raise KeyError(f"Missing translation key {key!r}")
         return text.format(**values) if values else text
+
+    def puzzle_theme_label(self, theme: str) -> str:
+        key = f"puzzle.theme.{theme}"
+        if key in CATALOGS[DEFAULT_LOCALE]:
+            return self(key)
+        return self("puzzle.theme_custom", theme=theme)

@@ -8,6 +8,7 @@ import tempfile
 import time
 import tkinter as tk
 import unittest
+from contextlib import ExitStack
 from pathlib import Path
 from tkinter import ttk
 from unittest.mock import patch
@@ -337,18 +338,21 @@ class PuzzleUiTests(AppTestCase):
             app.close()
 
     def test_puzzle_filters_show_stored_progress_and_handle_empty_matches(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with ExitStack() as stack:
+            tmp = stack.enter_context(tempfile.TemporaryDirectory())
             app = self.make_app(data_layout=DataLayout(Path(tmp) / "data"))
+            stack.callback(app.close)
             self.root.deiconify()
             app.db.record_puzzle_attempt("demo", "ccSC01", solved=True, mistakes=0, hints_used=0, duration_ms=500)
             app.tab_rail.set_active("puzzles")
             self.root.update()
             self.assertEqual(app.puzzle_progress_text.get(), "Solved 1 of 5 in this selection.")
 
-            app.puzzle_theme_filter.current(app.puzzle_theme_filter.cget("values").index("opening"))
+            app.puzzle_theme_filter.current(app.puzzle_theme_filter.cget("values").index("Opening"))
             app.puzzle_theme_filter.event_generate("<<ComboboxSelected>>", when="tail")
             self.root.update()
             self.assertEqual(app.puzzle.puzzle.puzzle_id, "ccSC01")
+            self.assertIn("Mate, Mate in 1, Opening", app.puzzle_meta_text.get())
             self.assertEqual(app.puzzle_progress_text.get(), "Solved 1 of 2 in this selection.")
             app._next_puzzle()
             app._play_move(app.puzzle.expected_move)
@@ -375,7 +379,23 @@ class PuzzleUiTests(AppTestCase):
             self.root.update()
             self.assertEqual(app.puzzle.puzzle.puzzle_id, "ccSM02")
             self.assertEqual(app.puzzle_progress_text.get(), "Solved 0 of 1 in this selection.")
-            app.close()
+
+    def test_german_puzzle_themes_show_localized_labels_and_filter_by_id(self):
+        app = self.make_app(locale="de")
+        self.root.deiconify()
+        app.tab_rail.set_active("puzzles")
+        self.root.update()
+        self.assertIn("Matt, Matt in 1, Grundreihenmatt", app.puzzle_meta_text.get())
+
+        choices = app.puzzle_theme_filter.cget("values")
+        app.puzzle_theme_filter.current(choices.index("Ersticktes Matt"))
+        app.puzzle_theme_filter.event_generate("<<ComboboxSelected>>", when="tail")
+        self.root.update()
+
+        self.assertEqual(app.puzzle.puzzle.puzzle_id, "ccSM02")
+        self.assertIn("smotheredMate", app.puzzle.puzzle.themes)
+        self.assertIn("Matt, Matt in 2, Ersticktes Matt", app.puzzle_meta_text.get())
+        self.assertEqual(app.panel_text.get(), "Rätsel 1 von 1")
 
     def test_game_undo_is_ignored_in_puzzle_mode(self):
         app = self.make_app()
