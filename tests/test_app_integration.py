@@ -5,6 +5,7 @@ engine in a subprocess; this is not a test against a real chess engine.
 """
 import sys
 import tempfile
+import threading
 import time
 import tkinter as tk
 import unittest
@@ -22,7 +23,8 @@ from chess_and_chains.chess import Color, DrawClaim, GameStatus, Move, Piece, Pi
 from chess_and_chains.engines.bot import EngineConfig, UCIBot  # noqa: E402
 from chess_and_chains.engines.mock_engine import ENGINE_NAME  # noqa: E402
 from chess_and_chains.game import BotStatus, GameSetup  # noqa: E402
-from chess_and_chains.storage import DataLayout, load_settings  # noqa: E402
+from chess_and_chains.puzzles import load_demo_pack, write_pack  # noqa: E402
+from chess_and_chains.storage import DataLayout, load_settings, update_settings  # noqa: E402
 from chess_and_chains.ui.app import ChessApp, EngineDialog  # noqa: E402
 from chess_and_chains.ui.branding import brand_image  # noqa: E402
 from chess_and_chains.ui.pieces import (  # noqa: E402
@@ -312,6 +314,102 @@ class BotVerticalSliceTests(AppTestCase):
 
 
 class PuzzleUiTests(AppTestCase):
+    def test_local_pack_import_switch_and_restart_keep_progress_separate(self):
+        root = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        layout = DataLayout(root / "data")
+        source = root / "source"
+        puzzle = load_demo_pack().puzzles[0]
+        write_pack(source, [puzzle], pack_id="local-study", version="3", source="Project study", license_note="MPL-2.0")
+        app = self.make_app(data_layout=layout)
+        app.tab_rail.set_active("puzzles")
+        app._play_move(app.puzzle.expected_move)
+        self.assertEqual(app.db.solved_puzzle_ids("demo"), {puzzle.puzzle_id})
+
+        def choose_import(_title, _labels, _confirm, **options):
+            options["actions"][0][1](None)
+
+        with patch.object(app, "_choose_item", side_effect=choose_import), patch(
+            "chess_and_chains.ui.app.filedialog.askdirectory", return_value=str(source),
+        ):
+            app.puzzle_pack_button.invoke()
+        self.assertTrue(app._pack_loading)
+        self.pump_until(lambda: not app._pack_loading)
+        self.assertEqual(app.pack.manifest.pack_id, "local-study")
+        self.assertIn("Project study", app.puzzle_pack_text.get())
+        self.assertEqual(app.puzzle_progress_text.get(), "Solved 0 of 1 in this selection.")
+        self.assertEqual(app.puzzle.puzzle.puzzle_id, puzzle.puzzle_id)
+        app._play_move(app.puzzle.expected_move)
+        self.assertEqual(app.db.solved_puzzle_ids("local-study"), {puzzle.puzzle_id})
+        app.puzzle_theme_filter.current(app.puzzle_theme_filter.cget("values").index("Mate"))
+        app.puzzle_rating_filter.current(1)
+        app._apply_puzzle_filters()
+
+        with patch.object(app, "_choose_item", return_value=0) as chooser:
+            app.puzzle_pack_button.invoke()
+        self.assertEqual(chooser.call_args.args[1], ("Built-in demo", "local-study"))
+        self.assertEqual(chooser.call_args.kwargs["initial_index"], 1)
+        self.assertEqual(app.pack.manifest.pack_id, "demo")
+        self.assertEqual(app.puzzle_theme_filter.current(), 0)
+        self.assertEqual(app.puzzle_rating_filter.current(), 0)
+        self.assertEqual(app.puzzle_progress_text.get(), "Solved 1 of 5 in this selection.")
+        with patch.object(app, "_choose_item", return_value=1):
+            app.puzzle_pack_button.invoke()
+        self.pump_until(lambda: not app._pack_loading)
+        self.assertEqual(load_settings(layout.settings)[0].last_pack_id, "local-study")
+        app.close()
+
+        reopened = self.make_app(data_layout=layout, locale="de")
+        self.pump_until(lambda: not reopened._pack_loading)
+        self.assertEqual(reopened.active_panel, "play")
+        reopened.tab_rail.set_active("puzzles")
+        self.assertEqual(reopened.pack.manifest.pack_id, "local-study")
+        self.assertEqual(reopened.puzzle_progress_text.get(), "1 von 1 Rätseln dieser Auswahl gelöst.")
+
+    def test_invalid_pack_validation_keeps_the_current_session_responsive(self):
+        root = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        app = self.make_app(data_layout=DataLayout(root / "data"), locale="de")
+        app.tab_rail.set_active("puzzles")
+        session = app.puzzle
+        started = threading.Event()
+        release = threading.Event()
+        self.addCleanup(release.set)
+        install = app._pack_library.install
+
+        def slow_install(path):
+            started.set()
+            release.wait(5)
+            return install(path)
+
+        with patch.object(app._pack_library, "install", side_effect=slow_install), patch(
+            "chess_and_chains.ui.app.filedialog.askdirectory", return_value=str(root / "invalid-pack"),
+        ):
+            app._pick_pack_folder()
+            try:
+                self.pump_until(started.is_set)
+                self.assertIn("wird geprüft", app.puzzle_pack_feedback.get())
+                self.assertEqual(app.puzzle_pack_button.cget("state"), tk.DISABLED)
+                app._puzzle_hint()
+                self.assertEqual(session.hints_used, 1)
+            finally:
+                release.set()
+            self.pump_until(lambda: not app._pack_loading)
+        self.assertIn("konnte nicht geöffnet", app.puzzle_pack_feedback.get())
+        self.assertIs(app.puzzle, session)
+        self.assertEqual(app.puzzle_pack_button.cget("state"), tk.NORMAL)
+        self.assertIsNone(app.settings.last_pack_id)
+
+    def test_missing_saved_pack_falls_back_to_demo_without_rewriting_preferences(self):
+        root = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        layout = DataLayout(root / "data")
+        update_settings(layout.settings, last_pack_id="missing-pack")
+        app = self.make_app(data_layout=layout)
+        self.pump_until(lambda: not app._pack_loading)
+        app.tab_rail.set_active("puzzles")
+        self.assertEqual(app.pack.manifest.pack_id, "demo")
+        self.assertIsNotNone(app.puzzle)
+        self.assertIn("Could not open the puzzle pack", app.puzzle_pack_feedback.get())
+        self.assertEqual(load_settings(layout.settings)[0].last_pack_id, "missing-pack")
+
     def test_puzzle_tab_uses_same_board_and_records_progress(self):
         with tempfile.TemporaryDirectory() as tmp:
             app = self.make_app(data_layout=DataLayout(Path(tmp) / "data"))
