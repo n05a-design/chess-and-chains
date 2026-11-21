@@ -9,12 +9,12 @@
 | W00 | TESTED | Struktur-/Statusprüfung; Owner-Abnahme offen |
 | W01–W04 | IN_PROGRESS | Berichte vorhanden; Owner-Fragen offen |
 | W05 | TESTED | Regelkern, Remisansprüche, Remis bei Aufgabe gegen den blanken König, Undo/Redo mit inkrementellen Wiederholungszählern und Perft/Golden-Tests. PGN-Import verarbeitet die Hauptvariante |
-| W06 | IMPLEMENTED | Tk-Brett mit Original-SVG-Figuren unter MPL-2.0 und PNG-Fallback, automatisierte Aktions-, Umwandlungs- und Scroll-/Fokustests. Lokale Tk-9-Vorschau für Gesamtbrett und Feld-SVGs. Konkrete Inhaber-Bretter, manuelle Plattform- und High-DPI-Abnahme offen. [Figurennachweis](../reports/2026-11-20_W06-originalfiguren.md) · [Brettvorschau](../reports/2026-11-20_W06-svg-brettvorschau.md) |
-| W07 | TESTED (Mock) | Adapter + Controller + Presets mit Mock-Engine; echte Engine/ADR-001/Kalibrierung offen |
+| W06 | IMPLEMENTED | Tk-Brett mit Original-SVG-Figuren in Vorder- und Draufsicht unter MPL-2.0 samt PNG-Fallbacks. Vorderansicht V.02 mit optischem Ausgleich und editierbaren Innenschatten. Lokale Tk-9-Vorschau für Gesamtbrett und Feld-SVGs. Konkrete Inhaber-Bretter, manuelle Plattform- und High-DPI-Abnahme offen. [Figuren V.02](../reports/2026-11-21_W06-figurenschatten-v02.md) · [Brettvorschau](../reports/2026-11-20_W06-svg-brettvorschau.md) |
+| W07 | TESTED (Mock) | Adapter, Controller, Presets und asynchroner UCI-Bereitschaftstest mit Mock-Engine. Echte Engine, ADR-001 und Kalibrierung offen. [Bereitschaftstest](../reports/2026-11-21_W07-uci-verbindungstest.md) |
 | W08 | TESTED (Fixtures) | Importer, Packs, Session, Themen-/Ratingfilter und Fortschrittsanzeige; realer Lichess-Import, Q-008/Q-009 offen |
 | W09 | TESTED | Lokale Bibliothek mit PGN-Dateiaustausch und lokalem Partieendgrund, Migration auf Schema 3, Sicherung und Wiederherstellung, Settings. Manuelle Plattformabnahme, Q-012 und ADR-004 offen |
 | W10 | IN_PROGRESS | DE/EN-Kataloge; Accessibility-Abnahmen offen |
-| W11 | IN_PROGRESS | 12 CI-Jobs auf gemergter Basis erfolgreich. Erweiterte native Matrix für lokalen Folgebranch ausstehend |
+| W11 | IN_PROGRESS | PR #6 vor Merge mit 14/14 Jobs grün. Anschließender `main`-Lauf mit 12/14 durch zwei native Tk-Abstürze auf macOS. Windows-Gegenlauf zur lokalen Tk-Lifecycle-Korrektur dokumentiert. [CI-Nachweis](../reports/2026-11-21_W11-ci-nach-pr6.md) |
 | W12 | NOT_STARTED | – |
 
 | ID | Workstream | Prompt | Prerequisite | Verbindliches Gate | Zielphase |

@@ -10,4 +10,14 @@ Aktueller Stand der [N02-Nacharbeit](2026-11-20_N02-follow-up.md). Historischer 
 
 [Originalfiguren – lokale Tk-Integration und Prüfnachweis](2026-11-20_W06-originalfiguren.md)
 
+[Figurenraster – gemeinsames Außenmaß je Ansicht](2026-11-21_W06-figurenraster.md)
+
+[Figurenschatten – überarbeitete Inhaberfassung und Rendering-Nachweis](2026-11-21_W06-figurenschatten.md)
+
+[Figurenschatten V.02 – optischer Ausgleich und stärkerer Kontrast](2026-11-21_W06-figurenschatten-v02.md)
+
+[CI nach PR #6 – native Tk-Abstürze und lokaler Gegenlauf](2026-11-21_W11-ci-nach-pr6.md)
+
+[Lokaler UCI-Verbindungstest und Bereitschaft](2026-11-21_W07-uci-verbindungstest.md)
+
 [SVG-Brettvorschau – lokale Formate und Prüfungen](2026-11-20_W06-svg-brettvorschau.md)

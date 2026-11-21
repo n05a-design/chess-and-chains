@@ -138,10 +138,13 @@
       "gate": "Original-SVG-Rendering, Boardinteraktion, DPI/Keyboard, native UI-Gates",
       "phase": "F1",
       "status": "IMPLEMENTED",
-      "scope": "Tk board with click/drag/keyboard input, original SVG piece exports, offline piece PNG fallback and an opt-in Tk 9 preview for local SVG boards",
+      "scope": "Tk board with click/drag/keyboard input, front and top original SVG piece sets with consistent dimensions per view and offline PNG fallbacks, and an opt-in Tk 9 preview for local SVG boards",
       "status_evidence": [
         "docs/reports/2026-11-20_W06_board-ui.md",
         "docs/reports/2026-11-20_W06-originalfiguren.md",
+        "docs/reports/2026-11-21_W06-figurenraster.md",
+        "docs/reports/2026-11-21_W06-figurenschatten.md",
+        "docs/reports/2026-11-21_W06-figurenschatten-v02.md",
         "docs/reports/2026-11-20_W06-svg-brettvorschau.md",
         "src/chess_and_chains/ui/board.py",
         "tests/test_board_ui.py",
@@ -164,9 +167,10 @@
       "gate": "UCI-Lifecycle, Fehlerbehandlung, dokumentierte Skills, physischer Offline-Test",
       "phase": "F2",
       "status": "TESTED",
-      "scope": "UCI adapter + GameController + async worker + bot presets, tested with the project-owned mock engine; no real engine tested",
+      "scope": "UCI adapter, GameController, async worker, bot presets and the local engine readiness probe, tested with the project-owned mock engine; no real engine tested",
       "status_evidence": [
         "docs/reports/2026-11-20_W07_uci.md",
+        "docs/reports/2026-11-21_W07-uci-verbindungstest.md",
         "docs/reports/2026-11-20_N02_functional-core.md",
         "src/chess_and_chains/game/controller.py",
         "src/chess_and_chains/engines/presets.py",
@@ -252,6 +256,7 @@
       "status": "IN_PROGRESS",
       "status_evidence": [
         ".github/workflows/checks.yml",
+        "docs/reports/2026-11-21_W11-ci-nach-pr6.md",
         "docs/reports/2026-11-20_N02_functional-core.md",
         "docs/reports/2026-11-20_N02-follow-up.md"
       ]

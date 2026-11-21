@@ -13,6 +13,7 @@ from __future__ import annotations
 import sqlite3
 import threading
 import tkinter as tk
+from queue import Empty, SimpleQueue
 from weakref import proxy
 from dataclasses import replace
 from pathlib import Path
@@ -20,9 +21,9 @@ from tkinter import filedialog, messagebox, ttk
 from typing import Callable, Sequence
 
 from ..chess import ChessError, ChessGame, Color, GameStatus, Move, export_pgn, square_name, to_san
-from ..engines.bot import EngineConfig, EngineConfigError, MoveProvider, UCIBot, resolve_engine_config
+from ..engines.bot import EngineConfig, EngineConfigError, MoveProvider, UCIBot, probe_engine, resolve_engine_config
 from ..engines.presets import BotPreset, load_presets
-from ..engines.uci import UCIEngine, UCIEngineError
+from ..engines.uci import UCIEngineError
 from ..game import BotStatus, GameController, GameSetup, GameView, PlayMode
 from ..i18n import Translator
 from ..puzzles import PuzzlePack, PuzzleSession, Verdict, load_demo_pack
@@ -31,6 +32,7 @@ from .atlas import PuzzleAtlas
 from .board import BoardCanvas, Orientation
 from .board_artwork import BoardArtwork, BoardArtworkError, BoardDesign
 from .branding import brand_image
+from .pieces import OwnerSvgPieces, PieceRenderer
 from .theme import (
     ACETATE,
     BRAND_BLUE,
@@ -116,6 +118,7 @@ class ChessApp:
         locale: str | None = None,
         puzzle_pack: PuzzlePack | None = None,
         board_artwork: BoardArtwork | None = None,
+        piece_renderer: PieceRenderer | None = None,
     ) -> None:
         self.root = root
         self._board_artwork = board_artwork
@@ -148,21 +151,21 @@ class ChessApp:
         self._provider_stale = False
         self._game_headers: dict[str, str] = {}
         self._closed = False
-        self.interaction_text = tk.StringVar(value="")
-        self.panel_text = tk.StringVar(value="")
-        self.header_mode_text = tk.StringVar(value="")
-        self.action_state_text = tk.StringVar(value="")
-        self.bot_text = tk.StringVar(value="")
-        self.puzzle_title_text = tk.StringVar(value="")
-        self.puzzle_meta_text = tk.StringVar(value="")
-        self.puzzle_feedback_text = tk.StringVar(value="")
-        self.puzzle_progress_text = tk.StringVar(value="")
-        self.mode_var = tk.StringVar(value=self.settings.play_mode)
+        self.interaction_text = tk.StringVar(root)
+        self.panel_text = tk.StringVar(root)
+        self.header_mode_text = tk.StringVar(root)
+        self.action_state_text = tk.StringVar(root)
+        self.bot_text = tk.StringVar(root)
+        self.puzzle_title_text = tk.StringVar(root)
+        self.puzzle_meta_text = tk.StringVar(root)
+        self.puzzle_feedback_text = tk.StringVar(root)
+        self.puzzle_progress_text = tk.StringVar(root)
+        self.mode_var = tk.StringVar(root, value=self.settings.play_mode)
         preset_ids = [p.id for p in self.presets]
         initial_preset = self.settings.bot_preset_id if self.settings.bot_preset_id in preset_ids else preset_ids[2]
-        self.preset_var = tk.StringVar(value=self._preset_label(initial_preset))
+        self.preset_var = tk.StringVar(root, value=self._preset_label(initial_preset))
         self._wrap_labels: list[tk.Label] = []
-        self._build()
+        self._build(piece_renderer)
         self._bind_shortcuts()
         self.root.protocol("WM_DELETE_WINDOW", self.close)
         self._refresh()
@@ -180,7 +183,7 @@ class ChessApp:
         return int(self.controller.view().can_redo)
 
     # ----- construction ------------------------------------------------
-    def _build(self) -> None:
+    def _build(self, piece_renderer: PieceRenderer | None) -> None:
         t = self.t
         # Child widgets can outlive the window while a worker is winding down.
         app = proxy(self)
@@ -220,7 +223,8 @@ class ChessApp:
                  font=("TkDefaultFont", FONT_SIZES["caption"], "bold"), anchor="w", padx=14, pady=9,
                  ).grid(row=0, column=0, sticky="ew")
         self.board = BoardCanvas(board_sheet, lambda moves: app._on_move_requested(moves),
-                                 lambda detail: app._on_selection_changed(detail), artwork=self._board_artwork)
+                                 lambda detail: app._on_selection_changed(detail),
+                                 artwork=self._board_artwork, renderer=piece_renderer)
         self.board.grid(row=1, column=0, sticky="nsew", padx=12, pady=(0, 10))
         tk.Label(board_sheet, textvariable=self.interaction_text, background=ACETATE, foreground=MUTED_INK,
                  font=("TkDefaultFont", FONT_SIZES["caption"]), anchor="w", padx=14, pady=8,
@@ -1103,6 +1107,13 @@ class ChessApp:
             pass
 
 
+def _probe_connection(config: EngineConfig, results: SimpleQueue[tuple[str, int] | str]) -> None:
+    try:
+        results.put(probe_engine(config))
+    except (UCIEngineError, ValueError) as error:
+        results.put(str(error))
+
+
 class EngineDialog:
     """Configure a locally installed UCI engine; tests run on a worker thread."""
 
@@ -1113,9 +1124,10 @@ class EngineDialog:
         self.window.title(t("engine.title"))
         self.window.transient(app.root)
         self.window.configure(background=ACETATE, padx=16, pady=14)
-        self.path_var = tk.StringVar(value=app.settings.engine_path or "")
-        self.status_var = tk.StringVar(value="" if app.settings.engine_path else t("engine.missing"))
-        self._result: tuple[str, str] | None = None
+        self.path_var = tk.StringVar(self.window, value=app.settings.engine_path or "")
+        self.status_var = tk.StringVar(self.window, value="" if app.settings.engine_path else t("engine.missing"))
+        self._results: SimpleQueue[tuple[str, int] | str] = SimpleQueue()
+        self._probe_job: str | None = None
         tk.Label(self.window, text=t("engine.explain"), background=ACETATE, foreground=INK, wraplength=420,
                  justify="left", font=("TkDefaultFont", FONT_SIZES["body"])).grid(row=0, column=0, columnspan=3, sticky="ew")
         tk.Label(self.window, text=t("engine.path_label"), background=ACETATE, foreground=INK,
@@ -1133,6 +1145,7 @@ class EngineDialog:
         app._button(buttons, t("button.save"), self.save, role="new").grid(row=0, column=2, padx=3)
         app._button(buttons, t("button.cancel"), self.window.destroy).grid(row=0, column=3, padx=3)
         self.window.bind("<Escape>", lambda _e: self.window.destroy())
+        self.window.bind("<Destroy>", self._cancel_probe_poll)
         self.entry.focus_set()
 
     def _browse(self) -> None:
@@ -1149,29 +1162,28 @@ class EngineDialog:
         self.status_var.set(self.app.t("engine.testing"))
         self.test_button.configure(state=tk.DISABLED)
 
-        def work() -> None:
-            try:
-                with UCIEngine(config.command, startup_timeout=5) as engine:
-                    name = config.display_name
-                    self._result = ("ok", f"{name}|{len(engine.options)}")
-            except (UCIEngineError, ValueError) as error:
-                self._result = ("error", str(error))
-
-        threading.Thread(target=work, name="engine-test", daemon=True).start()
-        self.window.after(50, self._check)
+        threading.Thread(target=_probe_connection, args=(config, self._results),
+                         name="engine-test", daemon=True).start()
+        self._probe_job = self.window.after(50, self._check)
 
     def _check(self) -> None:
-        if self._result is None:
-            self.window.after(50, self._check)
+        self._probe_job = None
+        try:
+            result = self._results.get_nowait()
+        except Empty:
+            self._probe_job = self.window.after(50, self._check)
             return
-        kind, payload = self._result
-        self._result = None
         self.test_button.configure(state=tk.NORMAL)
-        if kind == "ok":
-            name, count = payload.split("|")
-            self.status_var.set(self.app.t("engine.test_ok", name=name, count=count))
+        if isinstance(result, str):
+            self.status_var.set(self.app.t("engine.test_failed", error=result))
         else:
-            self.status_var.set(self.app.t("engine.test_failed", error=payload))
+            name, count = result
+            self.status_var.set(self.app.t("engine.test_ok", name=name, count=count))
+
+    def _cancel_probe_poll(self, event: tk.Event) -> None:
+        if event.widget is self.window and self._probe_job is not None:
+            self.window.after_cancel(self._probe_job)
+            self._probe_job = None
 
     def use_mock(self) -> None:
         self.path_var.set("")
@@ -1191,7 +1203,7 @@ class EngineDialog:
         self.window.destroy()
 
 
-def launch(*, board_design: BoardDesign | None = None) -> None:
+def launch(*, board_design: BoardDesign | None = None, top_pieces: bool = False) -> None:
     root = tk.Tk()
     artwork = None
     if board_design is not None:
@@ -1201,5 +1213,6 @@ def launch(*, board_design: BoardDesign | None = None) -> None:
         except tk.TclError as error:
             root.destroy()
             raise BoardArtworkError(f"SVG board preview needs an SVG-capable Tk renderer: {error}") from error
-    ChessApp(root, data_layout=DataLayout.default(), board_artwork=artwork)
+    renderer = OwnerSvgPieces(top_view=True) if top_pieces else None
+    ChessApp(root, data_layout=DataLayout.default(), board_artwork=artwork, piece_renderer=renderer)
     root.mainloop()

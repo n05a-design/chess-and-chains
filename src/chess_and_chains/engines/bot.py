@@ -125,6 +125,13 @@ def resolve_engine_config(
     return EngineConfig.mock(), None
 
 
+def probe_engine(config: EngineConfig, *, timeout: float = 5.0) -> tuple[str, int]:
+    """Verify a local executable answers both UCI handshakes, then close it."""
+    with UCIEngine(config.command, startup_timeout=timeout, command_timeout=timeout) as engine:
+        engine.is_ready()
+        return engine.name or config.display_name, len(engine.options)
+
+
 @dataclass
 class UCIBot:
     """MoveProvider backed by a UCI process. Blocking; call only from a worker."""

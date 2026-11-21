@@ -22,7 +22,7 @@ GitHub ist der Entwicklungsort und beschreibt, wie das fertige Produkt funktioni
 Dokumentierte Projektbasis, ein **GUI-freier Python-Regelkern** (legale Züge, FEN/SAN/PGN, Remisregeln, Undo/Redo; Perft- und Golden-Tests) und ein lokaler Tk-Prototyp mit:
 
 - Partie für zwei Personen und **Bot-Modus** (Bot spielt Weiß oder Schwarz) über einen asynchronen Game-Controller,
-- **Connected System** mit eigener Wortmarke und zwölf Original-SVG-Figuren auf dem Brett,
+- **Connected System** mit eigener Wortmarke und Original-SVG-Figuren in Vorder- und Draufsicht,
 - UCI-Prozessadapter, getestet **nur mit einer projekteigenen Mock-Engine** – diese ist **keine Schach-KI**,
 - sechs datengetriebenen Bot-Stufen (Optionen nur, wenn die Engine sie anbietet; Spielstärke **nicht kalibriert**),
 - **Puzzle Lab** mit Streaming-Importer für das Lichess-CSV-Format, Rating ≥ 1000, Paketen und fünf projekteigenen Demo-Rätseln. Filter für Thema und Rating zeigen im Atlas of Moves den Fortschritt je Auswahl,
@@ -43,7 +43,11 @@ python -m chess_and_chains
 
 Eine bereits lokal installierte UCI-Engine kann zur Entwicklung über `CHESS_AND_CHAINS_ENGINE=/pfad/zur/engine` oder *Engine-Einstellungen…* genutzt werden; die App lädt niemals Engines herunter. Der Standardaufruf öffnet den lokalen Tk-Prototyp; `--headless-check` prüft die Verfügbarkeit ohne Fenster. Für Tk-Unterstützung muss die Python-Installation Tk enthalten. Der Regeldomänenkern hat keine Laufzeitabhängigkeit auf eine Schachbibliothek.
 
+*Engine testen* prüft den UCI-Handshake und wartet auf `readyok`. Bei Erfolg zeigt der Dialog den Namen und die Zahl der gemeldeten Optionen. Der Testlauf beendet seinen Prozess. Die Schaltfläche *Speichern* übernimmt den Pfad.
+
 Mit Tk 9 lässt sich ein lokaler Brettentwurf für einen Programmaufruf in der App anzeigen. Beispiel: `python -m chess_and_chains --board-design assets/boards/source/board-template.svg`. Die [SVG-Lieferanleitung](assets/boards/source/README.md) beschreibt die Formate für Gesamtbretter und einzelne Felder.
+
+`python -m chess_and_chains --piece-view top` zeigt die Draufsicht der Figuren in Partie und Rätsel. Beim normalen Start erscheint die Vorderansicht. Beide Ansichten verwenden [editierbare Einzel-SVGs mit einem gemeinsamen Figurenmaß pro Ansicht](assets/chess_pieces/source_svg/README.md) und einen lokalen PNG-Fallback für Tk ohne SVG-Unterstützung.
 
 ## Lizenz
 

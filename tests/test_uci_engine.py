@@ -10,6 +10,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from chess_and_chains.chess import ChessRules, Move, parse_square
+from chess_and_chains.engines.bot import EngineConfig, probe_engine
+from chess_and_chains.engines.mock_engine import ENGINE_NAME, OPTIONS
 from chess_and_chains.engines.uci import (
     EngineLaunchError,
     EngineProtocolError,
@@ -67,6 +69,13 @@ def create_engine(mode: str = "normal", **kwargs) -> UCIEngine:
 
 
 class UCIEngineTests(unittest.TestCase):
+    def test_probe_uses_the_advertised_name_and_option_count(self):
+        self.assertEqual(probe_engine(EngineConfig.mock()), (ENGINE_NAME, len(OPTIONS)))
+
+    def test_probe_rejects_an_engine_that_exits_after_uciok(self):
+        with self.assertRaises(EngineProtocolError):
+            probe_engine(EngineConfig.mock("crash-on-ready"))
+
     def test_handshake_options_position_and_legal_bestmove(self):
         engine = create_engine()
         try:

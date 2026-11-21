@@ -18,11 +18,13 @@ sys.path.insert(0, str(ROOT))
 
 from chess_and_chains.chess import Color, DrawClaim, GameStatus, Move, Piece, PieceType, parse_square  # noqa: E402
 from chess_and_chains.engines.bot import EngineConfig, UCIBot  # noqa: E402
+from chess_and_chains.engines.mock_engine import ENGINE_NAME  # noqa: E402
 from chess_and_chains.game import BotStatus, GameSetup  # noqa: E402
 from chess_and_chains.storage import DataLayout, load_settings  # noqa: E402
-from chess_and_chains.ui.app import ChessApp  # noqa: E402
+from chess_and_chains.ui.app import ChessApp, EngineDialog  # noqa: E402
 from chess_and_chains.ui.branding import brand_image  # noqa: E402
 from chess_and_chains.ui.pieces import (  # noqa: E402
+    PIECE_FALLBACK_SIZES,
     PIECE_FILE_NAMES,
     GeometricTestPieces,
     OwnerSvgPieces,
@@ -131,6 +133,32 @@ class DrawClaimTests(AppTestCase):
 
 
 class BotVerticalSliceTests(AppTestCase):
+    def test_closing_engine_dialog_cancels_pending_tk_poll(self):
+        app = self.make_app()
+        dialog = EngineDialog(app)
+        with patch.object(EngineConfig, "from_path", return_value=EngineConfig.mock()):
+            with patch("chess_and_chains.ui.app.threading.Thread"):
+                dialog.test()
+        pending = dialog._probe_job
+        self.assertIsNotNone(pending)
+        dialog.window.destroy()
+        self.assertIsNone(dialog._probe_job)
+        with self.assertRaises(tk.TclError):
+            self.root.tk.call("after", "info", pending)
+
+    def test_engine_dialog_reports_readiness_and_handles_exit_after_uciok(self):
+        app = self.make_app()
+        for mode, expected in (("normal", ENGINE_NAME), ("crash-on-ready", "Engine test failed")):
+            with self.subTest(mode=mode):
+                dialog = EngineDialog(app)
+                with patch.object(EngineConfig, "from_path", return_value=EngineConfig.mock(mode)):
+                    dialog.test()
+                self.assertEqual(dialog.test_button.cget("state"), tk.DISABLED)
+                self.pump_until(lambda: dialog.test_button.cget("state") == tk.NORMAL)
+                self.assertIn(expected, dialog.status_var.get())
+                dialog.window.destroy()
+        self.assertIsNone(app.settings.engine_path)
+
     def test_user_move_bot_reply_and_ui_update(self):
         factory = mock_factory()
         app = self.make_app(provider_factory=factory)
@@ -356,7 +384,7 @@ class OwnerPieceUiTests(AppTestCase):
         self.assertTrue(images())
         self.assertTrue(images() <= initial_images)
 
-    def test_png_atlas_preserves_piece_color_and_reuses_the_same_size_band(self):
+    def test_png_atlas_preserves_piece_color_and_shadows_and_reuses_the_same_size_band(self):
         root = create_root(self)
         canvas = tk.Canvas(root)
         renderer = OwnerSvgPieces()
@@ -376,11 +404,62 @@ class OwnerPieceUiTests(AppTestCase):
         self.assertEqual(white, another_white)
         self.assertEqual(root.tk.call("image", "width", white), 48)
         self.assertTrue(root.tk.getboolean(root.tk.call(white, "transparency", "get", 0, 0)))
-        self.assertEqual(root.tk.call(white, "get", 24, 35), (250, 246, 236))
-        self.assertEqual(root.tk.call(black, "get", 24, 35), (23, 25, 32))
+        self.assertGreater(root.tk.call(white, "get", 24, 35)[0], 220)
+        self.assertLess(root.tk.call(black, "get", 24, 35)[0], 80)
+        for image, minimum_drop in ((white, 1), (black, 35)):
+            lit_side = root.tk.call(image, "get", 18, 35)[0]
+            shaded_side = root.tk.call(image, "get", 35, 35)[0]
+            self.assertGreaterEqual(lit_side - shaded_side, minimum_drop)
+
+    def test_top_view_uses_its_own_artwork_in_play_and_puzzles(self):
+        renderer = OwnerSvgPieces(top_view=True)
+        app = self.make_app(piece_renderer=renderer)
+        self.root.geometry("860x700")
+        self.root.deiconify()
+        self.pump_until(lambda: len(app.board.find_withtag("piece")) == 32)
+        self.assertIs(app.board.renderer, renderer)
+
+        def images():
+            return {app.board.itemcget(item, "image") for item in app.board.find_withtag("piece")}
+
+        self.assertEqual(len(images()), 12)
+        app.tab_rail.set_active("puzzles")
+        self.assertIsNotNone(app.puzzle)
+        self.assertTrue(images())
+        self.assertEqual(len(app.board.find_withtag("piece")), sum(piece is not None for piece in app.puzzle.state.board))
+
+        # The bottom corner of the front-view foot lies outside the top-view disc.
+        front = OwnerSvgPieces()
+        band = PIECE_FALLBACK_SIZES.index(64)
+        self.assertFalse(front._copy_png_piece(app.board, "wK.svg", band).transparency_get(15, 54))
+        self.assertTrue(renderer._copy_png_piece(app.board, "wK.svg", band).transparency_get(15, 54))
+
+    def test_piece_images_share_the_visible_dimensions_within_each_view(self):
+        root = create_root(self)
+        canvas = tk.Canvas(root)
+        # Render at 2× so that the half-unit edges land on whole pixels.
+        size = 128
+        band = PIECE_FALLBACK_SIZES.index(size)
+        expected_bounds = {False: (25, 10, 102, 117), True: (12, 12, 115, 115)}
+        for top_view, bounds in expected_bounds.items():
+            renderer = OwnerSvgPieces(top_view=top_view)
+            for name in PIECE_FILE_NAMES:
+                with self.subTest(top_view=top_view, piece=name):
+                    tile = renderer._copy_png_piece(canvas, name, band)
+                    visible = [(x, y) for y in range(size) for x in range(size)
+                               if not tile.transparency_get(x, y)]
+                    xs, ys = zip(*visible)
+                    self.assertEqual((min(xs), min(ys), max(xs), max(ys)), bounds)
 
 
 class StorageAndLocaleUiTests(AppTestCase):
+    def test_app_variables_belong_to_its_root_with_another_window_open(self):
+        other_root = create_root(self)
+        app = self.make_app()
+        self.assertIsNot(self.root.tk, other_root.tk)
+        self.assertIs(app.interaction_text._tk, self.root.tk)
+        self.assertIs(app.mode_var._tk, self.root.tk)
+
     def test_save_game_and_settings_persist_in_temp_layout(self):
         with tempfile.TemporaryDirectory() as tmp:
             layout = DataLayout(Path(tmp) / "data")
@@ -527,8 +606,17 @@ class StorageAndLocaleUiTests(AppTestCase):
 class PieceRendererContractTests(unittest.TestCase):
     def test_bundled_owner_svg_set_meets_the_contract(self):
         directory = ROOT / "src" / "chess_and_chains" / "ui" / "piece_assets"
-        report = validate_svg_piece_set(directory)
-        self.assertTrue(report.ok, report.problems)
+        for assets in (directory, directory / "top"):
+            with self.subTest(assets=assets):
+                report = validate_svg_piece_set(assets)
+                self.assertTrue(report.ok, report.problems)
+
+    def test_cli_selects_top_view_for_the_session(self):
+        from chess_and_chains.__main__ import main
+
+        with patch("chess_and_chains.ui.launch") as launch:
+            self.assertEqual(main(["--piece-view", "top"]), 0)
+            launch.assert_called_once_with(board_design=None, top_pieces=True)
 
     def test_svg_contract_accepts_clean_set_and_rejects_unsafe_files(self):
         clean = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><circle cx="22" cy="22" r="10"/></svg>'

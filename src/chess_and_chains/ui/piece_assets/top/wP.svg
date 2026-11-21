@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>White Pawn (top view)</title>
+  <desc>Tim von Trostorff's original top view, redrawn on a shared half-unit grid.</desc>
+  <metadata>Copyright Tim von Trostorff · MPL-2.0 · master SHA-256 1173cf1e6fd3747a56570cf3c088a398cecc8576a28b1ad43052b196c6bc6c59 · vector-0078</metadata>
+  <g stroke="#171920" stroke-width="2" stroke-linejoin="round">
+    <circle id="base" cx="32" cy="32" r="25" fill="#FAF6EC"/>
+    <circle id="inner-ring" cx="32" cy="32" r="15.5" fill="none"/>
+  </g>
+</svg>

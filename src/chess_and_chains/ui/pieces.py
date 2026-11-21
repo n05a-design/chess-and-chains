@@ -50,8 +50,10 @@ class OwnerSvgPieces:
 
     renderer_id = "owner-svg"
 
-    def __init__(self) -> None:
+    def __init__(self, *, top_view: bool = False) -> None:
         self._assets = files(__package__).joinpath("piece_assets")
+        if top_view:
+            self._assets = self._assets.joinpath("top")
         self._svg_sources = {name: self._assets.joinpath(name).read_bytes() for name in PIECE_FILE_NAMES}
         self._native_svg = True
         self._atlas: tk.PhotoImage | None = None

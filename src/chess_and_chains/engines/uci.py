@@ -89,6 +89,7 @@ class UCIEngine:
         self._shutdown_timeout = shutdown_timeout
         self._process: subprocess.Popen[str] | None = None
         self._output: queue.Queue[str | object] = queue.Queue()
+        self._name: str | None = None
         self._options: dict[str, UCIOption] = {}
         self._reader: threading.Thread | None = None
         self._transaction_lock = threading.RLock()
@@ -107,6 +108,10 @@ class UCIEngine:
             return self._searching
 
     @property
+    def name(self) -> str | None:
+        return self._name
+
+    @property
     def options(self) -> dict[str, UCIOption]:
         return dict(self._options)
 
@@ -117,6 +122,7 @@ class UCIEngine:
             if self._process is not None:
                 self._release_process(self._process)
             self._process = None
+            self._name = None
             self._options.clear()
             self._output = queue.Queue()
             try:
@@ -356,7 +362,9 @@ class UCIEngine:
             assert isinstance(output, str)
             if predicate(output):
                 return output
-            if output.startswith("option "):
+            if output.startswith("id name "):
+                self._name = output.removeprefix("id name ").strip() or None
+            elif output.startswith("option "):
                 self._record_option(output)
 
     def _record_option(self, line: str) -> None:
