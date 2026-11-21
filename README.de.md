@@ -64,6 +64,11 @@ Mit Tk 9 lässt sich ein lokaler Brettentwurf für einen Programmaufruf in der A
 
 `python -m chess_and_chains --piece-view top` zeigt die Draufsicht der Figuren in Partie und Rätsel. Beim normalen Start erscheint die Vorderansicht. Beide Ansichten verwenden [editierbare Einzel-SVGs mit einem gemeinsamen Figurenmaß pro Ansicht](assets/chess_pieces/source_svg/README.md) und einen lokalen PNG-Fallback für Tk ohne SVG-Unterstützung.
 
+Der [lokale 3D-Prototyp mit kühlem Marmor](app/marble_3d/README.md) startet
+im Checkout mit `python app/marble_3d/server.py`. Zwei Personen spielen
+am selben Gerät über den vorhandenen Regelkern. Die Partie lässt sich als
+PGN speichern. [Editierbarer Spielsatz und Grafikstudien](design/source/marmor-3d/README.md)
+
 ## Lizenz
 
 Eigene Quelltexte sind als **MPL-2.0** vorgesehen. Der W05-Regelkern wird eigenständig implementiert. **Stockfish ist GPLv3**, ebenso sind weitere Drittkomponenten separat zu prüfen. Eine vollständig gebündelte Offline-Distribution darf erst nach schriftlicher Lizenz- und Architekturentscheidung erfolgen. Die offiziellen Downloads sollen stets kostenlos bleiben; MPL/GPL verbieten Dritten jedoch keine entgeltliche Weitergabe.

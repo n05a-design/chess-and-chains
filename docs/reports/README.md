@@ -12,6 +12,7 @@ Neue Berichte bitte in der passenden Gruppe ergänzen. `scripts/verify_document_
 
 ## W00–W04 · Foundation, Scope, Lizenz, Shell, Recherche
 
+- 2026-11-21 · [W04 – Plattenfiguren und Materialstudien](2026-11-21_W04_plattenfiguren-svg.md)
 - 2026-11-20 · [W04 – Konkurrenz-, Design- und Assetrecherche](2026-11-20_W04_competitor-design.md)
 - 2026-11-20 · [W03 – Glide Shell Reuse Audit](2026-11-20_W03_glide-audit.md)
 - 2026-11-20 · [W02 – Lizenz- und Engine-Entscheidungsgrundlage](2026-11-20_W02_license.md)
@@ -28,6 +29,7 @@ Neue Berichte bitte in der passenden Gruppe ergänzen. `scripts/verify_document_
 
 ## W06 · Brett, Figuren, Design
 
+- 2026-11-21 · [W06 – Spielbares Marmorbrett in 3D](2026-11-21_W06_marmorbrett-3d.md)
 - 2026-11-21 · [W06 – Perspektivwechsel in der SVG-Brettvorschau](2026-11-21_W06-svg-brettcache.md)
 - 2026-11-21 · [W06 · Figurenschatten für die überarbeiteten Vorderansichten](2026-11-21_W06-figurenschatten.md)
 - 2026-11-21 · [W06 · Figurensatz V.02 mit optischem Ausgleich](2026-11-21_W06-figurenschatten-v02.md)

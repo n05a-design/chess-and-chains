@@ -31,3 +31,12 @@ Herkunft der lokalen Fontfassung und der App-Wortmarke. Die Abnahme von
 Marken- und Release-Assets folgt den oben genannten Freigaben.
 
 Die 24 [bearbeitbaren App-Exporte](../../assets/chess_pieces/source_svg/README.md) verwenden eine 64 × 64 SVG-Fläche. Der Inhaber hat am 21.11.2026 gleiche sichtbare Breite und Höhe je Figurentyp innerhalb einer Ansicht bestätigt und die Draufsicht visuell freigegeben. Die Draufsicht verwendet 52 × 52 Einheiten inklusive Kontur. Für die Vorderansicht gilt die nachgereichte Inhaberfassung einschließlich ihrer 1,14 Einheiten breiten Kontur. Ihre Pfade tragen eigene Innenschatten. Tk 9 liest die SVGs. Tk ohne SVG-Lesefunktion nutzt die vorab erzeugte PNG-Grafiktafel der gewählten Ansicht. Partie und Rätsel unterstützen beide Sätze. Sichtprüfung der Schattierung und Plattformabnahme bleiben offen.
+
+## Marmor für die lokale 3D-Ansicht (21.11.2026)
+
+Der Inhaber wählte für die 3D-Arbeitsfassung kühlen Marmor, einen
+invertierten schwarzen Figurensatz und ein Brett mit 64 unterschiedlichen
+Marmorfeldern. Die GitHub-Bereitstellung der Figurenaufbereitung, des
+3D-Prototyps und der Studien wurde im Chat beauftragt. Für Produktpakete
+und die endgültige Auswahl des App-Bretts gelten die offenen Release-
+und Designentscheidungen. [Provenienz der Marmor-Dateien](../../design/source/marmor-3d/PROVENANCE.md)
