@@ -18,7 +18,7 @@ from queue import Empty, SimpleQueue
 from weakref import proxy
 from dataclasses import replace
 from pathlib import Path
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, font, messagebox, ttk
 from typing import Callable, Sequence
 
 from .. import DISPLAY_VERSION
@@ -342,7 +342,7 @@ class ChessApp:
         row += 1
         controls = tk.Frame(panel, background=ACETATE)
         controls.grid(row=row, column=0, sticky="ew")
-        controls.grid_columnconfigure((0, 1), weight=1)
+        controls.grid_columnconfigure((0, 1), weight=1, uniform="actions")
         self.undo_button = self._button(controls, t("button.undo"), self._undo)
         self.undo_button.grid(row=0, column=0, sticky="ew", pady=3, padx=(0, 3))
         self.redo_button = self._button(controls, t("button.redo"), self._redo)
@@ -372,20 +372,40 @@ class ChessApp:
         row += 1
         bot_controls = tk.Frame(panel, background=ACETATE)
         bot_controls.grid(row=row, column=0, sticky="ew", pady=(6, 0))
-        bot_controls.grid_columnconfigure((0, 1), weight=1)
+        bot_controls.grid_columnconfigure((0, 1), weight=1, uniform="actions")
         self.retry_bot_button = self._button(bot_controls, t("button.retry_bot"), self._retry_bot)
         self.retry_bot_button.grid(row=0, column=0, sticky="ew", padx=(0, 3))
         self.engine_button = self._button(bot_controls, t("button.engine"), self._open_engine_dialog)
         self.engine_button.grid(row=0, column=1, sticky="ew", padx=(3, 0))
 
-        paired_buttons = (
+        play_actions = (
             self.undo_button, self.redo_button, self.flip_button, self.resign_button, self.save_button,
-            self.copy_pgn_button, self.claim_button, self.library_button, self.retry_bot_button, self.engine_button,
+            self.copy_pgn_button, self.claim_button, self.library_button,
         )
+        bot_actions = (self.retry_bot_button, self.engine_button)
+        paired_buttons = (*play_actions, *bot_actions)
+        action_font = font.Font(root=self.root, font=self.undo_button.cget("font"))
+        longest_word = max(
+            action_font.measure(word)
+            for button in paired_buttons
+            for word in button.cget("text").split()
+        )
+        # Tk themes and scaling affect the padding and focus outline in pixels.
+        action_inset = max(
+            button.winfo_reqwidth() - action_font.measure(button.cget("text"))
+            for button in paired_buttons
+        ) + 4
 
         def resize_content(width: int) -> None:
-            for button in paired_buttons:
-                button.configure(wraplength=max(1, width // 2 - 32), justify="left")
+            stacked = width // 2 < longest_word + action_inset
+            columns = 1 if stacked else 2
+            wraplength = max(1, width // columns - action_inset)
+            for actions in (play_actions, bot_actions):
+                for index, button in enumerate(actions):
+                    row, column = divmod(index, columns)
+                    gap = (0, 0) if stacked else ((0, 3) if column == 0 else (3, 0))
+                    button.grid_configure(row=row, column=column, columnspan=2 if stacked else 1, padx=gap)
+                    button.configure(wraplength=wraplength, justify="left", padx=6 if stacked else 10)
             for button in (*self.mode_buttons.values(), self.position_button):
                 button.configure(wraplength=max(1, width - 35), justify="left")
 

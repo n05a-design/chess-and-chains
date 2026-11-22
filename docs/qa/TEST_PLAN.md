@@ -1,7 +1,9 @@
 # QA-Matrix – Foundation / Produkt
 
-Stand **V.0.0.1**. Der Merge von PR #12 auf `main` bestand die
-Plattformmatrix. Der Entwicklungsabgleich belegt die Prüfung der
+Stand **V.0.0.1**. Der [Merge-Lauf von PR #21](https://github.com/n05a-design/chess-and-chains/actions/runs/44972693793)
+auf `main` bestand 14 von 14 Jobs. In beiden nativen macOS-Tk-Jobs
+blieb die Partie beim Wechsel auf das Marmorbrett und zurück erhalten.
+Der Entwicklungsabgleich belegt die Prüfung der
 Folgecommits, das installierte Wheel und den Vergleich mit OneDrive.
 Die native Windows-Probe für PGN-Dateidialoge, Backup/Restore und
 Brettfokus ist separat dokumentiert.
@@ -27,6 +29,11 @@ Brettfokus ist separat dokumentiert.
 Lokale Gesamtläufe und Abgrenzung zur CI der Merge-Basis stehen in der [N02-Übergabe](../reports/2026-11-20_N02-follow-up.md).
 
 Nächste QA-Stufe für W10/W11:
+
+Die GUI-Suite enthält Regressionen für erreichbare Spielaktionen bei
+200 % Tk-Textskalierung (DE) sowie Tastaturzüge und Tab-Wechsel auf dem
+Marmorbrett bei 150 % (EN). Für die native Abnahme gilt das
+[Prüfprotokoll](../reports/2026-11-22_W10-W11-bedienabnahme.md).
 
 1. Bei nativen Skalierungsstufen 100/150/200 % prüfen, soweit das jeweilige
    System sie anbietet. OS, Tk-Version, Bildschirmauflösung und effektive
