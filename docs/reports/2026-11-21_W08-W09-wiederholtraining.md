@@ -52,6 +52,13 @@ Python 3.14 wurde die synthetische Auswahl im ausgeblendeten Fenster
 nicht verarbeitet. Die Regression prüft die Ereignisbindung und ruft
 den produktiven Auswahlhandler anschließend direkt auf. Damit prüft
 sie die gleichen Filter- und Datenübergänge ohne Aqua-Ereigniswarteschlange.
+Der Korrekturstand `773f764` bestand
+[Push-CI](https://github.com/n05a-design/chess-and-chains/actions/runs/44958061011)
+und [PR-CI](https://github.com/n05a-design/chess-and-chains/actions/runs/44958067722)
+mit je 14 Jobs. Die beiden macOS-Versionen bestanden je 68 Tk-Tests,
+einschließlich der drei neuen Trainings- und Wiedergabefälle.
+Der [Lauf nach dem Merge auf `main`](https://github.com/n05a-design/chess-and-chains/actions/runs/44958326646)
+für `6238724` bestand ebenfalls mit 14 von 14 Jobs.
 
 1. Plattformmatrix und native Screenreader-Prüfung nach beauftragtem Push.
 2. Realdaten und Paketumfang weiter über ADR-003 und Q-022 abnehmen.

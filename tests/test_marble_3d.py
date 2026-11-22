@@ -23,6 +23,49 @@ from chess_and_chains.ui.piece_contract import validate_svg_piece_set  # noqa: E
 
 
 class MarbleGameTests(unittest.TestCase):
+    def test_replay_keeps_live_revision_and_uses_exact_played_positions(self):
+        game = LocalGame("r3k2r/8/8/8/3pP3/8/8/R3K2R b KQkq e3 0 17")
+        game.apply({"revision": 0, "action": "move", "move": "d4e3"})
+        live = game.apply({"revision": 1, "action": "move", "move": "e1g1"})
+        original = game.pgn()
+        replay = game.replay()
+        self.assertEqual(replay["revision"], live["revision"])
+        self.assertEqual([frame["last"] for frame in replay["frames"]], [None, "d4e3", "e1g1"])
+        self.assertEqual(replay["frames"][0]["turn"], "b")
+        self.assertEqual(replay["frames"][0]["board"][28], "wP")
+        self.assertIsNone(replay["frames"][1]["board"][28])
+        self.assertEqual(replay["frames"][2]["board"], live["board"])
+        self.assertEqual(game.snapshot(), live)
+        self.assertEqual(game.pgn(), original)
+        game.apply({"revision": 2, "action": "undo"})
+        self.assertEqual(len(game.replay()["frames"]), 2)
+
+    def test_file_import_preserves_record_metadata_and_is_atomic(self):
+        game = LocalGame()
+        game.apply({"revision": 0, "action": "move", "move": "d2d4"})
+        initial = game.snapshot()
+        for kind, data in (("pgn", b"1. e5 *"), ("fen", b"bad position"), ("pgn", b"\xff")):
+            with self.subTest(kind=kind, data=data), self.assertRaises(ValueError):
+                game.import_file(kind, data, 1)
+            self.assertEqual(game.snapshot(), initial)
+        with self.assertRaises(StalePosition):
+            game.import_file("pgn", b"1. e4 *", 0)
+        self.assertEqual(game.snapshot(), initial)
+
+        pgn = '[Event "Clubtest"]\n[White "Éva"]\n\n1. e4 e5 1/2-1/2'
+        state = game.import_file("pgn", pgn.encode("utf-8-sig"), 1)
+        self.assertEqual((state["revision"], state["status"]), (2, "RECORDED_RESULT"))
+        exported = parse_pgn(game.pgn())
+        self.assertEqual(exported.result, "1/2-1/2")
+        self.assertEqual(dict(exported.tags)["White"], "Éva")
+        self.assertEqual(dict(exported.tags)["Event"], "Clubtest")
+
+        fen = "r3k2r/8/8/8/3pP3/8/8/R3K2R b KQkq e3 0 17"
+        state = game.import_file("fen", fen.encode("ascii"), 2)
+        self.assertEqual((state["firstMove"], state["turn"], state["san"]), (17, "b", ()))
+        self.assertIn("d4e3", state["moves"])
+        self.assertNotIn("Clubtest", game.pgn())
+
     def test_game_revision_and_full_undo_and_redo(self):
         game = LocalGame()
         original = game.snapshot()
@@ -73,6 +116,44 @@ class MarbleGameTests(unittest.TestCase):
 
 
 class MarbleRequestTests(unittest.TestCase):
+    def test_file_routes_enforce_origin_limits_and_follow_the_current_position(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with MarbleServer(0, Path(directory), LocalGame()) as server:
+                worker = Thread(target=server.serve_forever, daemon=True)
+                worker.start()
+                try:
+                    fen = b"r3k2r/8/8/8/3pP3/8/8/R3K2R b KQkq e3 0 17"
+                    for origin, revision, data, code in (
+                        ("https://example.invalid", 0, fen, 403),
+                        (server.origin, 0, b"x" * 4097, 400),
+                        (server.origin, 1, fen, 409),
+                        (server.origin, 0, fen, 200),
+                    ):
+                        request = Request(server.origin + "/api/import", data=data, headers={
+                            "Origin": origin, "Content-Type": "application/x-chess-fen",
+                            "X-Board-Revision": str(revision),
+                        })
+                        with self.subTest(code=code):
+                            if code == 200:
+                                with urlopen(request, timeout=4) as response:
+                                    self.assertEqual(json.load(response)["revision"], 1)
+                            else:
+                                with self.assertRaises(HTTPError) as invalid:
+                                    urlopen(request, timeout=4)
+                                with invalid.exception as response:
+                                    self.assertEqual(response.code, code)
+                    with urlopen(server.origin + "/api/stellung.fen", timeout=4) as response:
+                        self.assertEqual(response.headers.get_filename(), "chess-and-chains.fen")
+                        self.assertEqual(response.read(), fen + b"\n")
+                    with urlopen(server.origin + "/api/replay", timeout=4) as response:
+                        replay = json.load(response)
+                        self.assertEqual(replay["revision"], 1)
+                        self.assertEqual(len(replay["frames"]), 1)
+                        self.assertEqual(replay["frames"][0]["turn"], "b")
+                finally:
+                    server.shutdown()
+                    worker.join(timeout=4)
+
     def test_local_origin_and_revision_guard_mutation(self):
         with tempfile.TemporaryDirectory() as directory:
             with MarbleServer(0, Path(directory), LocalGame()) as server:

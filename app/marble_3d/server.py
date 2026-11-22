@@ -17,8 +17,12 @@ ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_ASSETS = ROOT / "design" / "source" / "marmor-3d" / "spielsatz"
 sys.path.insert(0, str(ROOT / "src"))
 
-from chess_and_chains.chess import ChessError, DrawClaim, GameStatus, Move, export_pgn, square_name  # noqa: E402
+from chess_and_chains.chess import (  # noqa: E402
+    ChessError, ChessGame, DrawClaim, GameState, GameStatus, Move, export_pgn, parse_pgn, square_name, to_fen,
+)
 from chess_and_chains.game.controller import GameController, GameSetup  # noqa: E402
+from chess_and_chains.storage.database import MAX_PGN_FILE_BYTES, MAX_PGN_FILE_PLIES  # noqa: E402
+from chess_and_chains.storage.exchange import MAX_FEN_FILE_BYTES, parse_fen_text  # noqa: E402
 from chess_and_chains.ui.piece_contract import PIECE_FILE_NAMES, validate_svg_piece_set  # noqa: E402
 
 
@@ -29,12 +33,52 @@ class StalePosition(ValueError):
 class LocalGame:
     def __init__(self, fen: str | None = None) -> None:
         self.controller = GameController()
+        self._headers: dict[str, str] = {}
         if fen is not None:
             self.controller.new_game(GameSetup(initial_fen=fen))
         self.revision = 0
 
     def pgn(self) -> str:
-        return export_pgn(self.controller.game, {"Event": "Chess & Chains – Marmorbrett"}) + "\n"
+        headers = {"Event": "Chess & Chains – Marmorbrett", **self._headers}
+        return export_pgn(self.controller.game, headers) + "\n"
+
+    def import_file(self, kind: str, content: bytes, revision: int) -> dict:
+        if revision != self.revision:
+            raise StalePosition("Die Stellung wurde inzwischen aktualisiert.")
+        if kind == "fen" and 0 < len(content) <= MAX_FEN_FILE_BYTES:
+            game = ChessGame(parse_fen_text(content.decode("utf-8-sig")))
+            headers = {}
+        elif kind == "pgn" and 0 < len(content) <= MAX_PGN_FILE_BYTES:
+            text = content.decode("utf-8-sig")
+            if not text.strip() or any(ord(char) < 32 and char not in "\t\n\r" for char in text):
+                raise ValueError("Die PGN-Datei ist leer oder enthält ungültige Zeichen.")
+            document = parse_pgn(text, max_plies=MAX_PGN_FILE_PLIES)
+            game = document.new_game()
+            headers = dict(document.tags)
+        else:
+            raise ValueError("Dateityp oder Dateigröße ist ungültig.")
+        self.controller.load_game(game)
+        self._headers = headers
+        self.revision += 1
+        return self.snapshot()
+
+    def replay(self) -> dict:
+        game = self.controller.game
+        positions = game.played_positions()
+        frames = []
+        for index, position in enumerate(positions):
+            in_check = game.rules.is_in_check(position)
+            frames.append({
+                "board": self.board_tokens(position),
+                "turn": position.turn.value,
+                "check": square_name(position.king_square(position.turn)) if in_check else None,
+                "last": game.moves[index - 1].to_uci() if index else None,
+            })
+        return {"revision": self.revision, "frames": frames}
+
+    @staticmethod
+    def board_tokens(position: GameState) -> list[str | None]:
+        return [piece.color.value + piece.kind.value.upper() if piece else None for piece in position.board]
 
     def snapshot(self) -> dict:
         view = self.controller.view()
@@ -42,8 +86,7 @@ class LocalGame:
         outcome = view.outcome
         return {
             "revision": self.revision,
-            "board": [piece.color.value + piece.kind.value.upper() if piece else None
-                      for piece in state.board],
+            "board": self.board_tokens(state),
             "turn": state.turn.value,
             "status": outcome.status.name,
             "winner": outcome.winner.value if outcome.winner else None,
@@ -75,6 +118,7 @@ class LocalGame:
             self.controller.redo()
         elif action == "new":
             self.controller.new_game()
+            self._headers.clear()
         elif action == "resign":
             self.controller.resign()
         elif action == "claim":
@@ -125,11 +169,19 @@ class MarbleRequest(BaseHTTPRequestHandler):
         if self.path == "/api/game":
             self.reply_json(self.server.game.snapshot())
             return
+        if self.path == "/api/replay":
+            self.reply_json(self.server.game.replay())
+            return
         if self.path == "/api/partie.pgn":
             self.respond(
                 HTTPStatus.OK, "application/x-chess-pgn; charset=utf-8",
                 self.server.game.pgn().encode("utf-8"), download="chess-and-chains.pgn",
             )
+            return
+        if self.path == "/api/stellung.fen":
+            fen = to_fen(self.server.game.controller.game.state) + "\n"
+            self.respond(HTTPStatus.OK, "text/plain; charset=ascii", fen.encode("ascii"),
+                         download="chess-and-chains.fen")
             return
         resource = self.server.files.get(self.path)
         if resource is None:
@@ -146,7 +198,7 @@ class MarbleRequest(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         if not self.check_host():
             return
-        if self.path != "/api/game":
+        if self.path not in ("/api/game", "/api/import"):
             self.reply_json({"error": "Unbekannte Adresse."}, HTTPStatus.NOT_FOUND)
             return
         if self.headers.get("Origin") != self.server.origin:
@@ -154,10 +206,23 @@ class MarbleRequest(BaseHTTPRequestHandler):
             return
         try:
             size = int(self.headers.get("Content-Length", "0"))
-            if not 0 < size <= 4096 or self.headers.get_content_type() != "application/json":
-                raise ValueError("Ungültige Anfrage.")
-            data = json.loads(self.rfile.read(size))
-            result = self.server.game.apply(data)
+            mime = self.headers.get_content_type()
+            if self.path == "/api/import":
+                limits = {"application/x-chess-pgn": ("pgn", MAX_PGN_FILE_BYTES),
+                          "application/x-chess-fen": ("fen", MAX_FEN_FILE_BYTES)}
+                kind, limit = limits.get(mime, ("", 0))
+                if not 0 < size <= limit:
+                    raise ValueError("Dateityp oder Dateigröße ist ungültig.")
+                revision = int(self.headers.get("X-Board-Revision", "-1"))
+                content = self.rfile.read(size)
+                if len(content) != size:
+                    raise ValueError("Die Datei wurde nicht vollständig übertragen.")
+                result = self.server.game.import_file(kind, content, revision)
+            else:
+                if not 0 < size <= 4096 or mime != "application/json":
+                    raise ValueError("Ungültige Anfrage.")
+                data = json.loads(self.rfile.read(size))
+                result = self.server.game.apply(data)
         except StalePosition as error:
             self.reply_json({"error": str(error), "state": self.server.game.snapshot()}, HTTPStatus.CONFLICT)
         except (ChessError, ValueError, RecursionError) as error:

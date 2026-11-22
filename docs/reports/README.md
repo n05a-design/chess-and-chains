@@ -29,6 +29,8 @@ Neue Berichte bitte in der passenden Gruppe ergänzen. `scripts/verify_document_
 
 ## W06 · Brett, Figuren, Design
 
+- 2026-11-21 · [W06 · Marmoransicht im Tk-Spielfenster](2026-11-21_W06-marmoransicht-tk.md)
+
 - 2026-11-21 · [W06 – Spielbares Marmorbrett in 3D](2026-11-21_W06_marmorbrett-3d.md)
 - 2026-11-21 · [W06 – Perspektivwechsel in der SVG-Brettvorschau](2026-11-21_W06-svg-brettcache.md)
 - 2026-11-21 · [W06 · Figurenschatten für die überarbeiteten Vorderansichten](2026-11-21_W06-figurenschatten.md)
@@ -54,6 +56,8 @@ Neue Berichte bitte in der passenden Gruppe ergänzen. `scripts/verify_document_
 - 2026-11-21 · [W08/W09 – Lokale Rätselpakete im Puzzle Lab](2026-11-21_W08-W09-lokale-raetselpakete.md)
 
 ## W09 · Speicher und Bibliothek
+
+- 2026-11-21 · [W09/W10 · Dateiaustausch und Wiedergabe am Marmorbrett](2026-11-21_W09-W10-marmorbrett-dateien-wiedergabe.md)
 
 - 2026-11-21 · [W08/W09 · Rätselneustart und Partiewiedergabe](2026-11-21_W08-W09-raetselneustart-partiewiedergabe.md)
 

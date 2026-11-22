@@ -58,6 +58,12 @@ Vorschlag zur Fortschreibung der historischen Zielmarken. Die Nummern gelten ers
 
 ## Abgeschlossen seit Einführung von V.0.0.1
 
+Die Marmoransicht ist im Tk-Spielfenster umschaltbar. Normalbrett und
+Marmoransicht verwenden dieselbe Partie. [Tk-Marmoransicht](../reports/2026-11-21_W06-marmoransicht-tk.md)
+
+Der lokale Marmorprototyp unterstützt PGN- und FEN-Dateiaustausch sowie
+eine per Tastatur bedienbare Zugwiedergabe. [Prüfnachweis](../reports/2026-11-21_W09-W10-marmorbrett-dateien-wiedergabe.md)
+
 Das Puzzle Lab unterstützt Lernstandfilter, Versuchsverlauf, Neustart und
 gestufte Hinweise. Aktive und gespeicherte Partien lassen sich separat
 nachspielen. [Wiederholtraining](../reports/2026-11-21_W08-W09-wiederholtraining.md)
