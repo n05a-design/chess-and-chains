@@ -28,12 +28,22 @@ Fokusmechanismus scrollt die fokussierte Aktion in den sichtbaren Bereich.
 Die bestehende GUI-Matrix führt zwei zusätzliche Regressionen aus.
 
 - **DE, 192 Tk-DPI, 860 × 700.** Wiederholen, Partiebibliothek und
-  Engine-Auswahl in einer Partie mit gespeichertem Wiederholen-Verlauf
+  Engine-Auswahl in einer Partie mit vorhandenem Wiederholen-Verlauf
   nacheinander fokussieren. Breite für den Buttontext und vollständige
   Sichtbarkeit im scrollbaren Spielpanel prüfen.
 - **EN, 144 Tk-DPI, 860 × 700.** Marmoransicht mit Enter aktivieren,
   `e2e4` mit der Bretttastatur spielen und mit Tab und Pfeiltaste in die
   Zugliste wechseln. Den ausgeführten Zug in der sichtbaren Liste prüfen.
+
+## Lokaler Nachweis
+
+Auf dem Implementierungscommit `b576fedfcc20ce57d43e561f56e2e4d65f930ef1`
+bestand `py -3.14 -m unittest discover -s tests -q` mit **253 Tests**,
+Exitcode 0 und 130,832 Sekunden. Umgebung Windows 11 Pro x64
+(Build 26300), Python 3.14.7, Tk 9.0.4, verpflichtendes Tk-Display,
+`ResourceWarning` als Fehler und Fault Handler aktiv. Der Volltest
+enthält beide neuen Regressionen und den ursprünglichen
+Marmor-Ansichtswechsel. Die neue Implementierung ist lokal geprüft.
 
 ## Native Abnahme
 
@@ -50,7 +60,7 @@ protokollieren.
 | --- | --- | --- |
 | Im kleinsten Fenster per Tab und Shift+Tab durch die Spielaktionen gehen. | Text bleibt lesbar. Jede fokussierte Aktion scrollt vollständig ins Bild. | Offen |
 | Eine Partie per Tastatur beginnen. In die Marmoransicht wechseln, weiterziehen, zurückwechseln und Rückgängig/Wiederholen ausführen. | Sichtbarer Feldfokus, korrekte Züge, unveränderter Verlauf beim Wechsel. | Offen |
-| Zugliste, Textbrett und Bibliothek öffnen und per Escape zurückkehren. | Fokus kehrt zur auslösenden Schaltfläche zurück, sofern sie weiterhin sichtbar ist. Die Listen lassen sich per Tastatur lesen. | Offen |
+| Zugliste per Tab erreichen. Textbrett und Bibliothek öffnen und per Escape schließen. | Die Listen lassen sich per Tastatur bedienen. Nach dem Schließen eines Dialogs kehrt der Fokus zum Auslöser zurück, sofern er sichtbar ist. | Offen |
 | Legalen Zug, Unterverwandlung und ein Demo-Rätsel mit physischem Ziffernblock prüfen. | Eingabe und Fokus stimmen mit der normalen Tastatur überein. | Offen |
 | Mit NVDA unter Windows und VoiceOver auf macOS Feldbelegung, Zugstatus und Dialoge prüfen. | Tatsächliche Ansagen für Canvas und Textbrett getrennt protokollieren. Unangesagte Informationen mit Reproduktionsschritten festhalten. | Offen |
 
