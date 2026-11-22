@@ -54,11 +54,16 @@ def mock_factory(delay_ms=0, mode="normal"):
 
 
 class AppTestCase(unittest.TestCase):
-    def make_app(self, **kwargs):
+    def make_app(self, *, tk_dpi=None, **kwargs):
         self.root = create_root(self)
+        if tk_dpi is not None:
+            original_scaling = self.root.tk.call("tk", "scaling")
+            self.root.tk.call("tk", "scaling", tk_dpi / 72)
         kwargs.setdefault("locale", "en")
         self.app = ChessApp(self.root, **kwargs)
         self.addCleanup(self.app.close)
+        if tk_dpi is not None:
+            self.addCleanup(self.root.tk.call, "tk", "scaling", original_scaling)
         return self.app
 
     def pump_until(self, predicate, timeout=10.0):
@@ -1270,6 +1275,56 @@ class StorageAndLocaleUiTests(AppTestCase):
         self.root.update()
         self.assertGreater(app.board._square_size, 20)
         self.root.withdraw()
+
+    def test_large_german_text_keeps_play_actions_visible_when_focused(self):
+        folder = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        app = self.make_app(locale="de", tk_dpi=192, data_layout=DataLayout(folder / "data"))
+        self.root.geometry("860x700")
+        self.root.deiconify()
+        self.root.update()
+        self.assertAlmostEqual(self.root.winfo_fpixels("1i"), 192, delta=3)
+        app._play_move(Move.from_uci("e2e4"))
+        app._undo()
+
+        for button in (app.redo_button, app.library_button, app.engine_button):
+            with self.subTest(action=button.cget("text")):
+                self.assertGreaterEqual(button.winfo_width() + 1, button.winfo_reqwidth())
+                self.assertEqual(button.cget("state"), "normal")
+                button.focus_force()
+                self.root.update()
+                self.assertIs(self.root.focus_get(), button)
+                top = button.winfo_rooty()
+                viewport_top = app.play_canvas.winfo_rooty()
+                self.assertGreaterEqual(top, viewport_top - 1)
+                self.assertLessEqual(top + button.winfo_height(),
+                                     viewport_top + app.play_canvas.winfo_height() + 1)
+
+    def test_marble_keyboard_moves_and_tabs_with_scaled_english_text(self):
+        app = self.make_app(tk_dpi=144)
+        self.root.geometry("860x700")
+        self.root.deiconify()
+        self.root.update()
+        self.assertAlmostEqual(self.root.winfo_fpixels("1i"), 144, delta=3)
+
+        app.marble_button.focus_force()
+        self.root.update()
+        app.marble_button.event_generate("<Return>", when="tail")
+        self.root.update()
+        self.assertTrue(app.board.marble)
+        app.board.focus_force()
+        self.root.update()
+        for key in ("Return", "Up", "Up", "Return"):
+            app.board.event_generate(f"<{key}>")
+        self.assertEqual(app.game.moves, [Move.from_uci("e2e4")])
+
+        app.board.event_generate("<Tab>")
+        self.root.update()
+        self.assertIs(self.root.focus_get(), app.tab_rail.children["play"])
+        app.tab_rail.children["play"].event_generate("<Right>")
+        self.root.update()
+        self.assertEqual(app.tab_rail.active, "moves")
+        self.assertTrue(app.move_list.winfo_viewable())
+        self.assertIn("e4", app.move_list.get(0))
 
 
 class PieceRendererContractTests(unittest.TestCase):

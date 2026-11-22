@@ -1,6 +1,6 @@
 # Audit und Übergaben
 
-**V.0.0.1 · Stand 21.11.2026.** Hier stehen nur tatsächlich ausgeführte Prüfberichte und Agentenübergaben unter `JJJJ-MM-TT_Wxx-kurz.md`. **Keine fiktiven grünen Testprotokolle.** Vorlage: [Agent-Handover](../governance/AGENT_HANDOFF_TEMPLATE.md). Ein Bericht, der mehrere Pakete betrifft, steht beim ersten genannten Paket.
+**V.0.0.1 · Stand 22.11.2026.** Hier stehen nur tatsächlich ausgeführte Prüfberichte und Agentenübergaben unter `JJJJ-MM-TT_Wxx-kurz.md`. **Keine fiktiven grünen Testprotokolle.** Vorlage: [Agent-Handover](../governance/AGENT_HANDOFF_TEMPLATE.md). Ein Bericht, der mehrere Pakete betrifft, steht beim ersten genannten Paket.
 
 **Aktuell maßgeblich:** [Dokumentations- und Ablageaudit](2026-11-21_W11-dokumentations-und-ablageaudit.md) · [Paketabgleich W00–W12](2026-11-21_W00-W12-paketabgleich.md) · [Roadmap](../roadmap/ROADMAP.md)
 
@@ -65,6 +65,8 @@ Neue Berichte bitte in der passenden Gruppe ergänzen. `scripts/verify_document_
 - 2026-11-21 · [W09 – Gespeicherte Partien suchen](2026-11-21_W09-partiebibliothek-suche.md)
 
 ## W10 · Sprache und Bedienung
+
+- 2026-11-22 · [W10/W11 – Spielaktionen und Bedienprüfung bei großer Schrift](2026-11-22_W10-W11-bedienabnahme.md)
 
 - 2026-11-21 · [W10 – Rätselthemen im Puzzle Lab](2026-11-21_W10-raetselthemen.md)
 - 2026-11-21 · [W10 – Auswahldialoge per Tastatur bedienen](2026-11-21_W10-dialogtastatur.md)

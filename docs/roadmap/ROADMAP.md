@@ -1,6 +1,6 @@
 # Chess & Chains – Roadmap
 
-**V.0.0.1 · Stand 21.11.2026 · `main` = `1acd9bd` (PR #17).** Der lokale Desktop-Prototyp ist als Entwicklungsstand versioniert und nicht veröffentlicht. Der [Merge-Lauf von PR #17](https://github.com/n05a-design/chess-and-chains/actions/runs/44932980772) bestand 14 von 14 Jobs auf Windows, macOS und Linux. Status und offene Gate-Punkte je Paket stehen in den [Work Packages](WORK_PACKAGES.md), die Anforderungen im [MVP-Vertrag](../product/MVP_CONTRACT.md).
+**V.0.0.1 · Stand 22.11.2026 · geprüfte Basis `main` = `8d5bcc6` (PR #21).** Der lokale Desktop-Prototyp ist als Entwicklungsstand versioniert und nicht veröffentlicht. Der [Merge-Lauf von PR #21](https://github.com/n05a-design/chess-and-chains/actions/runs/44972693793) bestand 14 von 14 Jobs auf Windows, macOS und Linux. Status und offene Gate-Punkte je Paket stehen in den [Work Packages](WORK_PACKAGES.md), die Anforderungen im [MVP-Vertrag](../product/MVP_CONTRACT.md).
 
 ## Wo das Projekt steht
 
@@ -36,7 +36,7 @@ Nur offene Arbeit. Erledigte Punkte stehen unten unter „Abgeschlossen“.
 
 | Priorität | Arbeit | Nächster Nachweis |
 | --- | --- | --- |
-| 1 | W10/W11 · Native Bedienabnahme | Manuelle Prüfung auf Windows und macOS bei 100/150/200 %, Screenreader-Stichprobe, physischer Ziffernblock. Protokoll mit Gerät, Betriebssystem und Commit. [Tastatur und Skalierung](../reports/2026-11-21_W10-W11-tastatur-und-skalierung.md) |
+| 1 | W10/W11 · Native Bedienabnahme | Manuelle Prüfung auf Windows und macOS bei 100/150/200 %, Screenreader-Stichprobe und physischer Ziffernblock. Regression und Protokollvorlage stehen im [Bediennachweis](../reports/2026-11-22_W10-W11-bedienabnahme.md). |
 | 2 | W06 · Finale Brettgestaltung | Nach Lieferung der Inhaber-SVGs: Partie, Rätsel und beide Figurenansichten mit den Brettern prüfen, Assetregister mit Hashes ergänzen. |
 | 3 | W05 · Tote Stellungen allgemein | Weitere verblockte Materialkombinationen und längere oder verzweigte Zwangsfolgen. Golden-Fixtures mit Quelle. [Bauernsperren](../reports/2026-11-21_W05-bauernsperren.md) |
 | 4 | W09 · Native Dialoge | FEN-, PGN- und Ordnerdialoge auf macOS und Linux nativ prüfen. Profile nach Q-012. [FEN-Austausch](../reports/2026-11-21_W05-W09-fen-austausch.md) |
@@ -71,6 +71,7 @@ nachspielen. [Wiederholtraining](../reports/2026-11-21_W08-W09-wiederholtraining
 
 | PR | Inhalt | Merge-Lauf |
 | --- | --- | --- |
+| [#21](https://github.com/n05a-design/chess-and-chains/pull/21) | W06/W09/W10 · Desktop-Marmoransicht, PGN/FEN und Wiedergabe im WebGL-Prototyp | [14/14](https://github.com/n05a-design/chess-and-chains/actions/runs/44972693793) |
 | [#17](https://github.com/n05a-design/chess-and-chains/pull/17) | W05 · Tote Stellungen bei geschlossener Bauernsperre | [14/14](https://github.com/n05a-design/chess-and-chains/actions/runs/44932980772) |
 | [#16](https://github.com/n05a-design/chess-and-chains/pull/16) | W09 · Gespeicherte Partien in der Bibliothek suchen | [14/14](https://github.com/n05a-design/chess-and-chains/actions/runs/44932023205) |
 | [#15](https://github.com/n05a-design/chess-and-chains/pull/15) | W10 · Brett als Text, Züge per Tastatur | [14/14](https://github.com/n05a-design/chess-and-chains/actions/runs/44931230803) |

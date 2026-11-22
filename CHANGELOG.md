@@ -33,6 +33,7 @@
 - Add PGN import and FEN exchange to the local 3D marble board.
 - Replay the 3D marble position history with a keyboard-adjustable timeline and return to the live game.
 - Switch between the normal board and the projected 3D marble board inside Tk while preserving the live game and move history.
+- Stack play actions when large text needs more room so the labels and focused controls remain visible in compact windows.
 
 The dated entries below preserve the development history incorporated into this snapshot.
 
