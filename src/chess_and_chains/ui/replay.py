@@ -6,6 +6,8 @@
 import tkinter as tk
 from tkinter import ttk
 
+from glide_shell import modal_session
+
 from ..chess import ChessGame, Color, GameStatus, to_san
 from ..i18n import Translator
 from .board import BoardCanvas
@@ -14,9 +16,10 @@ from .dialogs import bind_button_enter
 
 class ReplayDialog(tk.Toplevel):
     def __init__(self, parent: tk.Tk, game: ChessGame, t: Translator, artwork, renderer, orientation) -> None:
-        self._previous_focus = parent.focus_lastfor()
         super().__init__(parent)
         self.withdraw()
+        self._remembered_focus = modal_session.remember_focus(parent, self, parent)
+        self._previous_focus = self._remembered_focus[1]
         self.title(t("replay.title"))
         self.t = t
         self._positions = game.played_positions()
@@ -114,8 +117,7 @@ class ReplayDialog(tk.Toplevel):
             button.configure(state="normal" if self.index < len(self._moves) else "disabled")
 
     def _close(self, _event: tk.Event | None = None) -> str:
-        focus = self._previous_focus
-        if focus is not None and focus.winfo_exists() and focus.winfo_viewable():
-            focus.focus_set()
+        if not getattr(self, modal_session.ACTIVE_ATTRIBUTE, False):
+            modal_session.return_focus(self.master, self, self._remembered_focus)
         self.destroy()
         return "break"

@@ -9,6 +9,8 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Callable
 
+from glide_shell import modal_session
+
 from ..chess import GameState, Move, square_name
 from ..i18n import Translator
 from .dialogs import bind_button_enter
@@ -18,9 +20,10 @@ class TextBoardDialog(tk.Toplevel):
     """Keep a textual move picker synchronized with the visible board."""
 
     def __init__(self, parent: tk.Tk, translator: Translator, on_move: Callable[[Move], None]) -> None:
-        previous_focus = parent.focus_lastfor()
         super().__init__(parent)
         self.withdraw()
+        self._remembered_focus = modal_session.remember_focus(parent, self, parent)
+        previous_focus = self._remembered_focus[1]
         self.title(translator("text_board.title"))
         self.t = translator
         self._on_move = on_move
@@ -154,8 +157,7 @@ class TextBoardDialog(tk.Toplevel):
         return "break"
 
     def _close(self, _event: tk.Event | None = None) -> str:
-        focus = self._previous_focus
-        if focus is not None and focus.winfo_exists() and focus.winfo_viewable():
-            focus.focus_set()
+        if not getattr(self, modal_session.ACTIVE_ATTRIBUTE, False):
+            modal_session.return_focus(self.master, self, self._remembered_focus)
         self.destroy()
         return "break"

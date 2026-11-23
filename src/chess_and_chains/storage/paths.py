@@ -6,9 +6,12 @@
 from __future__ import annotations
 
 import os
+import posixpath
 import sys
 from pathlib import Path
 from typing import Mapping
+
+from glide_shell import runtime_paths
 
 APP_DIR_NAME = "Chess and Chains"
 LINUX_DIR_NAME = "chess-and-chains"
@@ -20,6 +23,28 @@ class UnsafeDataPathError(ValueError):
     """The chosen data path would write into program files or a source checkout."""
 
 
+class _SimulatedHomePath:
+    """Path helper for deterministic cross-platform path tests via ``runtime_paths``."""
+
+    def __init__(self, home: Path) -> None:
+        self._home = str(home)
+
+    def expanduser(self, value: str) -> str:
+        if value == "~":
+            return self._home
+        if value.startswith("~/"):
+            return posixpath.join(self._home, value[2:])
+        return os.path.expanduser(value)
+
+    @staticmethod
+    def join(*parts: str) -> str:
+        return str(Path(parts[0]).joinpath(*parts[1:]))
+
+    @staticmethod
+    def abspath(value: str) -> str:
+        return value
+
+
 def default_data_dir(
     platform: str | None = None,
     environ: Mapping[str, str] | None = None,
@@ -27,17 +52,18 @@ def default_data_dir(
 ) -> Path:
     env = os.environ if environ is None else environ
     plat = platform or sys.platform
-    home = home or Path.home()
     override = env.get(DATA_DIR_ENV)
     if override:
         return Path(override).expanduser()
-    if plat.startswith("win"):
-        base = env.get("APPDATA") or str(home / "AppData" / "Roaming")
-        return Path(base) / APP_DIR_NAME
-    if plat == "darwin":
-        return home / "Library" / "Application Support" / APP_DIR_NAME
-    base = env.get("XDG_DATA_HOME") or str(home / ".local" / "share")
-    return Path(base) / LINUX_DIR_NAME
+    app_name = APP_DIR_NAME if (plat == "darwin" or plat.startswith("win")) else LINUX_DIR_NAME
+    if home is not None:
+        resolved = runtime_paths.platform_data_dir(
+            app_name, platform=plat, environ=env, path=_SimulatedHomePath(home),
+        )
+        return Path(resolved)
+    default_dir = runtime_paths.platform_data_dir(app_name, platform=plat, environ=env)
+    chosen, _overridden = runtime_paths.resolve_base(None, env, DATA_DIR_ENV, default_dir)
+    return Path(chosen)
 
 
 def ensure_safe_data_dir(path: Path) -> Path:

@@ -221,6 +221,13 @@ CATALOGS: dict[str, dict[str, str]] = {
         "engine.test_failed": "Engine test failed: {error}",
         "engine.saved": "Engine setting saved. It is used for the next bot game.",
         "engine.missing": "No engine configured; the mock bot will be used.",
+        "menu.game": "Game",
+        "menu.edit": "Edit",
+        "menu.view": "View",
+        "menu.theme": "Theme",
+        "theme.light": "Light theme",
+        "theme.dark": "Dark theme",
+        "theme.system": "System theme",
     },
     "de": {
         "app.title": "Chess & Chains",
@@ -425,6 +432,13 @@ CATALOGS: dict[str, dict[str, str]] = {
         "engine.test_failed": "Engine-Test fehlgeschlagen: {error}",
         "engine.saved": "Engine-Einstellung gespeichert. Sie gilt ab der nächsten Bot-Partie.",
         "engine.missing": "Keine Engine konfiguriert; der Mock-Bot wird verwendet.",
+        "menu.game": "Partie",
+        "menu.edit": "Bearbeiten",
+        "menu.view": "Ansicht",
+        "menu.theme": "Erscheinungsbild",
+        "theme.light": "Helles Design",
+        "theme.dark": "Dunkles Design",
+        "theme.system": "Systemdesign",
     },
 }
 

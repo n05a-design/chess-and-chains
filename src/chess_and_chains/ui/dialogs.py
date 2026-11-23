@@ -10,6 +10,8 @@ from pathlib import Path
 from tkinter import filedialog, font, ttk
 from typing import Callable
 
+from glide_shell import desktop_adapter, modal_session, text_fit
+
 from ..chess import ChessError, GameState, to_fen
 from ..i18n import Translator
 from ..storage.exchange import parse_fen_text, read_fen_file, write_fen_file
@@ -31,15 +33,15 @@ class PositionDialog(tk.Toplevel):
         self, parent: tk.Tk, translator: Translator, position: GameState,
         confirm_replacement: Callable[[tk.Misc], bool],
     ) -> None:
-        previous_focus = parent.focus_lastfor()
         super().__init__(parent)
         self.withdraw()
+        self._remembered_focus = modal_session.remember_focus(parent, self, parent)
         self.title(translator("position.title"))
         if parent.winfo_viewable():
             self.transient(parent)
         self.t = translator
         self.result: GameState | None = None
-        self._previous_focus = previous_focus
+        self._previous_focus = self._remembered_focus[1]
         self._confirm_replacement = confirm_replacement
 
         content = ttk.Frame(self, padding=16)
@@ -95,9 +97,7 @@ class PositionDialog(tk.Toplevel):
         self._feedback.configure(text="")
 
     def _show_error(self, key: str, error: Exception) -> None:
-        detail = str(error)
-        if len(detail) > 160:
-            detail = detail[:159] + "…"
+        detail = text_fit.clip(str(error), 160, ellipsis="…")
         self._feedback.configure(text=self.t(key, error=detail))
 
     def _validated_draft(self) -> GameState | None:
@@ -146,8 +146,7 @@ class PositionDialog(tk.Toplevel):
         if position is None:
             return
         try:
-            self.clipboard_clear()
-            self.clipboard_append(to_fen(position))
+            desktop_adapter.copy_to_clipboard(self, to_fen(position))
         except tk.TclError:
             self._feedback.configure(text=self.t("position.copy_error"))
             return
@@ -161,9 +160,8 @@ class PositionDialog(tk.Toplevel):
         return "break"
 
     def _close(self, _event: tk.Event | None = None) -> str:
-        focus = self._previous_focus
-        if focus is not None and focus.winfo_exists() and focus.winfo_viewable():
-            focus.focus_set()
+        if not getattr(self, modal_session.ACTIVE_ATTRIBUTE, False):
+            modal_session.return_focus(self.master, self, self._remembered_focus)
         self.destroy()
         return "break"
 

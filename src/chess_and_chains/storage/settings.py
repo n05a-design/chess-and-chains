@@ -12,6 +12,8 @@ from dataclasses import asdict, dataclass, fields, replace
 from datetime import datetime, timezone
 from pathlib import Path
 
+from glide_shell import window_geometry
+
 SETTINGS_SCHEMA = 1
 LOCALES = (None, "en", "de")
 ORIENTATIONS = ("white", "black", "auto")
@@ -33,6 +35,7 @@ class Settings:
     bot_preset_id: str = "level-3"
     play_mode: str = "human-vs-human"
     last_pack_id: str | None = None
+    window_geometry: str | None = None
 
     def validate(self) -> Settings:
         if self.schema_version != SETTINGS_SCHEMA:
@@ -49,6 +52,8 @@ class Settings:
                 raise SettingsError(f"Invalid {name}.")
         if self.engine_path is not None and (not isinstance(self.engine_path, str) or "\n" in self.engine_path):
             raise SettingsError("Invalid engine path.")
+        if self.window_geometry is not None and window_geometry.parse(self.window_geometry) is None:
+            raise SettingsError("Invalid window geometry.")
         return self
 
 

@@ -21,6 +21,17 @@ from pathlib import Path
 from tkinter import filedialog, font, messagebox, ttk
 from typing import Callable, Sequence
 
+from glide_shell import (
+    action_picker,
+    app_host,
+    command_history,
+    desktop_adapter,
+    modal_session,
+    motion,
+    window_geometry,
+    window_lifetime,
+)
+
 from .. import DISPLAY_VERSION
 from ..chess import ChessError, ChessGame, Color, GameStatus, Move, export_pgn, square_name, to_san
 from ..engines.bot import EngineConfig, EngineConfigError, MoveProvider, UCIBot, probe_engine, resolve_engine_config
@@ -47,11 +58,15 @@ from .theme import (
     DISABLED_INK,
     FONT_SIZES,
     INK,
+    LIGHT_THEME,
     MUTED_INK,
     PAPER,
     SHADOW,
     TAB_IDLE,
     WINDOW,
+    ThemePalette,
+    install_shell_providers,
+    resolve_theme,
 )
 
 POLL_MS = 40
@@ -69,17 +84,24 @@ def default_provider_factory(preset: BotPreset, settings: Settings) -> MoveProvi
 class TabRail(tk.Frame):
     """The three workspace views, with native keyboard-focusable controls."""
 
-    def __init__(self, master: tk.Misc, on_change, tabs: Sequence[tuple[str, str]]) -> None:
-        super().__init__(master, background=ACETATE)
+    def __init__(
+        self,
+        master: tk.Misc,
+        on_change,
+        tabs: Sequence[tuple[str, str]],
+        theme: ThemePalette = LIGHT_THEME,
+    ) -> None:
+        super().__init__(master, background=theme.acetate)
         self._on_change = on_change
         self._tabs = tuple(name for name, _ in tabs)
         self._active = self._tabs[0]
+        self._theme = theme
         for index, (name, label) in enumerate(tabs):
             button = tk.Button(
                 self, name=name, text=label, command=lambda tab=name: self.set_active(tab),
-                foreground=INK, activeforeground=PAPER, activebackground=INK,
-                relief="flat", borderwidth=0, highlightthickness=2, highlightcolor=INK,
-                highlightbackground=ACETATE, padx=2, pady=8, takefocus=True,
+                foreground=theme.ink, activeforeground=theme.paper, activebackground=theme.ink,
+                relief="flat", borderwidth=0, highlightthickness=2, highlightcolor=theme.ink,
+                highlightbackground=theme.acetate, padx=2, pady=8, takefocus=True,
             )
             self.grid_columnconfigure(index, weight=1)
             button.grid(row=0, column=index, sticky="ew", padx=(0, 3 if index < len(tabs) - 1 else 0))
@@ -93,11 +115,22 @@ class TabRail(tk.Frame):
     def active(self) -> str:
         return self._active
 
+    def update_theme(self, theme: ThemePalette) -> None:
+        self._theme = theme
+        self.configure(background=theme.acetate)
+        self._paint()
+
     def _paint(self) -> None:
+        theme = self._theme
         for name, button in self.children.items():
             selected = name == self._active
             button.configure(
-                background=CHROME_YELLOW if selected else TAB_IDLE,
+                background=theme.chrome_yellow if selected else theme.tab_idle,
+                foreground=theme.action_new_fg if selected else theme.ink,
+                activeforeground=theme.paper,
+                activebackground=theme.ink,
+                highlightcolor=theme.focus_ink,
+                highlightbackground=theme.acetate,
                 font=("TkDefaultFont", FONT_SIZES["caption"], "bold underline" if selected else "normal"),
             )
 
@@ -127,6 +160,11 @@ class ChessApp:
         piece_renderer: PieceRenderer | None = None,
     ) -> None:
         self.root = root
+        install_shell_providers()
+        self.scope = window_lifetime.scope_for(root)
+        self.transitions = motion.Transitions(self.scope.after, self.scope.cancel)
+        self.ui_history = command_history.CommandHistory(limit=50)
+        self.platform = app_host.platform_of(str(root.tk.call("tk", "windowingsystem")))
         self._board_artwork = board_artwork
         self.layout = data_layout
         self.settings_warning: str | None = None
@@ -141,6 +179,9 @@ class ChessApp:
                 database_warning = str(error)
         else:
             self.settings, self.db = Settings(), None
+        self.theme = resolve_theme(self.settings.theme_id, root)
+        self._theme_callbacks: list[Callable[[ThemePalette], None]] = []
+        self._menus: list[tk.Menu] = []
         self.t = Translator(locale or self.settings.locale)
         self.presets = load_presets()
         self._provider_factory = provider_factory
@@ -183,10 +224,11 @@ class ChessApp:
         self.preset_var = tk.StringVar(root, value=self._preset_label(initial_preset))
         self._wrap_labels: list[tk.Label] = []
         self._build(piece_renderer)
+        self._build_menubar()
         self._bind_shortcuts()
-        self.root.protocol("WM_DELETE_WINDOW", self.close)
+        app_host.install_close(self.root, self.close, self.platform, scope=self.scope)
         self._refresh()
-        self._poll_job = self.root.after(POLL_MS, self._poll)
+        self._poll_job = self.scope.after(POLL_MS, self._poll)
         if self.db is not None and self.db.recovered_from is not None:
             database_warning = self.t("library.recovered", file=self.db.recovered_from.name)
         startup_messages = (database_warning, self.settings_warning)
@@ -205,55 +247,163 @@ class ChessApp:
         return int(self.controller.view().can_redo)
 
     # ----- construction ------------------------------------------------
+    def _register_theme(self, callback: Callable[[ThemePalette], None]) -> None:
+        self._theme_callbacks.append(callback)
+        callback(self.theme)
+
+    def apply_theme(self, theme_id: str, *, persist: bool = True) -> ThemePalette:
+        """Apply light, dark, or system theme using ``glide_shell.system_appearance``."""
+        palette = resolve_theme(theme_id, self.root)
+        self.theme = palette
+        self.root.configure(background=palette.window)
+        for callback in self._theme_callbacks:
+            callback(palette)
+        self.tab_rail.update_theme(palette)
+        if persist and self.settings.theme_id != theme_id:
+            self._store_settings(theme_id=theme_id)
+        return palette
+
+    def _build_menubar(self) -> None:
+        t = self.t
+        self._menus.clear()
+        entries = [
+            (t("menu.game"), [
+                (t("button.new_game"), self._new_game, desktop_adapter.format_accelerator("N"), "new_game"),
+                (t("button.save_game"), self._save_game, "", "save_game"),
+                (t("button.library"), self._open_library, "", "open_library"),
+                (t("position.button"), self._open_position, "", "open_position"),
+                None,
+                (t("button.engine"), self._open_engine_dialog, "", "engine_settings"),
+            ]),
+            (t("menu.edit"), [
+                (t("button.undo"), self._undo, desktop_adapter.format_accelerator("Z"), "undo"),
+                (t("button.redo"), self._redo, desktop_adapter.format_redo_accelerator(), "redo"),
+                (t("button.copy_pgn"), self._copy_pgn, "", "copy_pgn"),
+            ]),
+            (t("menu.view"), [
+                (t("button.flip"), self._flip_board, "", "flip_board"),
+                (t("text_board.button"), self._open_text_board, "", "text_board"),
+                None,
+                (t("tab.play"), lambda: self.tab_rail.set_active("play"), "", "tab_play"),
+                (t("tab.moves"), lambda: self.tab_rail.set_active("moves"), "", "tab_moves"),
+                (t("tab.puzzles"), lambda: self.tab_rail.set_active("puzzles"), "", "tab_puzzles"),
+                None,
+                (t("menu.theme"), [
+                    (t("theme.light"), lambda: self.apply_theme("light"), "", "theme_light"),
+                    (t("theme.dark"), lambda: self.apply_theme("dark"), "", "theme_dark"),
+                    (t("theme.system"), lambda: self.apply_theme("system"), "", "theme_system"),
+                ]),
+            ]),
+        ]
+        self.menubar = desktop_adapter.build_menu_tree(self.root, entries, menus_out=self._menus)
+        app_host.attach_menubar(self.root, self.menubar)
+
+    def available_menu_actions(self, query: str = "") -> list[action_picker.Entry]:
+        """Collect searchable actions from the live menu tree via ``action_picker``."""
+        rows = []
+        top_count = self.menubar.index("end")
+        if top_count is None:
+            return []
+        sections = []
+        for top_idx in range(top_count + 1):
+            if self.menubar.type(top_idx) != "cascade":
+                continue
+            section_name = self.menubar.entrycget(top_idx, "label")
+            sections.append(section_name)
+            submenu = self.menubar.nametowidget(self.menubar.entrycget(top_idx, "menu"))
+            sub_end = submenu.index("end")
+            if sub_end is None:
+                continue
+            group = 0
+            for item_idx in range(sub_end + 1):
+                kind = submenu.type(item_idx)
+                if kind == "separator":
+                    group += 1
+                    continue
+                if kind == "command":
+                    rows.append((
+                        (top_idx, item_idx),
+                        submenu.entrycget(item_idx, "label"),
+                        (section_name,),
+                        submenu.entrycget(item_idx, "state") != "disabled",
+                        group,
+                        "command",
+                    ))
+        parsed = action_picker.entries(rows, tuple(sections))
+        return action_picker.search(parsed, query)
+
+    def _initial_geometry(self) -> str:
+        parsed = window_geometry.parse(self.settings.window_geometry)
+        width, height, x, y = parsed if parsed is not None else (1180, 820, None, None)
+        clamped = window_geometry.clamp(
+            width, height, x, y,
+            self.root.winfo_screenwidth(), self.root.winfo_screenheight(),
+            (860, 700),
+        )
+        return window_geometry.format_geometry(*clamped)
+
     def _build(self, piece_renderer: PieceRenderer | None) -> None:
         t = self.t
+        theme = self.theme
         # Child widgets can outlive the window while a worker is winding down.
         app = proxy(self)
         self.root.title(f'{t("app.window_title")} · {DISPLAY_VERSION}')
         self._window_icon = brand_image(self.root, "app-icon")
         self.root.iconphoto(True, self._window_icon)
-        self.root.configure(background=WINDOW)
-        self.root.geometry("1180x820")
+        self.root.configure(background=theme.window)
+        self.root.geometry(self._initial_geometry())
         self.root.minsize(860, 700)
         self.root.grid_rowconfigure(1, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
 
-        masthead = tk.Frame(self.root, background=BRAND_BLUE, pady=0)
+        masthead = tk.Frame(self.root, background=theme.brand_blue, pady=0)
         masthead.grid(row=0, column=0, sticky="ew")
-        header = tk.Frame(masthead, background=PAPER, padx=22, pady=12)
+        header = tk.Frame(masthead, background=theme.paper, padx=22, pady=12)
         header.pack(fill="x", pady=(4, 0))
         header.grid_columnconfigure(1, weight=1)
         self._header_signet = brand_image(self.root, "signet", scale=40 / 64)
         self._header_wordmark = brand_image(self.root, "wordmark")
-        tk.Label(header, image=self._header_signet, background=PAPER, borderwidth=0).grid(row=0, column=0, sticky="w")
-        tk.Label(header, text=t("app.title"), image=self._header_wordmark,
-                 background=PAPER, borderwidth=0).grid(row=0, column=1, sticky="w", padx=(10, 0))
-        tk.Label(header, textvariable=self.header_mode_text, background=PAPER, foreground=MUTED_INK,
-                 font=("TkFixedFont", FONT_SIZES["caption"], "bold"), justify="right", wraplength=350,
-                 ).grid(row=0, column=2, sticky="e", padx=(12, 0))
+        signet_lbl = tk.Label(header, image=self._header_signet, background=theme.paper, borderwidth=0)
+        signet_lbl.grid(row=0, column=0, sticky="w")
+        wordmark_lbl = tk.Label(header, text=t("app.title"), image=self._header_wordmark,
+                                background=theme.paper, borderwidth=0)
+        wordmark_lbl.grid(row=0, column=1, sticky="w", padx=(10, 0))
+        mode_lbl = tk.Label(header, textvariable=self.header_mode_text, background=theme.paper,
+                            foreground=theme.muted_ink, font=("TkFixedFont", FONT_SIZES["caption"], "bold"),
+                            justify="right", wraplength=350)
+        mode_lbl.grid(row=0, column=2, sticky="e", padx=(12, 0))
+        self._register_theme(lambda p: (
+            masthead.configure(background=p.brand_blue),
+            header.configure(background=p.paper),
+            signet_lbl.configure(background=p.paper),
+            wordmark_lbl.configure(background=p.paper),
+            mode_lbl.configure(background=p.paper, foreground=p.muted_ink),
+        ))
 
-        body = tk.Frame(self.root, background=WINDOW, padx=18)
+        body = tk.Frame(self.root, background=theme.window, padx=18)
         body.grid(row=1, column=0, sticky="nsew", pady=(4, 12))
         body.grid_rowconfigure(0, weight=1)
         body.grid_columnconfigure(0, weight=7, minsize=450)
         body.grid_columnconfigure(1, weight=3, minsize=328)
+        self._register_theme(lambda p: body.configure(background=p.window))
 
         board_sheet = self._sheet(body, 0, padx=(0, 14))
         board_sheet.grid_rowconfigure(1, weight=1)
         board_sheet.grid_columnconfigure(0, weight=1)
-        board_header = tk.Frame(board_sheet, background=ACETATE)
+        board_header = tk.Frame(board_sheet, background=theme.acetate)
         board_header.grid(row=0, column=0, sticky="ew")
         board_header.columnconfigure(0, weight=1)
-        self.board_title = board_title = tk.Label(board_header, text=t("board.pieces"), background=ACETATE, foreground=INK,
-                 font=("TkDefaultFont", FONT_SIZES["caption"], "bold"), anchor="w", justify="left", padx=14, pady=9,
-                 )
+        self.board_title = board_title = tk.Label(
+            board_header, text=t("board.pieces"), background=theme.acetate, foreground=theme.ink,
+            font=("TkDefaultFont", FONT_SIZES["caption"], "bold"), anchor="w", justify="left", padx=14, pady=9,
+        )
         board_title.grid(row=0, column=0, sticky="ew")
         self.text_board_button = self._button(board_header, t("text_board.button"), self._open_text_board)
         self.text_board_button.grid(row=0, column=1, padx=(0, 12), pady=4)
         board_title.bind("<Configure>", lambda event: board_title.configure(wraplength=max(1, event.width - 28)))
         self.marble_view = tk.BooleanVar(self.root, value=False)
         self.marble_button = ttk.Checkbutton(board_header, text=t("board.marble"), variable=self.marble_view,
-                                           command=self._toggle_marble_view)
+                                             command=self._toggle_marble_view)
         self.marble_button.grid(row=1, column=0, columnspan=2, sticky="w", padx=14, pady=(0, 6))
         _bind_button_enter(self.marble_button)
         self.board = MarbleBoardCanvas(board_sheet, lambda moves: app._on_move_requested(moves),
@@ -261,11 +411,16 @@ class ChessApp:
                                        artwork=self._board_artwork, renderer=piece_renderer, translator=t)
         self.board.grid(row=1, column=0, sticky="nsew", padx=12, pady=(0, 10))
         board_status = tk.Label(
-            board_sheet, textvariable=self.interaction_text, background=ACETATE, foreground=MUTED_INK,
+            board_sheet, textvariable=self.interaction_text, background=theme.acetate, foreground=theme.muted_ink,
             font=("TkDefaultFont", FONT_SIZES["caption"]), anchor="w", justify="left", padx=14, pady=8,
         )
         board_status.grid(row=2, column=0, sticky="ew")
         board_sheet.bind("<Configure>", lambda event: board_status.configure(wraplength=max(1, event.width - 28)))
+        self._register_theme(lambda p: (
+            board_header.configure(background=p.acetate),
+            board_title.configure(background=p.acetate, foreground=p.ink),
+            board_status.configure(background=p.acetate, foreground=p.muted_ink),
+        ))
 
         side_sheet = self._sheet(body, 1)
         side_sheet.grid_rowconfigure(2, weight=1)
@@ -273,17 +428,22 @@ class ChessApp:
         self.tab_rail = TabRail(
             side_sheet, lambda name: app._show_panel(name),
             (("play", t("tab.play")), ("moves", t("tab.moves")), ("puzzles", t("tab.puzzles"))),
+            theme=theme,
         )
         self.tab_rail.grid(row=0, column=0, sticky="ew", padx=(12, 9), pady=(12, 0))
-        status = tk.Label(side_sheet, textvariable=self.panel_text, background=ACETATE, foreground=INK,
+        status = tk.Label(side_sheet, textvariable=self.panel_text, background=theme.acetate, foreground=theme.ink,
                           font=("TkDefaultFont", FONT_SIZES["section"], "bold"), anchor="w", justify="left",
                           padx=16, pady=15, wraplength=200)
         status.grid(row=1, column=0, sticky="ew")
         side_sheet.bind("<Configure>", lambda event: status.configure(wraplength=max(1, event.width - 32)))
-        self.panel = tk.Frame(side_sheet, background=ACETATE, padx=14, pady=10)
+        self.panel = tk.Frame(side_sheet, background=theme.acetate, padx=14, pady=10)
         self.panel.grid(row=2, column=0, sticky="nsew")
         self.panel.grid_columnconfigure(0, weight=1)
         self.panel.grid_rowconfigure(0, weight=1)
+        self._register_theme(lambda p: (
+            status.configure(background=p.acetate, foreground=p.ink),
+            self.panel.configure(background=p.acetate),
+        ))
         self._build_play_panel()
         self._build_moves_panel()
         self._build_puzzle_panel()
@@ -291,26 +451,37 @@ class ChessApp:
         self._show_panel("play")
 
     def _sheet(self, master: tk.Misc, column: int, padx=(0, 0)) -> tk.Frame:
-        slot = tk.Frame(master, background=WINDOW)
+        theme = self.theme
+        slot = tk.Frame(master, background=theme.window)
         slot.grid(row=0, column=column, sticky="nsew", padx=padx, pady=(4, 10))
-        shadow = tk.Frame(slot, background=SHADOW)
+        shadow = tk.Frame(slot, background=theme.shadow)
         shadow.place(x=6, y=6, relwidth=1, relheight=1, width=-6, height=-6)
-        sheet = tk.Frame(slot, background=ACETATE, highlightbackground=INK, highlightthickness=1)
+        sheet = tk.Frame(slot, background=theme.acetate, highlightbackground=theme.ink, highlightthickness=1)
         sheet.place(x=0, y=0, relwidth=1, relheight=1, width=-6, height=-6)
+        self._register_theme(lambda p: (
+            slot.configure(background=p.window),
+            shadow.configure(background=p.shadow),
+            sheet.configure(background=p.acetate, highlightbackground=p.ink),
+        ))
         return sheet
 
     def _label(self, master, *, text=None, var=None, role="body", bold=False, muted=False) -> tk.Label:
+        theme = self.theme
         label = tk.Label(
-            master, text=text, textvariable=var, background=ACETATE,
-            foreground=MUTED_INK if muted else INK,
+            master, text=text, textvariable=var, background=theme.acetate,
+            foreground=theme.muted_ink if muted else theme.ink,
             font=("TkDefaultFont", FONT_SIZES[role], "bold" if bold else "normal"),
             wraplength=250, justify="left", anchor="w",
         )
         self._wrap_labels.append(label)
+        self._register_theme(lambda p, lbl=label, is_muted=muted: lbl.configure(
+            background=p.acetate, foreground=p.muted_ink if is_muted else p.ink,
+        ))
         return label
 
     def _build_play_panel(self) -> None:
         t = self.t
+        theme = self.theme
         self.play_viewport, self.play_canvas, self.play_panel = self._scrollable_panel()
         canvas, panel = self.play_canvas, self.play_panel
         row = 0
@@ -321,26 +492,38 @@ class ChessApp:
                            ("human-vs-bot-black", "mode.bot_black")):
             button = tk.Radiobutton(
                 panel, text=t(key), value=value, variable=self.mode_var, anchor="w",
-                background=ACETATE, foreground=INK, activebackground=ACETATE, selectcolor=PAPER,
-                highlightthickness=1, highlightcolor=INK, font=("TkDefaultFont", FONT_SIZES["body"]),
+                background=theme.acetate, foreground=theme.ink, activebackground=theme.acetate,
+                activeforeground=theme.ink, selectcolor=theme.paper,
+                highlightthickness=1, highlightcolor=theme.focus_ink, font=("TkDefaultFont", FONT_SIZES["body"]),
             )
             button.grid(row=row, column=0, sticky="ew")
             self.mode_buttons[value] = button
+            self._register_theme(lambda p, b=button: b.configure(
+                background=p.acetate, foreground=p.ink, activebackground=p.acetate,
+                activeforeground=p.ink, selectcolor=p.paper, highlightcolor=p.focus_ink,
+            ))
             row += 1
-        level_row = tk.Frame(panel, background=ACETATE)
+        level_row = tk.Frame(panel, background=theme.acetate)
         level_row.grid(row=row, column=0, sticky="ew", pady=(4, 8))
         level_row.grid_columnconfigure(1, weight=1)
-        tk.Label(level_row, text=t("play.level_label"), background=ACETATE, foreground=INK,
-                 font=("TkDefaultFont", FONT_SIZES["caption"], "bold")).grid(row=0, column=0, sticky="w")
+        level_lbl = tk.Label(level_row, text=t("play.level_label"), background=theme.acetate, foreground=theme.ink,
+                             font=("TkDefaultFont", FONT_SIZES["caption"], "bold"))
+        level_lbl.grid(row=0, column=0, sticky="w")
         self.level_menu = tk.OptionMenu(level_row, self.preset_var, *[self._preset_label(p.id) for p in self.presets],
                                         command=lambda _v: self._on_preset_changed())
-        self.level_menu.configure(background=PAPER, foreground=INK, highlightthickness=1, relief="solid", borderwidth=1)
+        self.level_menu.configure(background=theme.paper, foreground=theme.ink, highlightthickness=1,
+                                  relief="solid", borderwidth=1)
         self.level_menu.grid(row=0, column=1, sticky="ew", padx=(8, 0))
+        self._register_theme(lambda p: (
+            level_row.configure(background=p.acetate),
+            level_lbl.configure(background=p.acetate, foreground=p.ink),
+            self.level_menu.configure(background=p.paper, foreground=p.ink),
+        ))
         row += 1
         self.new_game_button = self._button(panel, t("button.new_game"), self._new_game, role="new")
         self.new_game_button.grid(row=row, column=0, sticky="ew", pady=3)
         row += 1
-        controls = tk.Frame(panel, background=ACETATE)
+        controls = tk.Frame(panel, background=theme.acetate)
         controls.grid(row=row, column=0, sticky="ew")
         controls.grid_columnconfigure((0, 1), weight=1, uniform="actions")
         self.undo_button = self._button(controls, t("button.undo"), self._undo)
@@ -365,18 +548,24 @@ class ChessApp:
         row += 1
         self._label(panel, var=self.action_state_text, role="caption", muted=True).grid(row=row, column=0, sticky="ew", pady=(6, 0))
         row += 1
-        tk.Frame(panel, height=1, background=INK).grid(row=row, column=0, sticky="ew", pady=(12, 8))
+        divider = tk.Frame(panel, height=1, background=theme.ink)
+        divider.grid(row=row, column=0, sticky="ew", pady=(12, 8))
         row += 1
         self.bot_label = self._label(panel, var=self.bot_text, role="caption", bold=True)
         self.bot_label.grid(row=row, column=0, sticky="ew")
         row += 1
-        bot_controls = tk.Frame(panel, background=ACETATE)
+        bot_controls = tk.Frame(panel, background=theme.acetate)
         bot_controls.grid(row=row, column=0, sticky="ew", pady=(6, 0))
         bot_controls.grid_columnconfigure((0, 1), weight=1, uniform="actions")
         self.retry_bot_button = self._button(bot_controls, t("button.retry_bot"), self._retry_bot)
         self.retry_bot_button.grid(row=0, column=0, sticky="ew", padx=(0, 3))
         self.engine_button = self._button(bot_controls, t("button.engine"), self._open_engine_dialog)
         self.engine_button.grid(row=0, column=1, sticky="ew", padx=(3, 0))
+        self._register_theme(lambda p: (
+            controls.configure(background=p.acetate),
+            divider.configure(background=p.ink),
+            bot_controls.configure(background=p.acetate),
+        ))
 
         play_actions = (
             self.undo_button, self.redo_button, self.flip_button, self.resign_button, self.save_button,
@@ -416,19 +605,25 @@ class ChessApp:
         )
 
     def _scrollable_panel(self) -> tuple[tk.Frame, tk.Canvas, tk.Frame]:
-        viewport = tk.Frame(self.panel, background=ACETATE)
+        theme = self.theme
+        viewport = tk.Frame(self.panel, background=theme.acetate)
         viewport.grid(row=0, column=0, sticky="nsew")
         viewport.grid_rowconfigure(0, weight=1)
         viewport.grid_columnconfigure(0, weight=1)
-        canvas = tk.Canvas(viewport, background=ACETATE, highlightthickness=0, borderwidth=0)
+        canvas = tk.Canvas(viewport, background=theme.acetate, highlightthickness=0, borderwidth=0)
         canvas.grid(row=0, column=0, sticky="nsew")
         scrollbar = ttk.Scrollbar(viewport, orient=tk.VERTICAL, command=canvas.yview)
         scrollbar.grid(row=0, column=1, sticky="ns")
         canvas.configure(yscrollcommand=scrollbar.set)
-        panel = tk.Frame(canvas, background=ACETATE)
+        panel = tk.Frame(canvas, background=theme.acetate)
         panel.grid_columnconfigure(0, weight=1)
         canvas.create_window(0, 0, window=panel, anchor="nw", tags=("panel-content",))
         panel.bind("<Configure>", lambda event: canvas.configure(scrollregion=(0, 0, event.width, event.height)))
+        self._register_theme(lambda p: (
+            viewport.configure(background=p.acetate),
+            canvas.configure(background=p.acetate),
+            panel.configure(background=p.acetate),
+        ))
         return viewport, canvas, panel
 
     @staticmethod
@@ -472,31 +667,44 @@ class ChessApp:
 
     def _build_moves_panel(self) -> None:
         t = self.t
-        panel = self.moves_panel = tk.Frame(self.panel, background=ACETATE)
+        theme = self.theme
+        panel = self.moves_panel = tk.Frame(self.panel, background=theme.acetate)
         panel.grid(row=0, column=0, sticky="nsew")
         panel.grid_rowconfigure(1, weight=1)
         panel.grid_columnconfigure(0, weight=1)
-        tk.Label(panel, text=t("moves.title"), background=ACETATE, foreground=INK,
-                 font=("TkDefaultFont", FONT_SIZES["section"], "bold"), anchor="w").grid(row=0, column=0, sticky="ew", pady=(0, 8))
+        title_lbl = tk.Label(panel, text=t("moves.title"), background=theme.acetate, foreground=theme.ink,
+                             font=("TkDefaultFont", FONT_SIZES["section"], "bold"), anchor="w")
+        title_lbl.grid(row=0, column=0, sticky="ew", pady=(0, 8))
         self.empty_moves_label = self._label(panel, text=t("moves.empty"), muted=True)
         self.empty_moves_label.grid(row=1, column=0, sticky="new")
-        list_frame = self.move_list_frame = tk.Frame(panel, background=ACETATE)
+        list_frame = self.move_list_frame = tk.Frame(panel, background=theme.acetate)
         list_frame.grid(row=1, column=0, sticky="nsew")
         list_frame.grid_rowconfigure(0, weight=1)
         list_frame.grid_columnconfigure(0, weight=1)
         self.move_list = tk.Listbox(
-            list_frame, background=PAPER, foreground=INK, selectbackground=CHROME_YELLOW, selectforeground=INK,
-            font=("TkFixedFont", 11), relief="solid", borderwidth=1, highlightthickness=2,
-            highlightbackground=PAPER, highlightcolor=BRAND_BLUE, exportselection=False,
+            list_frame, background=theme.paper, foreground=theme.ink, selectbackground=theme.chrome_yellow,
+            selectforeground=theme.action_new_fg, font=("TkFixedFont", 11), relief="solid", borderwidth=1,
+            highlightthickness=2, highlightbackground=theme.paper, highlightcolor=theme.brand_blue,
+            exportselection=False,
         )
         self.move_list.grid(row=0, column=0, sticky="nsew")
         scrollbar = tk.Scrollbar(list_frame, orient="vertical", command=self.move_list.yview,
-                                 background=CHROME_YELLOW, troughcolor=PAPER, activebackground=INK)
+                                 background=theme.chrome_yellow, troughcolor=theme.paper, activebackground=theme.ink)
         scrollbar.grid(row=0, column=1, sticky="ns")
         self.move_list.configure(yscrollcommand=scrollbar.set)
         list_frame.grid_remove()
         self.replay_button = self._button(panel, t("replay.title"), lambda: self._open_replay(self.game))
         self.replay_button.grid(row=2, column=0, sticky="ew", pady=(8, 0))
+        self._register_theme(lambda p: (
+            panel.configure(background=p.acetate),
+            title_lbl.configure(background=p.acetate, foreground=p.ink),
+            list_frame.configure(background=p.acetate),
+            self.move_list.configure(
+                background=p.paper, foreground=p.ink, selectbackground=p.chrome_yellow,
+                selectforeground=p.action_new_fg, highlightbackground=p.paper, highlightcolor=p.brand_blue,
+            ),
+            scrollbar.configure(background=p.chrome_yellow, troughcolor=p.paper, activebackground=p.ink),
+        ))
 
     def _build_puzzle_panel(self) -> None:
         t = self.t
@@ -579,12 +787,16 @@ class ChessApp:
         self._bind_panel_scroll(canvas, panel, controls, resize_buttons)
 
     def _bind_shortcuts(self) -> None:
-        for modifier in ("Control", "Command"):
-            for sequence, action in (("z", self._undo), ("y", self._redo), ("Z", self._redo), ("n", self._new_game)):
-                try:
-                    self.root.bind(f"<{modifier}-{sequence}>", lambda _e, a=action: (a(), "break")[1])
-                except tk.TclError:
-                    pass  # Command modifier only exists on macOS
+        def invoke(action):
+            return lambda _e: (action(), "break")[1]
+
+        entries = (
+            app_host.primary_shortcuts("z", invoke(self._undo), self.platform)
+            + app_host.primary_shortcuts("y", invoke(self._redo), self.platform)
+            + app_host.primary_shortcuts("Z", invoke(self._redo), self.platform, shift=True)
+            + app_host.primary_shortcuts("n", invoke(self._new_game), self.platform)
+        )
+        app_host.bind_shortcuts(self.root, entries, self.platform)
 
     def _update_panel_wraplengths(self, _event: tk.Event | None = None) -> None:
         wraplength = max(120, min(320, self.panel.winfo_width() - 40))
@@ -594,14 +806,24 @@ class ChessApp:
     def _button(self, master: tk.Misc, label: str, command, *, role: str = "neutral") -> tk.Button:
         if role not in BUTTON_ROLES:
             raise ValueError(f"Unknown button role: {role}")
-        background, foreground = BUTTON_ROLES[role]
+        background, foreground = self.theme.button_colors(role)
         button = tk.Button(
             master, text=label, command=command, background=background, foreground=foreground,
-            activebackground=INK, activeforeground=ACETATE, disabledforeground=DISABLED_INK, relief="solid",
-            borderwidth=1, highlightthickness=2, highlightbackground=background, highlightcolor=BRAND_BLUE,
+            activebackground=self.theme.ink, activeforeground=self.theme.acetate,
+            disabledforeground=self.theme.disabled_ink, relief="solid",
+            borderwidth=1, highlightthickness=2, highlightbackground=background,
+            highlightcolor=self.theme.brand_blue,
             padx=10, pady=7, anchor="w", font=("TkDefaultFont", FONT_SIZES["body"], "bold"),
         )
-
+        self._register_theme(lambda p, btn=button, btn_role=role: btn.configure(
+            background=p.button_colors(btn_role)[0],
+            foreground=p.button_colors(btn_role)[1],
+            activebackground=p.ink,
+            activeforeground=p.acetate,
+            disabledforeground=p.disabled_ink,
+            highlightbackground=p.button_colors(btn_role)[0],
+            highlightcolor=p.brand_blue,
+        ))
         _bind_button_enter(button)
         return button
 
@@ -701,31 +923,32 @@ class ChessApp:
         if not promotions:
             self.interaction_text.set(self.t("move.ambiguous"))
             return
-        dialog = tk.Toplevel(self.root)
-        dialog.title(self.t("promotion.title"))
-        dialog.transient(self.root)
-        dialog.resizable(False, False)
-        dialog.configure(background=ACETATE)
-        tk.Label(dialog, text=self.t("promotion.prompt"), background=ACETATE, foreground=INK,
+        theme = self.theme
+        dialog = modal_session.create_dialog(
+            self.root,
+            self.t("promotion.title"),
+            background=theme.acetate,
+            transient=bool(self.root.winfo_viewable()),
+            resizable=(False, False),
+        )
+        tk.Label(dialog, text=self.t("promotion.prompt"), background=theme.acetate, foreground=theme.ink,
                  font=("TkDefaultFont", FONT_SIZES["body"], "bold"), padx=18, pady=14,
                  ).grid(row=0, column=0, columnspan=len(promotions), sticky="ew")
         chosen: list[Move] = []
+        first_button: tk.Button | None = None
         for column, move in enumerate(promotions):
             label = self.t(f"piece.{move.promotion.name.lower()}") if move.promotion else "?"
             button = self._button(dialog, label, lambda candidate=move: (chosen.append(candidate), dialog.destroy()))
             button.grid(row=1, column=column, padx=6, pady=(0, 14))
-            if column == 0:
-                button.focus_set()
+            if first_button is None:
+                first_button = button
         dialog.bind("<Escape>", lambda _event: dialog.destroy())
         dialog.protocol("WM_DELETE_WINDOW", dialog.destroy)
-        try:
-            dialog.grab_set()
-            self.root.wait_window(dialog)
-        finally:
-            try:
-                dialog.grab_release()
-            except tk.TclError:
-                pass
+        modal_session.ensure_min_width(dialog)
+        modal_session.bring_to_front(dialog)
+        if first_button is not None:
+            first_button.focus_set()
+        modal_session.wait_modal(self.root, dialog)
         if chosen:
             self._play_move(chosen[0])
 
@@ -762,10 +985,12 @@ class ChessApp:
         actions: Sequence[tuple[str, Callable[[int | None], None], bool]] = (),
         searchable: bool = False,
     ) -> int | None:
-        previous_focus = self.root.focus_lastfor()
-        dialog = tk.Toplevel(self.root)
-        dialog.title(title)
-        dialog.transient(self.root)
+        dialog = modal_session.create_dialog(
+            self.root,
+            title,
+            background=self.theme.acetate,
+            transient=bool(self.root.winfo_viewable()),
+        )
         content = ttk.Frame(dialog, padding=12)
         content.grid(sticky="nsew")
         columns = 3 if len(actions) >= 3 else len(actions) + 2
@@ -780,10 +1005,6 @@ class ChessApp:
         visible = list(range(len(labels)))
 
         def close(_event: tk.Event | None = None) -> None:
-            # Return focus while the dialog still owns it. Tk also remembers the
-            # target in the parent if the window manager has deactivated the app.
-            if previous_focus is not None and previous_focus.winfo_exists() and previous_focus.winfo_viewable():
-                previous_focus.focus_set()
             dialog.destroy()
 
         def accept(callback: Callable[[int | None], None] | None = None) -> None:
@@ -855,10 +1076,10 @@ class ChessApp:
             search.bind("<Return>", focus_matches)
             search.bind("<KP_Enter>", focus_matches)
             initial_focus = search
+        modal_session.ensure_min_width(dialog)
         (initial_focus or cancel_button).focus_set()
-        dialog.grab_set()
         try:
-            self.root.wait_window(dialog)
+            modal_session.wait_modal(self.root, dialog)
         finally:
             if query is not None:
                 query.trace_remove("write", trace)
@@ -1016,8 +1237,7 @@ class ChessApp:
         return export_pgn(self.game, self._pgn_headers())
 
     def _copy_pgn(self) -> None:
-        self.root.clipboard_clear()
-        self.root.clipboard_append(self._current_pgn())
+        desktop_adapter.copy_to_clipboard(self.root, self._current_pgn())
         self.interaction_text.set(self.t("pgn.copied"))
 
     def _open_position(self) -> None:
@@ -1029,7 +1249,7 @@ class ChessApp:
             )
 
         dialog = PositionDialog(self.root, self.t, self.controller.view().state, confirm_replacement)
-        self.root.wait_window(dialog)
+        modal_session.wait_modal(self.root, dialog)
         if dialog.result is None or self._closed:
             return
         self._game_headers.clear()
@@ -1311,14 +1531,14 @@ class ChessApp:
 
     def _open_replay(self, game: ChessGame) -> None:
         dialog = ReplayDialog(self.root, game, self.t, self._board_artwork, self.board.renderer, self.orientation)
-        self.root.wait_window(dialog)
+        modal_session.wait_modal(self.root, dialog)
 
     def _open_text_board(self) -> None:
         dialog = TextBoardDialog(self.root, self.t, self._play_move)
         self._text_board = dialog
         try:
             self._refresh()
-            self.root.wait_window(dialog)
+            modal_session.wait_modal(self.root, dialog)
         finally:
             self._text_board = None
 
@@ -1336,7 +1556,7 @@ class ChessApp:
         self.controller.poll()
         if self._pack_loading:
             self._poll_pack_task()
-        self._poll_job = self.root.after(POLL_MS, self._poll)
+        self._poll_job = self.scope.after(POLL_MS, self._poll)
 
     def _refresh(self) -> None:
         if self.active_panel == "puzzles":
@@ -1488,10 +1708,9 @@ class ChessApp:
         self._closed = True
         self._unsubscribe_view()
         del self._unsubscribe_view
-        try:
-            self.root.after_cancel(self._poll_job)
-        except (tk.TclError, ValueError):
-            pass
+        self.transitions.close()
+        self.scope.close()
+        self._poll_job = None
         self.controller.shutdown()
         if self.db is not None:
             self.db.close()
@@ -1521,24 +1740,30 @@ class EngineDialog:
     def __init__(self, app: ChessApp) -> None:
         self.app = app
         t = app.t
-        self.window = tk.Toplevel(app.root)
-        self.window.title(t("engine.title"))
-        self.window.transient(app.root)
-        self.window.configure(background=ACETATE, padx=16, pady=14)
+        theme = app.theme
+        self.window = modal_session.create_dialog(
+            app.root,
+            t("engine.title"),
+            background=theme.acetate,
+            transient=True,
+        )
+        self.window.configure(padx=16, pady=14)
+        self.scope = window_lifetime.scope_for(self.window)
         self.path_var = tk.StringVar(self.window, value=app.settings.engine_path or "")
         self.status_var = tk.StringVar(self.window, value="" if app.settings.engine_path else t("engine.missing"))
         self._results: SimpleQueue[tuple[str, int] | str] = SimpleQueue()
         self._probe_job: str | None = None
-        tk.Label(self.window, text=t("engine.explain"), background=ACETATE, foreground=INK, wraplength=420,
+        tk.Label(self.window, text=t("engine.explain"), background=theme.acetate, foreground=theme.ink, wraplength=420,
                  justify="left", font=("TkDefaultFont", FONT_SIZES["body"])).grid(row=0, column=0, columnspan=3, sticky="ew")
-        tk.Label(self.window, text=t("engine.path_label"), background=ACETATE, foreground=INK,
+        tk.Label(self.window, text=t("engine.path_label"), background=theme.acetate, foreground=theme.ink,
                  font=("TkDefaultFont", FONT_SIZES["caption"], "bold")).grid(row=1, column=0, sticky="w", pady=(12, 2))
         self.entry = tk.Entry(self.window, textvariable=self.path_var, width=48)
         self.entry.grid(row=2, column=0, columnspan=2, sticky="ew")
         app._button(self.window, t("button.browse"), self._browse).grid(row=2, column=2, padx=(6, 0))
-        tk.Label(self.window, textvariable=self.status_var, background=ACETATE, foreground=MUTED_INK, wraplength=420,
-                 justify="left", font=("TkDefaultFont", FONT_SIZES["caption"])).grid(row=3, column=0, columnspan=3, sticky="ew", pady=8)
-        buttons = tk.Frame(self.window, background=ACETATE)
+        tk.Label(self.window, textvariable=self.status_var, background=theme.acetate, foreground=theme.muted_ink,
+                 wraplength=420, justify="left", font=("TkDefaultFont", FONT_SIZES["caption"])).grid(
+                     row=3, column=0, columnspan=3, sticky="ew", pady=8)
+        buttons = tk.Frame(self.window, background=theme.acetate)
         buttons.grid(row=4, column=0, columnspan=3, sticky="e")
         self.test_button = app._button(buttons, t("button.test_engine"), self.test)
         self.test_button.grid(row=0, column=0, padx=3)
@@ -1565,14 +1790,14 @@ class EngineDialog:
 
         threading.Thread(target=_probe_connection, args=(config, self._results),
                          name="engine-test", daemon=True).start()
-        self._probe_job = self.window.after(50, self._check)
+        self._probe_job = self.scope.after(50, self._check)
 
     def _check(self) -> None:
         self._probe_job = None
         try:
             result = self._results.get_nowait()
         except Empty:
-            self._probe_job = self.window.after(50, self._check)
+            self._probe_job = self.scope.after(50, self._check)
             return
         self.test_button.configure(state=tk.NORMAL)
         if isinstance(result, str):
@@ -1582,8 +1807,8 @@ class EngineDialog:
             self.status_var.set(self.app.t("engine.test_ok", name=name, count=count))
 
     def _cancel_probe_poll(self, event: tk.Event) -> None:
-        if event.widget is self.window and self._probe_job is not None:
-            self.window.after_cancel(self._probe_job)
+        if event.widget is self.window:
+            self.scope.close()
             self._probe_job = None
 
     def use_mock(self) -> None:
@@ -1604,16 +1829,50 @@ class EngineDialog:
         self.window.destroy()
 
 
-def launch(*, board_design: BoardDesign | None = None, top_pieces: bool = False) -> None:
-    root = tk.Tk()
-    artwork = None
-    if board_design is not None:
-        artwork = BoardArtwork(board_design)
-        try:
-            artwork.image(root, 8, flipped=False)
-        except tk.TclError as error:
-            root.destroy()
-            raise BoardArtworkError(f"SVG board preview needs an SVG-capable Tk renderer: {error}") from error
-    renderer = OwnerSvgPieces(top_view=True) if top_pieces else None
-    ChessApp(root, data_layout=DataLayout.default(), board_artwork=artwork, piece_renderer=renderer)
-    root.mainloop()
+def check_tk_version(_root: tk.Misc) -> tuple[str, str] | None:
+    """Verify minimum Tk 8.6 runtime requirement before constructing ChessApp."""
+    if tk.TkVersion >= 8.6:
+        return None
+    return ("Chess & Chains", f"Tk 8.6 or newer is required (found {tk.TkVersion}).")
+
+
+def create_app_host(
+    *,
+    preflight: Sequence[Callable[[tk.Misc], tuple[str, str] | None]] = (),
+    show_error: Callable[..., None] | None = None,
+    tk_factory: Callable[[], tk.Tk] | None = None,
+) -> app_host.AppHost:
+    """Build the configured ``glide_shell.app_host.AppHost`` for Chess & Chains."""
+    checks = (check_tk_version, *preflight)
+    return app_host.AppHost(
+        before_tk=(install_shell_providers,),
+        preflight=checks,
+        show_error=show_error,
+        tk_factory=tk_factory,
+    )
+
+
+def launch(
+    *,
+    board_design: BoardDesign | None = None,
+    top_pieces: bool = False,
+    mainloop: bool = True,
+    data_layout: DataLayout | None = None,
+) -> ChessApp:
+    """Launch Chess & Chains through ``glide_shell.app_host.AppHost``."""
+    host = create_app_host()
+
+    def build_app(root: tk.Tk) -> ChessApp:
+        artwork = None
+        if board_design is not None:
+            artwork = BoardArtwork(board_design)
+            try:
+                artwork.image(root, 8, flipped=False)
+            except tk.TclError as error:
+                root.destroy()
+                raise BoardArtworkError(f"SVG board preview needs an SVG-capable Tk renderer: {error}") from error
+        renderer = OwnerSvgPieces(top_view=True) if top_pieces else None
+        layout = DataLayout.default() if data_layout is None else data_layout
+        return ChessApp(root, data_layout=layout, board_artwork=artwork, piece_renderer=renderer)
+
+    return host.run(build_app, mainloop=mainloop)
