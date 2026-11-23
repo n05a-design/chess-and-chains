@@ -1,32 +1,35 @@
 # Zielarchitektur – Chess & Chains
 
-**Zielarchitektur PROPOSED.** Der Iststand V.0.0.1 steht unter „Implementierte Schichten“.
+**V.0.0.1 · Stand 23.11.2026 · Integrierte Laufzeitarchitektur auf Glide Shell 0.6.2 (Glide `v1.0.2`).**
 
 ```text
-app/ (Desktop host; UI, Navigation, Board)
-   │
-   ▼
-src/chess_and_chains/application/ (commands, controller)
-   ├── chess/  [legal moves + FEN/PGN; rules adapter]
-   ├── engines/ [UCI boundary; independent process, config, lifecycle]
-   ├── puzzles/ [validated Lichess import, selection, solution state]
-   ├── persistence/ [SQLite, migrations, atomic operations]
-   └── settings/ [user options, theme & locale]
-   ▲
-integrations/glide_shell/ (ONLY when individually cleared)
+Chess & Chains Desktop Application (ui/app.py -> glide_shell.app_host.AppHost)
+         /                                   \
+        v                                     v
+  Glide Shell 0.6.2 (src/glide_shell/)    Chess Services (chess_and_chains)
+  [app_host, window_lifetime,              ├── chess/   [legal moves + FEN/SAN/PGN; stdlib only]
+   modal_session, motion, custom_controls, ├── engines/ [UCI process, mock engine, presets]
+   desktop_adapter, action_picker,         ├── game/    [GameController, async BotWorker]
+   window_geometry, system_appearance,     ├── puzzles/ [Lichess importer, packs, sessions]
+   text_fit, runtime_paths,                ├── storage/ [SQLite, migrations, settings, paths]
+   command_history, redo_history]          └── i18n/    [DE/EN catalogs]
+        |
+        v
+   Python / Tk
 ```
 
 ## Implementierte Schichten
 
 | Paket | Verantwortung | Darf importieren |
 | --- | --- | --- |
+| `glide_shell/` | Neutrales Tk-Fundament (Shell 0.6.2, Commit `7dcd8dc04366`) | stdlib, `tkinter` (nie `chess_and_chains` oder `glide`) |
 | `chess/` | Regeln, FEN/SAN/PGN, Historie | nur stdlib |
 | `engines/` | UCI-Prozess, Mock-Engine, Presets, MoveProvider | `chess` |
 | `game/` | GameController, Worker, Spielmodi | `chess`, `engines` |
 | `puzzles/` | Modell, Importer, Packs, Session | `chess` |
-| `storage/` | Pfade, SQLite, Settings | `chess` |
+| `storage/` | Pfade (`runtime_paths`), SQLite, Settings (`window_geometry`) | `chess`, `glide_shell.runtime_paths`, `glide_shell.window_geometry` |
 | `i18n/` | DE/EN-Kataloge | stdlib |
-| `ui/` | Tk-App, Brett, Renderer, Dialoge | alle obigen |
+| `ui/` | Tk-App auf `AppHost`, Brett, Renderer, `modal_session`-Dialoge, Themes | alle obigen |
 
 Im aktuellen Code trägt die Anwendungsschicht den Paketnamen `game/`. `storage/` bündelt Datenbank und Einstellungen. Die Partiebibliothek reicht eine validierte `ChessGame` an den Controller. Ein Partiewechsel invalidiert dort ausstehende Bot-Aufträge.
 

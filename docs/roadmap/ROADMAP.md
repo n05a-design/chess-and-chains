@@ -7,7 +7,7 @@
 | Bereich | Erreicht | Fehlt bis zur Abnahme |
 | --- | --- | --- |
 | Regeln (W05) | Legale Züge, FEN/SAN/PGN, Remisregeln, Perft, tote Stellungen bei kurzen Zwangsfolgen und geschlossenen Bauernsperren | Allgemeine Erkennung toter Stellungen, Owner-Abnahme |
-| Brett und Figuren (W06) | Tk-Brett, Figuren V.02 und Draufsicht, PNG-Fallback, SVG-Brettvorschau mit Cache | Finale Inhaber-Bretter, native Sicht- und High-DPI-Prüfung |
+| Brett und Figuren (W06) | Tk-Brett auf Glide Shell `0.6.2` (`AppHost`, `AfterScope`, `modal_session`, Light/Dark/System-Themes), Figuren V.02 und Draufsicht, PNG-Fallback, SVG-Brettvorschau mit Cache | Finale Inhaber-Bretter, native Sicht- und High-DPI-Prüfung |
 | Bot (W07) | UCI-Adapter, asynchroner Controller, sechs Presets, Bereitschaftstest | Echte Engine nach ADR-001, Kalibrierung, Offline-Partie |
 | Rätsel (W08) | Offline-Builder mit Rating ≥ 1000, Qualitätsfilter, Seed, lokale Pakete im Puzzle Lab | Realdaten nach Q-022, Paketgröße und Ratingbereich (Q-008/Q-009) |
 | Daten (W09) | SQLite v3, Bibliothek mit Suche, PGN- und FEN-Austausch, geprüfte Rücksicherung | Profile (Q-012), ADR-004, native Dialoge macOS/Linux |

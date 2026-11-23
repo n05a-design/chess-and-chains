@@ -48,7 +48,7 @@ The local Tk desktop prototype supports two-player play, a project-owned mock en
 
 ## Technology direction (subject to decisions)
 
-Python desktop project with an original MPL-2.0 headless rules domain and a Tkinter/Tk desktop prototype (owner-selected W06 direction). Glide Shell remains gated. The owner-approved original pieces render from SVG in Tk 9 and from a PNG atlas derived from those SVGs in older Tk versions. Owner-designed board themes are upcoming work. **Stockfish is GPLv3.** Bundling it with this app is gated by licensing review. See [License Strategy](docs/legal/LICENSE_STRATEGY.md).
+Python desktop project with an original MPL-2.0 headless rules domain and a Tkinter/Tk desktop application built on **Glide Shell 0.6.2** (from Glide `1.0.2`, Git tag `v1.0.2`, Commit `7dcd8dc04366f88943fa17827882cef4d81421b8`, MPL-2.0) under `src/glide_shell/` (`AppHost`, `window_lifetime`, `modal_session`, `desktop_adapter`, `action_picker`, `window_geometry`, `system_appearance`, `motion`, `runtime_paths`, `command_history`, `text_fit`, `custom_controls`). The owner-approved original Connected System pieces render from SVG in Tk 9 and from a PNG atlas derived from those SVGs in older Tk versions. Light, dark, and system themes preserve WCAG 2.2 AA contrast. **Stockfish is GPLv3.** Bundling it with this app is gated by licensing review. See [License Strategy](docs/legal/LICENSE_STRATEGY.md).
 
 ## Quick start for contributors
 

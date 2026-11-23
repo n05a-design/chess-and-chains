@@ -1,7 +1,10 @@
 # Changelog
 
-## V.0.0.1 – Development snapshot (2026-11-21)
+## V.0.0.1 – Development snapshot (2026-11-23)
 
+- Integrate **Glide Shell 0.6.2** from Glide `1.0.2` (`v1.0.2`, commit `7dcd8dc04366f88943fa17827882cef4d81421b8`, MPL-2.0) into `src/glide_shell/` with `SHELL_MANIFEST.json`, packaging support in `pyproject.toml`, and 13/13 selftest verification.
+- Migrate `ChessApp` startup, menu bar, keyboard shortcuts, and macOS quit handling to `AppHost` and `desktop_adapter`; migrate timers to `window_lifetime.AfterScope` and `motion.Transitions`; migrate modal dialogs (`PositionDialog`, `ReplayDialog`, `TextBoardDialog`, `EngineDialog`, promotion, and item chooser) to `modal_session`.
+- Integrate Connected System Light/Dark/System theme resolution (`system_appearance`, WCAG 2.2 AA contrast), `window_geometry` clamping/validation, `runtime_paths` storage resolution, portable design contract (`docs/design/GLIDE_DESIGN_CONTRACT.md`), and multi-agent skills (`.agents/skills/`, `.claude/skills/`).
 - Establish `0.0.1` as the package version and `V.0.0.1` as the display label. The CLI and window title expose the same version as the package metadata. Foundation CI checks the manifest and current documentation.
 - Integrate Connected System branding and the optically balanced V.02 front-view pieces with stronger shading for dark pieces. Keep the separate top-view set, editable SVG masters, offline PNG fallbacks, and the Tk 9 session preview for custom SVG boards.
 - Test configured local UCI engines through `readyok`, show the advertised name and option count, and clean up the process and the Tk poll independently.

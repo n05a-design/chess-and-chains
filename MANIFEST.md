@@ -9,7 +9,7 @@
 | Produktvision, Zielgruppen, Scope | `docs/product/PRODUCT_BRIEF.md` |
 | Scope und Abgrenzung MVP/Später | `docs/product/MVP_CONTRACT.md` |
 | Architektur-/Schnittstellengrenzen | `docs/architecture/ARCHITECTURE.md` |
-| Glide-Shell-Integration | `integrations/glide_shell/INTEGRATION_GATE.md` |
+| Glide-Shell-Integration | `integrations/glide_shell/INTEGRATION_GATE.md` + `src/glide_shell/SHELL_MANIFEST.json` |
 | Produkt-/Technik-/Lizenzentscheidungen | `docs/decisions/ADR_INDEX.md` + ADR-Dateien |
 | Nicht entschiedene Fragen | `docs/questions/OPEN_QUESTIONS.md` |
 | Aktive Aufträge und Abnahmen | `docs/roadmap/WORK_PACKAGES.md` |

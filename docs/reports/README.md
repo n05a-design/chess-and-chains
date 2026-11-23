@@ -12,6 +12,7 @@ Neue Berichte bitte in der passenden Gruppe ergänzen. `scripts/verify_document_
 
 ## W00–W04 · Foundation, Scope, Lizenz, Shell, Recherche
 
+- 2026-11-23 · [W03/W06/W10 – Glide Shell 0.6.2 (Glide v1.0.2) Integration & Migration](2026-11-23_W03-W06-W10-glide-shell-1.0.2-integration.md)
 - 2026-11-21 · [W04 – Plattenfiguren und Materialstudien](2026-11-21_W04_plattenfiguren-svg.md)
 - 2026-11-20 · [W04 – Konkurrenz-, Design- und Assetrecherche](2026-11-20_W04_competitor-design.md)
 - 2026-11-20 · [W03 – Glide Shell Reuse Audit](2026-11-20_W03_glide-audit.md)
