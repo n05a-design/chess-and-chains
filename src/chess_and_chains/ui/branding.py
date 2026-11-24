@@ -42,6 +42,33 @@ def brand_image(master: tk.Misc, name: str, *, scale: float = 1) -> tk.PhotoImag
         return tk.PhotoImage(master=master, data=png, format="png")
 
 
+def macos_dock_icon(master: tk.Misc, name: str = "app-icon") -> tk.PhotoImage:
+    """Return *name* centered at 824/1024 scale on a transparent canvas for macOS Dock/HIG."""
+    import io
+    import sys
+
+    if sys.platform != "darwin":
+        return brand_image(master, name)
+    try:
+        from PIL import Image
+    except ImportError:
+        return brand_image(master, name)
+
+    assets = files(__package__).joinpath("brand_assets")
+    png_bytes = assets.joinpath(f"{name}.png").read_bytes()
+    with Image.open(io.BytesIO(png_bytes)) as src_img:
+        rgba = src_img.convert("RGBA")
+        size = max(rgba.width, rgba.height, 256)
+        body_px = max(1, round(size * (824.0 / 1024.0)))
+        offset = (size - body_px) // 2
+        canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        resized = rgba.resize((body_px, body_px), Image.Resampling.LANCZOS)
+        canvas.paste(resized, (offset, offset), resized)
+        buf = io.BytesIO()
+        canvas.save(buf, format="PNG")
+    return tk.PhotoImage(master=master, data=base64.b64encode(buf.getvalue()), format="png")
+
+
 @functools.lru_cache(maxsize=4)
 def read_signet_svg() -> str:
     """Read and cache the original geometric master ``brand_assets/signet.svg``."""

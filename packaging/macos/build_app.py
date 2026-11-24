@@ -44,19 +44,27 @@ def python_starter() -> Path:
     raise SystemExit("No Python executable found to embed into the local macOS .app bundle.")
 
 
+MACOS_ICON_BODY_RATIO = 824.0 / 1024.0
+
+
 def build_icns(png_path: Path, icns_path: Path) -> None:
+    from PIL import Image
+
     with tempfile.TemporaryDirectory() as tmp:
         iconset = Path(tmp) / "ChessAndChains.iconset"
         iconset.mkdir()
-        for base in (16, 32, 128, 256, 512):
-            for scale, suffix in ((1, ""), (2, "@2x")):
-                px = base * scale
-                target = iconset / f"icon_{base}x{base}{suffix}.png"
-                subprocess.run(
-                    ["sips", "-z", str(px), str(px), str(png_path), "--out", str(target)],
-                    check=True,
-                    capture_output=True,
-                )
+        with Image.open(png_path) as src_img:
+            rgba = src_img.convert("RGBA")
+            for base in (16, 32, 128, 256, 512):
+                for scale, suffix in ((1, ""), (2, "@2x")):
+                    px = base * scale
+                    body_px = max(1, round(px * MACOS_ICON_BODY_RATIO))
+                    offset = (px - body_px) // 2
+                    canvas = Image.new("RGBA", (px, px), (0, 0, 0, 0))
+                    resized = rgba.resize((body_px, body_px), Image.Resampling.LANCZOS)
+                    canvas.paste(resized, (offset, offset), resized)
+                    target = iconset / f"icon_{base}x{base}{suffix}.png"
+                    canvas.save(target, format="PNG")
         subprocess.run(["iconutil", "-c", "icns", str(iconset), "-o", str(icns_path)], check=True)
 
 

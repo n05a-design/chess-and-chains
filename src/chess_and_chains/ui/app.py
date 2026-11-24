@@ -63,7 +63,7 @@ from .appearance_dialog import AppearanceDialog
 from .atlas import PuzzleAtlas
 from .board import Orientation
 from .board_artwork import BoardArtwork, BoardArtworkError, BoardDesign
-from .branding import brand_image, draw_signet_canvas, in_app_logo_photo
+from .branding import brand_image, draw_signet_canvas, in_app_logo_photo, macos_dock_icon
 from .captured_material import CapturedMaterialBar
 from .dialogs import PositionDialog, bind_button_enter as _bind_button_enter
 from .marble_board import MarbleBoardCanvas
@@ -703,7 +703,7 @@ class ChessApp:
         # Child widgets can outlive the window while a worker is winding down.
         app = proxy(self)
         self.root.title(f'{t("app.window_title")} · {DISPLAY_VERSION}')
-        self._window_icon = brand_image(self.root, "app-icon")
+        self._window_icon = macos_dock_icon(self.root, "app-icon")
         self.root.iconphoto(True, self._window_icon)
         self.root.configure(background=theme.window)
         initial_geom = self._initial_geometry()
