@@ -326,7 +326,11 @@ class SettingsTransactionSafetyTests(unittest.TestCase):
         self.root.update()
 
         dlg._cancel()
-        self.root.update()
+        # Do NOT call root.update() here: the dialog is already destroyed and
+        # on macOS arm64 (CI) a full Tk event-loop pump after destroy can
+        # deadlock waiting for a window that no longer exists.  idle-tasks are
+        # sufficient to let any pending redraws settle.
+        self.root.update_idletasks()
 
         sha_after_cancel = _sha256(layout.settings)
         self.assertEqual(
