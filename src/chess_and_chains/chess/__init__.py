@@ -4,6 +4,14 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 from .game import ChessGame
+from .material import (
+    CapturedGroup,
+    CapturedMaterial,
+    MATERIAL_SORT_ORDER,
+    PIECE_MATERIAL_VALUES,
+    PlayerMaterial,
+    calculate_captured_material,
+)
 from .model import (
     CastlingRights,
     ChessError,
@@ -34,6 +42,8 @@ from .notation import (
 from .rules import ChessRules, INITIAL_FEN, RulesPort
 
 __all__ = [
+    "CapturedGroup",
+    "CapturedMaterial",
     "CastlingRights",
     "ChessError",
     "ChessGame",
@@ -45,14 +55,18 @@ __all__ = [
     "GameStatus",
     "IllegalMoveError",
     "INITIAL_FEN",
+    "MATERIAL_SORT_ORDER",
     "Move",
     "MoveOutcome",
     "PGNDocument",
     "PGNError",
     "Piece",
+    "PIECE_MATERIAL_VALUES",
     "PieceType",
+    "PlayerMaterial",
     "RulesPort",
     "Square",
+    "calculate_captured_material",
     "export_pgn",
     "parse_fen",
     "parse_pgn",

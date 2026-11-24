@@ -89,3 +89,11 @@ Der modale Einstellungsdialog [`AppearanceDialog`](../../src/chess_and_chains/ui
 ### 5.4 Echte Pixel-Rundung statt eckiger Vor-Glide-Rahmen
 
 Gegenüber V.0.2.0 entfallen die eckigen `tk.Frame`-Schattenkästen (`_sheet_pair`) und `tk.Button`-Reiter vollständig: Sowohl die großen Arbeitsflächen als auch sämtliche Primär-, Sekundär- und Navigationsknöpfe nutzen echte Pixel-Radien (`18 / 12 / 6 / 0 px`) auf Canvas-Basis und umgehen damit die native `ttk`-Radiusbeschränkung auf macOS Aqua, Windows und Linux.
+
+### 5.5 Dynamische Anzeige geschlagener Figuren & Materialvorteil
+
+Im Brettbereich (`board_sheet`) befinden sich oberhalb und unterhalb des Schachbretts zwei kompakte, ruhige Materialanzeigen ([`CapturedMaterialBar`](../../src/chess_and_chains/ui/captured_material.py)):
+- **Fachberechnung (`chess/material.py`):** Reines Fachmodell (`calculate_captured_material`), abgeleitet aus der Zughistorie der `ChessGame`-Instanz (Punkte: Bauer 1, Springer 3, Läufer 3, Turm 5, Dame 9; König ungeschlagen). Deckt en passant, Schlagumwandlungen, geschlagene umgewandelte Damen, Undo/Redo und unhistorische FEN-Stellungen ab.
+- **Darstellung:** Verwendet die originalen Chess-&-Chains-SVGs als 18-px-Miniaturen mit Originalfarben. Gleiche Figurentypen werden platzsparend gruppiert und mit Mengenangabe (z. B. `×2`) versehen; Sortierung nach Bauer → Springer → Läufer → Turm → Dame.
+- **Themenfarbe-Vorteilspille (`+N`):** Zeigt ausschließlich beim führenden Spieler die relative Punktedifferenz (`+N`) in der aktiven Themenfarbe (WCAG >= 3:1) an; bei Gleichstand entfällt die Zahl.
+- **Orientierung & Wiedergabe:** Schläge erscheinen immer auf der Seite des schlagenden Spielers (Normalorientierung: Schwarz oben, Weiß unten; bei Brettdrehung vertauscht); dieselbe Logik synchronisiert Zug für Zug in der Partiewiedergabe ([`ReplayDialog`](../../src/chess_and_chains/ui/replay.py)).

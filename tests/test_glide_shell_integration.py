@@ -1041,6 +1041,91 @@ class GlideShellIntegrationTests(unittest.TestCase):
             self.assertEqual(dlg.cget("background"), pal.window)
             dlg.destroy()
 
+    def test_36_captured_material_display_and_advantage(self) -> None:
+        """Prüfe die dynamische Materialanzeige und relative Differenz (+N) im Brettbereich."""
+        root = create_root(self)
+        app = ChessApp(root, locale="de")
+        self.addCleanup(app.close)
+        root.geometry("1180x820")
+        root.deiconify()
+        root.update()
+
+        self.assertTrue(hasattr(app, "top_material_bar"))
+        self.assertTrue(hasattr(app, "bottom_material_bar"))
+
+        # Start fresh game: 1. e4 d5 2. exd5 Qxd5 3. Nc3 Qa5 4. Bc4 Nf6 5. Bxf7+ Kxf7
+        # White captures: 2 pawns (score 2).
+        # Black captures: 1 bishop (score 3).
+        # Diff: -2 (Black +2).
+        app.start_game("human-vs-human")
+        moves = ["e2e4", "d7d5", "e4d5", "d8d5", "b1c3", "d5a5", "f1c4", "g8f6", "c4f7", "e8f7"]
+        for uci in moves:
+            app._play_move(Move.from_uci(uci))
+        root.update()
+
+        # Normal orientation: Black on top, White on bottom
+        self.assertEqual(app.top_material_bar.player_color, Color.BLACK)
+        self.assertEqual(app.bottom_material_bar.player_color, Color.WHITE)
+
+        top_mat = app.top_material_bar.material
+        bot_mat = app.bottom_material_bar.material
+        self.assertIsNotNone(top_mat)
+        self.assertIsNotNone(bot_mat)
+        assert top_mat is not None and bot_mat is not None
+
+        # Black is ahead by 2 -> Black gets +2, White gets None
+        self.assertEqual(top_mat.advantage, 2)
+        self.assertIsNone(bot_mat.advantage)
+        self.assertEqual(top_mat.score, 4)  # pawn (1) + bishop (3) = 4
+        self.assertEqual(bot_mat.score, 2)  # 2 pawns = 2
+
+        # Advantage pill is rendered on canvas
+        top_canvas_items = app.top_material_bar.find_withtag("advantage_text")
+        self.assertEqual(len(top_canvas_items), 1)
+        self.assertEqual(app.top_material_bar.itemcget(top_canvas_items[0], "text"), "+2")
+
+        # White does not have an advantage text
+        bot_canvas_items = app.bottom_material_bar.find_withtag("advantage_text")
+        self.assertEqual(len(bot_canvas_items), 0)
+
+        # Board flip swaps the bars
+        app._flip_board()
+        root.update()
+        self.assertEqual(app.orientation, "black")
+        self.assertEqual(app.top_material_bar.player_color, Color.WHITE)
+        self.assertEqual(app.bottom_material_bar.player_color, Color.BLACK)
+        self.assertIsNone(app.top_material_bar.material.advantage)
+        self.assertEqual(app.bottom_material_bar.material.advantage, 2)
+
+        # Flip back
+        app._flip_board()
+        root.update()
+
+        # Undo reverts capture
+        app.controller.undo()  # undos Kxf7 (Black bishop capture)
+        root.update()
+        # Now White has 2 pawns (score 2), Black has 1 pawn (score 1) -> White +1
+        self.assertEqual(app.bottom_material_bar.material.advantage, 1)
+        self.assertIsNone(app.top_material_bar.material.advantage)
+
+        # Redo restores
+        app.controller.redo()
+        root.update()
+        self.assertEqual(app.top_material_bar.material.advantage, 2)
+        self.assertIsNone(app.bottom_material_bar.material.advantage)
+
+        # ReplayDialog has material bars synchronized
+        replay = ReplayDialog(root, app.game, app.t, app._board_artwork, app.board.renderer, "white", theme=app.theme)
+        try:
+            replay.show(len(moves))
+            self.assertEqual(replay.top_material_bar.material.advantage, 2)
+            self.assertIsNone(replay.bottom_material_bar.material.advantage)
+            replay.show(0)
+            self.assertIsNone(replay.top_material_bar.material.advantage)
+            self.assertIsNone(replay.bottom_material_bar.material.advantage)
+        finally:
+            replay._close()
+
 
 if __name__ == "__main__":
     unittest.main()

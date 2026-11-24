@@ -41,7 +41,17 @@ from glide_shell.custom_controls import (
 )
 
 from .. import DISPLAY_VERSION
-from ..chess import ChessError, ChessGame, Color, GameStatus, Move, export_pgn, square_name, to_san
+from ..chess import (
+    CapturedMaterial,
+    ChessError,
+    ChessGame,
+    Color,
+    GameStatus,
+    Move,
+    export_pgn,
+    square_name,
+    to_san,
+)
 from ..engines.bot import EngineConfig, EngineConfigError, MoveProvider, UCIBot, probe_engine, resolve_engine_config
 from ..engines.presets import BotPreset, load_presets
 from ..engines.uci import UCIEngineError
@@ -54,6 +64,7 @@ from .atlas import PuzzleAtlas
 from .board import Orientation
 from .board_artwork import BoardArtwork, BoardArtworkError, BoardDesign
 from .branding import brand_image, draw_signet_canvas, in_app_logo_photo
+from .captured_material import CapturedMaterialBar
 from .dialogs import PositionDialog, bind_button_enter as _bind_button_enter
 from .marble_board import MarbleBoardCanvas
 from .pieces import OwnerSvgPieces, PieceRenderer
@@ -787,7 +798,7 @@ class ChessApp:
         # Instantiate the board workspace first so native Tab moves from board -> left tab_rail["play"].
         self._board_slot, self.board_sheet = self._sheet_pair(body, 1, padx=(0, 0))
         board_sheet = self.board_sheet
-        board_sheet.grid_rowconfigure(1, weight=1)
+        board_sheet.grid_rowconfigure(2, weight=1)
         board_sheet.grid_columnconfigure(0, weight=1)
         board_header = tk.Frame(board_sheet, background=theme.acetate)
         board_header.grid(row=0, column=0, sticky="ew")
@@ -868,6 +879,18 @@ class ChessApp:
                 font=font_spec("body", scale_choice=self.settings.font_scale_choice, weight_choice=self.settings.font_weight_choice),
             ),
         ))
+        top_color = Color.BLACK if self.orientation == "white" else Color.WHITE
+        self.top_material_bar = CapturedMaterialBar(
+            board_sheet,
+            top_color,
+            t,
+            piece_renderer=piece_renderer,
+            theme=theme,
+            font_scale_choice=self.settings.font_scale_choice,
+            font_weight_choice=self.settings.font_weight_choice,
+        )
+        self.top_material_bar.grid(row=1, column=0, sticky="ew", padx=14, pady=(2, 4))
+
         self.board = MarbleBoardCanvas(
             board_sheet, lambda moves: app._on_move_requested(moves),
             lambda detail: app._on_selection_changed(detail),
@@ -882,13 +905,26 @@ class ChessApp:
             except (OSError, tk.TclError):
                 self.board.set_board_design("standard")
         self._sync_board_controls()
-        self.board.grid(row=1, column=0, sticky="nsew", padx=12, pady=(0, 10))
+        self.board.grid(row=2, column=0, sticky="nsew", padx=12, pady=(0, 4))
+
+        bottom_color = Color.WHITE if self.orientation == "white" else Color.BLACK
+        self.bottom_material_bar = CapturedMaterialBar(
+            board_sheet,
+            bottom_color,
+            t,
+            piece_renderer=piece_renderer,
+            theme=theme,
+            font_scale_choice=self.settings.font_scale_choice,
+            font_weight_choice=self.settings.font_weight_choice,
+        )
+        self.bottom_material_bar.grid(row=3, column=0, sticky="ew", padx=14, pady=(4, 2))
+
         board_status = tk.Label(
             board_sheet, textvariable=self.interaction_text, background=theme.acetate, foreground=theme.muted_ink,
             font=font_spec("caption", scale_choice=self.settings.font_scale_choice, weight_choice=self.settings.font_weight_choice),
             anchor="w", justify="left", padx=14, pady=8,
         )
-        board_status.grid(row=2, column=0, sticky="ew")
+        board_status.grid(row=4, column=0, sticky="ew")
         board_sheet.bind("<Configure>", lambda event: board_status.configure(wraplength=max(1, event.width - 28)))
         self._register_theme(lambda p: (
             board_header.configure(background=p.acetate),
@@ -896,7 +932,9 @@ class ChessApp:
                 background=p.acetate, foreground=p.ink,
                 font=font_spec("caption", "bold", scale_choice=self.settings.font_scale_choice, weight_choice=self.settings.font_weight_choice),
             ),
+            self.top_material_bar.set_theme(p),
             self.board.set_theme(p),
+            self.bottom_material_bar.set_theme(p),
             board_status.configure(
                 background=p.acetate, foreground=p.muted_ink,
                 font=font_spec("caption", scale_choice=self.settings.font_scale_choice, weight_choice=self.settings.font_weight_choice),
@@ -2391,7 +2429,30 @@ class ChessApp:
     def _flip_board(self) -> None:
         self.orientation = "black" if self.orientation == "white" else "white"
         self.board.set_orientation(self.orientation)
+        self._sync_material_bars()
         self.interaction_text.set(self.t("board.black_bottom" if self.orientation == "black" else "board.white_bottom"))
+
+    def _sync_material_bars(self, material: CapturedMaterial | None = None) -> None:
+        if not hasattr(self, "top_material_bar") or not hasattr(self, "bottom_material_bar"):
+            return
+        if material is None:
+            if self.active_panel == "puzzles" and self.puzzle is not None:
+                material = self.puzzle.game.captured_material()
+            else:
+                material = self.game.captured_material()
+
+        if self.orientation == "white":
+            top_color = Color.BLACK
+            bottom_color = Color.WHITE
+        else:
+            top_color = Color.WHITE
+            bottom_color = Color.BLACK
+
+        theme = self.theme
+        self.top_material_bar.set_font_preferences(self.settings.font_scale_choice, self.settings.font_weight_choice)
+        self.bottom_material_bar.set_font_preferences(self.settings.font_scale_choice, self.settings.font_weight_choice)
+        self.top_material_bar.set_material(top_color, material.for_color(top_color), theme=theme)
+        self.bottom_material_bar.set_material(bottom_color, material.for_color(bottom_color), theme=theme)
 
     def _sync_board_controls(self) -> None:
         if not hasattr(self, "board") or not hasattr(self, "board_title"):
@@ -2977,6 +3038,7 @@ class ChessApp:
                                          themes=", ".join(theme_labels)))
         legal = session.legal_moves()
         self.board.set_position(session.state, legal, session.last_move, session.game.rules.is_in_check(session.state))
+        self._sync_material_bars(session.game.captured_material())
         move = session.expected_move
         if move is not None and self._puzzle_hint_stage:
             self.board.set_hint(move.to_square if self._puzzle_hint_stage == 2 else move.from_square)
@@ -2991,6 +3053,7 @@ class ChessApp:
     def _refresh_game(self, view: GameView) -> None:
         t = self.t
         self.board.set_position(view.state, view.legal_moves, view.last_move, view.outcome.in_check)
+        self._sync_material_bars(view.captured_material)
         self.panel_text.set(self._status_label(view))
         bot = view.bot_name or ""
         if view.setup.mode is PlayMode.HUMAN_VS_BOT:

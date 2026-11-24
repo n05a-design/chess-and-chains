@@ -10,6 +10,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 
 from .dead_positions import closed_pawn_barrier
+from .material import CapturedMaterial, calculate_captured_material
 from .model import (
     ChessError,
     Color,
@@ -230,6 +231,10 @@ class ChessGame:
     def played_positions(self) -> tuple[GameState, ...]:
         """Return the starting board and one immutable position per played move."""
         return (self.initial_state, *(entry.after for entry in self._undo if entry.move is not None))
+
+    def captured_material(self) -> CapturedMaterial:
+        """Return captured pieces and material difference for the active timeline."""
+        return calculate_captured_material(self.played_positions(), tuple(self.moves))
 
     def redo(self) -> GameState:
         if not self._redo:

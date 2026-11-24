@@ -25,6 +25,7 @@ from enum import Enum
 from typing import Callable
 
 from ..chess import (
+    CapturedMaterial,
     ChessError,
     ChessGame,
     Color,
@@ -100,6 +101,7 @@ class GameView:
     can_redo: bool
     human_to_move: bool
     generation: int
+    captured_material: CapturedMaterial | None = None
 
 
 Listener = Callable[[GameView], None]
@@ -205,6 +207,7 @@ class GameController:
             can_redo=self._can_redo(),
             human_to_move=human,
             generation=self._generation,
+            captured_material=self._game.captured_material(),
         )
 
     @property

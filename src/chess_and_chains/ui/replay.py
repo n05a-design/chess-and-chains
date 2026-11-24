@@ -9,9 +9,16 @@ from tkinter import ttk
 from glide_shell import modal_session
 from glide_shell.custom_controls import ThemedAutoScrollbar
 
-from ..chess import ChessGame, Color, GameStatus, to_san
+from ..chess import (
+    ChessGame,
+    Color,
+    GameStatus,
+    calculate_captured_material,
+    to_san,
+)
 from ..i18n import Translator
 from .board import BoardCanvas
+from .captured_material import CapturedMaterialBar
 from .dialogs import bind_button_enter
 from .theme import FONT_SIZES, LIGHT_THEME, SPACING, ThemePalette
 
@@ -56,6 +63,7 @@ class ReplayDialog(tk.Toplevel):
         self.configure(background=self._theme.acetate)
         self.title(t("replay.title"))
         self.t = t
+        self._orientation = orientation
         self._positions = game.played_positions()
         self._moves = tuple(game.moves)
         self._rules = game.rules
@@ -69,11 +77,29 @@ class ReplayDialog(tk.Toplevel):
         panel.rowconfigure(1, weight=1)
         self.status = ttk.Label(panel, anchor="w", style="Glide.TLabel")
         self.status.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 8))
+
+        board_container = ttk.Frame(panel, style="Glide.TFrame")
+        board_container.grid(row=1, column=0, sticky="nsew", padx=(0, 12))
+        board_container.columnconfigure(0, weight=1)
+        board_container.rowconfigure(1, weight=1)
+
+        top_color = Color.BLACK if orientation == "white" else Color.WHITE
+        self.top_material_bar = CapturedMaterialBar(
+            board_container, top_color, t, piece_renderer=renderer, theme=self._theme,
+        )
+        self.top_material_bar.grid(row=0, column=0, sticky="ew", pady=(0, 4))
+
         self.board = BoardCanvas(
-            panel, lambda _moves: None, renderer=renderer, artwork=artwork, translator=t, theme=self._theme,
+            board_container, lambda _moves: None, renderer=renderer, artwork=artwork, translator=t, theme=self._theme,
         )
         self.board.set_orientation(orientation)
-        self.board.grid(row=1, column=0, sticky="nsew", padx=(0, 12))
+        self.board.grid(row=1, column=0, sticky="nsew")
+
+        bot_color = Color.WHITE if orientation == "white" else Color.BLACK
+        self.bottom_material_bar = CapturedMaterialBar(
+            board_container, bot_color, t, piece_renderer=renderer, theme=self._theme,
+        )
+        self.bottom_material_bar.grid(row=2, column=0, sticky="ew", pady=(4, 0))
         sidebar = ttk.Frame(panel, style="Glide.TFrame")
         sidebar.grid(row=1, column=1, sticky="nsew")
         sidebar.columnconfigure((0, 1), weight=1, uniform="commands")
@@ -143,6 +169,11 @@ class ReplayDialog(tk.Toplevel):
         state = self._positions[self.index]
         move = self._moves[self.index - 1] if self.index else None
         self.board.set_position(state, (), move, self._rules.is_in_check(state))
+        mat = calculate_captured_material(self._positions[:self.index + 1], self._moves[:self.index])
+        top_color = Color.BLACK if self._orientation == "white" else Color.WHITE
+        bot_color = Color.WHITE if self._orientation == "white" else Color.BLACK
+        self.top_material_bar.set_material(top_color, mat.for_color(top_color), self._theme)
+        self.bottom_material_bar.set_material(bot_color, mat.for_color(bot_color), self._theme)
         self.move_list.selection_clear(0, tk.END)
         self.move_list.selection_set(self.index)
         self.move_list.selection_anchor(self.index)
