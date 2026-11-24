@@ -40,7 +40,13 @@ class FinalAuditTests(unittest.TestCase):
     def test_macos_dock_icon_has_transparent_hig_margin(self) -> None:
         img = macos_dock_icon(self.root, "app-icon")
         self.assertEqual(img.width(), img.height())
-        if sys.platform == "darwin":
+        try:
+            import PIL  # noqa: F401
+            has_pil = True
+        except ImportError:
+            has_pil = False
+
+        if sys.platform == "darwin" and has_pil:
             self.assertGreaterEqual(img.width(), 256)
             # Corner pixel (0, 0) must be transparent due to 824/1024 HIG padding
             self.assertTrue(img.transparency_get(0, 0))

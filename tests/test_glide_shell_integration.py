@@ -166,13 +166,15 @@ class GlideShellIntegrationTests(unittest.TestCase):
             layout = DataLayout(Path(tmp) / "data")
             root = create_root(self)
             app = ChessApp(root, data_layout=layout, locale="en")
-            self.addCleanup(app.close)
-            app.apply_theme("dark")
-            self.assertIs(app.theme, DARK_THEME)
-            self.assertEqual(app.root.cget("background"), DARK_THEME.window)
-            loaded, warning = load_settings(layout.settings)
-            self.assertIsNone(warning)
-            self.assertEqual(loaded.theme_id, "dark")
+            try:
+                app.apply_theme("dark")
+                self.assertIs(app.theme, DARK_THEME)
+                self.assertEqual(app.root.cget("background"), DARK_THEME.window)
+                loaded, warning = load_settings(layout.settings)
+                self.assertIsNone(warning)
+                self.assertEqual(loaded.theme_id, "dark")
+            finally:
+                app.close()
 
     def test_07_window_geometry_parsing_and_clamping(self):
         parsed = window_geometry.parse("1280x800+-200+50")
@@ -449,31 +451,33 @@ class GlideShellIntegrationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             layout = DataLayout(Path(tmp) / "data")
             app = ChessApp(root, data_layout=layout, locale="en")
-            self.addCleanup(app.close)
-            root.deiconify()
-            root.geometry("1200x800+100+100")
-            root.update()
+            try:
+                root.deiconify()
+                root.geometry("1200x800+100+100")
+                root.update()
 
-            self.assertFalse(app.compact_mode_active())
-            app.enter_compact_mode()
-            root.update()
-            self.assertTrue(app.compact_mode_active())
-            self.assertEqual(root.minsize(), (480, 560))
-            self.assertEqual(app._side_slot.winfo_manager(), "")
-            self.assertEqual(app._rail_slot.winfo_manager(), "")
-            self.assertEqual(app._header_density, "minimal")
-            self.assertEqual(app.header_logo.winfo_manager(), "")
+                self.assertFalse(app.compact_mode_active())
+                app.enter_compact_mode()
+                root.update()
+                self.assertTrue(app.compact_mode_active())
+                self.assertEqual(root.minsize(), (480, 560))
+                self.assertEqual(app._side_slot.winfo_manager(), "")
+                self.assertEqual(app._rail_slot.winfo_manager(), "")
+                self.assertEqual(app._header_density, "minimal")
+                self.assertEqual(app.header_logo.winfo_manager(), "")
 
-            # Leave compact mode restores original geometry
-            app.leave_compact_mode()
-            root.update()
-            self.assertFalse(app.compact_mode_active())
-            self.assertEqual(root.minsize(), (860, 700))
-            self.assertTrue(app.side_sheet.winfo_viewable())
-            geom = window_geometry.parse(root.geometry())
-            self.assertIsNotNone(geom)
-            self.assertGreaterEqual(geom[0], 860)
-            self.assertGreaterEqual(geom[1], 700)
+                # Leave compact mode restores original geometry
+                app.leave_compact_mode()
+                root.update()
+                self.assertFalse(app.compact_mode_active())
+                self.assertEqual(root.minsize(), (860, 700))
+                self.assertTrue(app.side_sheet.winfo_viewable())
+                geom = window_geometry.parse(root.geometry())
+                self.assertIsNotNone(geom)
+                self.assertGreaterEqual(geom[0], 860)
+                self.assertGreaterEqual(geom[1], 700)
+            finally:
+                app.close()
 
     def test_25_responsive_header_density_and_breakpoints(self):
         root = create_root(self)
@@ -583,67 +587,71 @@ class GlideShellIntegrationTests(unittest.TestCase):
             layout = DataLayout(Path(tmp) / "data")
             root = create_root(self)
             app = ChessApp(root, data_layout=layout, locale="en")
-            self.addCleanup(app.close)
-            root.deiconify()
-            root.update()
+            reloaded: ChessApp | None = None
+            try:
+                root.deiconify()
+                root.update()
 
-            for card in (app._side_slot, app._board_slot, app._rail_slot, app.header_card):
-                self.assertIsInstance(card, RoundedSurfaceCard)
-                self.assertEqual(card.bg_color, app.theme.window)
-                self.assertIn(card.fill_color, (app.theme.paper, app.theme.acetate))
-                self.assertEqual(card.radius, 12)
-            self.assertIsInstance(app.atlas_section, RoundedSurfaceCard)
-            self.assertEqual(app.atlas_section.bg_color, app.theme.paper)
-            self.assertEqual(app.atlas_section.fill_color, app.theme.paper)
-            self.assertEqual(app.atlas_section.radius, 12)
+                for card in (app._side_slot, app._board_slot, app._rail_slot, app.header_card):
+                    self.assertIsInstance(card, RoundedSurfaceCard)
+                    self.assertEqual(card.bg_color, app.theme.window)
+                    self.assertIn(card.fill_color, (app.theme.paper, app.theme.acetate))
+                    self.assertEqual(card.radius, 12)
+                self.assertIsInstance(app.atlas_section, RoundedSurfaceCard)
+                self.assertEqual(app.atlas_section.bg_color, app.theme.paper)
+                self.assertEqual(app.atlas_section.fill_color, app.theme.paper)
+                self.assertEqual(app.atlas_section.radius, 12)
 
-            for btn in (app.undo_button, app.theme_toggle_button, app.tab_rail.children["play"]):
-                self.assertIsInstance(btn, RoundedButton)
-                self.assertEqual(tk.Canvas.cget(btn, "bg"), app.theme.paper)
-                self.assertNotEqual(tk.Canvas.cget(btn, "bg"), btn.cget("background"))
+                for btn in (app.undo_button, app.theme_toggle_button, app.tab_rail.children["play"]):
+                    self.assertIsInstance(btn, RoundedButton)
+                    self.assertEqual(tk.Canvas.cget(btn, "bg"), app.theme.paper)
+                    self.assertNotEqual(tk.Canvas.cget(btn, "bg"), btn.cget("background"))
 
-            pal = app.apply_appearance(
-                theme_id="glass-dark",
-                accent_choice="export",
-                background_choice="accent",
-                radius_choice="large",
-                font_scale_choice="large",
-                font_weight_choice="bold",
-                animations_enabled=False,
-                hints_visible=False,
-                persist=True,
-            )
-            root.update()
-            self.assertIs(app.theme, pal)
-            self.assertEqual(app._corner_radius, 18)
-            self.assertEqual(app.header_card.radius, 18)
-            self.assertIn("bold", str(app.move_list.cget("font")).lower())
+                pal = app.apply_appearance(
+                    theme_id="glass-dark",
+                    accent_choice="export",
+                    background_choice="accent",
+                    radius_choice="large",
+                    font_scale_choice="large",
+                    font_weight_choice="bold",
+                    animations_enabled=False,
+                    hints_visible=False,
+                    persist=True,
+                )
+                root.update()
+                self.assertIs(app.theme, pal)
+                self.assertEqual(app._corner_radius, 18)
+                self.assertEqual(app.header_card.radius, 18)
+                self.assertIn("bold", str(app.move_list.cget("font")).lower())
 
-            loaded, warning = load_settings(layout.settings)
-            self.assertIsNone(warning)
-            self.assertEqual(loaded.theme_id, "glass-dark")
-            self.assertEqual(loaded.accent_choice, "export")
-            self.assertEqual(loaded.background_choice, "accent")
-            self.assertEqual(loaded.radius_choice, "large")
-            self.assertEqual(loaded.font_scale_choice, "large")
-            self.assertEqual(loaded.font_weight_choice, "bold")
-            self.assertFalse(loaded.animations_enabled)
-            self.assertFalse(loaded.hints_visible)
+                loaded, warning = load_settings(layout.settings)
+                self.assertIsNone(warning)
+                self.assertEqual(loaded.theme_id, "glass-dark")
+                self.assertEqual(loaded.accent_choice, "export")
+                self.assertEqual(loaded.background_choice, "accent")
+                self.assertEqual(loaded.radius_choice, "large")
+                self.assertEqual(loaded.font_scale_choice, "large")
+                self.assertEqual(loaded.font_weight_choice, "bold")
+                self.assertFalse(loaded.animations_enabled)
+                self.assertFalse(loaded.hints_visible)
 
-            reloaded = ChessApp(create_root(self), data_layout=layout, locale="en")
-            self.addCleanup(reloaded.close)
-            self.assertEqual(reloaded.settings.theme_id, "glass-dark")
-            self.assertEqual(reloaded._corner_radius, 18)
-            self.assertEqual(reloaded.theme.window, pal.window)
+                reloaded = ChessApp(create_root(self), data_layout=layout, locale="en")
+                self.assertEqual(reloaded.settings.theme_id, "glass-dark")
+                self.assertEqual(reloaded._corner_radius, 18)
+                self.assertEqual(reloaded.theme.window, pal.window)
 
-            dialog = app.open_appearance_dialog(modal=False)
-            self.assertIsInstance(dialog, AppearanceDialog)
-            dialog.theme_var.set("dopamine")
-            dialog._update_preview()
-            dialog._apply()
-            root.update()
-            self.assertEqual(app.settings.theme_id, "dopamine")
-            self.assertFalse(dialog.winfo_exists())
+                dialog = app.open_appearance_dialog(modal=False)
+                self.assertIsInstance(dialog, AppearanceDialog)
+                dialog.theme_var.set("dopamine")
+                dialog._update_preview()
+                dialog._apply()
+                root.update()
+                self.assertEqual(app.settings.theme_id, "dopamine")
+                self.assertFalse(dialog.winfo_exists())
+            finally:
+                if reloaded is not None:
+                    reloaded.close()
+                app.close()
 
     def test_30_uniform_panel_gaps_glide_settings_and_standalone_start(self):
         root = create_root(self)
@@ -779,75 +787,77 @@ class GlideShellIntegrationTests(unittest.TestCase):
             layout = DataLayout(Path(tmp) / "data")
             root = create_root(self)
             app = ChessApp(root, data_layout=layout, locale="de")
-            self.addCleanup(app.close)
-            root.geometry("1120x800")
-            root.deiconify()
-            root.update()
+            try:
+                root.geometry("1120x800")
+                root.deiconify()
+                root.update()
 
-            live_game = app.game
-            app._play_move(Move.from_uci("e2e4"))
-            app._play_move(Move.from_uci("e7e5"))
-            snapshot = app._current_pgn()
+                live_game = app.game
+                app._play_move(Move.from_uci("e2e4"))
+                app._play_move(Move.from_uci("e7e5"))
+                snapshot = app._current_pgn()
 
-            # Switch to Marble in 2D Bird's-Eye View without losing game state
-            app.set_board_design("marble")
-            root.update()
-            self.assertIs(app.game, live_game)
-            self.assertEqual(app.board.board_design, "marble")
-            self.assertEqual(app.board.perspective, "2d")
-            self.assertFalse(app.board.marble)
-            self.assertTrue(app.board.find_withtag("marble-2d-board"))
-            self.assertFalse(app.board.find_withtag("marble-board"))
-            self.assertEqual(app._current_pgn(), snapshot)
+                # Switch to Marble in 2D Bird's-Eye View without losing game state
+                app.set_board_design("marble")
+                root.update()
+                self.assertIs(app.game, live_game)
+                self.assertEqual(app.board.board_design, "marble")
+                self.assertEqual(app.board.perspective, "2d")
+                self.assertFalse(app.board.marble)
+                self.assertTrue(app.board.find_withtag("marble-2d-board"))
+                self.assertFalse(app.board.find_withtag("marble-board"))
+                self.assertEqual(app._current_pgn(), snapshot)
 
-            # Switch piece view between front and top on 2D marble board
-            app.set_piece_view("top")
-            root.update()
-            self.assertIs(app.game, live_game)
-            self.assertEqual(app.board.piece_view, "top")
-            self.assertTrue(app.board.renderer.top_view)
-            self.assertEqual(app.board.board_design, "marble")
-            self.assertEqual(app.board.perspective, "2d")
+                # Switch piece view between front and top on 2D marble board
+                app.set_piece_view("top")
+                root.update()
+                self.assertIs(app.game, live_game)
+                self.assertEqual(app.board.piece_view, "top")
+                self.assertTrue(app.board.renderer.top_view)
+                self.assertEqual(app.board.board_design, "marble")
+                self.assertEqual(app.board.perspective, "2d")
 
-            # Flip board orientation independently
-            app._flip_board()
-            root.update()
-            self.assertEqual(app.orientation, "black")
-            self.assertEqual(app.board.board_design, "marble")
-            self.assertEqual(app.board.perspective, "2d")
-            self.assertEqual(app.board.piece_view, "top")
+                # Flip board orientation independently
+                app._flip_board()
+                root.update()
+                self.assertEqual(app.orientation, "black")
+                self.assertEqual(app.board.board_design, "marble")
+                self.assertEqual(app.board.perspective, "2d")
+                self.assertEqual(app.board.piece_view, "top")
 
-            # Switch perspective to 3D and back to 2D cleanly
-            app.set_board_perspective("3d")
-            root.update()
-            self.assertTrue(app.board.marble)
-            self.assertTrue(app.board.find_withtag("marble-board"))
-            self.assertIs(app.game, live_game)
-            self.assertEqual(app._current_pgn(), snapshot)
+                # Switch perspective to 3D and back to 2D cleanly
+                app.set_board_perspective("3d")
+                root.update()
+                self.assertTrue(app.board.marble)
+                self.assertTrue(app.board.find_withtag("marble-board"))
+                self.assertIs(app.game, live_game)
+                self.assertEqual(app._current_pgn(), snapshot)
 
-            app.set_board_perspective("2d")
-            root.update()
-            self.assertEqual(app.board.board_design, "marble")
-            self.assertEqual(app.board.perspective, "2d")
-            self.assertTrue(app.board.find_withtag("marble-2d-board"))
-            self.assertEqual(app.board.piece_view, "top")
-            self.assertEqual(app.orientation, "black")
+                app.set_board_perspective("2d")
+                root.update()
+                self.assertEqual(app.board.board_design, "marble")
+                self.assertEqual(app.board.perspective, "2d")
+                self.assertTrue(app.board.find_withtag("marble-2d-board"))
+                self.assertEqual(app.board.piece_view, "top")
+                self.assertEqual(app.orientation, "black")
 
-            # Settings persisted and legacy settings JSON loads cleanly
-            loaded, warning = load_settings(layout.settings)
-            self.assertIsNone(warning)
-            self.assertEqual(loaded.board_design_choice, "marble")
-            self.assertEqual(loaded.board_perspective, "2d")
-            self.assertEqual(loaded.piece_view, "top")
+                # Settings persisted and legacy settings JSON loads cleanly
+                loaded, warning = load_settings(layout.settings)
+                self.assertIsNone(warning)
+                self.assertEqual(loaded.board_design_choice, "marble")
+                self.assertEqual(loaded.board_perspective, "2d")
+                self.assertEqual(loaded.piece_view, "top")
 
-            legacy = {"schema_version": 1, "theme_id": "dark", "accent_choice": "export"}
-            legacy_path = Path(tmp) / "legacy.json"
-            legacy_path.write_text(json.dumps(legacy), encoding="utf-8")
-            legacy_loaded, legacy_warn = load_settings(legacy_path)
-            self.assertIsNone(legacy_warn)
-            self.assertEqual(legacy_loaded.board_design_choice, "standard")
-            self.assertEqual(legacy_loaded.board_perspective, "2d")
-            self.assertEqual(legacy_loaded.piece_view, "front")
+                legacy = {"schema_version": 1, "theme_id": "dark", "accent_choice": "export"}
+                legacy_path = Path(tmp) / "legacy.json"
+                legacy_path.write_text(json.dumps(legacy), encoding="utf-8")
+                legacy_loaded, legacy_warn = load_settings(legacy_path)
+                self.assertIsNone(legacy_warn)
+                self.assertEqual(legacy_loaded.board_design_choice, "standard")
+                self.assertEqual(legacy_loaded.board_perspective, "2d")
+                self.assertEqual(legacy_loaded.piece_view, "front")
+            finally:
+                app.close()
 
     def test_33_theme_color_rename_and_dynamic_chessboard_colors(self):
         t_de = Translator("de")
@@ -956,90 +966,92 @@ class GlideShellIntegrationTests(unittest.TestCase):
             layout = DataLayout(Path(tmp) / "data")
             root = create_root(self)
             app = ChessApp(root, data_layout=layout, locale="de")
-            self.addCleanup(app.close)
-            root.geometry("1180x820")
-            root.deiconify()
-            root.update()
+            try:
+                root.geometry("1180x820")
+                root.deiconify()
+                root.update()
 
-            # 1. Verify shortened labels and unclipped full header labels without '…'
-            self.assertEqual(app.claim_button.cget("text"), "Remis")
-            self.assertEqual(app.retry_bot_button.cget("text"), "Bot erneut")
-            app.apply_appearance(locale="en", persist=False)
-            self.assertEqual(app.claim_button.cget("text"), "Draw")
-            self.assertEqual(app.retry_bot_button.cget("text"), "Retry bot")
-            app.apply_appearance(locale="de", persist=False)
-            root.update()
+                # 1. Verify shortened labels and unclipped full header labels without '…'
+                self.assertEqual(app.claim_button.cget("text"), "Remis")
+                self.assertEqual(app.retry_bot_button.cget("text"), "Bot erneut")
+                app.apply_appearance(locale="en", persist=False)
+                self.assertEqual(app.claim_button.cget("text"), "Draw")
+                self.assertEqual(app.retry_bot_button.cget("text"), "Retry bot")
+                app.apply_appearance(locale="de", persist=False)
+                root.update()
 
-            for hdr_btn in (
-                app.sidebar_toggle_button,
-                app.sidebar_narrow_button,
-                app.theme_toggle_button,
-                app.settings_header_button,
-            ):
-                self.assertNotIn("…", hdr_btn.cget("text"))
+                for hdr_btn in (
+                    app.sidebar_toggle_button,
+                    app.sidebar_narrow_button,
+                    app.theme_toggle_button,
+                    app.settings_header_button,
+                ):
+                    self.assertNotIn("…", hdr_btn.cget("text"))
 
-            # Verify play panel buttons render single-line with identical heights in default layout
-            paired = (
-                app.undo_button, app.redo_button, app.flip_button, app.resign_button,
-                app.save_button, app.copy_pgn_button, app.claim_button, app.library_button,
-                app.retry_bot_button, app.engine_button,
-            )
-            self.assertTrue(all(b.cget("wraplength") == 0 for b in paired))
-            self.assertEqual(len({b.winfo_height() for b in paired}), 1)
+                # Verify play panel buttons render single-line with identical heights in default layout
+                paired = (
+                    app.undo_button, app.redo_button, app.flip_button, app.resign_button,
+                    app.save_button, app.copy_pgn_button, app.claim_button, app.library_button,
+                    app.retry_bot_button, app.engine_button,
+                )
+                self.assertTrue(all(b.cget("wraplength") == 0 for b in paired))
+                self.assertEqual(len({b.winfo_height() for b in paired}), 1)
 
-            # Verify responsive single-column stacking at large font without shrinking user font
-            orig_size = app.undo_button.cget("font")
-            app.apply_appearance(font_scale_choice="large", persist=False)
-            root.update()
-            self.assertNotEqual(app.undo_button.cget("font"), orig_size)
-            self.assertEqual(app.undo_button.grid_info()["column"], 0)
-            self.assertEqual(app.redo_button.grid_info()["column"], 0)
+                # Verify responsive single-column stacking at large font without shrinking user font
+                orig_size = app.undo_button.cget("font")
+                app.apply_appearance(font_scale_choice="large", persist=False)
+                root.update()
+                self.assertNotEqual(app.undo_button.cget("font"), orig_size)
+                self.assertEqual(app.undo_button.grid_info()["column"], 0)
+                self.assertEqual(app.redo_button.grid_info()["column"], 0)
 
-            # Verify Retry Bot preserves game object rather than starting a new game
-            app.start_game("human-vs-bot-white")
-            live = app.game
-            with patch.object(app.controller, "retry_bot") as retry_mock:
-                app.retry_bot_button.configure(state=tk.NORMAL)
-                app.retry_bot_button.invoke()
-                retry_mock.assert_called_once()
-            self.assertIs(app.game, live)
+                # Verify Retry Bot preserves game object rather than starting a new game
+                app.start_game("human-vs-bot-white")
+                live = app.game
+                with patch.object(app.controller, "retry_bot") as retry_mock:
+                    app.retry_bot_button.configure(state=tk.NORMAL)
+                    app.retry_bot_button.invoke()
+                    retry_mock.assert_called_once()
+                self.assertIs(app.game, live)
 
-            # 2. Verify all modal/helper dialogs inherit Dark Mode clam styles & palette contrast >= 4.5
-            pal = app.apply_appearance(theme_id="dark", accent_choice="export", font_scale_choice="standard", persist=False)
-            root.update()
-            s = ttk.Style(root)
-            self.assertEqual(s.theme_use(), "clam")
-            self.assertGreaterEqual(contrast_ratio(s.lookup("Glide.TButton", "foreground"), s.lookup("Glide.TButton", "background")), 4.5)
-            self.assertGreaterEqual(contrast_ratio(s.lookup("Glide.New.TButton", "foreground"), s.lookup("Glide.New.TButton", "background")), 4.5)
-            self.assertGreaterEqual(contrast_ratio(s.lookup("Glide.TEntry", "foreground"), s.lookup("Glide.TEntry", "fieldbackground")), 4.5)
+                # 2. Verify all modal/helper dialogs inherit Dark Mode clam styles & palette contrast >= 4.5
+                pal = app.apply_appearance(theme_id="dark", accent_choice="export", font_scale_choice="standard", persist=False)
+                root.update()
+                s = ttk.Style(root)
+                self.assertEqual(s.theme_use(), "clam")
+                self.assertGreaterEqual(contrast_ratio(s.lookup("Glide.TButton", "foreground"), s.lookup("Glide.TButton", "background")), 4.5)
+                self.assertGreaterEqual(contrast_ratio(s.lookup("Glide.New.TButton", "foreground"), s.lookup("Glide.New.TButton", "background")), 4.5)
+                self.assertGreaterEqual(contrast_ratio(s.lookup("Glide.TEntry", "foreground"), s.lookup("Glide.TEntry", "fieldbackground")), 4.5)
 
-            app.start_game("human-vs-human")
-            app._play_move(Move.from_uci("e2e4"))
-            app._play_move(Move.from_uci("e7e5"))
+                app.start_game("human-vs-human")
+                app._play_move(Move.from_uci("e2e4"))
+                app._play_move(Move.from_uci("e7e5"))
 
-            pos = PositionDialog(root, app.t, app.game.state, lambda _p: True, theme=app.theme)
-            self.assertEqual(pos.cget("background"), pal.acetate)
-            pos._close()
+                pos = PositionDialog(root, app.t, app.game.state, lambda _p: True, theme=app.theme)
+                self.assertEqual(pos.cget("background"), pal.acetate)
+                pos._close()
 
-            rep = ReplayDialog(root, app.game, app.t, None, app.board.renderer, "white", theme=app.theme)
-            self.assertEqual(rep.cget("background"), pal.acetate)
-            rep._close()
+                rep = ReplayDialog(root, app.game, app.t, None, app.board.renderer, "white", theme=app.theme)
+                self.assertEqual(rep.cget("background"), pal.acetate)
+                rep._close()
 
-            tb = TextBoardDialog(root, app.t, app._play_move, theme=app.theme)
-            self.assertEqual(tb.cget("background"), pal.acetate)
-            tb._close()
+                tb = TextBoardDialog(root, app.t, app._play_move, theme=app.theme)
+                self.assertEqual(tb.cget("background"), pal.acetate)
+                tb._close()
 
-            about = app.show_about_dialog(modal=False)
-            self.assertEqual(about.cget("background"), pal.acetate)
-            about.destroy()
+                about = app.show_about_dialog(modal=False)
+                self.assertEqual(about.cget("background"), pal.acetate)
+                about.destroy()
 
-            eng = EngineDialog(app)
-            self.assertEqual(eng.window.cget("background"), pal.acetate)
-            eng.window.destroy()
+                eng = EngineDialog(app)
+                self.assertEqual(eng.window.cget("background"), pal.acetate)
+                eng.window.destroy()
 
-            dlg = app.open_appearance_dialog(modal=False)
-            self.assertEqual(dlg.cget("background"), pal.window)
-            dlg.destroy()
+                dlg = app.open_appearance_dialog(modal=False)
+                self.assertEqual(dlg.cget("background"), pal.window)
+                dlg.destroy()
+            finally:
+                app.close()
 
     def test_36_captured_material_display_and_advantage(self) -> None:
         """Prüfe die dynamische Materialanzeige und relative Differenz (+N) im Brettbereich."""

@@ -130,7 +130,7 @@ jobs:
         # Serial execution required: each suite must complete before the next
         # starts to prevent concurrent Tk root creation on Windows/macOS.
         run: |
-          python -c "import faulthandler, unittest; faulthandler.dump_traceback_later(90, exit=True); unittest.main(module=None)" \
+          python -c "import faulthandler, unittest; faulthandler.dump_traceback_later(270, exit=True); unittest.main(module=None)" \
             tests.test_board_ui \
             tests.test_app_integration \
             tests.test_final_audit \

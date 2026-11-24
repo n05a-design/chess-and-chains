@@ -659,29 +659,30 @@ class MaterialBarPuzzleResetTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             layout = DataLayout(Path(tmp) / "data")
             app = ChessApp(self.root, data_layout=layout, locale="en")
-            self.addCleanup(app.close)
-
-            # Play a game move to get some material difference
-            from chess_and_chains.chess import Move
-            app._play_move(Move.from_uci("e2e4"))
-            self.root.update_idletasks()
-
-            # Switch to puzzle panel with no puzzle loaded
-            app.tab_rail.set_active("puzzles")
-            self.root.update_idletasks()
-
-            # With no puzzle active (self.puzzle is None), bars should show None material
-            if app.puzzle is None:
-                app._sync_material_bars()
+            try:
+                # Play a game move to get some material difference
+                from chess_and_chains.chess import Move
+                app._play_move(Move.from_uci("e2e4"))
                 self.root.update_idletasks()
-                self.assertIsNone(
-                    app.top_material_bar.material,
-                    "Material bar must be None when puzzle panel is empty"
-                )
-                self.assertIsNone(
-                    app.bottom_material_bar.material,
-                    "Material bar must be None when puzzle panel is empty"
-                )
+
+                # Switch to puzzle panel with no puzzle loaded
+                app.tab_rail.set_active("puzzles")
+                self.root.update_idletasks()
+
+                # With no puzzle active (self.puzzle is None), bars should show None material
+                if app.puzzle is None:
+                    app._sync_material_bars()
+                    self.root.update_idletasks()
+                    self.assertIsNone(
+                        app.top_material_bar.material,
+                        "Material bar must be None when puzzle panel is empty"
+                    )
+                    self.assertIsNone(
+                        app.bottom_material_bar.material,
+                        "Material bar must be None when puzzle panel is empty"
+                    )
+            finally:
+                app.close()
 
 
 # ---------------------------------------------------------------------------
