@@ -5,12 +5,16 @@
 
 from __future__ import annotations
 
+from collections import OrderedDict
+from importlib.resources import files
 import math
 import re
 import tkinter as tk
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
+
+from .theme import hex_rgb, mix_rgb, rgb_hex
 
 MAX_BOARD_PREVIEW_SIZE = 2048
 _MAX_SVG_BYTES = 2 * 1024 * 1024
@@ -174,3 +178,90 @@ class BoardArtwork:
             group.extend(root)
             root[:] = [group]
         return tk.PhotoImage(master=master, data=_svg_bytes(root), format="svg")
+
+
+_HEX_COLOR_RE = re.compile(r"#[0-9a-fA-F]{6}\b")
+
+
+def _tint_marble_svg_text(svg_text: str, tint_color: str | None) -> str:
+    """Apply a subtle, veining-preserving Themenfarbe tint to the 2D marble SVG."""
+    if not tint_color:
+        return svg_text
+    target = hex_rgb(tint_color)
+    # Neutral gray (low chroma) preserves natural cool marble stones.
+    if max(target) - min(target) <= 24:
+        return svg_text
+
+    def _replace(match: re.Match[str]) -> str:
+        rgb = hex_rgb(match.group(0))
+        lum = (0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]) / 255.0
+        share = 0.14 if lum > 0.55 else 0.22
+        return rgb_hex(mix_rgb(rgb, target, share))
+
+    return _HEX_COLOR_RE.sub(_replace, svg_text)
+
+
+class Marble2DArtwork:
+    """Orthogonal 2D bird's-eye renderer for the existing marble board artwork."""
+
+    def __init__(self, *, source_svg: Path | None = None) -> None:
+        self._source_svg = source_svg
+        self._base_svg: str | None = None
+        self._images: OrderedDict[tuple[object, int, bool, str | None], tk.PhotoImage] = OrderedDict()
+
+    def _load_cropped_svg(self) -> str:
+        if self._base_svg is not None:
+            return self._base_svg
+        raw_bytes: bytes | None = None
+        if self._source_svg is not None and self._source_svg.is_file():
+            raw_bytes = self._source_svg.read_bytes()
+        else:
+            repo_master = Path(__file__).resolve().parents[3] / "design" / "source" / "marmor-3d" / "spielsatz" / "Brett.svg"
+            if repo_master.is_file():
+                raw_bytes = repo_master.read_bytes()
+            else:
+                bundled = files(__package__).joinpath("marble_assets").joinpath("board_2d.svg")
+                raw_bytes = bundled.read_bytes()
+        tree = ET.fromstring(raw_bytes.decode("utf-8"))
+        for child in list(tree):
+            cid = child.attrib.get("id", "")
+            tag = child.tag.split("}")[-1]
+            if cid in ("koordinaten", "rahmen") or (tag == "rect" and child.attrib.get("width") in ("864", "806")):
+                tree.remove(child)
+        tree.set("viewBox", "32 32 800 800")
+        tree.set("width", "800")
+        tree.set("height", "800")
+        self._base_svg = _svg_bytes(tree).decode("utf-8")
+        return self._base_svg
+
+    def image(
+        self,
+        master: tk.Misc,
+        tile_size: int,
+        *,
+        flipped: bool = False,
+        tint_color: str | None = None,
+    ) -> tk.PhotoImage:
+        key = (master.tk, int(tile_size), bool(flipped), tint_color)
+        cached = self._images.get(key)
+        if cached is not None:
+            self._images.move_to_end(key)
+            return cached
+        size = max(8, int(tile_size) * 8)
+        svg_text = _tint_marble_svg_text(self._load_cropped_svg(), tint_color)
+        root = ET.fromstring(svg_text.encode("utf-8"))
+        root.set("width", str(size))
+        root.set("height", str(size))
+        if flipped:
+            # 800x800 grid covers x in [32, 832], y in [32, 832] -> center is (432, 432).
+            group = ET.Element(_SVG_NAMESPACE + "g", {"transform": "rotate(180 432 432)"})
+            for child in list(root):
+                if child.tag != _SVG_NAMESPACE + "defs":
+                    group.append(child)
+                    root.remove(child)
+            root.append(group)
+        img = tk.PhotoImage(master=master, data=_svg_bytes(root), format="svg")
+        self._images[key] = img
+        while len(self._images) > 24:
+            self._images.popitem(last=False)
+        return img

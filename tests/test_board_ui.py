@@ -21,7 +21,14 @@ from chess_and_chains.chess import (  # noqa: E402
     parse_square,
 )
 from chess_and_chains.ui.app import ChessApp  # noqa: E402
-from chess_and_chains.ui.board_artwork import BoardArtwork, BoardArtworkError, load_board_design  # noqa: E402
+from chess_and_chains.ui.board_artwork import (  # noqa: E402
+    BoardArtwork,
+    BoardArtworkError,
+    Marble2DArtwork,
+    load_board_design,
+)
+from chess_and_chains.ui.marble_board import MarbleBoardCanvas  # noqa: E402
+from chess_and_chains.ui.theme import ACCENT_CHOICES, resolve_theme  # noqa: E402
 from tests.tk_support import create_root  # noqa: E402
 from chess_and_chains.ui.board import (  # noqa: E402
     BoardCanvas,
@@ -306,6 +313,132 @@ class ChessAppActionTests(unittest.TestCase):
         self.app._flip_board()
         self.assertEqual(self.app.orientation, "white")
         self.assertEqual(self.app.board._orientation, "white")
+
+
+class BoardMarkerCenteringTests(unittest.TestCase):
+    @staticmethod
+    def _coords_center(coords: list[float]) -> tuple[float, float]:
+        if len(coords) == 4:
+            return (coords[0] + coords[2]) / 2.0, (coords[1] + coords[3]) / 2.0
+        xs = coords[0::2]
+        ys = coords[1::2]
+        return (min(xs) + max(xs)) / 2.0, (min(ys) + max(ys)) / 2.0
+
+    def test_2d_markers_and_concentric_rings_share_exact_square_center_all_squares(self):
+        root = create_root(self)
+        root.deiconify()
+        board = MarbleBoardCanvas(root, lambda _moves: None)
+        board.pack(fill="both", expand=True)
+        root.geometry("640x640")
+        root.update()
+        # Valid position with legal quiet moves and capture Qxd5
+        state = parse_fen("7k/8/8/3p4/4Q3/8/8/4K3 w - - 0 1")
+        rules = ChessRules()
+        legal = rules.legal_moves(state)
+
+        for design in ("standard", "marble"):
+            board.set_board_design(design)
+            for size in ((420, 420), (640, 640), (790, 710)):
+                root.geometry(f"{size[0]}x{size[1]}")
+                root.update()
+                for orientation in ("white", "black"):
+                    board.set_orientation(orientation)
+                    # Check all 64 squares across focus, hint, selection, and last move
+                    board.set_position(state, legal, Move.from_uci("d1e4"), in_check=True)
+                    for sq in range(64):
+                        board._selected = sq
+                        board._focused_square = sq
+                        board._has_focus = True
+                        board._hint_square = sq
+                        board.redraw()
+                        exp_x, exp_y = board.square_center(sq)
+                        for tag in ("selected-square", "square-focus", "hint"):
+                            items = board.find_withtag(tag)
+                            self.assertTrue(items, f"missing {tag} on sq {sq}")
+                            for item in items:
+                                cx, cy = self._coords_center(board.coords(item))
+                                self.assertAlmostEqual(cx, exp_x, delta=0.01)
+                                self.assertAlmostEqual(cy, exp_y, delta=0.01)
+
+                    # Verify all quiet + capture legal move concentric rings share exact square centers
+                    e4 = parse_square("e4")
+                    board._selected = e4
+                    board._hint_square = None
+                    board.redraw()
+                    quiet_items = board.find_withtag("legal-move")
+                    capture_items = board.find_withtag("legal-capture")
+                    self.assertTrue(len(quiet_items) >= 2 and len(quiet_items) % 2 == 0)
+                    self.assertTrue(len(capture_items) >= 2 and len(capture_items) % 2 == 0)
+
+                    legal_dests = {m.to_square for m in legal if m.from_square == e4}
+                    dest_centers = [board.square_center(sq) for sq in legal_dests]
+                    for idx in range(0, len(quiet_items), 2):
+                        c1 = self._coords_center(board.coords(quiet_items[idx]))
+                        c2 = self._coords_center(board.coords(quiet_items[idx + 1]))
+                        self.assertAlmostEqual(c1[0], c2[0], delta=0.01)
+                        self.assertAlmostEqual(c1[1], c2[1], delta=0.01)
+                        self.assertTrue(any(abs(c1[0] - dx) < 0.01 and abs(c1[1] - dy) < 0.01 for dx, dy in dest_centers))
+                    for idx in range(0, len(capture_items), 2):
+                        c1 = self._coords_center(board.coords(capture_items[idx]))
+                        c2 = self._coords_center(board.coords(capture_items[idx + 1]))
+                        self.assertAlmostEqual(c1[0], c2[0], delta=0.01)
+                        self.assertAlmostEqual(c1[1], c2[1], delta=0.01)
+                        d5x, d5y = board.square_center(parse_square("d5"))
+                        self.assertAlmostEqual(c1[0], d5x, delta=0.01)
+                        self.assertAlmostEqual(c1[1], d5y, delta=0.01)
+
+    def test_3d_projected_markers_and_concentric_rings_use_projected_square_center(self):
+        root = create_root(self)
+        root.deiconify()
+        board = MarbleBoardCanvas(root, lambda _moves: None)
+        board.pack(fill="both", expand=True)
+        root.geometry("640x640")
+        root.update()
+        root.geometry("760x700")
+        root.update()
+        state = parse_fen("7k/8/8/3p4/4Q3/8/8/4K3 w - - 0 1")
+        rules = ChessRules()
+        legal = rules.legal_moves(state)
+        board.set_board_design("marble")
+        board.set_perspective("3d")
+        board.set_position(state, legal, Move.from_uci("d1e4"), in_check=True)
+        e4 = parse_square("e4")
+        d5 = parse_square("d5")
+        board._selected = e4
+        board._focused_square = e4
+        board._has_focus = True
+        board.redraw()
+
+        self.assertTrue(board.find_withtag("marble-board"))
+        quiet = board.find_withtag("legal-move")
+        capture = board.find_withtag("legal-capture")
+        self.assertTrue(len(quiet) >= 2)
+        self.assertTrue(len(capture) >= 2)
+        d5x, d5y = board.projected_square_center(d5)
+        for idx in range(0, len(capture), 2):
+            c1 = self._coords_center(board.coords(capture[idx]))
+            c2 = self._coords_center(board.coords(capture[idx + 1]))
+            self.assertAlmostEqual(c1[0], c2[0], delta=0.5)
+            self.assertAlmostEqual(c1[1], c2[1], delta=0.5)
+            self.assertAlmostEqual(c1[0], d5x, delta=0.5)
+            self.assertAlmostEqual(c1[1], d5y, delta=0.5)
+
+    def test_marble_2d_tinting_and_custom_svg_isolation(self):
+        root = create_root(self)
+        marble_art = Marble2DArtwork()
+        gray = marble_art.image(root, 32, flipped=False, tint_color=resolve_theme("light", accent="muted").brand_blue)
+        cobalt = marble_art.image(root, 32, flipped=False, tint_color=resolve_theme("light", accent="accent").brand_blue)
+        emerald = marble_art.image(root, 32, flipped=False, tint_color=resolve_theme("light", accent="export").brand_blue)
+        self.assertEqual((gray.width(), gray.height()), (256, 256))
+        self.assertEqual((cobalt.width(), cobalt.height()), (256, 256))
+        self.assertNotEqual(cobalt.get(16, 16), emerald.get(16, 16))
+        # Custom SVG artwork receives no tint_color parameter and keeps its exact design
+        custom = BoardArtwork(load_board_design(ROOT / "assets" / "boards" / "source" / "board-template.svg"))
+        board = MarbleBoardCanvas(root, lambda _moves: None, artwork=custom)
+        self.assertEqual(board.board_design, "custom")
+        for acc, _lbl in ACCENT_CHOICES:
+            board.set_theme(resolve_theme("light", accent=acc))
+            self.assertIs(board._artwork, custom)
 
 
 if __name__ == "__main__":

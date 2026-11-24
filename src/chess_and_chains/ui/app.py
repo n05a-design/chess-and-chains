@@ -253,6 +253,8 @@ class ChessApp:
         self.ui_history = command_history.CommandHistory(limit=50)
         self.platform = app_host.platform_of(str(root.tk.call("tk", "windowingsystem")))
         self._board_artwork = board_artwork
+        self._custom_board_artwork = board_artwork
+        self._cli_piece_override = piece_renderer is not None
         self.layout = data_layout
         self.settings_warning: str | None = None
         database_warning: str | None = None
@@ -330,7 +332,12 @@ class ChessApp:
         initial_preset = self.settings.bot_preset_id if self.settings.bot_preset_id in preset_ids else preset_ids[2]
         self.preset_var = tk.StringVar(root, value=self._preset_label(initial_preset))
         self._wrap_labels: list[tk.Label] = []
-        self._build(piece_renderer)
+        effective_renderer = (
+            piece_renderer
+            if piece_renderer is not None
+            else OwnerSvgPieces(top_view=(self.settings.piece_view == "top"))
+        )
+        self._build(effective_renderer)
         self._build_menubar()
         self._bind_shortcuts()
         app_host.install_close(self.root, self.close, self.platform, scope=self.scope)
@@ -379,9 +386,12 @@ class ChessApp:
         locale: str | None = None,
         sidebar_visible: bool | None = None,
         sidebar_narrow: bool | None = None,
+        board_design_choice: str | None = None,
+        board_perspective: str | None = None,
+        piece_view: str | None = None,
         persist: bool = True,
     ) -> ThemePalette:
-        """Apply Glide theme, accent, background tint, radius, typography and behavior settings."""
+        """Apply Glide theme, Themenfarbe, background, typography, and decoupled board settings."""
         changes: dict[str, object] = {}
         eff_theme = self.settings.theme_id if theme_id is None else theme_id
         eff_bg = self.settings.background_choice if background_choice is None else background_choice
@@ -395,6 +405,33 @@ class ChessApp:
         eff_sidebar_vis = self.sidebar_visible if sidebar_visible is None else bool(sidebar_visible)
         eff_sidebar_narrow = self._sidebar_narrow if sidebar_narrow is None else bool(sidebar_narrow)
 
+        if piece_view is not None and hasattr(self, "board"):
+            self.board.set_piece_view(piece_view)  # type: ignore[arg-type]
+        if board_design_choice is not None and hasattr(self, "board"):
+            try:
+                self.board.set_board_design(board_design_choice)  # type: ignore[arg-type]
+            except (OSError, tk.TclError):
+                self.board.set_board_design("standard")
+                self.interaction_text.set(self.t("board.marble_unavailable"))
+        if board_perspective is not None and hasattr(self, "board"):
+            try:
+                self.board.set_perspective(board_perspective)  # type: ignore[arg-type]
+            except (OSError, tk.TclError):
+                self.board.set_perspective("2d")
+                self.interaction_text.set(self.t("board.marble_unavailable"))
+
+        eff_design = (
+            self.board.board_design
+            if hasattr(self, "board") and self.board.board_design in ("standard", "marble")
+            else self.settings.board_design_choice
+        )
+        eff_persp = (
+            self.board.perspective
+            if hasattr(self, "board") and self.board.board_design in ("standard", "marble")
+            else self.settings.board_perspective
+        )
+        eff_piece = self.board.piece_view if hasattr(self, "board") else self.settings.piece_view
+
         for key, val in (
             ("theme_id", eff_theme),
             ("background_choice", eff_bg),
@@ -407,6 +444,9 @@ class ChessApp:
             ("locale", eff_locale),
             ("sidebar_visible", eff_sidebar_vis),
             ("sidebar_narrow", eff_sidebar_narrow),
+            ("board_design_choice", eff_design),
+            ("board_perspective", eff_persp),
+            ("piece_view", eff_piece),
         ):
             if getattr(self.settings, key) != val:
                 changes[key] = val
@@ -423,6 +463,8 @@ class ChessApp:
 
         if locale_changed:
             self.t = Translator(eff_locale)
+            if hasattr(self, "board"):
+                self.board.t = self.t
             self.root.title(f'{self.t("app.window_title")} · {DISPLAY_VERSION}')
         if sidebar_changed:
             self.sidebar_visible = eff_sidebar_vis
@@ -453,6 +495,7 @@ class ChessApp:
             scale_choice=eff_scale,
             weight_choice=eff_weight,
         )
+        self._sync_board_controls()
         if sidebar_changed:
             self._apply_sidebar_visibility()
         else:
@@ -470,6 +513,9 @@ class ChessApp:
 
     def open_appearance_dialog(self, *, modal: bool = True) -> AppearanceDialog:
         """Open the unified Glide Settings & Appearance dialog."""
+        cur_design = self.board.board_design if hasattr(self, "board") else self.settings.board_design_choice
+        cur_persp = self.board.perspective if hasattr(self, "board") else self.settings.board_perspective
+        cur_piece = self.board.piece_view if hasattr(self, "board") else self.settings.piece_view
         return AppearanceDialog(
             self.root,
             self.t,
@@ -485,6 +531,10 @@ class ChessApp:
             locale=self.t.locale,
             sidebar_visible=self.sidebar_visible,
             sidebar_narrow=self._sidebar_narrow,
+            board_design_choice=cur_design,
+            board_perspective=cur_persp,
+            piece_view=cur_piece,
+            has_custom_board=self._custom_board_artwork is not None,
             on_open_engine=self._open_engine_dialog,
             on_apply=lambda **kw: self.apply_appearance(**kw, persist=True),
             modal=modal,
@@ -559,6 +609,19 @@ class ChessApp:
                 (chk(t("view.sidebar_narrow"), self.sidebar_narrow() and self.sidebar_visible), self.toggle_sidebar_narrow, "", "toggle_sidebar_narrow"),
                 None,
                 (t("button.flip"), self._flip_board, "", "flip_board"),
+                (t("board.design.label"), [
+                    (chk(t("board.design.standard"), self.board.board_design == "standard"), lambda: self.set_board_design("standard"), "", "design_standard"),
+                    (chk(t("board.design.marble"), self.board.board_design == "marble"), lambda: self.set_board_design("marble"), "", "design_marble"),
+                    *([(chk(t("board.design.custom"), self.board.board_design == "custom"), lambda: self.set_board_design("custom"), "", "design_custom")] if self._custom_board_artwork is not None else []),
+                ]),
+                (t("board.perspective.label"), [
+                    (chk(t("board.perspective.2d"), self.board.perspective == "2d"), lambda: self.set_board_perspective("2d"), "", "persp_2d"),
+                    (chk(t("board.perspective.3d"), self.board.perspective == "3d"), lambda: self.set_board_perspective("3d"), "", "persp_3d"),
+                ]),
+                (t("board.piece_view.label"), [
+                    (chk(t("board.piece_view.front"), self.board.piece_view == "front"), lambda: self.set_piece_view("front"), "", "piece_front"),
+                    (chk(t("board.piece_view.top"), self.board.piece_view == "top"), lambda: self.set_piece_view("top"), "", "piece_top"),
+                ]),
                 (t("text_board.button"), self._open_text_board, "", "text_board"),
                 None,
                 (chk(t("tab.play"), self.active_panel == "play"), lambda: self.tab_rail.set_active("play"), "", "tab_play"),
@@ -724,25 +787,86 @@ class ChessApp:
         self.text_board_button.grid(row=0, column=1, padx=(0, 12), pady=4)
         board_title.bind("<Configure>", lambda event: board_title.configure(wraplength=max(1, event.width - 28)))
         self.marble_view = tk.BooleanVar(self.root, value=False)
+        board_controls = tk.Frame(board_header, background=theme.acetate)
+        board_controls.grid(row=1, column=0, columnspan=2, sticky="ew", padx=14, pady=(0, 6))
         self.marble_button = GlideCheckbutton(
-            board_header, text=t("board.marble"), variable=self.marble_view, command=self._toggle_marble_view,
+            board_controls, text=t("board.marble"), variable=self.marble_view, command=self._toggle_marble_view,
             bg=theme.acetate, fg=theme.ink, selectcolor=theme.paper,
             disabledforeground=theme.disabled_ink,
             highlightthickness=0, highlightbackground=theme.acetate, highlightcolor=theme.focus_ink,
             font=font_spec("body", scale_choice=self.settings.font_scale_choice, weight_choice=self.settings.font_weight_choice),
         )
-        self.marble_button.grid(row=1, column=0, columnspan=2, sticky="w", padx=14, pady=(0, 6))
+        self.marble_button.grid(row=0, column=0, sticky="w")
         _bind_button_enter(self.marble_button)
-        self._register_theme(lambda p: self.marble_button.configure(
-            bg=p.acetate, fg=p.ink, selectcolor=p.paper,
-            disabledforeground=p.disabled_ink, highlightcolor=p.focus_ink,
-            font=font_spec("body", scale_choice=self.settings.font_scale_choice, weight_choice=self.settings.font_weight_choice),
+
+        selector_row = tk.Frame(board_controls, background=theme.acetate)
+        selector_row.grid(row=1, column=0, sticky="w", pady=(SPACING[4], 0))
+
+        def make_selector_btn(command, col: int) -> RoundedButton:
+            btn = RoundedButton(
+                selector_row,
+                text="",
+                command=command,
+                background=theme.tab_idle,
+                foreground=theme.ink,
+                activebackground=theme.ink,
+                activeforeground=theme.acetate,
+                disabledforeground=theme.disabled_ink,
+                hover_bg=theme.hover,
+                border_color=theme.line,
+                focus_color=theme.focus_ink,
+                carrier_bg=theme.acetate,
+                padx=SPACING[8],
+                pady=SPACING[3],
+                takefocus=True,
+                cursor="hand2",
+                font=font_spec("caption", "bold", scale_choice=self.settings.font_scale_choice, weight_choice=self.settings.font_weight_choice),
+                radius=min(self._field_radius(), 10),
+            )
+            btn.grid(row=0, column=col, sticky="w", padx=(0, SPACING[6]))
+            _bind_button_enter(btn)
+            self._register_theme(lambda p, b=btn: b.configure(
+                background=p.tab_idle,
+                foreground=p.ink,
+                activebackground=p.ink,
+                activeforeground=p.acetate,
+                disabledforeground=p.disabled_ink,
+                hover_bg=p.hover,
+                border_color=p.line,
+                focus_color=p.focus_ink,
+                carrier_bg=p.acetate,
+                radius=min(self._field_radius(), 10),
+                font=font_spec("caption", "bold", scale_choice=self.settings.font_scale_choice, weight_choice=self.settings.font_weight_choice),
+            ))
+            return btn
+
+        self.board_design_button = make_selector_btn(self._cycle_board_design, 0)
+        self.perspective_button = make_selector_btn(self._cycle_board_perspective, 1)
+        self.piece_view_button = make_selector_btn(self._cycle_piece_view, 2)
+
+        self._register_theme(lambda p: (
+            board_controls.configure(background=p.acetate),
+            selector_row.configure(background=p.acetate),
+            self.marble_button.configure(
+                bg=p.acetate, fg=p.ink, selectcolor=p.paper,
+                disabledforeground=p.disabled_ink, highlightcolor=p.focus_ink,
+                font=font_spec("body", scale_choice=self.settings.font_scale_choice, weight_choice=self.settings.font_weight_choice),
+            ),
         ))
         self.board = MarbleBoardCanvas(
             board_sheet, lambda moves: app._on_move_requested(moves),
             lambda detail: app._on_selection_changed(detail),
             artwork=self._board_artwork, renderer=piece_renderer, translator=t, theme=theme,
         )
+        if self._custom_board_artwork is None:
+            try:
+                if self.settings.board_design_choice != "standard":
+                    self.board.set_board_design(self.settings.board_design_choice)  # type: ignore[arg-type]
+                if self.settings.board_perspective == "3d":
+                    self.board.set_perspective("3d")
+            except (OSError, tk.TclError):
+                self.board.set_board_design("standard")
+        self._sync_board_controls()
         self.board.grid(row=1, column=0, sticky="nsew", padx=12, pady=(0, 10))
         board_status = tk.Label(
             board_sheet, textvariable=self.interaction_text, background=theme.acetate, foreground=theme.muted_ink,
@@ -2102,6 +2226,106 @@ class ChessApp:
         self.board.set_orientation(self.orientation)
         self.interaction_text.set(self.t("board.black_bottom" if self.orientation == "black" else "board.white_bottom"))
 
+    def _sync_board_controls(self) -> None:
+        if not hasattr(self, "board") or not hasattr(self, "board_title"):
+            return
+        t = self.t
+        design = self.board.board_design
+        perspective = self.board.perspective
+        piece_view = self.board.piece_view
+        self.marble_view.set(self.board.marble)
+        if perspective == "3d" and design == "marble":
+            title_key = "board.marble_pieces"
+        elif design == "marble":
+            title_key = "board.marble_2d_top_pieces" if piece_view == "top" else "board.marble_2d_pieces"
+        elif design == "custom":
+            title_key = "board.custom_pieces"
+        elif piece_view == "top":
+            title_key = "board.top_pieces"
+        else:
+            title_key = "board.pieces"
+        self.board_title.configure(text=t(title_key))
+        self.marble_button.configure(text=t("board.marble"))
+        if hasattr(self, "board_design_button"):
+            design_text = t(f"board.design.{design}")
+            self.board_design_button.configure(
+                text=clip_button_text(f"{t('board.design.label')}: {design_text}"),
+            )
+        if hasattr(self, "perspective_button"):
+            persp_short = "3D" if perspective == "3d" else "2D"
+            self.perspective_button.configure(
+                text=clip_button_text(f"{t('board.perspective.label')}: {persp_short}"),
+                state=tk.NORMAL if self.board.supports_3d() else tk.DISABLED,
+            )
+        if hasattr(self, "piece_view_button"):
+            if perspective == "3d" and design == "marble":
+                piece_label = t("board.marble_pieces")
+                piece_state = tk.DISABLED
+            else:
+                piece_label = t(f"board.piece_view.{piece_view}")
+                piece_state = tk.NORMAL
+            self.piece_view_button.configure(
+                text=clip_button_text(f"{t('board.piece_view.label')}: {piece_label}"),
+                state=piece_state,
+            )
+
+    def set_board_design(self, design: str, *, persist: bool = True) -> None:
+        """Switch board design/material without resetting or altering game state."""
+        try:
+            self.board.set_board_design(design)  # type: ignore[arg-type]
+        except (OSError, tk.TclError):
+            self.board.set_board_design("standard")
+            self.interaction_text.set(self.t("board.marble_unavailable"))
+        self._sync_board_controls()
+        if persist and self.board.board_design in ("standard", "marble"):
+            self._store_settings(
+                board_design_choice=self.board.board_design,
+                board_perspective=self.board.perspective,
+            )
+        if hasattr(self, "menubar"):
+            self._build_menubar()
+
+    def set_board_perspective(self, perspective: str, *, persist: bool = True) -> None:
+        """Switch between 2D bird's-eye and 3D spatial view without altering game state."""
+        try:
+            self.board.set_perspective(perspective)  # type: ignore[arg-type]
+        except (OSError, tk.TclError):
+            self.board.set_perspective("2d")
+            self.interaction_text.set(self.t("board.marble_unavailable"))
+        self._sync_board_controls()
+        if persist and self.board.board_design in ("standard", "marble"):
+            self._store_settings(
+                board_design_choice=self.board.board_design,
+                board_perspective=self.board.perspective,
+            )
+        if hasattr(self, "menubar"):
+            self._build_menubar()
+
+    def set_piece_view(self, view: str, *, persist: bool = True) -> None:
+        """Switch piece depiction between front and top views without altering game state."""
+        self.board.set_piece_view(view)  # type: ignore[arg-type]
+        self._sync_board_controls()
+        if persist:
+            self._store_settings(piece_view=self.board.piece_view)
+        if hasattr(self, "menubar"):
+            self._build_menubar()
+
+    def _cycle_board_design(self) -> None:
+        order: tuple[str, ...] = ("standard", "marble", "custom") if self._custom_board_artwork is not None else ("standard", "marble")
+        current = self.board.board_design
+        nxt = order[(order.index(current) + 1) % len(order)] if current in order else "standard"
+        self.set_board_design(nxt)
+
+    def _cycle_board_perspective(self) -> None:
+        if not self.board.supports_3d():
+            return
+        nxt = "2d" if self.board.perspective == "3d" else "3d"
+        self.set_board_perspective(nxt)
+
+    def _cycle_piece_view(self) -> None:
+        nxt = "top" if self.board.piece_view == "front" else "front"
+        self.set_piece_view(nxt)
+
     def _toggle_marble_view(self) -> None:
         enabled = self.marble_view.get()
         try:
@@ -2110,8 +2334,14 @@ class ChessApp:
             self.marble_view.set(False)
             self.board.set_marble(False)
             self.interaction_text.set(self.t("board.marble_unavailable"))
-            enabled = False
-        self.board_title.configure(text=self.t("board.marble_pieces" if enabled else "board.pieces"))
+        self._sync_board_controls()
+        if self.board.board_design in ("standard", "marble"):
+            self._store_settings(
+                board_design_choice=self.board.board_design,
+                board_perspective=self.board.perspective,
+            )
+        if hasattr(self, "menubar"):
+            self._build_menubar()
 
     def _pgn_headers(self) -> dict[str, str]:
         view = self.controller.view()
@@ -2515,8 +2745,11 @@ class ChessApp:
         EngineDialog(self)
 
     def _open_replay(self, game: ChessGame) -> None:
+        replay_artwork = self.board._artwork
+        if replay_artwork is None and self.board.board_design == "marble":
+            replay_artwork = self.board._ensure_marble_2d_artwork()
         dialog = ReplayDialog(
-            self.root, game, self.t, self._board_artwork, self.board.renderer, self.orientation, theme=self.theme,
+            self.root, game, self.t, replay_artwork, self.board.renderer, self.orientation, theme=self.theme,
         )
         modal_session.wait_modal(self.root, dialog)
 

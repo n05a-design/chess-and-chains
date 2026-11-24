@@ -10,10 +10,18 @@ from importlib.resources import files
 from math import atan2, ceil, cos, floor, pi, sin
 import tkinter as tk
 
-from ..chess import Color, Piece
+from typing import Literal
+
+from ..chess import Color, Piece, PieceType
 from .board import BoardCanvas, screen_cell
+from .board_artwork import Marble2DArtwork
 from .piece_contract import PIECE_FILE_NAMES
+from .pieces import OwnerSvgPieces, PieceRenderer
 from .theme import ThemePalette
+
+BoardDesignChoice = Literal["standard", "marble", "custom"]
+BoardPerspective = Literal["2d", "3d"]
+PieceView = Literal["front", "top"]
 
 REFERENCE_PIXELS = 160
 ANGLE = -pi / 12
@@ -62,32 +70,138 @@ class MarbleBoardCanvas(BoardCanvas):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.marble = False
+        self._custom_artwork = self._artwork
+        self._marble_2d_artwork: Marble2DArtwork | None = None
+        self._board_design: BoardDesignChoice = "custom" if self._custom_artwork is not None else "standard"
+        self._perspective: BoardPerspective = "2d"
+        self._piece_view: PieceView = "top" if getattr(self.renderer, "top_view", False) else "front"
+        self._piece_renderers: dict[PieceView, PieceRenderer] = {self._piece_view: self.renderer}
         self._masters: dict[str, tk.PhotoImage] = {}
         self._images: OrderedDict[tuple[int, str], tk.PhotoImage] = OrderedDict()
         self._factor = 1
         self._board_size = board_frame()
         self._plate_size = plate_frame()
 
-    def set_marble(self, enabled: bool) -> None:
-        if enabled and not self._masters:
+    @property
+    def board_design(self) -> BoardDesignChoice:
+        return self._board_design
+
+    @property
+    def perspective(self) -> BoardPerspective:
+        return self._perspective
+
+    @property
+    def piece_view(self) -> PieceView:
+        return self._piece_view
+
+    def supports_3d(self, design: BoardDesignChoice | None = None) -> bool:
+        target = self._board_design if design is None else design
+        return target == "marble"
+
+    def _ensure_marble_3d_assets(self) -> None:
+        if not self._masters:
             assets = files(__package__).joinpath("marble_assets")
             # Assign only once both parts have loaded, so a read failure leaves the normal board usable.
             self._masters = {
                 name: tk.PhotoImage(master=self, data=assets.joinpath(f"{name}.png").read_bytes(), format="png")
                 for name in ("white", "black", "plates")
             }
-        self.marble = enabled
+
+    def _ensure_marble_2d_artwork(self) -> Marble2DArtwork:
+        if self._marble_2d_artwork is None:
+            self._marble_2d_artwork = Marble2DArtwork()
+        return self._marble_2d_artwork
+
+    def _sync_render_mode(self) -> None:
+        self.marble = bool(self._board_design == "marble" and self._perspective == "3d")
+        if self._board_design == "custom":
+            self._artwork = self._custom_artwork
+        elif self._board_design == "marble" and self._perspective == "2d":
+            self._artwork = self._ensure_marble_2d_artwork()
+        else:
+            self._artwork = None
         self._press_square = None
         self._press_point = None
         self._drag_active = False
         self._drag_pointer = None
-        self.configure(background=self._theme.window if enabled else self._theme.acetate)
+        self.configure(background=self._theme.window if self.marble else self._theme.acetate)
         self.redraw()
+
+    def set_board_design(self, design: BoardDesignChoice) -> None:
+        """Select board material independently without altering game or board state."""
+        if design not in ("standard", "marble", "custom"):
+            raise ValueError(f"Unknown board design: {design}")
+        if design == "custom" and self._custom_artwork is None:
+            raise ValueError("No custom SVG board design is loaded.")
+        if design != "marble":
+            self._perspective = "2d"
+        elif self._perspective == "3d":
+            self._ensure_marble_3d_assets()
+        self._board_design = design
+        self._sync_render_mode()
+
+    def set_perspective(self, perspective: BoardPerspective) -> None:
+        """Select 2D bird's-eye or 3D spatial view independently without altering game state."""
+        if perspective not in ("2d", "3d"):
+            raise ValueError(f"Unknown board perspective: {perspective}")
+        if perspective == "3d":
+            self._ensure_marble_3d_assets()
+            self._board_design = "marble"
+        self._perspective = perspective
+        self._sync_render_mode()
+
+    def set_piece_view(self, view: PieceView) -> None:
+        """Switch piece depiction between front and top views without altering game state."""
+        if view not in ("front", "top"):
+            raise ValueError(f"Unknown piece view: {view}")
+        renderer = self._piece_renderers.get(view)
+        if renderer is None:
+            renderer = OwnerSvgPieces(top_view=(view == "top"))
+            self._piece_renderers[view] = renderer
+        self._piece_view = view
+        self.renderer = renderer
+        self.redraw()
+
+    def set_marble(self, enabled: bool) -> None:
+        """Toggle 3D spatial marble mode cleanly while keeping backwards API compatibility."""
+        if enabled:
+            self._ensure_marble_3d_assets()
+            self._board_design = "marble"
+            self._perspective = "3d"
+        else:
+            self._perspective = "2d"
+            self._board_design = "custom" if self._custom_artwork is not None else "standard"
+        self._sync_render_mode()
 
     def set_theme(self, theme: ThemePalette) -> None:
         self._theme = theme
         self.configure(background=theme.window if self.marble else theme.acetate)
         self.redraw()
+
+    def projected_square_center(self, square: int) -> tuple[float, float]:
+        """Return the exact projected center ``(center_x, center_y)`` of ``square`` in 3D view."""
+        c, r = screen_cell(square, self.orientation)
+        return self._point(c + 0.5, r + 0.5)
+
+    def _projected_circle_points(
+        self,
+        column: float,
+        row: float,
+        radius_cells: float,
+        *,
+        steps: int = 32,
+    ) -> list[float]:
+        points: list[float] = []
+        cx_cell = column + 0.5
+        cy_cell = row + 0.5
+        for idx in range(steps):
+            theta = (2.0 * pi * idx) / steps
+            px, py = self._point(
+                cx_cell + radius_cells * cos(theta),
+                cy_cell + radius_cells * sin(theta),
+            )
+            points.extend((px, py))
+        return points
 
     def _image(self, name: str) -> tk.PhotoImage:
         key = self._factor, name
@@ -157,11 +271,13 @@ class MarbleBoardCanvas(BoardCanvas):
         self.create_image(left, top, image=self._image(self.orientation), anchor="nw", tags=("marble-board",))
 
         t = self._theme
+        accent_border = [self._point(x, y) for x, y in ((-0.26, -0.26), (8.26, -0.26), (8.26, 8.26), (-0.26, 8.26), (-0.26, -0.26))]
+        self.create_line(*accent_border, fill=t.brand_blue, width=2, joinstyle="round", tags=("marble-accent-frame",))
         if self._last_move is not None:
             for square in (self._last_move.from_square, self._last_move.to_square):
                 self._outline(square, t.last_move, 0.045, width=2, tags=("last-move",))
         if self.selected_square is not None:
-            self._outline(self.selected_square, t.action_new_bg, 0.095, width=3)
+            self._outline(self.selected_square, t.action_new_bg, 0.095, width=3, tags=("selected-square",))
         if self._state is not None:
             self._draw_marble_position()
         if self._has_focus and self._focused_square is not None:
@@ -173,20 +289,57 @@ class MarbleBoardCanvas(BoardCanvas):
 
     def _draw_marble_position(self) -> None:
         t = self._theme
+        legal_from_selected = (
+            tuple(move for move in self._legal_moves if move.from_square == self.selected_square)
+            if self.selected_square is not None
+            else ()
+        )
         centers = [(self._point(c + 0.5, r + 0.5), square, piece)
                    for square, piece in enumerate(self._state.board) if piece is not None
                    for c, r in (screen_cell(square, self.orientation),)]
         for (x, y), square, piece in sorted(centers, key=lambda entry: entry[0][1]):
             if not self._drag_active or square != self._press_square:
                 self._disk(x, y, piece)
-        for target in {move.to_square for move in self._legal_moves if move.from_square == self.selected_square}:
-            self._outline(target, t.paper, 0.18, width=4)
-            self._outline(target, t.ink, 0.18, width=2, tags=("legal-target",))
+        for target in {move.to_square for move in legal_from_selected}:
+            c, r = screen_cell(target, self.orientation)
+            target_piece = self._state.board[target]
+            is_en_passant = any(
+                move.to_square == target
+                and self._state.board[move.from_square] is not None
+                and self._state.board[move.from_square].kind is PieceType.PAWN
+                and self._state.en_passant == target
+                for move in legal_from_selected
+            )
+            if target_piece is not None or is_en_passant:
+                outer = self._projected_circle_points(c, r, 0.40)
+                inner = self._projected_circle_points(c, r, 0.32)
+                self.create_polygon(
+                    *outer, fill="", outline=t.brand_red,
+                    width=max(3, round(self._square_size * 0.04)),
+                    tags=("legal-target", "legal-capture"),
+                )
+                self.create_polygon(
+                    *inner, fill="", outline=t.paper,
+                    width=max(1, round(self._square_size * 0.018)),
+                    tags=("legal-target", "legal-capture"),
+                )
+            else:
+                outer = self._projected_circle_points(c, r, 0.16)
+                inner = self._projected_circle_points(c, r, 0.075)
+                self.create_polygon(
+                    *outer, fill=t.paper, outline=t.ink,
+                    width=max(2, round(self._square_size * 0.025)),
+                    tags=("legal-target", "legal-move"),
+                )
+                self.create_polygon(
+                    *inner, fill=t.ink, outline="",
+                    tags=("legal-target", "legal-move"),
+                )
         if self._hint_square is not None:
             self._outline(self._hint_square, t.paper, 0.09, width=4, tags=("hint",))
             self._outline(self._hint_square, t.focus_ink, 0.09, width=2, dash=(3, 3), tags=("hint",))
         if self._in_check:
-            self._outline(self._state.king_square(self._state.turn), t.brand_red, 0.07, width=3)
+            self._outline(self._state.king_square(self._state.turn), t.brand_red, 0.07, width=3, tags=("check-square",))
         if self._drag_active and self._drag_pointer and self._press_square is not None:
             piece = self._state.board[self._press_square]
             if piece is not None:

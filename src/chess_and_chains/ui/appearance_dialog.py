@@ -2,7 +2,7 @@
 
 Provides full parity with the Glide v1.0.2 customization suite:
 - Theme (System + 10 canonical Glide themes) with dynamic contextual notes
-- Accent color (8 WCAG-compliant semantic choices)
+- Theme color (8 WCAG-compliant semantic choices affecting controls and chessboard)
 - Background tint (10 surface/tint choices) with explanatory note
 - Corner radius (18 px / 12 px / 6 px / 0 px)
 - Font scale (90% / 100% / 115%) & Font weight (Auto / Standard / Bold)
@@ -67,6 +67,10 @@ class AppearanceDialog(tk.Toplevel):
         locale: str = "de",
         sidebar_visible: bool = True,
         sidebar_narrow: bool = False,
+        board_design_choice: str = "standard",
+        board_perspective: str = "2d",
+        piece_view: str = "front",
+        has_custom_board: bool = False,
         on_open_engine: Callable[[], None] | None = None,
         on_apply: Callable[..., None] | None = None,
         modal: bool = True,
@@ -78,6 +82,7 @@ class AppearanceDialog(tk.Toplevel):
         self._corner_radius = RADIUS_MAP.get(radius_choice, 12)
         self._scale_choice = font_scale_choice
         self._weight_choice = font_weight_choice
+        self._has_custom_board = has_custom_board
         self.t = translator
         self.on_apply = on_apply
         self.on_open_engine = on_open_engine
@@ -93,6 +98,9 @@ class AppearanceDialog(tk.Toplevel):
         self.locale_var = tk.StringVar(self, value=locale)
         self.sidebar_visible_var = tk.BooleanVar(self, value=sidebar_visible)
         self.sidebar_narrow_var = tk.BooleanVar(self, value=sidebar_narrow)
+        self.board_design_var = tk.StringVar(self, value=board_design_choice)
+        self.perspective_var = tk.StringVar(self, value=board_perspective)
+        self.piece_view_var = tk.StringVar(self, value=piece_view)
 
         self.title(self.t("appearance.dialog.title"))
         self.configure(background=palette.window)
@@ -274,6 +282,27 @@ class AppearanceDialog(tk.Toplevel):
             self.locale_var,
         )
 
+        board_designs: list[tuple[str, str]] = [
+            ("standard", "board.design.standard"),
+            ("marble", "board.design.marble"),
+        ]
+        if self._has_custom_board:
+            board_designs.append(("custom", "board.design.custom"))
+        self._build_radio_card(left, t("board.design.label"), board_designs, self.board_design_var, on_change=self._on_design_changed)
+        self._build_radio_card(
+            left,
+            t("board.perspective.label"),
+            (("2d", "board.perspective.2d"), ("3d", "board.perspective.3d")),
+            self.perspective_var,
+            on_change=self._on_perspective_changed,
+        )
+        self._build_radio_card(
+            left,
+            t("board.piece_view.label"),
+            (("front", "board.piece_view.front"), ("top", "board.piece_view.top")),
+            self.piece_view_var,
+        )
+
         # Behavior & Sidebar card
         behavior_card = RoundedSurfaceCard(
             right,
@@ -386,8 +415,12 @@ class AppearanceDialog(tk.Toplevel):
         )
         self.preview_sub.pack(fill="x", pady=(0, SPACING[8]))
 
+        preview_row = tk.Frame(self.preview_card.inner, background=p.acetate)
+        preview_row.pack(fill="x")
+        self.preview_row = preview_row
+
         self.preview_btn = RoundedButton(
-            self.preview_card.inner,
+            preview_row,
             text=clip_button_text(t("appearance.dialog.preview_button")),
             background=p.action_new_bg,
             foreground=p.action_new_fg,
@@ -398,7 +431,28 @@ class AppearanceDialog(tk.Toplevel):
             radius=r,
             width=160,
         )
-        self.preview_btn.pack(anchor="w")
+        self.preview_btn.pack(side="left")
+
+        self.preview_board = tk.Canvas(
+            preview_row,
+            width=44,
+            height=44,
+            background=p.acetate,
+            bd=0,
+            highlightthickness=1,
+            highlightbackground=p.line,
+        )
+        self.preview_board.pack(side="right")
+
+    def _on_design_changed(self) -> None:
+        if self.board_design_var.get() != "marble" and self.perspective_var.get() == "3d":
+            self.perspective_var.set("2d")
+        self._update_preview()
+
+    def _on_perspective_changed(self) -> None:
+        if self.perspective_var.get() == "3d" and self.board_design_var.get() != "marble":
+            self.board_design_var.set("marble")
+        self._update_preview()
 
     def _build_radio_card(
         self,
@@ -406,6 +460,8 @@ class AppearanceDialog(tk.Toplevel):
         title: str,
         options: list[tuple[str, str]] | tuple[tuple[str, str], ...],
         variable: tk.StringVar,
+        *,
+        on_change: Callable[[], None] | None = None,
     ) -> RoundedSurfaceCard:
         p = self._palette
         t = self.t
@@ -427,13 +483,14 @@ class AppearanceDialog(tk.Toplevel):
             font=font_spec("caption", "bold", scale_choice=self._scale_choice, weight_choice=self._weight_choice),
             anchor="w",
         ).pack(fill="x", pady=(0, SPACING[4]))
+        cmd = on_change or self._update_preview
         for key, text_key in options:
             radio = GlideRadiobutton(
                 card.inner,
                 text=t(text_key),
                 value=key,
                 variable=variable,
-                command=self._update_preview,
+                command=cmd,
                 bg=p.paper,
                 fg=p.ink,
                 selectcolor=p.acetate,
@@ -493,6 +550,21 @@ class AppearanceDialog(tk.Toplevel):
                 radius=btn_radius,
                 font=font_spec("body", "bold", scale_choice=scale, weight_choice=weight),
             )
+            if hasattr(self, "preview_row") and hasattr(self, "preview_board"):
+                self.preview_row.configure(background=pal.acetate)
+                self.preview_board.configure(background=pal.acetate, highlightbackground=pal.line)
+                self.preview_board.delete("all")
+                for br in range(2):
+                    for bc in range(2):
+                        sq_col = pal.square_light if (br + bc) % 2 == 0 else pal.square_dark
+                        self.preview_board.create_rectangle(
+                            bc * 22, br * 22, (bc + 1) * 22, (br + 1) * 22,
+                            fill=sq_col, outline=sq_col,
+                        )
+                self.preview_board.create_oval(
+                    11 - 4, 33 - 4, 11 + 4, 33 + 4,
+                    fill=pal.paper, outline=pal.legal_mark, width=1,
+                )
         except tk.TclError:
             pass
 
@@ -510,6 +582,9 @@ class AppearanceDialog(tk.Toplevel):
                 "locale": self.locale_var.get(),
                 "sidebar_visible": bool(self.sidebar_visible_var.get()),
                 "sidebar_narrow": bool(self.sidebar_narrow_var.get()),
+                "board_design_choice": self.board_design_var.get(),
+                "board_perspective": self.perspective_var.get(),
+                "piece_view": self.piece_view_var.get(),
             }
             try:
                 sig = inspect.signature(self.on_apply)

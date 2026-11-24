@@ -29,6 +29,9 @@ ACCENT_CHOICES = (
 RADIUS_CHOICES = ("large", "standard", "subtle", "flat")
 FONT_SCALE_CHOICES = ("compact", "standard", "large")
 FONT_WEIGHT_CHOICES = ("auto", "standard", "bold")
+BOARD_DESIGN_CHOICES = ("standard", "marble")
+BOARD_PERSPECTIVES = ("2d", "3d")
+PIECE_VIEWS = ("front", "top")
 
 
 class SettingsError(ValueError):
@@ -42,6 +45,9 @@ class Settings:
     theme_id: str = "w06-provisional"
     piece_set_id: str = "geometric-test"
     board_orientation: str = "auto"
+    board_design_choice: str = "standard"
+    board_perspective: str = "2d"
+    piece_view: str = "front"
     engine_path: str | None = None
     bot_preset_id: str = "level-3"
     play_mode: str = "human-vs-human"
@@ -65,6 +71,12 @@ class Settings:
             raise SettingsError(f"Unsupported locale {self.locale!r}.")
         if self.board_orientation not in ORIENTATIONS:
             raise SettingsError(f"Unsupported orientation {self.board_orientation!r}.")
+        if self.board_design_choice not in BOARD_DESIGN_CHOICES:
+            raise SettingsError(f"Unsupported board design {self.board_design_choice!r}.")
+        if self.board_perspective not in BOARD_PERSPECTIVES:
+            raise SettingsError(f"Unsupported board perspective {self.board_perspective!r}.")
+        if self.piece_view not in PIECE_VIEWS:
+            raise SettingsError(f"Unsupported piece view {self.piece_view!r}.")
         if self.play_mode not in PLAY_MODES:
             raise SettingsError(f"Unsupported play mode {self.play_mode!r}.")
         for name in ("theme_id", "piece_set_id", "bot_preset_id"):

@@ -49,6 +49,7 @@ class OwnerSvgPieces:
     renderer_id = "owner-svg"
 
     def __init__(self, *, top_view: bool = False) -> None:
+        self.top_view = bool(top_view)
         self._assets = files(__package__).joinpath("piece_assets")
         if top_view:
             self._assets = self._assets.joinpath("top")

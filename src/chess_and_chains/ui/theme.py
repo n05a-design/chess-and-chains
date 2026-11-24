@@ -50,12 +50,12 @@ SELECTION_BG    = BRAND_BLUE
 SELECTION_FG    = "#FFFFFF"
 VIEW_TITLE      = INK
 
-# Chess-domain board defaults aligned with Glide neutral surfaces
-SQUARE_LIGHT    = "#E8EEF5"
-SQUARE_DARK     = "#6B7F99"
-LAST_MOVE       = "#C5DCF8"
+# Chess-domain board defaults aligned with Glide Cobalt Themenfarbe
+SQUARE_LIGHT    = "#D1E1F2"
+SQUARE_DARK     = "#315E8E"
+LAST_MOVE       = "#98BFE7"
 LEGAL_MARK      = "#15243C"
-ATLAS_LINE      = "#5C6F8E"
+ATLAS_LINE      = "#34689F"
 
 # ---------------------------------------------------------------------------
 # Glide spacing scale (px)
@@ -372,11 +372,11 @@ LIGHT_THEME = ThemePalette(
     brand_blue="#086FD6",
     chrome_yellow="#086FD6",
     brand_red="#B8221A",
-    square_light="#E8EEF5",
-    square_dark="#6B7F99",
-    last_move="#C5DCF8",
+    square_light="#D1E1F2",
+    square_dark="#315E8E",
+    last_move="#98BFE7",
     legal_mark="#15243C",
-    atlas_line="#5C6F8E",
+    atlas_line="#34689F",
     action_new_bg="#086FD6",
     action_new_fg="#FFFFFF",
     input_border="#D8D8DE",
@@ -403,11 +403,11 @@ DARK_THEME = ThemePalette(
     brand_blue="#2C95FF",
     chrome_yellow="#2C95FF",
     brand_red="#FF8078",
-    square_light="#C2CAD6",
-    square_dark="#4E5D73",
-    last_move="#2A4365",
+    square_light="#A6C2E1",
+    square_dark="#2B5481",
+    last_move="#22558A",
     legal_mark="#F5F5F7",
-    atlas_line="#6E7F99",
+    atlas_line="#4E82BA",
     action_new_bg="#2C95FF",
     action_new_fg="#111113",
     input_border="#3A3A3C",
@@ -434,11 +434,11 @@ GLASS_LIGHT_THEME = ThemePalette(
     brand_blue="#086FD6",
     chrome_yellow="#086FD6",
     brand_red="#B8221A",
-    square_light="#E8F0FA",
-    square_dark="#5C7494",
-    last_move="#C6DCF7",
+    square_light="#D1E1F2",
+    square_dark="#315E8E",
+    last_move="#98BFE7",
     legal_mark="#15243C",
-    atlas_line="#5C6F8E",
+    atlas_line="#34689F",
     action_new_bg="#086FD6",
     action_new_fg="#FFFFFF",
     input_border="#AABBD1",
@@ -465,11 +465,11 @@ GLASS_DARK_THEME = ThemePalette(
     brand_blue="#4DA6FF",
     chrome_yellow="#4DA6FF",
     brand_red="#FF8C85",
-    square_light="#BDC8DA",
-    square_dark="#445773",
-    last_move="#2E4566",
+    square_light="#AEC6E1",
+    square_dark="#375A81",
+    last_move="#315D8A",
     legal_mark="#F5F5F7",
-    atlas_line="#6E82A3",
+    atlas_line="#5C8ABA",
     action_new_bg="#4DA6FF",
     action_new_fg="#111113",
     input_border="#5C6F8E",
@@ -724,8 +724,56 @@ def legible_accent(
     return "#FFFFFF" if is_dark else "#000000"
 
 
+def derive_board_colors(
+    palette: ThemePalette,
+    target_hex: str,
+    choice: str,
+) -> tuple[str, str, str, str, str]:
+    """Derive ``(square_light, square_dark, last_move, legal_mark, atlas_line)`` from Themenfarbe."""
+    if choice == "muted":
+        if palette.is_dark:
+            return "#B8BCC4", "#484C54", "#2E323A", "#F4F5F7", "#767B85"
+        return "#EAECF0", "#6A6F7A", "#D0D5DF", "#17191E", "#5A5F6A"
+
+    target_rgb = hex_rgb(target_hex)
+    is_contrast = palette.mode.startswith("contrast")
+    if palette.mode == "dopamine":
+        sq_light = rgb_hex(mix_rgb((200, 195, 225), target_rgb, 0.28))
+        sq_dark = rgb_hex(mix_rgb((28, 20, 56), target_rgb, 0.34))
+        last_mv = rgb_hex(mix_rgb((18, 13, 40), target_rgb, 0.45))
+        legal = (
+            legible_accent(target_hex, (sq_dark, sq_light), is_dark=True, minimum=2.5)
+            if contrast_ratio(target_hex, sq_light) >= 2.5
+            else palette.ink
+        )
+        atlas = target_hex
+    elif palette.mode == "pixel":
+        sq_light = rgb_hex(mix_rgb((190, 195, 215), target_rgb, 0.25))
+        sq_dark = rgb_hex(mix_rgb((24, 30, 54), target_rgb, 0.36))
+        last_mv = rgb_hex(mix_rgb((15, 18, 38), target_rgb, 0.48))
+        legal = legible_accent(target_hex, (sq_dark,), is_dark=True, minimum=3.2)
+        atlas = target_hex
+    elif palette.is_dark:
+        light_share = 0.20 if is_contrast else 0.24
+        dark_share = 0.30 if is_contrast else 0.36
+        sq_light = rgb_hex(mix_rgb((204, 208, 216), target_rgb, light_share))
+        sq_dark = rgb_hex(mix_rgb((42, 48, 58), target_rgb, dark_share))
+        last_mv = rgb_hex(mix_rgb((26, 30, 38), target_rgb, 0.46))
+        legal = palette.ink
+        atlas = rgb_hex(mix_rgb((105, 115, 130), target_rgb, 0.45))
+    else:
+        light_share = 0.11 if is_contrast else 0.14
+        dark_share = 0.34 if is_contrast else 0.38
+        sq_light = rgb_hex(mix_rgb((242, 244, 247), target_rgb, light_share))
+        sq_dark = rgb_hex(mix_rgb((74, 84, 98), target_rgb, dark_share))
+        last_mv = rgb_hex(mix_rgb((226, 232, 240), target_rgb, 0.34))
+        legal = palette.ink
+        atlas = rgb_hex(mix_rgb((88, 98, 114), target_rgb, 0.45))
+    return sq_light, sq_dark, last_mv, legal, atlas
+
+
 def with_accent(palette: ThemePalette, choice: str) -> ThemePalette:
-    """Apply an interactive UI accent color choice with WCAG 2.2 AA contrast."""
+    """Apply Themenfarbe to interactive UI controls and chessboard square tokens."""
     if choice not in ACCENT_KEYS or choice == "accent":
         return palette
     accent_map = _ACCENT_MAP_DARK if palette.is_dark else _ACCENT_MAP_LIGHT
@@ -741,6 +789,7 @@ def with_accent(palette: ThemePalette, choice: str) -> ThemePalette:
         is_dark=palette.is_dark,
         minimum=4.5,
     )
+    sq_light, sq_dark, last_mv, legal, atlas = derive_board_colors(palette, target, choice)
     return replace(
         palette,
         focus_ink=target,
@@ -750,6 +799,11 @@ def with_accent(palette: ThemePalette, choice: str) -> ThemePalette:
         selection=target,
         selection_text=fg,
         view_title=title_color,
+        square_light=sq_light,
+        square_dark=sq_dark,
+        last_move=last_mv,
+        legal_mark=legal,
+        atlas_line=atlas,
     )
 
 

@@ -7,7 +7,7 @@ from typing import Callable, Literal, Sequence
 
 from ..chess import GameState, Move, Piece, PieceType, square_name
 from ..i18n import Translator
-from .board_artwork import MAX_BOARD_PREVIEW_SIZE, BoardArtwork
+from .board_artwork import MAX_BOARD_PREVIEW_SIZE, BoardArtwork, Marble2DArtwork
 from .pieces import OwnerSvgPieces, PieceRenderer
 from .theme import (
     LIGHT_THEME,
@@ -145,6 +145,32 @@ class BoardCanvas(tk.Canvas):
         self.configure(background=theme.acetate)
         self.redraw()
 
+    def set_piece_renderer(self, renderer: PieceRenderer) -> None:
+        """Swap the active 2D piece renderer without altering the game or board state."""
+        self.renderer = renderer
+        self.redraw()
+
+    def set_artwork(self, artwork: BoardArtwork | Marble2DArtwork | None) -> None:
+        """Swap the 2D board background artwork without altering the game or board state."""
+        self._artwork = artwork
+        self.redraw()
+
+    def square_bounds(self, square: int) -> tuple[float, float, float, float]:
+        """Return ``(x0, y0, x1, y1)`` pixel bounds for ``square`` in the current 2D layout."""
+        column, row = screen_cell(square, self._orientation)
+        size = self._square_size
+        x0 = self._board_x + column * size
+        y0 = self._board_y + row * size
+        return x0, y0, x0 + size, y0 + size
+
+    def square_center(self, square: int) -> tuple[float, float]:
+        """Return ``(center_x, center_y)`` derived strictly from ``square_bounds(square)``."""
+        x0, y0, x1, y1 = self.square_bounds(square)
+        return (x0 + x1) / 2.0, (y0 + y1) / 2.0
+
+    def _marble_tint_color(self) -> str | None:
+        return self._theme.brand_blue
+
     @property
     def orientation(self) -> Orientation:
         return self._orientation
@@ -168,12 +194,17 @@ class BoardCanvas(tk.Canvas):
         height = max(self.winfo_height(), 1)
         usable = max(0.0, min(width - 72, height - 72))
         if self._artwork is not None:
-            usable = min(usable, MAX_BOARD_PREVIEW_SIZE) // 8 * 8
+            usable = min(usable, MAX_BOARD_PREVIEW_SIZE)
         if usable < 8:
+            self._square_size = 0.0
             return
-        self._square_size = usable / 8
-        self._board_x = (width - usable) / 2 + 12
-        self._board_y = (height - usable) / 2 + 12
+        # Snap square size to an integer (even when >= 16) and origin to integer pixels
+        # so square centers and concentric move markers align without sub-pixel drift.
+        tile = (int(usable) // 16) * 2 if usable >= 16 else max(1, int(usable) // 8)
+        usable = float(tile * 8)
+        self._square_size = float(tile)
+        self._board_x = float(round((width - usable) / 2 + 12))
+        self._board_y = float(round((height - usable) / 2 + 12))
         self._draw_board()
         if self._state is not None:
             self._draw_position()
@@ -194,19 +225,30 @@ class BoardCanvas(tk.Canvas):
         t = self._theme
         artwork_item = None
         if self._artwork is not None:
-            image = self._artwork.image(self, int(size), flipped=self._orientation == "black")
-            artwork_item = self.create_image(self._board_x, self._board_y, anchor="nw", image=image, tags=("board-artwork",))
+            if isinstance(self._artwork, Marble2DArtwork):
+                image = self._artwork.image(
+                    self,
+                    int(size),
+                    flipped=self._orientation == "black",
+                    tint_color=self._marble_tint_color(),
+                )
+                tags: tuple[str, ...] = ("board-artwork", "marble-2d-board")
+            else:
+                image = self._artwork.image(self, int(size), flipped=self._orientation == "black")
+                tags = ("board-artwork",)
+            artwork_item = self.create_image(self._board_x, self._board_y, anchor="nw", image=image, tags=tags)
+        half = size / 2.0
         for row in range(8):
             for column in range(8):
-                x1 = self._board_x + column * size
-                y1 = self._board_y + row * size
-                fill = t.square_light if (row + column) % 2 == 0 else t.square_dark
                 square = self._square_for_cell(column, row)
+                x1, y1, x2, y2 = self.square_bounds(square)
+                center_x, center_y = (x1 + x2) / 2.0, (y1 + y2) / 2.0
+                fill = t.square_light if (row + column) % 2 == 0 else t.square_dark
                 base = self.create_rectangle(
                     x1,
                     y1,
-                    x1 + size,
-                    y1 + size,
+                    x2,
+                    y2,
                     fill=fill,
                     outline=fill,
                 )
@@ -218,32 +260,37 @@ class BoardCanvas(tk.Canvas):
                 ):
                     self._draw_last_move(x1, y1, size)
                 if square == self._selected:
+                    sel_outer = max(2, round(size * 0.04))
+                    sel_inner = sel_outer + max(3, round(size * 0.05))
                     self.create_rectangle(
-                        x1 + 2,
-                        y1 + 2,
-                        x1 + size - 2,
-                        y1 + size - 2,
+                        center_x - half + sel_outer,
+                        center_y - half + sel_outer,
+                        center_x + half - sel_outer,
+                        center_y + half - sel_outer,
                         outline=t.ink,
-                        width=max(3, int(size * 0.04)),
+                        width=max(3, round(size * 0.04)),
+                        tags=("selected-square",),
                     )
                     self.create_rectangle(
-                        x1 + 6,
-                        y1 + 6,
-                        x1 + size - 6,
-                        y1 + size - 6,
+                        center_x - half + sel_inner,
+                        center_y - half + sel_inner,
+                        center_x + half - sel_inner,
+                        center_y + half - sel_inner,
                         fill=t.action_new_bg,
                         stipple="gray25",
                         outline="",
+                        tags=("selected-square",),
                     )
+
     def _draw_focus(self) -> None:
         if not self._has_focus or self._focused_square is None:
             return
         t = self._theme
-        column, row = screen_cell(self._focused_square, self._orientation)
         size = self._square_size
-        x, y = self._board_x + column * size, self._board_y + row * size
-        inset = min(5, size / 4)
-        bounds = (x + inset, y + inset, x + size - inset, y + size - inset)
+        half = size / 2.0
+        center_x, center_y = self.square_center(self._focused_square)
+        inset = min(5, max(2, round(size * 0.1)))
+        bounds = (center_x - half + inset, center_y - half + inset, center_x + half - inset, center_y + half - inset)
         self.create_rectangle(*bounds, outline=t.paper, width=4, tags=("square-focus",))
         self.create_rectangle(*bounds, outline=t.focus_ink, dash=(4, 3), width=2, tags=("square-focus",))
 
@@ -252,6 +299,7 @@ class BoardCanvas(tk.Canvas):
             return
         t = self._theme
         size = self._square_size
+        half = size / 2.0
         legal_from_selected = (
             tuple(move for move in self._legal_moves if move.from_square == self._selected)
             if self._selected is not None
@@ -262,19 +310,17 @@ class BoardCanvas(tk.Canvas):
                 continue
             if self._drag_active and square == self._press_square:
                 continue
-            column, row = screen_cell(square, self._orientation)
+            center_x, center_y = self.square_center(square)
             self.renderer.draw(
                 self,
-                self._board_x + (column + 0.5) * size,
-                self._board_y + (row + 0.5) * size,
+                center_x,
+                center_y,
                 size,
                 piece,
             )
 
         for destination in {move.to_square for move in legal_from_selected}:
-            column, row = screen_cell(destination, self._orientation)
-            center_x = self._board_x + (column + 0.5) * size
-            center_y = self._board_y + (row + 0.5) * size
+            center_x, center_y = self.square_center(destination)
             target_piece = self._state.board[destination]
             is_en_passant = any(
                 move.to_square == destination
@@ -284,26 +330,29 @@ class BoardCanvas(tk.Canvas):
                 for move in legal_from_selected
             )
             if target_piece is not None or is_en_passant:
-                radius = size * 0.32
+                radius = max(7, round(size * 0.42))
+                inner = max(5, round(size * 0.35))
                 self.create_oval(
                     center_x - radius,
                     center_y - radius,
                     center_x + radius,
                     center_y + radius,
                     outline=t.legal_mark,
-                    width=max(3, int(size * 0.04)),
+                    width=max(3, round(size * 0.045)),
+                    tags=("legal-target", "legal-capture"),
                 )
-                inner = radius * 0.78
                 self.create_oval(
                     center_x - inner,
                     center_y - inner,
                     center_x + inner,
                     center_y + inner,
                     outline=t.paper,
-                    width=max(1, int(size * 0.018)),
+                    width=max(1, round(size * 0.018)),
+                    tags=("legal-target", "legal-capture"),
                 )
             else:
-                radius = size * 0.1
+                radius = max(4, round(size * 0.13))
+                dot = max(2, round(size * 0.06))
                 self.create_oval(
                     center_x - radius,
                     center_y - radius,
@@ -311,51 +360,56 @@ class BoardCanvas(tk.Canvas):
                     center_y + radius,
                     fill=t.paper,
                     outline=t.legal_mark,
-                    width=max(2, int(size * 0.025)),
+                    width=max(2, round(size * 0.025)),
+                    tags=("legal-target", "legal-move"),
                 )
-                dot = radius * 0.45
                 self.create_oval(
                     center_x - dot,
                     center_y - dot,
                     center_x + dot,
                     center_y + dot,
                     fill=t.legal_mark,
-                    outline=t.legal_mark,
+                    outline="",
+                    tags=("legal-target", "legal-move"),
                 )
 
         if self._hint_square is not None:
-            column, row = screen_cell(self._hint_square, self._orientation)
-            inset = size * 0.08
+            center_x, center_y = self.square_center(self._hint_square)
+            inset = max(2, round(size * 0.08))
             self.create_rectangle(
-                self._board_x + column * size + inset,
-                self._board_y + row * size + inset,
-                self._board_x + (column + 1) * size - inset,
-                self._board_y + (row + 1) * size - inset,
+                center_x - half + inset,
+                center_y - half + inset,
+                center_x + half - inset,
+                center_y + half - inset,
                 outline=t.focus_ink,
                 dash=(2, 4),
-                width=max(2, int(size * 0.04)),
+                width=max(2, round(size * 0.04)),
                 tags=("hint",),
             )
 
         if self._in_check:
             king_square = self._state.king_square(self._state.turn)
-            column, row = screen_cell(king_square, self._orientation)
+            center_x, center_y = self.square_center(king_square)
+            outer_inset = max(2, round(size * 0.04))
+            inner_inset = outer_inset + max(4, round(size * 0.06))
             self.create_rectangle(
-                self._board_x + column * size + 3,
-                self._board_y + row * size + 3,
-                self._board_x + (column + 1) * size - 3,
-                self._board_y + (row + 1) * size - 3,
+                center_x - half + outer_inset,
+                center_y - half + outer_inset,
+                center_x + half - outer_inset,
+                center_y + half - outer_inset,
                 outline=t.brand_red,
-                width=max(3, int(size * 0.04)),
+                width=max(3, round(size * 0.04)),
+                tags=("check-square",),
             )
             self.create_rectangle(
-                self._board_x + column * size + 8,
-                self._board_y + row * size + 8,
-                self._board_x + (column + 1) * size - 8,
-                self._board_y + (row + 1) * size - 8,
+                center_x - half + inner_inset,
+                center_y - half + inner_inset,
+                center_x + half - inner_inset,
+                center_y + half - inner_inset,
                 outline=t.paper,
                 dash=(5, 3),
                 width=2,
+                tags=("check-square",),
             )
 
         if self._drag_active and self._drag_pointer and self._press_square is not None:
@@ -379,6 +433,7 @@ class BoardCanvas(tk.Canvas):
             fill=self._theme.last_move,
             stipple="gray25",
             outline="",
+            tags=("last-move",),
         )
 
     def _draw_coordinates(self) -> None:

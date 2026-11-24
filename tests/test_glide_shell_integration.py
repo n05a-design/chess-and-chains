@@ -34,14 +34,16 @@ from glide_shell import (  # noqa: E402
     window_lifetime,
 )
 
-from chess_and_chains.chess import Move  # noqa: E402
+from chess_and_chains.chess import Color, Move  # noqa: E402
 from chess_and_chains.engines.bot import EngineConfig, UCIBot  # noqa: E402
+from chess_and_chains.i18n import Translator  # noqa: E402
 from chess_and_chains.puzzles import load_demo_pack  # noqa: E402
 from chess_and_chains.storage import DataLayout, Settings, SettingsError, default_data_dir, load_settings  # noqa: E402
 from chess_and_chains.ui.app import PANEL_GAP, ChessApp, EngineDialog, check_tk_version, create_app_host, launch  # noqa: E402
 from chess_and_chains.ui.appearance_dialog import AppearanceDialog  # noqa: E402
 from chess_and_chains.ui.pieces import PIECE_FILE_NAMES, validate_svg_piece_set  # noqa: E402
 from chess_and_chains.ui.theme import (  # noqa: E402
+    ACCENT_CHOICES,
     CONTRAST_DARK_THEME,
     CONTRAST_LIGHT_THEME,
     DARK_THEME,
@@ -58,6 +60,7 @@ from chess_and_chains.ui.theme import (  # noqa: E402
     THEMES,
     clip_button_text,
     contrast_ratio,
+    hex_rgb,
     resolve_theme,
 )
 from tests.tk_support import create_root  # noqa: E402
@@ -764,6 +767,106 @@ class GlideShellIntegrationTests(unittest.TestCase):
                 if not png_photo.transparency_get(x, y)
             }
             self.assertEqual(opaque_colors, {(0, 217, 255)})
+
+
+    def test_32_decoupled_board_design_perspective_piece_view_and_persistence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            layout = DataLayout(Path(tmp) / "data")
+            root = create_root(self)
+            app = ChessApp(root, data_layout=layout, locale="de")
+            self.addCleanup(app.close)
+            root.geometry("1120x800")
+            root.deiconify()
+            root.update()
+
+            live_game = app.game
+            app._play_move(Move.from_uci("e2e4"))
+            app._play_move(Move.from_uci("e7e5"))
+            snapshot = app._current_pgn()
+
+            # Switch to Marble in 2D Bird's-Eye View without losing game state
+            app.set_board_design("marble")
+            root.update()
+            self.assertIs(app.game, live_game)
+            self.assertEqual(app.board.board_design, "marble")
+            self.assertEqual(app.board.perspective, "2d")
+            self.assertFalse(app.board.marble)
+            self.assertTrue(app.board.find_withtag("marble-2d-board"))
+            self.assertFalse(app.board.find_withtag("marble-board"))
+            self.assertEqual(app._current_pgn(), snapshot)
+
+            # Switch piece view between front and top on 2D marble board
+            app.set_piece_view("top")
+            root.update()
+            self.assertIs(app.game, live_game)
+            self.assertEqual(app.board.piece_view, "top")
+            self.assertTrue(app.board.renderer.top_view)
+            self.assertEqual(app.board.board_design, "marble")
+            self.assertEqual(app.board.perspective, "2d")
+
+            # Flip board orientation independently
+            app._flip_board()
+            root.update()
+            self.assertEqual(app.orientation, "black")
+            self.assertEqual(app.board.board_design, "marble")
+            self.assertEqual(app.board.perspective, "2d")
+            self.assertEqual(app.board.piece_view, "top")
+
+            # Switch perspective to 3D and back to 2D cleanly
+            app.set_board_perspective("3d")
+            root.update()
+            self.assertTrue(app.board.marble)
+            self.assertTrue(app.board.find_withtag("marble-board"))
+            self.assertIs(app.game, live_game)
+            self.assertEqual(app._current_pgn(), snapshot)
+
+            app.set_board_perspective("2d")
+            root.update()
+            self.assertEqual(app.board.board_design, "marble")
+            self.assertEqual(app.board.perspective, "2d")
+            self.assertTrue(app.board.find_withtag("marble-2d-board"))
+            self.assertEqual(app.board.piece_view, "top")
+            self.assertEqual(app.orientation, "black")
+
+            # Settings persisted and legacy settings JSON loads cleanly
+            loaded, warning = load_settings(layout.settings)
+            self.assertIsNone(warning)
+            self.assertEqual(loaded.board_design_choice, "marble")
+            self.assertEqual(loaded.board_perspective, "2d")
+            self.assertEqual(loaded.piece_view, "top")
+
+            legacy = {"schema_version": 1, "theme_id": "dark", "accent_choice": "export"}
+            legacy_path = Path(tmp) / "legacy.json"
+            legacy_path.write_text(json.dumps(legacy), encoding="utf-8")
+            legacy_loaded, legacy_warn = load_settings(legacy_path)
+            self.assertIsNone(legacy_warn)
+            self.assertEqual(legacy_loaded.board_design_choice, "standard")
+            self.assertEqual(legacy_loaded.board_perspective, "2d")
+            self.assertEqual(legacy_loaded.piece_view, "front")
+
+    def test_33_theme_color_rename_and_dynamic_chessboard_colors(self):
+        t_de = Translator("de")
+        t_en = Translator("en")
+        self.assertEqual(t_de("theme.accent.label"), "Themenfarbe")
+        self.assertEqual(t_de("theme.accent.menu"), "Themenfarbe")
+        self.assertEqual(t_en("theme.accent.label"), "Theme color")
+        self.assertEqual(t_en("theme.accent.menu"), "Theme color")
+
+        # Across all 10 themes x 8 theme colors, square_light & square_dark maintain >= 3.0 contrast
+        for tid in (k for k in THEMES if k != "w06-provisional"):
+            light_squares = set()
+            dark_squares = set()
+            for acc, _lbl in ACCENT_CHOICES:
+                pal = resolve_theme(tid, accent=acc)
+                cr = contrast_ratio(pal.square_light, pal.square_dark)
+                self.assertGreaterEqual(cr, 3.0, f"{tid}/{acc}: square contrast {cr:.2f}")
+                light_squares.add(pal.square_light)
+                dark_squares.add(pal.square_dark)
+                if acc == "muted":
+                    r, g, b = hex_rgb(pal.square_dark)
+                    self.assertLessEqual(max(r, g, b) - min(r, g, b), 20)
+            # All 8 theme colors yield distinct dark-square palettes on standard themes
+            self.assertGreaterEqual(len(dark_squares), 7, f"{tid} should vary board colors with Themenfarbe")
 
 
 if __name__ == "__main__":

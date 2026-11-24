@@ -64,7 +64,8 @@ In [`src/chess_and_chains/ui/theme.py`](../../src/chess_and_chains/ui/theme.py) 
 | Anpassungsdimension | Umfang & Optionen | API / Persistenz |
 |---|---|---|
 | **Themes (10 + System)** | `light`, `dark`, `glass-light`, `glass-dark`, `dopamine`, `pixel`, `contrast-light`, `contrast-dark`, `minimal-light`, `minimal-dark` (+ `system`, Alias `w06-provisional`) | `THEMES`, `resolve_theme()`, `settings.theme_id` |
-| **Akzentfarbe (8 Rollen)** | `accent`, `clear`, `due_action`, `export`, `flag`, `delete`, `import`, `muted` | `ACCENT_CHOICES`, `with_accent()`, `settings.accent_choice` |
+| **Themenfarbe (8 Rollen)** | `accent`, `clear`, `due_action`, `export`, `flag`, `delete`, `import`, `muted` | `ACCENT_CHOICES`, `with_accent()`, `derive_board_colors()`, `settings.accent_choice` |
+| **Brettdarstellung (entkoppelt)** | Design (`standard`, `marble`, `custom`), Perspektive (`2d`, `3d`), Figuren (`front`, `top`), Orientierung (`white`, `black`) | `MarbleBoardCanvas`, `Marble2DArtwork`, `settings.board_design_choice`, `settings.board_perspective`, `settings.piece_view` |
 | **Hintergrundtönung (10 Rollen)** | `default`, `surface` sowie 8 abgeleitete Akzenttönungen | `BACKGROUND_CHOICES`, `with_background()`, `settings.background_choice` |
 | **Eckenradius (4 Stufen)** | `large` (`18 px`), `standard` (`12 px`), `subtle` (`6 px`), `flat` (`0 px`) | `RADIUS_CHOICES`, `settings.radius_choice` |
 | **Schriftgröße & -stärke** | Größe: `compact` (`0.9×`), `standard` (`1.0×`), `large` (`1.15×`); Stärke: `auto`, `standard`, `bold` | `FONT_SCALE_CHOICES`, `FONT_WEIGHT_CHOICES`, `font_spec()` |
@@ -80,7 +81,8 @@ In [`src/chess_and_chains/ui/theme.py`](../../src/chess_and_chains/ui/theme.py) 
 
 Der modale Einstellungsdialog [`AppearanceDialog`](../../src/chess_and_chains/ui/appearance_dialog.py) (`Cmd/Ctrl+,`, Kopfleisten-Zahnrad, Ansicht-Menü) bietet Live-Vorschau (`RoundedSurfaceCard` + `RoundedButton`), ruft `ChessApp.apply_appearance()` auf und persistiert alle Werte atomar nach `settings.json`:
 - `install_ttk_theme(root, palette)` färbt verbleibende `ttk`-Dialogsteuerelemente und Listen konsistent um.
-- `board.set_theme()`, `marble_board.set_theme()`, `atlas.set_theme()`, `RoundedSurfaceCard.set_theme()` und `RoundedButton.set_theme()` aktualisieren alle Zeichenflächen ohne Fenster-Neustart.
+- `board.set_theme()`, `marble_board.set_theme()`, `atlas.set_theme()`, `RoundedSurfaceCard.set_theme()` und `RoundedButton.set_theme()` aktualisieren alle Zeichenflächen ohne Fenster-Neustart; `derive_board_colors()` leitet abgestimmte `square_light`-/ `square_dark`-Feldfarben aus der aktiven Themenfarbe und dem Theme-Modus ab und färbt Marmor-SVGs (`Marble2DArtwork`) dezent unter Erhalt von Maserung und Kontrast (benutzerdefinierte SVG-Bretter bleiben unverändert).
+- **Exakte Markierungszentrierung (`board.py`, `marble_board.py`):** 2D-Felder werden ganzzahlig gerastert (`square_bounds`, `square_center`), sodass normale Zugpunkte, Schlagringe, Auswahl, letzter Zug, Tastaturfokus, Hinweise und Schachwarnungen konzentrisch und pixelgenau auf `(x0 + x1) / 2, (y0 + y1) / 2` sitzen (bzw. in 3D auf dem projizierten Feldmittelpunkt `projected_square_center()`).
 
 ### 5.4 Echte Pixel-Rundung statt eckiger Vor-Glide-Rahmen
 
