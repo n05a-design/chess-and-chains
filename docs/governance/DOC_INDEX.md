@@ -2,7 +2,7 @@
 
 `MANIFEST.md` definiert die autoritativen Dokumente. Dieser Index dient als Navigations-/Review-Liste für Agenten und Maintainer.
 
-**Dokumentationsstand V.0.0.1 · 21.11.2026.** [Version und Pflege](GOVERNANCE.md#projektversion) · [Änderungsverlauf](../../CHANGELOG.md) · [Dokumentations- und Ablageaudit](../reports/2026-11-21_W11-dokumentations-und-ablageaudit.md) · [Paketabgleich W00–W12](../reports/2026-11-21_W00-W12-paketabgleich.md)
+**Dokumentationsstand V.0.1.0 · 24.11.2026.** [Version und Pflege](GOVERNANCE.md#projektversion) · [Änderungsverlauf](../../CHANGELOG.md) · [Dokumentations- und Ablageaudit](../reports/2026-11-21_W11-dokumentations-und-ablageaudit.md) · [Paketabgleich W00–W12](../reports/2026-11-21_W00-W12-paketabgleich.md)
 
 **Einstieg:** [Start](../../START_HERE.md) · [Mastermanifest](../../MANIFEST.md) · [Agentenregeln](../../AGENTS.md) · [Maschinenmanifest](../../project-manifest.json). Die [GitHub-Einrichtung](../../GITHUB_SETUP.md) enthält zusätzlich die historische Neuanlage.
 

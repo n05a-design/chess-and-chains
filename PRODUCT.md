@@ -6,7 +6,7 @@ This file is a concise design-tool context projection. The project's canonical
 requirements, decisions, and open questions remain in `docs/product/`,
 `docs/decisions/`, and `docs/questions/`.
 
-Development snapshot **V.0.0.1**. See the [project manifest](MANIFEST.md).
+Development snapshot **V.0.1.0**. See the [project manifest](MANIFEST.md).
 
 ## Platform
 

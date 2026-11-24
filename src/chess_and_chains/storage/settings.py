@@ -36,6 +36,9 @@ class Settings:
     play_mode: str = "human-vs-human"
     last_pack_id: str | None = None
     window_geometry: str | None = None
+    compact_window: str | None = None
+    sidebar_visible: bool = True
+    sidebar_narrow: bool = False
 
     def validate(self) -> Settings:
         if self.schema_version != SETTINGS_SCHEMA:
@@ -50,10 +53,15 @@ class Settings:
             value = getattr(self, name)
             if not isinstance(value, str) or not value or len(value) > 64:
                 raise SettingsError(f"Invalid {name}.")
+        for name in ("sidebar_visible", "sidebar_narrow"):
+            if not isinstance(getattr(self, name), bool):
+                raise SettingsError(f"Invalid {name}.")
         if self.engine_path is not None and (not isinstance(self.engine_path, str) or "\n" in self.engine_path):
             raise SettingsError("Invalid engine path.")
         if self.window_geometry is not None and window_geometry.parse(self.window_geometry) is None:
             raise SettingsError("Invalid window geometry.")
+        if self.compact_window is not None and window_geometry.parse(self.compact_window) is None:
+            raise SettingsError("Invalid compact window geometry.")
         return self
 
 

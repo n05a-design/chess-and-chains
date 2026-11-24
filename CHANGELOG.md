@@ -1,5 +1,14 @@
 # Changelog
 
+## V.0.1.0 – Glide Shell 0.6.2 Framework Integration & 2-Pane Responsive UI (2026-11-24)
+
+- Migrate entire desktop runtime onto **Glide Shell 0.6.2** (`AppHost`, `window_lifetime.AfterScope`, `modal_session`, `motion.Transitions`, `desktop_adapter`, `action_picker`, `system_appearance`, `window_geometry`, `runtime_paths`, `text_fit`).
+- Implement Glide-aligned **2-Pane Layout**: navigation/controls sidebar on the left (`column=0`, minsize=328) with a 64-px narrow symbol rail (`SIDEBAR_RAIL_WIDTH = 64`) and complete hide/show toggle; right board workspace (`column=1`) dynamically expands to 100% width.
+- Implement **Compact Mode** (`COMPACT_MIN = (480, 560)`) with separate geometry persistence (`compact_window`) and automatic geometry restoration, without exiting on Escape.
+- Implement responsive **Header Density & Height Density Breakpoints** (Width: `>= 1120` full, `900..1119` compact with overflow menu `⋯`, `< 900` minimal; Height: `>= 850` / `780..849` / `< 780`; auto-narrow rail `< 760`).
+- Incorporate **Glide Design Guidelines & Themes**: 6 WCAG 2.2 AA (`>= 4.5:1`) palettes (`light`, `dark`, `contrast-light`, `contrast-dark`, `minimal-light`, `minimal-dark`, `system`), Okabe-Ito CVD-safe palette, interactive button hover feedback (`theme.hover`), 24-char button label clipping (`clip_button_text`), and aligned menu checkmarks (`action_picker.check_label`).
+- Implement interactive in-app header logo (Connected System signet) opening the accessible `AboutDialog` modal session.
+
 ## V.0.0.1 – Development snapshot (2026-11-23)
 
 - Integrate **Glide Shell 0.6.2** from Glide `1.0.2` (`v1.0.2`, commit `7dcd8dc04366f88943fa17827882cef4d81421b8`, MPL-2.0) into `src/glide_shell/` with `SHELL_MANIFEST.json`, packaging support in `pyproject.toml`, and 13/13 selftest verification.

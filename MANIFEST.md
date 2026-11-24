@@ -1,6 +1,6 @@
 # MASTER MANIFEST – Chess & Chains
 
-**V.0.0.1 · Stand 21.11.2026 · Entwicklungsprototyp.** Der Stand umfasst den lokalen Regelkern, Tk mit Figurensatz V.02, Mock-UCI mit lokalem Bereitschaftstest, Demo-Puzzle-Lab und SQLite-Bibliothek. [Work Packages](docs/roadmap/WORK_PACKAGES.md) und [Statusmodell](docs/governance/STATUS_MODEL.md) erklären Umfang und Abnahme. `foundation_baseline` im Maschinenmanifest bleibt der historische Planungsstand.
+**V.0.1.0 · Stand 24.11.2026 · Entwicklungsprototyp.** Der Stand umfasst den lokalen Regelkern, Tk mit Figurensatz V.02, Mock-UCI mit lokalem Bereitschaftstest, Demo-Puzzle-Lab und SQLite-Bibliothek. [Work Packages](docs/roadmap/WORK_PACKAGES.md) und [Statusmodell](docs/governance/STATUS_MODEL.md) erklären Umfang und Abnahme. `foundation_baseline` im Maschinenmanifest bleibt der historische Planungsstand.
 
 ## Single Sources of Truth (SSOT)
 

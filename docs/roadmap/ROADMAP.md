@@ -1,6 +1,6 @@
 # Chess & Chains – Roadmap
 
-**V.0.0.1 · Stand 22.11.2026 · geprüfte Basis `main` = `8d5bcc6` (PR #21).** Der lokale Desktop-Prototyp ist als Entwicklungsstand versioniert und nicht veröffentlicht. Der [Merge-Lauf von PR #21](https://github.com/n05a-design/chess-and-chains/actions/runs/44972693793) bestand 14 von 14 Jobs auf Windows, macOS und Linux. Status und offene Gate-Punkte je Paket stehen in den [Work Packages](WORK_PACKAGES.md), die Anforderungen im [MVP-Vertrag](../product/MVP_CONTRACT.md).
+**V.0.1.0 · Stand 24.11.2026 · geprüfte Basis `main` = `8d5bcc6` (PR #21).** Der lokale Desktop-Prototyp ist als Entwicklungsstand versioniert und nicht veröffentlicht. Der [Merge-Lauf von PR #21](https://github.com/n05a-design/chess-and-chains/actions/runs/44972693793) bestand 14 von 14 Jobs auf Windows, macOS und Linux. Status und offene Gate-Punkte je Paket stehen in den [Work Packages](WORK_PACKAGES.md), die Anforderungen im [MVP-Vertrag](../product/MVP_CONTRACT.md).
 
 ## Wo das Projekt steht
 

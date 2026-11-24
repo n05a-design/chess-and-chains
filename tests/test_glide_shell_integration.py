@@ -40,9 +40,15 @@ from chess_and_chains.storage import DataLayout, Settings, SettingsError, defaul
 from chess_and_chains.ui.app import ChessApp, EngineDialog, check_tk_version, create_app_host, launch  # noqa: E402
 from chess_and_chains.ui.pieces import PIECE_FILE_NAMES, validate_svg_piece_set  # noqa: E402
 from chess_and_chains.ui.theme import (  # noqa: E402
+    CONTRAST_DARK_THEME,
+    CONTRAST_LIGHT_THEME,
     DARK_THEME,
     LIGHT_THEME,
+    MINIMAL_DARK_THEME,
+    MINIMAL_LIGHT_THEME,
     THEME_MODES,
+    THEMES,
+    clip_button_text,
     contrast_ratio,
     resolve_theme,
 )
@@ -336,6 +342,217 @@ class GlideShellIntegrationTests(unittest.TestCase):
                 for button in (app.new_game_button, app.undo_button, app.library_button):
                     self.assertGreater(button.winfo_width(), 10)
                     self.assertGreater(button.winfo_height(), 10)
+
+    def test_21_two_pane_layout_left_sidebar_positioning(self):
+        root = create_root(self)
+        app = ChessApp(root, locale="en")
+        self.addCleanup(app.close)
+        root.deiconify()
+        root.geometry("1180x820")
+        root.update()
+        # Verify left sidebar is to the left of the board sheet in screen space
+        self.assertLess(app.side_sheet.winfo_rootx(), app.board_sheet.winfo_rootx())
+        # Verify focus order: board -> tab_rail["play"] -> board on Shift-Tab
+        app.board.focus_force()
+        root.update()
+        app.board.event_generate("<Tab>")
+        root.update()
+        self.assertIs(root.focus_get(), app.tab_rail.children["play"])
+        app.tab_rail.children["play"].event_generate("<Shift-Tab>")
+        root.update()
+        self.assertIs(root.focus_get(), app.board)
+
+    def test_22_sidebar_narrow_rail_and_keyboard_navigation(self):
+        root = create_root(self)
+        app = ChessApp(root, locale="en")
+        self.addCleanup(app.close)
+        root.deiconify()
+        root.geometry("1180x820")
+        root.update()
+        self.assertTrue(app.side_sheet.winfo_viewable())
+        self.assertFalse(app.sidebar_rail_sheet.winfo_viewable())
+        self.assertEqual(app._rail_slot.winfo_manager(), "")
+
+        # Collapse wide sidebar to 64-px rail
+        app.toggle_sidebar_narrow()
+        root.update()
+        self.assertTrue(app.sidebar_narrow())
+        self.assertEqual(app._side_slot.winfo_manager(), "")
+        self.assertFalse(app.side_sheet.winfo_viewable())
+        self.assertTrue(app.sidebar_rail_sheet.winfo_viewable())
+        self.assertAlmostEqual(app._rail_slot.winfo_width(), 64, delta=6)
+
+        # Rail buttons exist and are keyboard navigable
+        rail_keys = ("play", "moves", "puzzles", "new_game", "undo", "redo", "flip", "expand")
+        for key in rail_keys:
+            self.assertIn(key, app.sidebar_rail_buttons)
+
+        # Tab switch via rail button sets active panel
+        moves_btn = app.sidebar_rail_buttons["moves"]
+        moves_btn.invoke()
+        root.update()
+        self.assertEqual(app.active_panel, "moves")
+
+        # Expand back to wide sidebar using the bottom » button
+        expand_btn = app.sidebar_rail_buttons["expand"]
+        expand_btn.invoke()
+        root.update()
+        self.assertFalse(app.sidebar_narrow())
+        self.assertTrue(app.side_sheet.winfo_viewable())
+        self.assertTrue(app.moves_panel.winfo_viewable())
+        self.assertTrue(app.empty_moves_label.winfo_viewable())
+        self.assertEqual(app._rail_slot.winfo_manager(), "")
+
+    def test_23_sidebar_hide_and_full_width_workspace(self):
+        root = create_root(self)
+        app = ChessApp(root, locale="en")
+        self.addCleanup(app.close)
+        root.deiconify()
+        root.geometry("1180x820")
+        root.update()
+
+        initial_board_w = app.board_sheet.winfo_width()
+        app.toggle_sidebar()
+        root.update()
+        self.assertFalse(app.sidebar_visible)
+        self.assertEqual(app._side_slot.winfo_manager(), "")
+        self.assertEqual(app._rail_slot.winfo_manager(), "")
+        self.assertFalse(app.side_sheet.winfo_viewable())
+        self.assertFalse(app.sidebar_rail_sheet.winfo_viewable())
+        # Board sheet now spans the full body width
+        self.assertGreater(app.board_sheet.winfo_width(), initial_board_w + 200)
+
+        # Toggle back
+        app.toggle_sidebar()
+        root.update()
+        self.assertTrue(app.sidebar_visible)
+        self.assertTrue(app.side_sheet.winfo_viewable())
+
+    def test_24_compact_mode_lifecycle_and_geometry_preservation(self):
+        root = create_root(self)
+        with tempfile.TemporaryDirectory() as tmp:
+            layout = DataLayout(Path(tmp) / "data")
+            app = ChessApp(root, data_layout=layout, locale="en")
+            self.addCleanup(app.close)
+            root.deiconify()
+            root.geometry("1200x800+100+100")
+            root.update()
+
+            self.assertFalse(app.compact_mode_active())
+            app.enter_compact_mode()
+            root.update()
+            self.assertTrue(app.compact_mode_active())
+            self.assertEqual(root.minsize(), (480, 560))
+            self.assertEqual(app._side_slot.winfo_manager(), "")
+            self.assertEqual(app._rail_slot.winfo_manager(), "")
+            self.assertEqual(app._header_density, "minimal")
+            self.assertEqual(app.header_logo.winfo_manager(), "")
+
+            # Leave compact mode restores original geometry
+            app.leave_compact_mode()
+            root.update()
+            self.assertFalse(app.compact_mode_active())
+            self.assertEqual(root.minsize(), (860, 700))
+            self.assertTrue(app.side_sheet.winfo_viewable())
+            geom = window_geometry.parse(root.geometry())
+            self.assertIsNotNone(geom)
+            self.assertGreaterEqual(geom[0], 860)
+            self.assertGreaterEqual(geom[1], 700)
+
+    def test_25_responsive_header_density_and_breakpoints(self):
+        root = create_root(self)
+        app = ChessApp(root, locale="en")
+        self.addCleanup(app.close)
+        root.deiconify()
+
+        # >= 1120: full
+        density_full = app.sync_header_density(1200)
+        self.assertEqual(density_full, "full")
+        self.assertTrue(app.header_logo.winfo_manager())
+        self.assertTrue(app.theme_toggle_button.winfo_manager())
+
+        # 900..1119: compact
+        density_compact = app.sync_header_density(1000)
+        self.assertEqual(density_compact, "compact")
+        self.assertTrue(app.header_logo.winfo_manager())
+        self.assertTrue(app.header_overflow_button.winfo_manager())
+
+        # < 900: minimal
+        density_minimal = app.sync_header_density(800)
+        self.assertEqual(density_minimal, "minimal")
+        self.assertEqual(app.header_logo.winfo_manager(), "")
+        self.assertTrue(app.header_overflow_button.winfo_manager())
+
+        # Height density
+        self.assertEqual(app.sync_height_density(900), "full")
+        self.assertEqual(app.sync_height_density(800), "compact")
+        self.assertEqual(app.sync_height_density(700), "minimal")
+
+    def test_26_in_app_logo_and_about_dialog(self):
+        root = create_root(self)
+        app = ChessApp(root, locale="en")
+        self.addCleanup(app.close)
+        root.deiconify()
+        root.update()
+
+        about = app.show_about_dialog(modal=False)
+        try:
+            self.assertIsNotNone(about)
+            self.assertTrue(about.winfo_exists())
+            self.assertTrue(hasattr(about, "_about_signet"))
+            about.focus_force()
+            root.update()
+            about.event_generate("<Escape>", when="tail")
+            root.update()
+            self.assertIsNone(app.about_dialog)
+        finally:
+            if about.winfo_exists():
+                about.destroy()
+
+    def test_27_wcag_contrast_across_all_six_glide_themes(self):
+        self.assertEqual(len(THEMES), 7)  # 6 distinct + w06-provisional alias
+        surfaces = ("window", "paper", "acetate", "hover")
+        inks = ("ink", "muted_ink", "view_title", "confirm", "delete")
+        for name, pal in THEMES.items():
+            if name == "w06-provisional":
+                continue
+            with self.subTest(theme=name):
+                for s in surfaces:
+                    bg = getattr(pal, s)
+                    for i in inks:
+                        fg = getattr(pal, i)
+                        ratio = contrast_ratio(fg, bg)
+                        self.assertGreaterEqual(ratio, 4.5, f"{name}: {i} on {s} = {ratio:.2f}")
+                self.assertGreaterEqual(contrast_ratio(pal.selection_text, pal.selection), 4.5)
+                self.assertGreaterEqual(contrast_ratio(pal.action_new_fg, pal.action_new_bg), 4.5)
+
+    def test_28_button_hover_feedback_and_clipping(self):
+        root = create_root(self)
+        app = ChessApp(root, locale="en")
+        self.addCleanup(app.close)
+        root.deiconify()
+        root.update()
+
+        # Hover state test on a neutral button (position_button is active and role='neutral')
+        btn = app.position_button
+        initial_bg = btn.cget("background")
+        btn.event_generate("<Enter>")
+        root.update()
+        self.assertEqual(btn.cget("background"), app.theme.hover)
+        btn.event_generate("<Leave>")
+        root.update()
+        self.assertEqual(btn.cget("background"), initial_bg)
+
+        # 24-character clipping test
+        short_label = clip_button_text("Short Label")
+        self.assertEqual(short_label, "Short Label")
+        long_label = clip_button_text("This is an exceedingly long button title exceeding twenty-four characters")
+        self.assertLessEqual(len(long_label), 24)
+        self.assertTrue(long_label.endswith("…"))
+
+        # Aligned checkmark menu entries
+        self.assertTrue(action_picker.check_label("Item", True).startswith("✓ "))
+        self.assertTrue(action_picker.check_label("Item", False).startswith("    "))
 
 
 if __name__ == "__main__":

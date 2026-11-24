@@ -1,6 +1,6 @@
 # Audit und Übergaben
 
-**V.0.0.1 · Stand 22.11.2026.** Hier stehen nur tatsächlich ausgeführte Prüfberichte und Agentenübergaben unter `JJJJ-MM-TT_Wxx-kurz.md`. **Keine fiktiven grünen Testprotokolle.** Vorlage: [Agent-Handover](../governance/AGENT_HANDOFF_TEMPLATE.md). Ein Bericht, der mehrere Pakete betrifft, steht beim ersten genannten Paket.
+**V.0.1.0 · Stand 24.11.2026.** Hier stehen nur tatsächlich ausgeführte Prüfberichte und Agentenübergaben unter `JJJJ-MM-TT_Wxx-kurz.md`. **Keine fiktiven grünen Testprotokolle.** Vorlage: [Agent-Handover](../governance/AGENT_HANDOFF_TEMPLATE.md). Ein Bericht, der mehrere Pakete betrifft, steht beim ersten genannten Paket.
 
 **Aktuell maßgeblich:** [Dokumentations- und Ablageaudit](2026-11-21_W11-dokumentations-und-ablageaudit.md) · [Paketabgleich W00–W12](2026-11-21_W00-W12-paketabgleich.md) · [Roadmap](../roadmap/ROADMAP.md)
 

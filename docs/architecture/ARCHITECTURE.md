@@ -1,6 +1,6 @@
 # Zielarchitektur – Chess & Chains
 
-**V.0.0.1 · Stand 23.11.2026 · Integrierte Laufzeitarchitektur auf Glide Shell 0.6.2 (Glide `v1.0.2`).**
+**V.0.1.0 · Stand 24.11.2026 · Integrierte Laufzeitarchitektur auf Glide Shell 0.6.2 (Glide `v1.0.2`).**
 
 ```text
 Chess & Chains Desktop Application (ui/app.py -> glide_shell.app_host.AppHost)
