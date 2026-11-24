@@ -31,6 +31,7 @@ from chess_and_chains.ui.board import screen_cell  # noqa: E402
 from chess_and_chains.ui.dialogs import PositionDialog  # noqa: E402
 from chess_and_chains.ui.replay import ReplayDialog  # noqa: E402
 from chess_and_chains.ui.text_board import TextBoardDialog  # noqa: E402
+from chess_and_chains.ui.theme import RoundedButton  # noqa: E402
 from chess_and_chains.ui.pieces import (  # noqa: E402
     PIECE_FALLBACK_SIZES,
     PIECE_FILE_NAMES,
@@ -120,7 +121,7 @@ class PromotionUiTests(AppTestCase):
             pending = None
             dialog = next(child for child in self.root.winfo_children() if isinstance(child, tk.Toplevel))
             rook = next(child for child in dialog.winfo_children()
-                        if isinstance(child, tk.Button) and child.cget("text") == "Turm")
+                        if isinstance(child, (tk.Button, RoundedButton)) and child.cget("text") == "Turm")
             if time.monotonic() >= deadline:
                 dialog.destroy()
             elif not rook.winfo_viewable():
@@ -153,7 +154,7 @@ class PromotionUiTests(AppTestCase):
             dialog = next(child for child in self.root.winfo_children() if isinstance(child, tk.Toplevel))
             try:
                 rook = next(child for child in dialog.winfo_children()
-                            if isinstance(child, tk.Button) and child.cget("text") == "Rook")
+                            if isinstance(child, (tk.Button, RoundedButton)) and child.cget("text") == "Rook")
                 rook.invoke()
                 invoked.append(True)
             finally:

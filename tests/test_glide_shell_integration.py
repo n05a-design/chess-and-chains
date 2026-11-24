@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import tomllib
+from tkinter import ttk
 import tkinter as tk
 import unittest
 from pathlib import Path
@@ -34,14 +35,18 @@ from glide_shell import (  # noqa: E402
     window_lifetime,
 )
 
-from chess_and_chains.chess import Color, Move  # noqa: E402
+from chess_and_chains.chess import Color, Move, PieceType, parse_square  # noqa: E402
 from chess_and_chains.engines.bot import EngineConfig, UCIBot  # noqa: E402
+from chess_and_chains.game import GameSetup  # noqa: E402
 from chess_and_chains.i18n import Translator  # noqa: E402
 from chess_and_chains.puzzles import load_demo_pack  # noqa: E402
 from chess_and_chains.storage import DataLayout, Settings, SettingsError, default_data_dir, load_settings  # noqa: E402
 from chess_and_chains.ui.app import PANEL_GAP, ChessApp, EngineDialog, check_tk_version, create_app_host, launch  # noqa: E402
 from chess_and_chains.ui.appearance_dialog import AppearanceDialog  # noqa: E402
+from chess_and_chains.ui.dialogs import PositionDialog  # noqa: E402
 from chess_and_chains.ui.pieces import PIECE_FILE_NAMES, validate_svg_piece_set  # noqa: E402
+from chess_and_chains.ui.replay import ReplayDialog  # noqa: E402
+from chess_and_chains.ui.text_board import TextBoardDialog  # noqa: E402
 from chess_and_chains.ui.theme import (  # noqa: E402
     ACCENT_CHOICES,
     CONTRAST_DARK_THEME,
@@ -867,6 +872,174 @@ class GlideShellIntegrationTests(unittest.TestCase):
                     self.assertLessEqual(max(r, g, b) - min(r, g, b), 20)
             # All 8 theme colors yield distinct dark-square palettes on standard themes
             self.assertGreaterEqual(len(dark_squares), 7, f"{tid} should vary board colors with Themenfarbe")
+
+
+    def test_34_promotion_dialog_all_pieces_colors_captures_and_dark_mode_contrast(self):
+        root = create_root(self)
+        app = ChessApp(root, locale="de")
+        self.addCleanup(app.close)
+        root.geometry("1120x800")
+        root.deiconify()
+        root.update()
+
+        # Verify Dark Mode contrast (>= 4.5:1) and RoundedButton usage across all 10 Glide themes
+        for tid in ("dark", "glass-dark", "dopamine", "pixel", "contrast-dark", "minimal-dark", "light"):
+            pal = app.apply_appearance(theme_id=tid, accent_choice="clear", persist=False)
+            app.controller.new_game(GameSetup(initial_fen="7k/P7/8/8/8/8/8/4K3 w - - 0 1"))
+            choices = tuple(
+                m for m in app.board._legal_moves
+                if m.from_square == parse_square("a7") and m.to_square == parse_square("a8")
+            )
+            inspected: dict[str, object] = {}
+
+            def inspect_promo():
+                dlg = app.promotion_dialog
+                if dlg is None:
+                    root.after(10, inspect_promo)
+                    return
+                dlg.update()
+                inspected["bg"] = dlg.cget("background")
+                btns = [c for c in dlg.winfo_children() if isinstance(c, RoundedButton)]
+                inspected["count"] = len(btns)
+                inspected["heights"] = {b.winfo_reqheight() for b in btns}
+                inspected["widths"] = {b.winfo_reqwidth() for b in btns}
+                inspected["ratios"] = [contrast_ratio(b.cget("foreground"), b.cget("background")) for b in btns]
+                dlg.event_generate("<Escape>")
+
+            root.after(0, inspect_promo)
+            app._on_move_requested(choices)
+            self.assertEqual(inspected["bg"], pal.acetate)
+            self.assertEqual(inspected["count"], 4)
+            self.assertEqual(len(inspected["heights"]), 1)
+            self.assertEqual(len(inspected["widths"]), 1)
+            self.assertTrue(all(r >= 4.5 for r in inspected["ratios"]), f"{tid} low ratio: {inspected['ratios']}")
+            self.assertEqual(app.game.moves, [])
+
+        # Test all 4 promotion choices (Queen, Rook, Bishop, Knight), White quiet & capture, Black quiet & capture,
+        # keyboard navigation, and focus restoration to app.board
+        app.apply_appearance(theme_id="dark", accent_choice="accent", persist=False)
+        scenarios = (
+            ("7k/P7/8/8/8/8/8/4K3 w - - 0 1", "a7", "a8", "Dame", PieceType.QUEEN),
+            ("1b5k/P7/8/8/8/8/8/4K3 w - - 0 1", "a7", "b8", "Turm", PieceType.ROOK),
+            ("4k3/8/8/8/8/8/p7/7K b - - 0 1", "a2", "a1", "Läufer", PieceType.BISHOP),
+            ("4k3/8/8/8/8/8/p7/1R5K b - - 0 1", "a2", "b1", "Springer", PieceType.KNIGHT),
+        )
+        for fen, src, dst, label, expected_piece in scenarios:
+            with self.subTest(fen=fen, label=label):
+                app.controller.new_game(GameSetup(initial_fen=fen))
+                app.board.focus_set()
+                root.update()
+                choices = tuple(
+                    m for m in app.board._legal_moves
+                    if m.from_square == parse_square(src) and m.to_square == parse_square(dst)
+                )
+                self.assertEqual(len(choices), 4)
+
+                def pick_choice(lbl=label):
+                    dlg = app.promotion_dialog
+                    if dlg is None:
+                        root.after(10, lambda: pick_choice(lbl))
+                        return
+                    btn = dlg.promotion_buttons[lbl]
+                    btn.focus_set()
+                    dlg.update()
+                    btn.event_generate("<Return>", when="tail")
+
+                root.after(0, pick_choice)
+                app._on_move_requested(choices)
+                self.assertEqual(len(app.game.moves), 1)
+                self.assertEqual(app.game.moves[0].promotion, expected_piece)
+                self.assertIs(root.focus_lastfor(), app.board)
+
+    def test_35_all_dialogs_dark_mode_inheritance_short_labels_and_single_line_buttons(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            layout = DataLayout(Path(tmp) / "data")
+            root = create_root(self)
+            app = ChessApp(root, data_layout=layout, locale="de")
+            self.addCleanup(app.close)
+            root.geometry("1180x820")
+            root.deiconify()
+            root.update()
+
+            # 1. Verify shortened labels and unclipped full header labels without '…'
+            self.assertEqual(app.claim_button.cget("text"), "Remis")
+            self.assertEqual(app.retry_bot_button.cget("text"), "Bot erneut")
+            app.apply_appearance(locale="en", persist=False)
+            self.assertEqual(app.claim_button.cget("text"), "Draw")
+            self.assertEqual(app.retry_bot_button.cget("text"), "Retry bot")
+            app.apply_appearance(locale="de", persist=False)
+            root.update()
+
+            for hdr_btn in (
+                app.sidebar_toggle_button,
+                app.sidebar_narrow_button,
+                app.theme_toggle_button,
+                app.settings_header_button,
+            ):
+                self.assertNotIn("…", hdr_btn.cget("text"))
+
+            # Verify play panel buttons render single-line with identical heights in default layout
+            paired = (
+                app.undo_button, app.redo_button, app.flip_button, app.resign_button,
+                app.save_button, app.copy_pgn_button, app.claim_button, app.library_button,
+                app.retry_bot_button, app.engine_button,
+            )
+            self.assertTrue(all(b.cget("wraplength") == 0 for b in paired))
+            self.assertEqual(len({b.winfo_height() for b in paired}), 1)
+
+            # Verify responsive single-column stacking at large font without shrinking user font
+            orig_size = app.undo_button.cget("font")
+            app.apply_appearance(font_scale_choice="large", persist=False)
+            root.update()
+            self.assertNotEqual(app.undo_button.cget("font"), orig_size)
+            self.assertEqual(app.undo_button.grid_info()["column"], 0)
+            self.assertEqual(app.redo_button.grid_info()["column"], 0)
+
+            # Verify Retry Bot preserves game object rather than starting a new game
+            app.start_game("human-vs-bot-white")
+            live = app.game
+            with patch.object(app.controller, "retry_bot") as retry_mock:
+                app.retry_bot_button.configure(state=tk.NORMAL)
+                app.retry_bot_button.invoke()
+                retry_mock.assert_called_once()
+            self.assertIs(app.game, live)
+
+            # 2. Verify all modal/helper dialogs inherit Dark Mode clam styles & palette contrast >= 4.5
+            pal = app.apply_appearance(theme_id="dark", accent_choice="export", font_scale_choice="standard", persist=False)
+            root.update()
+            s = ttk.Style(root)
+            self.assertEqual(s.theme_use(), "clam")
+            self.assertGreaterEqual(contrast_ratio(s.lookup("Glide.TButton", "foreground"), s.lookup("Glide.TButton", "background")), 4.5)
+            self.assertGreaterEqual(contrast_ratio(s.lookup("Glide.New.TButton", "foreground"), s.lookup("Glide.New.TButton", "background")), 4.5)
+            self.assertGreaterEqual(contrast_ratio(s.lookup("Glide.TEntry", "foreground"), s.lookup("Glide.TEntry", "fieldbackground")), 4.5)
+
+            app.start_game("human-vs-human")
+            app._play_move(Move.from_uci("e2e4"))
+            app._play_move(Move.from_uci("e7e5"))
+
+            pos = PositionDialog(root, app.t, app.game.state, lambda _p: True, theme=app.theme)
+            self.assertEqual(pos.cget("background"), pal.acetate)
+            pos._close()
+
+            rep = ReplayDialog(root, app.game, app.t, None, app.board.renderer, "white", theme=app.theme)
+            self.assertEqual(rep.cget("background"), pal.acetate)
+            rep._close()
+
+            tb = TextBoardDialog(root, app.t, app._play_move, theme=app.theme)
+            self.assertEqual(tb.cget("background"), pal.acetate)
+            tb._close()
+
+            about = app.show_about_dialog(modal=False)
+            self.assertEqual(about.cget("background"), pal.acetate)
+            about.destroy()
+
+            eng = EngineDialog(app)
+            self.assertEqual(eng.window.cget("background"), pal.acetate)
+            eng.window.destroy()
+
+            dlg = app.open_appearance_dialog(modal=False)
+            self.assertEqual(dlg.cget("background"), pal.window)
+            dlg.destroy()
 
 
 if __name__ == "__main__":

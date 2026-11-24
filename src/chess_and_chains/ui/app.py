@@ -331,6 +331,10 @@ class ChessApp:
         preset_ids = [p.id for p in self.presets]
         initial_preset = self.settings.bot_preset_id if self.settings.bot_preset_id in preset_ids else preset_ids[2]
         self.preset_var = tk.StringVar(root, value=self._preset_label(initial_preset))
+        self._tooltip_window: tk.Toplevel | None = None
+        self._tooltip_job: str | None = None
+        self._play_button_keys: list[tuple[RoundedButton, str]] = []
+        self._relayout_play_panel: Callable[[], None] | None = None
         self._wrap_labels: list[tk.Label] = []
         effective_renderer = (
             piece_renderer
@@ -502,7 +506,11 @@ class ChessApp:
             self.refresh_sidebar_rail()
         if locale_changed:
             self.pack_header_controls()
+            for btn, key in self._play_button_keys:
+                btn.configure(text=clip_button_text(self.t(key)))
             self._refresh()
+        if self._relayout_play_panel is not None:
+            self._relayout_play_panel()
         if hasattr(self, "menubar"):
             self._build_menubar()
         return palette
@@ -713,6 +721,7 @@ class ChessApp:
             cursor="hand2",
             takefocus=0,
         )
+        self._attach_tooltip(self.header_logo, lambda: self.t("header.logo_tooltip"))
 
         self.title_block = tk.Frame(header, background=theme.paper)
         self.title_block.pack(side="left", fill="x", expand=True, anchor="w")
@@ -743,7 +752,13 @@ class ChessApp:
         self.settings_header_button = self._header_button(self.header_controls, "", self.open_appearance_dialog)
         self.appearance_header_button = self.settings_header_button
         self.header_overflow_button = self._header_button(self.header_controls, "⋯", self.show_header_overflow_menu)
+        self._attach_tooltip(self.sidebar_toggle_button, lambda: self.t("tooltip.sidebar_toggle"))
+        self._attach_tooltip(self.sidebar_narrow_button, lambda: self.t("tooltip.sidebar_narrow"))
+        self._attach_tooltip(self.theme_toggle_button, lambda: self.t("tooltip.theme_toggle"))
+        self._attach_tooltip(self.settings_header_button, lambda: self.t("tooltip.settings"))
+        self._attach_tooltip(self.header_overflow_button, lambda: self.t("header.overflow"))
         self.about_dialog: tk.Toplevel | None = None
+        self.promotion_dialog: tk.Toplevel | None = None
 
         self._register_theme(lambda p: (
             masthead.configure(background=p.window),
@@ -918,7 +933,7 @@ class ChessApp:
         )
         status.grid(row=1, column=0, sticky="ew")
         side_sheet.bind("<Configure>", lambda event: status.configure(wraplength=max(1, event.width - 32)))
-        self.panel = tk.Frame(side_sheet, background=theme.acetate, padx=14, pady=10)
+        self.panel = tk.Frame(side_sheet, background=theme.acetate, padx=10, pady=10)
         self.panel.grid(row=2, column=0, sticky="nsew")
         self.panel.grid_columnconfigure(0, weight=1)
         self.panel.grid_rowconfigure(0, weight=1)
@@ -1029,6 +1044,68 @@ class ChessApp:
 
         button.bind("<Enter>", on_enter, add="+")
         button.bind("<Leave>", on_leave, add="+")
+
+    def _hide_tooltip(self) -> None:
+        if self._tooltip_job is not None:
+            try:
+                self.scope.cancel(self._tooltip_job)
+            except Exception:
+                pass
+            self._tooltip_job = None
+        if self._tooltip_window is not None:
+            try:
+                self._tooltip_window.destroy()
+            except tk.TclError:
+                pass
+            self._tooltip_window = None
+
+    def _show_tooltip(self, widget: tk.Widget, text_fn: Callable[[], str]) -> None:
+        self._tooltip_job = None
+        try:
+            if self._closed or not widget.winfo_exists():
+                return
+            text = text_fn().strip()
+            if not text:
+                return
+            self._hide_tooltip()
+            tip = tk.Toplevel(widget)
+            tip.wm_overrideredirect(True)
+            tip.configure(background=self.theme.line, padx=1, pady=1)
+            lbl = tk.Label(
+                tip,
+                text=text,
+                background=self.theme.paper,
+                foreground=self.theme.ink,
+                font=font_spec("caption", scale_choice=self.settings.font_scale_choice, weight_choice=self.settings.font_weight_choice),
+                padx=SPACING[8],
+                pady=SPACING[4],
+                wraplength=260,
+                justify="left",
+            )
+            lbl.pack()
+            tip.update_idletasks()
+            x = min(widget.winfo_rootx() + SPACING[6], max(0, self.root.winfo_screenwidth() - tip.winfo_reqwidth() - 8))
+            y = min(widget.winfo_rooty() + widget.winfo_height() + 4, max(0, self.root.winfo_screenheight() - tip.winfo_reqheight() - 8))
+            tip.wm_geometry(f"+{x}+{y}")
+            self._tooltip_window = tip
+        except tk.TclError:
+            self._tooltip_window = None
+
+    def _attach_tooltip(self, widget: tk.Widget, text_fn: Callable[[], str]) -> None:
+        def on_enter(_event: tk.Event) -> None:
+            self._hide_tooltip()
+            try:
+                self._tooltip_job = self.scope.after(450, lambda: self._show_tooltip(widget, text_fn))
+            except Exception:
+                self._tooltip_job = None
+
+        def on_leave(_event: tk.Event) -> None:
+            self._hide_tooltip()
+
+        widget.bind("<Enter>", on_enter, add="+")
+        widget.bind("<Leave>", on_leave, add="+")
+        widget.bind("<ButtonPress-1>", on_leave, add="+")
+        widget.bind("<Destroy>", on_leave, add="+")
 
     def _build_sidebar_rail(self) -> None:
         theme = self.theme
@@ -1450,6 +1527,7 @@ class ChessApp:
             transient=True,
             resizable=(False, False),
         )
+        remembered_focus = modal_session.remember_focus(self.root, dialog, self.board)
         dialog.configure(padx=SPACING[22], pady=SPACING[18])
         signet = in_app_logo_photo(dialog, 48, theme.view_title)
         dialog._about_signet = signet  # keep PhotoImage alive while dialog exists
@@ -1462,18 +1540,23 @@ class ChessApp:
         title_box.pack(side="left", fill="both", expand=True)
         tk.Label(
             title_box, text=t("app.title"), background=theme.acetate, foreground=theme.view_title,
-            font=("TkDefaultFont", FONT_SIZES["section"], "bold"), anchor="w", justify="left",
+            font=font_spec("section", "bold", scale_choice=self.settings.font_scale_choice, weight_choice=self.settings.font_weight_choice),
+            anchor="w", justify="left",
         ).pack(fill="x", anchor="w")
         tk.Label(
             title_box, text=DISPLAY_VERSION, background=theme.acetate, foreground=theme.muted_ink,
-            font=("TkFixedFont", FONT_SIZES["caption"], "bold"), anchor="w", justify="left",
+            font=font_spec("caption", "bold", scale_choice=self.settings.font_scale_choice, weight_choice=self.settings.font_weight_choice, mono=True),
+            anchor="w", justify="left",
         ).pack(fill="x", anchor="w")
         tk.Label(
             dialog, text=t("about.body"), background=theme.acetate, foreground=theme.ink,
-            font=("TkDefaultFont", FONT_SIZES["body"]), anchor="w", justify="left", wraplength=380,
+            font=font_spec("body", scale_choice=self.settings.font_scale_choice, weight_choice=self.settings.font_weight_choice),
+            anchor="w", justify="left", wraplength=380,
         ).pack(fill="x", pady=(SPACING[12], SPACING[14]))
         def close_dialog() -> None:
             self.about_dialog = None
+            if not getattr(dialog, modal_session.ACTIVE_ATTRIBUTE, False):
+                modal_session.return_focus(self.root, dialog, remembered_focus)
             try:
                 dialog.destroy()
             except tk.TclError:
@@ -1482,6 +1565,7 @@ class ChessApp:
         close_btn = self._button(dialog, t("button.cancel"), close_dialog, stretch=False)
         close_btn.pack(anchor="e")
         dialog.bind("<Escape>", lambda _e: (close_dialog(), "break")[1])
+        dialog.protocol("WM_DELETE_WINDOW", close_dialog)
         self.about_dialog = dialog
 
         def _cleanup(event: tk.Event) -> None:
@@ -1489,8 +1573,11 @@ class ChessApp:
                 self.about_dialog = None
 
         dialog.bind("<Destroy>", _cleanup, add="+")
+        modal_session.ensure_min_width(dialog)
+        modal_session.bring_to_front(dialog)
+        close_btn.focus_set()
         if modal:
-            modal_session.run_modal(self.root, dialog, focus=close_btn)
+            modal_session.wait_modal(self.root, dialog, parent=self.root)
         return dialog
 
     def _label(self, master, *, text=None, var=None, role="body", bold=False, muted=False) -> tk.Label:
@@ -1576,6 +1663,7 @@ class ChessApp:
         self.copy_pgn_button.grid(row=2, column=1, sticky="ew", pady=3, padx=(3, 0))
         self.claim_button = self._button(controls, t("button.claim_draw"), self._claim_draw)
         self.claim_button.grid(row=3, column=0, sticky="ew", pady=3, padx=(0, 3))
+        self._attach_tooltip(self.claim_button, lambda: self.t("tooltip.claim_draw"))
         self.library_button = self._button(controls, t("button.library"), self._open_library)
         self.library_button.grid(row=3, column=1, sticky="ew", pady=3, padx=(3, 0))
         row += 1
@@ -1595,6 +1683,7 @@ class ChessApp:
         bot_controls.grid_columnconfigure((0, 1), weight=1, uniform="actions")
         self.retry_bot_button = self._button(bot_controls, t("button.retry_bot"), self._retry_bot)
         self.retry_bot_button.grid(row=0, column=0, sticky="ew", padx=(0, 3))
+        self._attach_tooltip(self.retry_bot_button, lambda: self.t("tooltip.retry_bot"))
         self.engine_button = self._button(bot_controls, t("button.engine"), self._open_engine_dialog)
         self.engine_button.grid(row=0, column=1, sticky="ew", padx=(3, 0))
         self._register_theme(lambda p: (
@@ -1603,32 +1692,49 @@ class ChessApp:
             bot_controls.configure(background=p.acetate),
         ))
 
+        self._play_button_keys = [
+            (self.new_game_button, "button.new_game"),
+            (self.undo_button, "button.undo"),
+            (self.redo_button, "button.redo"),
+            (self.flip_button, "button.flip"),
+            (self.resign_button, "button.resign"),
+            (self.save_button, "button.save_game"),
+            (self.copy_pgn_button, "button.copy_pgn"),
+            (self.claim_button, "button.claim_draw"),
+            (self.library_button, "button.library"),
+            (self.position_button, "position.button"),
+            (self.retry_bot_button, "button.retry_bot"),
+            (self.engine_button, "button.engine"),
+        ]
         play_actions = (
             self.undo_button, self.redo_button, self.flip_button, self.resign_button, self.save_button,
             self.copy_pgn_button, self.claim_button, self.library_button,
         )
         bot_actions = (self.retry_bot_button, self.engine_button)
         paired_buttons = (*play_actions, *bot_actions)
-        action_font = font.Font(root=self.root, font=self.undo_button.cget("font"))
-        longest_word = max(
-            action_font.measure(word)
-            for button in paired_buttons
-            for word in button.cget("text").split()
-        )
-        action_inset = 28
 
         def resize_content(width: int) -> None:
-            stacked = width // 2 < longest_word + action_inset
+            action_font = font.Font(root=self.root, font=self.undo_button.cget("font"))
+            longest_label = max(action_font.measure(button.cget("text")) for button in paired_buttons)
+            h_pad = SPACING[6]
+            needed_single = longest_label + h_pad * 2 + 12
+            col_width = max(1, (width - 6) // 2)
+            stacked = col_width < needed_single
             columns = 1 if stacked else 2
-            wraplength = max(1, width // columns - action_inset)
+            single_col_avail = max(1, width - 6)
+            wraplength = 0 if (not stacked or single_col_avail >= needed_single) else max(1, width - 24)
             for actions in (play_actions, bot_actions):
                 for index, button in enumerate(actions):
-                    row, column = divmod(index, columns)
+                    r_idx, column = divmod(index, columns)
                     gap = (0, 0) if stacked else ((0, 3) if column == 0 else (3, 0))
-                    button.grid_configure(row=row, column=column, columnspan=2 if stacked else 1, padx=gap)
-                    button.configure(wraplength=wraplength, justify="left", padx=6 if stacked else 10)
+                    button.grid_configure(row=r_idx, column=column, columnspan=2 if stacked else 1, padx=gap, pady=3)
+                    button.configure(wraplength=wraplength, justify="left", padx=h_pad)
             for button in (*self.mode_buttons.values(), self.position_button):
-                button.configure(wraplength=max(1, width - 35), justify="left")
+                button.configure(wraplength=max(1, width - 30), justify="left")
+
+        self._relayout_play_panel = lambda: resize_content(
+            canvas.winfo_width() if canvas.winfo_width() > 1 else SIDEBAR_WIDTH - 36
+        )
 
         self._bind_panel_scroll(
             canvas, panel,
@@ -2017,6 +2123,12 @@ class ChessApp:
             self.interaction_text.set(self.t("move.ambiguous"))
             return
         theme = self.theme
+        promo_font = font_spec(
+            "body",
+            "bold",
+            scale_choice=self.settings.font_scale_choice,
+            weight_choice=self.settings.font_weight_choice,
+        )
         dialog = modal_session.create_dialog(
             self.root,
             self.t("promotion.title"),
@@ -2024,40 +2136,95 @@ class ChessApp:
             transient=bool(self.root.winfo_viewable()),
             resizable=(False, False),
         )
-        tk.Label(dialog, text=self.t("promotion.prompt"), background=theme.acetate, foreground=theme.ink,
-                 font=("TkDefaultFont", FONT_SIZES["body"], "bold"), padx=18, pady=14,
-                 ).grid(row=0, column=0, columnspan=len(promotions), sticky="ew")
+        remembered_focus = modal_session.remember_focus(self.root, dialog, self.board)
+        dialog.configure(background=theme.acetate, padx=SPACING[16], pady=SPACING[14])
+
+        tk.Label(
+            dialog,
+            text=self.t("promotion.prompt"),
+            background=theme.acetate,
+            foreground=theme.ink,
+            font=promo_font,
+            anchor="w",
+            justify="left",
+            pady=SPACING[6],
+        ).grid(row=0, column=0, columnspan=len(promotions), sticky="ew", pady=(0, SPACING[10]))
+
         chosen: list[Move] = []
-        first_button: tk.Button | None = None
-        for column, move in enumerate(promotions):
-            label = self.t(f"piece.{move.promotion.name.lower()}") if move.promotion else "?"
-            # Use plain tk.Button here: the test suite locates promotion buttons via
-            # isinstance(child, tk.Button) — RoundedButton (Canvas) would break that contract.
-            # Glide styling is applied via configure() to match the design language.
-            button = tk.Button(
-                dialog, text=clip_button_text(label),
-                command=lambda candidate=move: (chosen.append(candidate), dialog.destroy()),
-                background=theme.paper, foreground=theme.ink,
-                activebackground=theme.ink, activeforeground=theme.acetate,
+        buttons: list[RoundedButton] = []
+        labels = [
+            clip_button_text(self.t(f"piece.{move.promotion.name.lower()}") if move.promotion else "?")
+            for move in promotions
+        ]
+        measure_font = font.Font(root=self.root, font=promo_font)
+        btn_width = max(84, max(measure_font.measure(lbl) for lbl in labels) + SPACING[12] * 2 + 12)
+        bg, fg = theme.button_colors("neutral")
+
+        def finish(candidate: Move | None = None) -> None:
+            if candidate is not None:
+                chosen.append(candidate)
+            self.promotion_dialog = None
+            try:
+                dialog.destroy()
+            except tk.TclError:
+                pass
+
+        for column, (move, label) in enumerate(zip(promotions, labels, strict=True)):
+            dialog.grid_columnconfigure(column, weight=1, uniform="promotion_choice")
+            # Use RoundedButton (Canvas) instead of native tk.Button so macOS Aqua never overrides
+            # the Dark Mode background with bright push-button chrome against light ink.
+            button = RoundedButton(
+                dialog,
+                text=label,
+                command=lambda candidate=move: finish(candidate),
+                background=bg,
+                foreground=fg,
+                activebackground=theme.ink,
+                activeforeground=theme.acetate,
                 disabledforeground=theme.disabled_ink,
-                relief="flat", borderwidth=0,
-                highlightthickness=2,
-                highlightbackground=theme.input_border, highlightcolor=theme.brand_blue,
-                padx=SPACING[10], pady=SPACING[7],
-                font=("TkDefaultFont", FONT_SIZES["body"], "bold"),
-                cursor="hand2", takefocus=True,
+                hover_bg=theme.hover,
+                border_color=theme.input_border,
+                focus_color=theme.focus_ink,
+                carrier_bg=theme.acetate,
+                padx=SPACING[12],
+                pady=SPACING[8],
+                width=btn_width,
+                font=promo_font,
+                radius=self._field_radius(),
+                takefocus=True,
+                cursor="hand2",
             )
-            button.grid(row=1, column=column, padx=6, pady=(0, 14))
+            pad_right = 0 if column == len(promotions) - 1 else SPACING[8]
+            button.grid(row=1, column=column, sticky="ew", padx=(0, pad_right))
             _bind_button_enter(button)
-            if first_button is None:
-                first_button = button
-        dialog.bind("<Escape>", lambda _event: dialog.destroy())
-        dialog.protocol("WM_DELETE_WINDOW", dialog.destroy)
+            buttons.append(button)
+
+        for idx, btn in enumerate(buttons):
+            prev_btn = buttons[(idx - 1) % len(buttons)]
+            next_btn = buttons[(idx + 1) % len(buttons)]
+            btn.bind("<Left>", lambda _e, target=prev_btn: (target.focus_set(), "break")[1])
+            btn.bind("<Right>", lambda _e, target=next_btn: (target.focus_set(), "break")[1])
+
+        dialog.promotion_buttons = dict(zip(labels, buttons, strict=True))  # type: ignore[attr-defined]
+        dialog.bind("<Escape>", lambda _e: (finish(None), "break")[1])
+        dialog.protocol("WM_DELETE_WINDOW", lambda: finish(None))
+        self.promotion_dialog = dialog
+
+        def _cleanup(event: tk.Event) -> None:
+            if event.widget is dialog or str(event.widget) == str(dialog):
+                self.promotion_dialog = None
+
+        dialog.bind("<Destroy>", _cleanup, add="+")
+        first_button = buttons[0] if buttons else None
         modal_session.ensure_min_width(dialog)
         modal_session.bring_to_front(dialog)
         if first_button is not None:
             first_button.focus_set()
         modal_session.wait_modal(self.root, dialog)
+        modal_session.return_focus(self.root, dialog, remembered_focus)
+        if not chosen:
+            # Redraw board cleanly so cleared selection / focus feedback matches cancelled promotion.
+            self.board.redraw()
         if chosen:
             self._play_move(chosen[0])
 

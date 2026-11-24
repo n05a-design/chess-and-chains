@@ -144,7 +144,7 @@ NORMAL_MIN                 = (860, 700)
 COMPACT_MIN                = (480, 560)
 COMPACT_DEFAULT_WIDTH      = 480
 COMPACT_DEFAULT_HEIGHT     = 760
-SIDEBAR_WIDTH              = 328
+SIDEBAR_WIDTH              = 352
 SIDEBAR_RAIL_WIDTH         = 64
 SIDEBAR_AUTO_NARROW_WIDTH  = 760
 SIDEBAR_AUTO_RESTORE_WIDTH = 860
@@ -976,6 +976,13 @@ def install_ttk_theme(
 ) -> None:
     """Apply the complete Glide design language to all ttk widget styles."""
     style = _ttk_style(root)
+    # Aqua's native theme ignores custom button/entry backgrounds in Dark Mode and renders white-on-white;
+    # switch to 'clam' so ttk widgets honor ThemePalette surfaces, borders, hover, and focus tokens.
+    try:
+        if "clam" in style.theme_names() and style.theme_use() != "clam":
+            style.theme_use("clam")
+    except tk.TclError:
+        pass
     p = palette
 
     body_font    = font_spec("body",    scale_choice=scale_choice, weight_choice=weight_choice)
@@ -994,7 +1001,7 @@ def install_ttk_theme(
     style.configure("Glide.TFrame",        background=p.acetate)
     style.configure("Glide.Paper.TFrame",  background=p.paper)
     style.configure("Glide.Window.TFrame", background=p.window)
-    style.configure("TLabelframe",         background=p.acetate)
+    style.configure("TLabelframe",         background=p.acetate, bordercolor=p.line)
     style.configure("TLabelframe.Label",   background=p.acetate, foreground=p.ink, font=caption_bold)
 
     style.configure("TLabel",                    background=p.acetate, foreground=p.ink,        font=body_font)
@@ -1006,41 +1013,50 @@ def install_ttk_theme(
     style.configure("Glide.Title.TLabel",        background=p.paper,   foreground=p.view_title, font=title_font)
     style.configure("Glide.Paper.TLabel",        background=p.paper,   foreground=p.ink,        font=body_font)
 
-    style.configure(
-        "Glide.TButton",
-        background=p.paper, foreground=p.ink,
-        font=body_bold,
-        padding=(btn_padx, btn_pady),
-        relief="flat", borderwidth=0,
-        anchor="w",
-    )
-    style.map(
-        "Glide.TButton",
-        background=[("disabled", p.acetate), ("pressed", p.ink), ("active", p.hover)],
-        foreground=[("disabled", p.disabled_ink), ("pressed", p.acetate), ("active", p.ink)],
-        relief=[("pressed", "flat")],
-    )
+    for btn_style in ("TButton", "Glide.TButton"):
+        style.configure(
+            btn_style,
+            background=p.tab_idle, foreground=p.ink,
+            bordercolor=p.input_border, lightcolor=p.input_border, darkcolor=p.input_border,
+            focuscolor=p.focus_ink,
+            font=body_bold,
+            padding=(btn_padx, btn_pady),
+            relief="flat", borderwidth=1,
+            anchor="center",
+        )
+        style.map(
+            btn_style,
+            background=[("disabled", p.acetate), ("pressed", p.ink), ("active", p.hover)],
+            foreground=[("disabled", p.disabled_ink), ("pressed", p.acetate), ("active", p.ink)],
+            bordercolor=[("focus", p.focus_ink), ("disabled", p.line)],
+            relief=[("pressed", "flat")],
+        )
 
     style.configure(
         "Glide.New.TButton",
         background=p.action_new_bg, foreground=p.action_new_fg,
+        bordercolor=p.action_new_bg, lightcolor=p.action_new_bg, darkcolor=p.action_new_bg,
+        focuscolor=p.focus_ink,
         font=body_bold,
         padding=(btn_padx, btn_pady),
-        relief="flat", borderwidth=0,
-        anchor="w",
+        relief="flat", borderwidth=1,
+        anchor="center",
     )
     style.map(
         "Glide.New.TButton",
         background=[("disabled", p.acetate), ("pressed", p.ink), ("active", p.hover)],
         foreground=[("disabled", p.disabled_ink), ("pressed", p.acetate), ("active", p.ink)],
+        bordercolor=[("focus", p.focus_ink), ("disabled", p.line)],
     )
 
     style.configure(
         "Glide.Header.TButton",
         background=p.paper, foreground=p.ink,
+        bordercolor=p.line, lightcolor=p.line, darkcolor=p.line,
+        focuscolor=p.focus_ink,
         font=caption_bold,
         padding=(SPACING[10], SPACING[8]),
-        relief="flat", borderwidth=0,
+        relief="flat", borderwidth=1,
     )
     style.map(
         "Glide.Header.TButton",
@@ -1048,29 +1064,30 @@ def install_ttk_theme(
         foreground=[("disabled", p.disabled_ink), ("pressed", p.acetate), ("active", p.ink)],
     )
 
-    style.configure(
-        "Glide.TEntry",
-        fieldbackground=p.paper,
-        foreground=p.ink,
-        insertcolor=p.ink,
-        selectbackground=p.selection,
-        selectforeground=p.selection_text,
-        bordercolor=p.input_border,
-        lightcolor=p.input_border,
-        darkcolor=p.input_border,
-        relief="flat",
-        borderwidth=1,
-        padding=(field_padx, field_pady),
-        font=body_font,
-    )
-    style.map(
-        "Glide.TEntry",
-        fieldbackground=[("readonly", p.acetate), ("disabled", p.acetate)],
-        foreground=[("disabled", p.disabled_ink)],
-        bordercolor=[("focus", p.brand_blue), ("invalid", p.brand_red)],
-        lightcolor=[("focus", p.brand_blue)],
-        darkcolor=[("focus", p.brand_blue)],
-    )
+    for entry_style in ("TEntry", "Glide.TEntry"):
+        style.configure(
+            entry_style,
+            fieldbackground=p.paper,
+            foreground=p.ink,
+            insertcolor=p.ink,
+            selectbackground=p.selection,
+            selectforeground=p.selection_text,
+            bordercolor=p.input_border,
+            lightcolor=p.input_border,
+            darkcolor=p.input_border,
+            relief="flat",
+            borderwidth=1,
+            padding=(field_padx, field_pady),
+            font=body_font,
+        )
+        style.map(
+            entry_style,
+            fieldbackground=[("readonly", p.acetate), ("disabled", p.acetate)],
+            foreground=[("disabled", p.disabled_ink)],
+            bordercolor=[("focus", p.brand_blue), ("invalid", p.brand_red)],
+            lightcolor=[("focus", p.brand_blue)],
+            darkcolor=[("focus", p.brand_blue)],
+        )
 
     for sname in ("Glide.TCheckbutton", "TCheckbutton"):
         style.configure(
@@ -1124,26 +1141,37 @@ def install_ttk_theme(
     style.configure("TSeparator",       background=p.line)
     style.configure("Glide.TSeparator", background=p.line)
 
-    style.configure(
-        "Glide.TCombobox",
-        fieldbackground=p.paper,
-        foreground=p.ink,
-        selectbackground=p.selection,
-        selectforeground=p.selection_text,
-        arrowcolor=p.ink,
-        bordercolor=p.input_border,
-        lightcolor=p.input_border,
-        darkcolor=p.input_border,
-        relief="flat",
-        padding=(field_padx, field_pady),
-        font=body_font,
-    )
-    style.map(
-        "Glide.TCombobox",
-        fieldbackground=[("readonly", p.paper)],
-        foreground=[("disabled", p.disabled_ink)],
-        bordercolor=[("focus", p.brand_blue)],
-    )
+    for cb_style in ("TCombobox", "Glide.TCombobox"):
+        style.configure(
+            cb_style,
+            fieldbackground=p.paper,
+            background=p.tab_idle,
+            foreground=p.ink,
+            selectbackground=p.selection,
+            selectforeground=p.selection_text,
+            arrowcolor=p.ink,
+            bordercolor=p.input_border,
+            lightcolor=p.input_border,
+            darkcolor=p.input_border,
+            relief="flat",
+            padding=(field_padx, field_pady),
+            font=body_font,
+        )
+        style.map(
+            cb_style,
+            fieldbackground=[("readonly", p.paper), ("disabled", p.acetate)],
+            foreground=[("disabled", p.disabled_ink)],
+            bordercolor=[("focus", p.brand_blue)],
+        )
+    try:
+        top = root.winfo_toplevel()
+        top.option_add("*TCombobox*Listbox.background", p.paper, "interactive")
+        top.option_add("*TCombobox*Listbox.foreground", p.ink, "interactive")
+        top.option_add("*TCombobox*Listbox.selectBackground", p.selection, "interactive")
+        top.option_add("*TCombobox*Listbox.selectForeground", p.selection_text, "interactive")
+        top.option_add("*TCombobox*Listbox.font", body_font, "interactive")
+    except tk.TclError:
+        pass
 
 
 # ---------------------------------------------------------------------------

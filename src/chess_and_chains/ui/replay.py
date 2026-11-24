@@ -62,23 +62,23 @@ class ReplayDialog(tk.Toplevel):
         self._end = game.outcome()
         self.index = 0
 
-        panel = ttk.Frame(self, padding=12)
+        panel = ttk.Frame(self, padding=12, style="Glide.TFrame")
         panel.pack(fill="both", expand=True)
         panel.columnconfigure(0, weight=2)
         panel.columnconfigure(1, weight=1)
         panel.rowconfigure(1, weight=1)
-        self.status = ttk.Label(panel, anchor="w")
+        self.status = ttk.Label(panel, anchor="w", style="Glide.TLabel")
         self.status.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 8))
         self.board = BoardCanvas(
             panel, lambda _moves: None, renderer=renderer, artwork=artwork, translator=t, theme=self._theme,
         )
         self.board.set_orientation(orientation)
         self.board.grid(row=1, column=0, sticky="nsew", padx=(0, 12))
-        sidebar = ttk.Frame(panel)
+        sidebar = ttk.Frame(panel, style="Glide.TFrame")
         sidebar.grid(row=1, column=1, sticky="nsew")
         sidebar.columnconfigure((0, 1), weight=1, uniform="commands")
         sidebar.rowconfigure(0, weight=1)
-        list_frame = ttk.Frame(sidebar)
+        list_frame = ttk.Frame(sidebar, style="Glide.TFrame")
         list_frame.grid(row=0, column=0, columnspan=2, sticky="nsew", pady=(0, 8))
         list_frame.columnconfigure(0, weight=1)
         list_frame.rowconfigure(0, weight=1)

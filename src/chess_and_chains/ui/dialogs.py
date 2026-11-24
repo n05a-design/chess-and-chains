@@ -15,10 +15,10 @@ from glide_shell import desktop_adapter, modal_session, text_fit
 from ..chess import ChessError, GameState, to_fen
 from ..i18n import Translator
 from ..storage.exchange import parse_fen_text, read_fen_file, write_fen_file
-from .theme import LIGHT_THEME, ThemePalette
+from .theme import LIGHT_THEME, RoundedButton, ThemePalette
 
 
-def bind_button_enter(button: tk.Button | ttk.Button | ttk.Checkbutton) -> None:
+def bind_button_enter(button: tk.Button | ttk.Button | ttk.Checkbutton | RoundedButton) -> None:
     def invoke(_event: tk.Event) -> str:
         button.invoke()
         return "break"
@@ -48,10 +48,10 @@ class PositionDialog(tk.Toplevel):
         self._previous_focus = self._remembered_focus[1]
         self._confirm_replacement = confirm_replacement
 
-        content = ttk.Frame(self, padding=16)
+        content = ttk.Frame(self, padding=16, style="Glide.TFrame")
         content.pack(fill="both", expand=True)
         content.columnconfigure((0, 1), weight=1, uniform="actions")
-        ttk.Label(content, text="FEN").grid(row=0, column=0, sticky="w", pady=(0, 4))
+        ttk.Label(content, text="FEN", style="Glide.Caption.Bold.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 4))
         self.draft = tk.StringVar(self, to_fen(position))
         fixed_font = font.nametofont("TkFixedFont", root=self)
         available = parent.winfo_width() if parent.winfo_viewable() else 500
@@ -65,9 +65,9 @@ class PositionDialog(tk.Toplevel):
         self.entry.bind("<KP_Enter>", self._play)
 
         instruction = ttk.Label(content, text=self.t("position.help"),
-                                wraplength=self.entry.winfo_reqwidth())
+                                wraplength=self.entry.winfo_reqwidth(), style="Glide.TLabel")
         instruction.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(6, 10))
-        self._feedback = ttk.Label(content, wraplength=self.entry.winfo_reqwidth())
+        self._feedback = ttk.Label(content, wraplength=self.entry.winfo_reqwidth(), style="Glide.Muted.TLabel")
         self._feedback.grid(row=5, column=0, columnspan=2, sticky="ew", pady=(4, 10))
         self._draft_trace = self.draft.trace_add("write", self._clear_feedback)
 

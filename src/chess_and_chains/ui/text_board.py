@@ -68,17 +68,17 @@ class TextBoardDialog(tk.Toplevel):
         self._targets: tuple[Move, ...] = ()
         self._selected_square: int | None = None
 
-        content = ttk.Frame(self, padding=16)
+        content = ttk.Frame(self, padding=16, style="Glide.TFrame")
         content.pack(fill="both", expand=True)
         content.columnconfigure((0, 1), weight=1, uniform="board")
         content.rowconfigure(3, weight=1)
-        self._status = ttk.Label(content)
+        self._status = ttk.Label(content, style="Glide.TLabel")
         self._status.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 3))
-        self._feedback = ttk.Label(content)
+        self._feedback = ttk.Label(content, style="Glide.Muted.TLabel")
         self._feedback.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(0, 10))
         self.pieces = self._add_list(content, self.t("text_board.pieces"), 0, self._theme)
         self.targets = self._add_list(content, self.t("text_board.targets"), 1, self._theme)
-        self._availability = ttk.Label(content)
+        self._availability = ttk.Label(content, style="Glide.Muted.TLabel")
         self._availability.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(5, 7))
         self._availability.configure(text=self.t("text_board.no_targets"))
 
@@ -107,8 +107,8 @@ class TextBoardDialog(tk.Toplevel):
     @staticmethod
     def _add_list(content: ttk.Frame, title: str, column: int, theme: ThemePalette | None = None) -> tk.Listbox:
         padding = (0, 5) if column == 0 else (5, 0)
-        ttk.Label(content, text=title).grid(row=2, column=column, sticky="w", padx=padding, pady=(0, 4))
-        frame = ttk.Frame(content)
+        ttk.Label(content, text=title, style="Glide.Caption.Bold.TLabel").grid(row=2, column=column, sticky="w", padx=padding, pady=(0, 4))
+        frame = ttk.Frame(content, style="Glide.TFrame")
         frame.grid(row=3, column=column, sticky="nsew", padx=padding)
         frame.columnconfigure(0, weight=1)
         frame.rowconfigure(0, weight=1)

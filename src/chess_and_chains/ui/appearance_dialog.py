@@ -120,9 +120,11 @@ class AppearanceDialog(tk.Toplevel):
             except tk.TclError:
                 pass
         self.deiconify()
+        modal_session.ensure_min_width(self)
+        modal_session.bring_to_front(self)
         self.apply_btn.focus_set()
         if modal:
-            modal_session.run_modal(parent, self, focus=self.apply_btn)
+            modal_session.wait_modal(parent, self)
 
     def _theme_note_text(self, theme_id: str) -> str:
         key = f"theme.note.{theme_id.replace('-', '_')}"
