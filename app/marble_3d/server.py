@@ -199,9 +199,11 @@ class MarbleRequest(BaseHTTPRequestHandler):
         if not self.check_host():
             return
         if self.path not in ("/api/game", "/api/import"):
+            self._drain_body()
             self.reply_json({"error": "Unbekannte Adresse."}, HTTPStatus.NOT_FOUND)
             return
         if self.headers.get("Origin") != self.server.origin:
+            self._drain_body()
             self.reply_json({"error": "Unzulässiger Ursprung."}, HTTPStatus.FORBIDDEN)
             return
         try:
@@ -231,9 +233,18 @@ class MarbleRequest(BaseHTTPRequestHandler):
         else:
             self.reply_json(result)
 
+    def _drain_body(self) -> None:
+        try:
+            size = int(self.headers.get("Content-Length", "0"))
+            if 0 < size <= 1048576:
+                self.rfile.read(size)
+        except Exception:
+            pass
+
     def check_host(self) -> bool:
         if self.headers.get("Host") == self.server.host:
             return True
+        self._drain_body()
         self.reply_json({"error": "Nur die lokale Startadresse ist zulässig."}, HTTPStatus.FORBIDDEN)
         return False
 

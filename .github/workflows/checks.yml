@@ -126,6 +126,7 @@ jobs:
           python-version: ${{ matrix.python }}
       - name: GUI tests
         timeout-minutes: 5
+        shell: bash
         # Serial execution required: each suite must complete before the next
         # starts to prevent concurrent Tk root creation on Windows/macOS.
         run: |

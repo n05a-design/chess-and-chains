@@ -323,11 +323,18 @@ class Marble2DArtwork:
             return cached
         size = max(8, int(tile_size) * 8)
 
-        if not _probe_svg_support(master):
-            # Raster fallback: themed checkerboard preserving tinting via color math
-            img = self._checkerboard_fallback(master, size, tile_size, tint_color=tint_color, flipped=flipped)
-        else:
-            img = self._render_svg(master, size, tint_color=tint_color, flipped=flipped)
+        try:
+            if not _probe_svg_support(master):
+                # Raster fallback: themed checkerboard preserving tinting via color math
+                img = self._checkerboard_fallback(master, size, tile_size, tint_color=tint_color, flipped=flipped)
+            else:
+                img = self._render_svg(master, size, tint_color=tint_color, flipped=flipped)
+        except Exception:
+            # On a rendering error, preserve the previous valid board state if available
+            for prev_key, prev_img in reversed(self._images.items()):
+                if prev_key[0] == master.tk:
+                    return prev_img
+            raise
 
         self._images[key] = img
         while len(self._images) > 24:

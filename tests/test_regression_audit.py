@@ -205,25 +205,32 @@ class Marble2DArtworkFallbackTests(unittest.TestCase):
         self.assertIs(img1, img2)
 
     def test_previous_state_preserved_on_render_error(self) -> None:
-        """If _load_cropped_svg raises, the last valid cached image must survive."""
+        """If rendering fails, the last valid cached image must be returned and survive."""
         import chess_and_chains.ui.board_artwork as ba
-        # Pre-populate cache with a valid fallback image
-        with patch.object(ba, "_SVG_SUPPORTED", False):
-            art = Marble2DArtwork()
-            art._images.clear()
-            good_img = art.image(self.root, 16, flipped=False)
+        art = Marble2DArtwork()
+        art._images.clear()
+        good_img = art.image(self.root, 16, flipped=False)
 
-        # Now simulate an error on the next attempt to load
-        def _explode():
-            raise OSError("Simulated read error")
+        def _explode(*args, **kwargs):
+            raise OSError("Simulated render error")
 
-        with patch.object(art, "_load_cropped_svg", side_effect=_explode):
-            with self.assertRaises(OSError):
-                art.image(self.root, 32, flipped=False)  # different key → new render
+        # Simulate rendering error across both SVG and raster fallback paths
+        with patch.object(art, "_render_svg", side_effect=_explode), \
+             patch.object(art, "_checkerboard_fallback", side_effect=_explode):
+            # Gracefully preserves previous valid board state instead of raising/clearing
+            recovered = art.image(self.root, 32, flipped=False)
+            self.assertIs(recovered, good_img)
 
         # Previously cached entry must remain intact
         cached = art._images.get((self.root.tk, 16, False, None))
         self.assertIs(cached, good_img)
+
+        # But if no previous valid board exists at all, it should raise
+        fresh_art = Marble2DArtwork()
+        with patch.object(fresh_art, "_render_svg", side_effect=_explode), \
+             patch.object(fresh_art, "_checkerboard_fallback", side_effect=_explode):
+            with self.assertRaises(OSError):
+                fresh_art.image(self.root, 32, flipped=False)
 
 
 # ---------------------------------------------------------------------------
