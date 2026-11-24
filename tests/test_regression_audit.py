@@ -274,7 +274,7 @@ class SettingsTransactionSafetyTests(unittest.TestCase):
 
         # Establish a known saved state
         app.apply_appearance(theme_id="light", persist=True)
-        self.root.update()
+        self.root.update_idletasks()
 
         settings_file = layout.settings
         self.assertTrue(settings_file.exists(), "settings file must exist after first save")
@@ -283,20 +283,20 @@ class SettingsTransactionSafetyTests(unittest.TestCase):
         # Open dialog in non-modal mode and trigger several live previews
         dlg = app.open_appearance_dialog(modal=False)
         self.addCleanup(lambda: dlg.winfo_exists() and dlg.destroy())
-        self.root.update()
+        self.root.update_idletasks()
 
         # Simulate live preview changes — these must NOT write to disk
         dlg.theme_var.set("dark")
         dlg._on_any_change("dark")
-        self.root.update()
+        self.root.update_idletasks()
 
         dlg.accent_var.set("export")
         dlg._on_any_change("export")
-        self.root.update()
+        self.root.update_idletasks()
 
         dlg.theme_var.set("glass-dark")
         dlg._on_any_change("glass-dark")
-        self.root.update()
+        self.root.update_idletasks()
 
         sha_during_preview = _sha256(settings_file)
         self.assertEqual(
@@ -314,16 +314,16 @@ class SettingsTransactionSafetyTests(unittest.TestCase):
         self.addCleanup(app.close)
 
         app.apply_appearance(theme_id="light", persist=True)
-        self.root.update()
+        self.root.update_idletasks()
         sha_before = _sha256(layout.settings)
 
         dlg = app.open_appearance_dialog(modal=False)
-        self.root.update()
+        self.root.update_idletasks()
 
         # Preview change then cancel
         dlg.theme_var.set("dopamine")
         dlg._on_any_change("dopamine")
-        self.root.update()
+        self.root.update_idletasks()
 
         dlg._cancel()
         # Do NOT call root.update() here: the dialog is already destroyed and
@@ -350,20 +350,20 @@ class SettingsTransactionSafetyTests(unittest.TestCase):
         self.addCleanup(app.close)
 
         app.apply_appearance(theme_id="light", persist=True)
-        self.root.update()
+        self.root.update_idletasks()
         sha_before = _sha256(layout.settings)
 
         dlg = app.open_appearance_dialog(modal=False)
-        self.root.update()
+        self.root.update_idletasks()
 
         dlg.theme_var.set("dark")
         dlg._on_any_change("dark")
-        self.root.update()
+        self.root.update_idletasks()
         sha_during = _sha256(layout.settings)
         self.assertEqual(sha_before, sha_during, "preview must not write to disk")
 
         dlg._save_and_close()
-        self.root.update()
+        self.root.update_idletasks()
 
         sha_after_save = _sha256(layout.settings)
         self.assertNotEqual(
