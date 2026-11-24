@@ -1,5 +1,39 @@
 # Changelog
 
+## V.0.3.1 – Post-Audit Bugfixes: Marmorbrett SVG-Fallback, Settings Transaction Safety, UI & CI Polish (2026-11-24)
+
+### P0 – Marmorbrett-Kompatibilität & SVG-Fallback (`ui/board_artwork.py`)
+- **Laufzeit-SVG-Erkennung (`_probe_svg_support`)**: Prüft einmalig pro Interpreter, ob `tk.PhotoImage` das Format `svg` nativ unterstützt (Tk 9 / Tk 8.6 mit NanoSVG).
+- **Vollständiger Raster-Fallback (`_checkerboard_fallback`)**: Bei fehlender SVG-Unterstützung (vanilla Tk 8.6 unter Linux/Windows) wird ein dynamisch getöntes Schachbrett in Marmor-Grundfarben (`#D4CAB8` / `#8C7B6A`) mit korrekter Themenfarben-Mischung erzeugt.
+- **Fehlerbehandlung & Zustandserhalt**: Bei Fehlern bleibt der letzte gültige Bildzustand im Cache erhalten (`test_previous_state_preserved_on_render_error`). Keine externen Abhängigkeiten (kein CairoSVG).
+- **Behebt CI-Fehler**: `_tkinter.TclError: image format "svg" is not supported` unter Linux py3.11/py3.14 und Windows py3.11.
+
+### P1 – Einstellungsdialog Transaktionssicherheit & Persistenz-Trennung (`ui/appearance_dialog.py`, `ui/app.py`)
+- **Strikte Trennung von Vorschau und Speicherung**: Live-Vorschau ruft `apply_appearance(..., persist=False)` auf und verändert ausschließlich den In-Memory-Laufzeitzustand. Einstellungen werden nicht auf die Festplatte geschrieben.
+- **Garantiertes Speichern bei unverändertem Laufzeitzustand**: Beim Klick auf „Übernehmen“ / `_save_and_close()` wird `persist=True` erzwungen, sodass auch dann auf Festplatte gespeichert wird, wenn die Werte durch die Vorschau bereits dem Laufzeitzustand entsprechen.
+- **Verlustfreier Abbruch (`_cancel`)**: Stellt den ursprünglichen Zustand (`_initial_snapshot`) über `_emit_preview` mit `persist=False` wieder her, ohne die Einstellungsdatei auf Festplatte zu modifizieren.
+- **SHA-256-Dateisystem-Regressionstest**: `SettingsTransactionSafetyTests` in `tests/test_regression_audit.py` belegt per Hash, dass die Datei vor und während der Vorschau sowie nach Abbruch bytegenau identisch bleibt und erst nach „Übernehmen“ persistiert wird.
+
+### P1 – Theme-Parameterkorrektur & Perspektiven-Entkopplung (`ui/appearance_dialog.py`)
+- **Theme-Parameter**: Aufruf von `resolve_theme()` in `_apply_live_preview()` korrigiert (Hintergrundauswahl wird als Schlüsselwortargument `background=...` übergeben, nicht fälschlich als Positionsargument `root`).
+- **Perspektiven-Entkopplung**: Perspektiven-Dropdown wird für alle Nicht-Marmor-Brettdesigns (inkl. benutzerdefinierte SVG-Bretter) deaktiviert und auf 2D arretiert. Ein benutzerdefiniertes SVG-Brett kann nicht versehentlich durch Perspektivenwahl zum Marmorbrett werden.
+
+### P2 – Einstellungen gestalterisch nachgebessert (`ui/appearance_dialog.py`, `ui/dropdown.py`)
+- **Abschlussbuttons rechtsbündig**: „Abbrechen“ und „Übernehmen“ sind gemeinsam unten rechts nebeneinander im Footer platziert (`column=1` und `column=2`, `column=0` als Abstandhalter).
+- **GlideDropdown Lesbarkeit & Textmessung**: Pauschale 24-Zeichen-Kürzung (`clip_button_text`) durch pixelgenaue Textmessung (`_fit_text`) ersetzt. Dropdown-Popup passt seine Mindestbreite responsiv an die längste Option an.
+- **Bildschirmbegrenzung für Popups**: Horizontale (`screen_w`) und vertikale (`screen_h`) Bildschirmbegrenzung verhindert das Hineinragen in oder Hinausragen aus dem Bildschirmrand.
+- **Glide Shell Lifecycle-Vertrag**: Timer und Fokusprüfungen in `GlideDropdown` nutzen `glide_shell.window_lifetime.AfterScope` und werden bei Widget-Abbau sauber beendet.
+- **Vollständige Lokalisierung**: Alle Dropdowns, Sektionsüberschriften und Abschlussbuttons sind vollständig DE/EN-lokalisiert.
+
+### P2 – Materialanzeige-Kontrast & Rätselwechsel (`ui/captured_material.py`, `ui/app.py`)
+- **WCAG 2.2 AA Kontrast ≥ 4,5:1**: Die `+N`-Vorteilskapsel verwendet `tab_idle` als Hintergrund und wählt automatisch eine Vordergrundfarbe mit mindestens 4,5:1 Kontrast über alle 10 Glide-Themes.
+- **Rätsel-Reset**: Bei leerer Rätselauswahl (`self.puzzle is None`) werden die Materialanzeigen zuverlässig auf `None` zurückgesetzt.
+
+### P1 – CI-Testabdeckung vervollständigt (`.github/workflows/checks.yml`)
+- Fehlende Testmodule integriert: `tests.test_captured_material`, `tests.test_final_audit`, `tests.test_glide_shell_integration`, `tests.test_regression_audit`.
+- Glide-Shell-Selbsttest (`python -m glide_shell.selftest`) und Manifestprüfung in GUI-Jobs integriert.
+- Timeout für `gui-native` auf 5 Minuten erhöht, um Runner-Lastspitzen auf macOS abzufangen.
+
 ## V.0.3.0 – Full Glide v1.0.2 Design Language, Rounded Canvas Cards & Appearance Customization (2026-11-24)
 
 ### Design & Tokens

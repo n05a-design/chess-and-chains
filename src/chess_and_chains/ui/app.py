@@ -471,7 +471,7 @@ class ChessApp:
             sidebar_narrow is not None and eff_sidebar_narrow != self._sidebar_narrow
         )
 
-        if changes and persist:
+        if persist:
             self._store_settings(**changes)
         elif changes:
             self.settings = replace(self.settings, **changes)
@@ -556,6 +556,7 @@ class ChessApp:
             has_custom_board=self._custom_board_artwork is not None,
             on_open_engine=self._open_engine_dialog,
             on_apply=lambda **kw: self.apply_appearance(**kw, persist=True),
+            on_preview=lambda **kw: self.apply_appearance(**{k: v for k, v in kw.items() if k != "persist"}, persist=False),
             modal=modal,
         )
 
@@ -2438,6 +2439,12 @@ class ChessApp:
         if material is None:
             if self.active_panel == "puzzles" and self.puzzle is not None:
                 material = self.puzzle.game.captured_material()
+            elif self.active_panel == "puzzles" and self.puzzle is None:
+                # Empty puzzle selection: reset bars to show no material
+                theme = self.theme
+                for bar in (self.top_material_bar, self.bottom_material_bar):
+                    bar.set_material(bar.player_color, None, theme=theme)
+                return
             else:
                 material = self.game.captured_material()
 

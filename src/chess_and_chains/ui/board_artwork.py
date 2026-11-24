@@ -16,6 +16,31 @@ from pathlib import Path
 
 from .theme import hex_rgb, mix_rgb, rgb_hex
 
+# ---------------------------------------------------------------------------
+# SVG-support probe (Tk 9 / Tk 8.6+NanoSVG support SVG PhotoImage natively;
+# vanilla Tk 8.6 on Linux does not).  Tested once per interpreter instance.
+# ---------------------------------------------------------------------------
+_SVG_SUPPORTED: bool | None = None  # None = not yet probed
+
+
+def _probe_svg_support(master: tk.Misc) -> bool:
+    """Return True if Tk's PhotoImage accepts format="svg" in this interpreter."""
+    global _SVG_SUPPORTED
+    if _SVG_SUPPORTED is not None:
+        return _SVG_SUPPORTED
+    _PROBE_SVG = (
+        b'<?xml version="1.0"?>'
+        b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1">'
+        b'<rect width="1" height="1" fill="#FF0000"/></svg>'
+    )
+    try:
+        img = tk.PhotoImage(master=master, data=_PROBE_SVG, format="svg")
+        img.blank()  # exercise it briefly
+        _SVG_SUPPORTED = True
+    except tk.TclError:
+        _SVG_SUPPORTED = False
+    return _SVG_SUPPORTED
+
 MAX_BOARD_PREVIEW_SIZE = 2048
 _MAX_SVG_BYTES = 2 * 1024 * 1024
 _MAX_DESIGN_BYTES = 4 * 1024 * 1024
@@ -177,10 +202,59 @@ class BoardArtwork:
             group = ET.Element(_SVG_NAMESPACE + "g", {"transform": f"rotate(180 {x + length / 2} {y + length / 2})"})
             group.extend(root)
             root[:] = [group]
-        return tk.PhotoImage(master=master, data=_svg_bytes(root), format="svg")
+        svg_data = _svg_bytes(root)
+        if _probe_svg_support(master):
+            return tk.PhotoImage(master=master, data=svg_data, format="svg")
+        # Raster fallback: extract first rect fill color; paint solid tile
+        return _svg_to_solid_photo(master, root, size)
 
 
 _HEX_COLOR_RE = re.compile(r"#[0-9a-fA-F]{6}\b")
+
+
+def _svg_dominant_color(root: ET.Element) -> str:
+    """Extract the first fill color from the SVG element tree (raster fallback helper)."""
+    for element in root.iter():
+        fill = element.get("fill", "")
+        if _HEX_COLOR_RE.match(fill):
+            return fill
+        style = element.get("style", "")
+        m = re.search(r"fill\s*:\s*(#[0-9a-fA-F]{6})", style)
+        if m:
+            return m.group(1)
+    return "#808080"
+
+
+def _svg_to_solid_photo(master: tk.Misc, root: ET.Element, size: int) -> tk.PhotoImage:
+    """Raster fallback: paint a solid-color PhotoImage from the first fill color."""
+    color = _svg_dominant_color(root)
+    image = tk.PhotoImage(master=master, width=size, height=size)
+    # Build a single-row PPM-like block and fill the image
+    image.put(color, to=(0, 0, size, size))
+    return image
+
+
+def _checkerboard_photo(
+    master: tk.Misc,
+    board_size: int,
+    tile_size: int,
+    light_color: str,
+    dark_color: str,
+    *,
+    flipped: bool = False,
+) -> tk.PhotoImage:
+    """Generate a tinted checkerboard as raster fallback for marble/SVG boards."""
+    image = tk.PhotoImage(master=master, width=board_size, height=board_size)
+    for row in range(8):
+        for col in range(8):
+            screen_row = 7 - row if flipped else row
+            screen_col = 7 - col if flipped else col
+            is_light = (screen_row + screen_col) % 2 == 0
+            color = light_color if is_light else dark_color
+            x0 = col * tile_size
+            y0 = row * tile_size
+            image.put(color, to=(x0, y0, x0 + tile_size, y0 + tile_size))
+    return image
 
 
 def _tint_marble_svg_text(svg_text: str, tint_color: str | None) -> str:
@@ -248,6 +322,26 @@ class Marble2DArtwork:
             self._images.move_to_end(key)
             return cached
         size = max(8, int(tile_size) * 8)
+
+        if not _probe_svg_support(master):
+            # Raster fallback: themed checkerboard preserving tinting via color math
+            img = self._checkerboard_fallback(master, size, tile_size, tint_color=tint_color, flipped=flipped)
+        else:
+            img = self._render_svg(master, size, tint_color=tint_color, flipped=flipped)
+
+        self._images[key] = img
+        while len(self._images) > 24:
+            self._images.popitem(last=False)
+        return img
+
+    def _render_svg(
+        self,
+        master: tk.Misc,
+        size: int,
+        *,
+        tint_color: str | None,
+        flipped: bool,
+    ) -> tk.PhotoImage:
         svg_text = _tint_marble_svg_text(self._load_cropped_svg(), tint_color)
         root = ET.fromstring(svg_text.encode("utf-8"))
         root.set("width", str(size))
@@ -260,8 +354,25 @@ class Marble2DArtwork:
                     group.append(child)
                     root.remove(child)
             root.append(group)
-        img = tk.PhotoImage(master=master, data=_svg_bytes(root), format="svg")
-        self._images[key] = img
-        while len(self._images) > 24:
-            self._images.popitem(last=False)
-        return img
+        return tk.PhotoImage(master=master, data=_svg_bytes(root), format="svg")
+
+    def _checkerboard_fallback(
+        self,
+        master: tk.Misc,
+        board_size: int,
+        tile_size: int,
+        *,
+        tint_color: str | None,
+        flipped: bool,
+    ) -> tk.PhotoImage:
+        """Tinted checkerboard for environments without SVG PhotoImage support."""
+        # Marble-inspired neutral colors
+        base_light = "#D4CAB8"
+        base_dark = "#8C7B6A"
+        if tint_color and (max(hex_rgb(tint_color)) - min(hex_rgb(tint_color)) > 24):
+            tint = hex_rgb(tint_color)
+            light = rgb_hex(mix_rgb(hex_rgb(base_light), tint, 0.14))
+            dark = rgb_hex(mix_rgb(hex_rgb(base_dark), tint, 0.22))
+        else:
+            light, dark = base_light, base_dark
+        return _checkerboard_photo(master, board_size, tile_size, light, dark, flipped=flipped)

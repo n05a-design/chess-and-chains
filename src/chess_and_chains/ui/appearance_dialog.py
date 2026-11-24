@@ -69,6 +69,7 @@ class AppearanceDialog(tk.Toplevel):
         has_custom_board: bool = False,
         on_open_engine: Callable[[], None] | None = None,
         on_apply: Callable[..., None] | None = None,
+        on_preview: Callable[..., None] | None = None,
         modal: bool = True,
     ) -> None:
         super().__init__(parent)
@@ -81,6 +82,9 @@ class AppearanceDialog(tk.Toplevel):
         self._has_custom_board = has_custom_board
         self.t = translator
         self.on_apply = on_apply
+        # on_preview: called during live preview only (must NOT persist to disk).
+        # Falls back to on_apply with persist=False if not supplied separately.
+        self.on_preview = on_preview
         self.on_open_engine = on_open_engine
 
         self.theme_var = tk.StringVar(self, value=theme_id)
@@ -214,7 +218,7 @@ class AppearanceDialog(tk.Toplevel):
 
         self._footer = tk.Frame(self, background=p.window, padx=20, pady=12)
         self._footer.grid(row=3, column=0, sticky="ew")
-        self._footer.grid_columnconfigure(1, weight=1)
+        self._footer.grid_columnconfigure(0, weight=1)
 
         self._cancel_btn = RoundedButton(
             self._footer,
@@ -227,7 +231,7 @@ class AppearanceDialog(tk.Toplevel):
             width=120,
             height=34,
         )
-        self._cancel_btn.grid(row=0, column=0, sticky="w")
+        self._cancel_btn.grid(row=0, column=1, padx=(0, 10), sticky="e")
 
         self._apply_btn = RoundedButton(
             self._footer,
@@ -360,6 +364,7 @@ class AppearanceDialog(tk.Toplevel):
                 anchor="w",
             )
             lbl.grid(row=0, column=0, sticky="w", padx=(0, 8))
+            dd_w = 215 if self._scale_choice in ("large", "extra-large") else 190
             dd = GlideDropdown(
                 row,
                 var,
@@ -368,8 +373,8 @@ class AppearanceDialog(tk.Toplevel):
                 corner_radius=min(self._corner_radius, 8),
                 scale_choice=self._scale_choice,
                 weight_choice=self._weight_choice,
-                width=185,
-                height=30,
+                width=dd_w,
+                height=32,
                 on_change=cb,
             )
             dd.grid(row=0, column=1, sticky="e")
@@ -412,7 +417,11 @@ class AppearanceDialog(tk.Toplevel):
     def _sync_perspective_dependency(self) -> None:
         if self._persp_dropdown is None:
             return
-        if self.board_design_var.get() == "standard":
+        design = self.board_design_var.get()
+        # 3D perspective is only supported for the marble board design.
+        # Standard and custom boards are always 2D (custom SVG must not silently
+        # become a marble board when the user switches perspective).
+        if design != "marble":
             if self.perspective_var.get() != "2d":
                 self.perspective_var.set("2d")
             self._persp_dropdown.set_state("disabled")
@@ -439,13 +448,34 @@ class AppearanceDialog(tk.Toplevel):
     def _apply_live_preview(self) -> None:
         self._palette = resolve_theme(
             self.theme_var.get(),
-            self.bg_var.get(),
+            accent=self.accent_var.get(),
+            background=self.bg_var.get(),
         )
         self._corner_radius = RADIUS_MAP.get(self.radius_var.get(), 12)
         self._scale_choice = self.scale_var.get()
         self._weight_choice = self.weight_var.get()
         self._retheme_dialog()
-        self._emit_apply(self._snapshot())
+        self._emit_preview(self._snapshot())
+
+    def _emit_preview(self, payload: dict[str, object]) -> None:
+        """Call the preview callback (persist=False).
+
+        Uses ``on_preview`` if supplied, otherwise falls back to ``on_apply``
+        with ``persist=False`` appended when the callback's signature accepts it.
+        """
+        cb = self.on_preview if self.on_preview is not None else self.on_apply
+        if cb is None:
+            return
+        sig = inspect.signature(cb)
+        params = sig.parameters
+        has_var_kw = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values())
+        if has_var_kw:
+            # Callback accepts **kwargs — pass persist=False so it does not write to disk
+            cb(**payload, persist=False)
+            return
+        # Callback has explicit params only — filter and do not inject persist
+        accepted = {k: v for k, v in payload.items() if k in params}
+        cb(**accepted)
 
     def _retheme_dialog(self) -> None:
         p = self._palette
@@ -506,7 +536,7 @@ class AppearanceDialog(tk.Toplevel):
         self._close()
 
     def _cancel(self) -> None:
-        self._emit_apply(self._initial_snapshot)
+        self._emit_preview(self._initial_snapshot)
         self._close()
 
     def _close(self) -> None:

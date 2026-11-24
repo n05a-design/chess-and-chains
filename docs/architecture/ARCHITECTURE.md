@@ -37,8 +37,11 @@ Im aktuellen Code trägt die Anwendungsschicht den Paketnamen `game/`. `storage/
 `src/chess_and_chains/__main__.py`. Die Tk-Runtime verwendet V.02-Vorderansichten
 oder die per `--piece-view top` gewählte Draufsicht. Tk 9 liest Figuren und
 optionale Brettvorschau direkt als SVG. Für die Figuren gibt es PNG-Atlanten
-für Tk ohne SVG-Leser. Der Engine-Verbindungstest übermittelt Daten aus
-dem Worker per Queue an den Tk-Thread. [UCI-Vertrag](UCI_CONTRACT.md)
+für Tk ohne SVG-Leser; für das 2D-Marmorbrett existiert ein vollständiger
+Raster-Fallback (`_checkerboard_fallback`), der bei fehlender nativer
+SVG-Unterstützung (vanilla Tk 8.6 auf Linux/Windows) ein getöntes Schachbrett
+ohne neue externe Bibliotheken bereitstellt. Der Engine-Verbindungstest
+übermittelt Daten aus dem Worker per Queue an den Tk-Thread. [UCI-Vertrag](UCI_CONTRACT.md)
 
 ## Vertragsgrenzen
 

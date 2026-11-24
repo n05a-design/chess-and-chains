@@ -12,11 +12,27 @@ SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
 import tkinter as tk
+import tkinter.font as tkfont
 from typing import Callable, Sequence
 
 from glide_shell.custom_controls import rounded_rect_points
+from glide_shell.window_lifetime import AfterScope
 
-from .theme import ThemePalette, clip_button_text, font_spec
+from .theme import ThemePalette, font_spec
+
+
+def _fit_text(text: str, max_px: int, font: tkfont.Font) -> str:
+    """Return text fitted to max_px width, adding ellipsis only if truncated."""
+    if font.measure(text) <= max_px:
+        return text
+    ellipsis = "…"
+    el_w = font.measure(ellipsis)
+    if el_w >= max_px:
+        return ""
+    cur = text
+    while cur and font.measure(cur) + el_w > max_px:
+        cur = cur[:-1]
+    return cur + ellipsis
 
 
 class GlideDropdown(tk.Canvas):
@@ -59,6 +75,7 @@ class GlideDropdown(tk.Canvas):
         self._popup: tk.Toplevel | None = None
         self._popup_canvas: tk.Canvas | None = None
         self._popup_hover_idx: int = -1
+        self._after_scope = AfterScope(self)
 
         self.bind("<Configure>", lambda _e: self._redraw())
         self.bind("<Enter>", self._on_enter)
@@ -76,6 +93,7 @@ class GlideDropdown(tk.Canvas):
     def _on_destroy(self, event: tk.Event[tk.Misc]) -> None:
         if event.widget is self:
             self._close_popup()
+            self._after_scope.close()
             try:
                 self._variable.trace_remove("write", self._trace_id)
             except tk.TclError:
@@ -179,7 +197,9 @@ class GlideDropdown(tk.Canvas):
         self.create_polygon(pts, smooth=True, fill=fill, outline=outline, width=outline_w)
 
         fnt = font_spec(10, scale_choice=self._scale_choice, weight_choice=self._weight_choice)
-        label = clip_button_text(self._current_label())
+        f = tkfont.Font(font=fnt)
+        avail_w = max(20, w - 36)
+        label = _fit_text(self._current_label(), avail_w, f)
         text_color = p.muted_ink if disabled else p.ink
         self.create_text(
             12,
@@ -204,9 +224,21 @@ class GlideDropdown(tk.Canvas):
             return
         self._close_popup()
         p = self._palette
-        w = max(self.winfo_width(), int(self.cget("width")))
+
+        fnt = font_spec(10, scale_choice=self._scale_choice, weight_choice=self._weight_choice)
+        f = tkfont.Font(font=fnt)
+        max_label_w = max((f.measure(lbl) for _, lbl in self._choices), default=80)
+        needed_w = max_label_w + 32  # 12 left padding + 20 right margin
+        w = max(self.winfo_width(), int(self.cget("width")), needed_w)
+
+        screen_w = max(400, self.winfo_screenwidth())
+        screen_h = max(300, self.winfo_screenheight())
+        w = min(w, screen_w - 32)
+
         row_h = 28
         total_h = len(self._choices) * row_h + 6
+        if total_h > screen_h - 32:
+            total_h = screen_h - 32
 
         popup = tk.Toplevel(self)
         popup.withdraw()
@@ -218,10 +250,14 @@ class GlideDropdown(tk.Canvas):
         popup.configure(background=p.input_border)
 
         x = self.winfo_rootx()
+        if x + w > screen_w - 16:
+            x = max(16, screen_w - w - 16)
+        x = max(16, x)
+
         y = self.winfo_rooty() + max(self.winfo_height(), int(self.cget("height"))) + 2
-        screen_h = self.winfo_screenheight()
         if y + total_h > screen_h - 16:
             y = max(16, self.winfo_rooty() - total_h - 2)
+        y = max(16, y)
 
         canvas = tk.Canvas(
             popup,
@@ -251,7 +287,7 @@ class GlideDropdown(tk.Canvas):
         popup.bind("<Down>", self._on_popup_down)
         popup.bind("<Return>", self._on_popup_return)
         popup.bind("<space>", self._on_popup_return)
-        popup.bind("<FocusOut>", lambda _e: self.after(10, self._check_focus_out))
+        popup.bind("<FocusOut>", lambda _e: self._after_scope.after(15, self._check_focus_out))
 
         popup.geometry(f"{w}x{total_h}+{x}+{y}")
         popup.deiconify()
@@ -277,6 +313,7 @@ class GlideDropdown(tk.Canvas):
         w = int(canvas.cget("width"))
         row_h = 28
         fnt = font_spec(10, scale_choice=self._scale_choice, weight_choice=self._weight_choice)
+        f = tkfont.Font(font=fnt)
         current_val = self._variable.get()
 
         for idx, (val, label) in enumerate(self._choices):
@@ -289,11 +326,11 @@ class GlideDropdown(tk.Canvas):
             elif is_selected:
                 canvas.create_rectangle(3, y0, w - 3, y1, fill=p.acetate, outline="")
             text_color = p.action_new_bg if is_selected else p.ink
-            clipped = clip_button_text(label)
+            display_label = _fit_text(label, max(20, w - 24), f)
             canvas.create_text(
                 12,
                 (y0 + y1) // 2,
-                text=clipped,
+                text=display_label,
                 anchor="w",
                 fill=text_color,
                 font=fnt,
@@ -336,6 +373,7 @@ class GlideDropdown(tk.Canvas):
             self._on_change(val)
 
     def _close_popup(self, *, refocus: bool = False) -> None:
+        self._after_scope.cancel_all()
         popup = self._popup
         self._popup = None
         self._popup_canvas = None

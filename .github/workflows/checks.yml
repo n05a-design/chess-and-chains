@@ -68,6 +68,8 @@ jobs:
         run: python -m unittest tests.test_puzzles -v
       - name: Storage
         run: python -m unittest tests.test_storage -v
+      - name: Captured material calculations
+        run: python -m unittest tests.test_captured_material -v
       - name: Local 3D board bridge and art contract
         run: python -m unittest tests.test_marble_3d -v
       - name: Foundation checks on this platform (path handling, e.g. macOS /private symlinks)
@@ -92,7 +94,18 @@ jobs:
       - name: Install Xvfb
         run: sudo apt-get update && sudo apt-get install -y xvfb
       - name: GUI tests (skips are failures here)
-        run: xvfb-run -a python -m unittest tests.test_board_ui tests.test_app_integration -v
+        # GUI tests are run serially to avoid Tk display conflicts; test_board_ui
+        # and test_app_integration must come first (they create the fewest Toplevel
+        # windows), then the deeper integration suites.
+        run: |
+          xvfb-run -a python -m unittest \
+            tests.test_board_ui \
+            tests.test_app_integration \
+            tests.test_final_audit \
+            tests.test_glide_shell_integration \
+            -v
+      - name: Glide Shell self-test (manifest + 13/13 checks)
+        run: xvfb-run -a python -m glide_shell.selftest
 
   gui-native:
     name: Tk GUI tests native (${{ matrix.os }}, py${{ matrix.python }})
@@ -111,8 +124,18 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - name: GUI tests
-        timeout-minutes: 3
-        run: python -c "import faulthandler, unittest; faulthandler.dump_traceback_later(90, exit=True); unittest.main(module=None)" tests.test_board_ui tests.test_app_integration -v
+        timeout-minutes: 5
+        # Serial execution required: each suite must complete before the next
+        # starts to prevent concurrent Tk root creation on Windows/macOS.
+        run: |
+          python -c "import faulthandler, unittest; faulthandler.dump_traceback_later(90, exit=True); unittest.main(module=None)" \
+            tests.test_board_ui \
+            tests.test_app_integration \
+            tests.test_final_audit \
+            tests.test_glide_shell_integration \
+            -v
+      - name: Glide Shell self-test (manifest + 13/13 checks)
+        run: python -m glide_shell.selftest
       - name: Native macOS FEN file panels
         if: runner.os == 'macOS'
         timeout-minutes: 2

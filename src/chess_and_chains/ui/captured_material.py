@@ -223,17 +223,18 @@ class CapturedMaterialBar(tk.Canvas):
             pill_x2 = pill_x1 + pill_w
             pill_y2 = pill_y1 + pill_h
 
-            # Resolve color with Themenfarbe:
+            # Resolve color with Themenfarbe — require WCAG AA (4.5:1) against actual pill background:
             accent = self._theme.brand_blue
-            cr = contrast_ratio(accent, bg)
-            if cr >= 3.0:
+            pill_bg = self._theme.tab_idle
+            pill_border = self._theme.line
+            cr_accent_on_pill = contrast_ratio(accent, pill_bg)
+            if cr_accent_on_pill >= 4.5:
                 text_color = accent
-                pill_bg = self._theme.hover if contrast_ratio(self._theme.hover, bg) < 2.0 else self._theme.tab_idle
-                pill_border = self._theme.line
-            else:
+            elif contrast_ratio(self._theme.ink, pill_bg) >= 4.5:
                 text_color = self._theme.ink
-                pill_bg = self._theme.tab_idle
-                pill_border = self._theme.line
+            else:
+                # Last resort: pick black or white
+                text_color = "#000000" if contrast_ratio("#000000", pill_bg) >= contrast_ratio("#FFFFFF", pill_bg) else "#FFFFFF"
 
             _draw_pill(
                 self,
