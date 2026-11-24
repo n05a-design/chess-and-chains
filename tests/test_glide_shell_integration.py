@@ -38,14 +38,21 @@ from chess_and_chains.engines.bot import EngineConfig, UCIBot  # noqa: E402
 from chess_and_chains.puzzles import load_demo_pack  # noqa: E402
 from chess_and_chains.storage import DataLayout, Settings, SettingsError, default_data_dir, load_settings  # noqa: E402
 from chess_and_chains.ui.app import ChessApp, EngineDialog, check_tk_version, create_app_host, launch  # noqa: E402
+from chess_and_chains.ui.appearance_dialog import AppearanceDialog  # noqa: E402
 from chess_and_chains.ui.pieces import PIECE_FILE_NAMES, validate_svg_piece_set  # noqa: E402
 from chess_and_chains.ui.theme import (  # noqa: E402
     CONTRAST_DARK_THEME,
     CONTRAST_LIGHT_THEME,
     DARK_THEME,
+    DOPAMINE_THEME,
+    GLASS_DARK_THEME,
+    GLASS_LIGHT_THEME,
     LIGHT_THEME,
     MINIMAL_DARK_THEME,
     MINIMAL_LIGHT_THEME,
+    PIXEL_THEME,
+    RoundedButton,
+    RoundedSurfaceCard,
     THEME_MODES,
     THEMES,
     clip_button_text,
@@ -509,8 +516,16 @@ class GlideShellIntegrationTests(unittest.TestCase):
             if about.winfo_exists():
                 about.destroy()
 
-    def test_27_wcag_contrast_across_all_six_glide_themes(self):
-        self.assertEqual(len(THEMES), 7)  # 6 distinct + w06-provisional alias
+    def test_27_wcag_contrast_across_all_ten_glide_themes(self):
+        self.assertEqual(len(THEMES), 11)  # 10 distinct Glide themes + w06-provisional alias
+        self.assertIs(THEMES["glass-light"], GLASS_LIGHT_THEME)
+        self.assertIs(THEMES["glass-dark"], GLASS_DARK_THEME)
+        self.assertIs(THEMES["dopamine"], DOPAMINE_THEME)
+        self.assertIs(THEMES["pixel"], PIXEL_THEME)
+        self.assertIs(THEMES["contrast-light"], CONTRAST_LIGHT_THEME)
+        self.assertIs(THEMES["contrast-dark"], CONTRAST_DARK_THEME)
+        self.assertIs(THEMES["minimal-light"], MINIMAL_LIGHT_THEME)
+        self.assertIs(THEMES["minimal-dark"], MINIMAL_DARK_THEME)
         surfaces = ("window", "paper", "acetate", "hover")
         inks = ("ink", "muted_ink", "view_title", "confirm", "delete")
         for name, pal in THEMES.items():
@@ -553,6 +568,73 @@ class GlideShellIntegrationTests(unittest.TestCase):
         # Aligned checkmark menu entries
         self.assertTrue(action_picker.check_label("Item", True).startswith("✓ "))
         self.assertTrue(action_picker.check_label("Item", False).startswith("    "))
+
+    def test_29_rounded_cards_carrier_blending_and_appearance_customization(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            layout = DataLayout(Path(tmp) / "data")
+            root = create_root(self)
+            app = ChessApp(root, data_layout=layout, locale="en")
+            self.addCleanup(app.close)
+            root.deiconify()
+            root.update()
+
+            for card in (app._side_slot, app._board_slot, app._rail_slot, app.header_card):
+                self.assertIsInstance(card, RoundedSurfaceCard)
+                self.assertEqual(card.bg_color, app.theme.window)
+                self.assertIn(card.fill_color, (app.theme.paper, app.theme.acetate))
+                self.assertEqual(card.radius, 12)
+            self.assertIsInstance(app.atlas_section, RoundedSurfaceCard)
+            self.assertEqual(app.atlas_section.bg_color, app.theme.paper)
+            self.assertEqual(app.atlas_section.fill_color, app.theme.paper)
+            self.assertEqual(app.atlas_section.radius, 12)
+
+            for btn in (app.undo_button, app.theme_toggle_button, app.tab_rail.children["play"]):
+                self.assertIsInstance(btn, RoundedButton)
+                self.assertEqual(tk.Canvas.cget(btn, "bg"), app.theme.paper)
+                self.assertNotEqual(tk.Canvas.cget(btn, "bg"), btn.cget("background"))
+
+            pal = app.apply_appearance(
+                theme_id="glass-dark",
+                accent_choice="export",
+                background_choice="accent",
+                radius_choice="large",
+                font_scale_choice="large",
+                font_weight_choice="bold",
+                animations_enabled=False,
+                hints_visible=False,
+                persist=True,
+            )
+            root.update()
+            self.assertIs(app.theme, pal)
+            self.assertEqual(app._corner_radius, 18)
+            self.assertEqual(app.header_card.radius, 18)
+            self.assertIn("bold", str(app.move_list.cget("font")).lower())
+
+            loaded, warning = load_settings(layout.settings)
+            self.assertIsNone(warning)
+            self.assertEqual(loaded.theme_id, "glass-dark")
+            self.assertEqual(loaded.accent_choice, "export")
+            self.assertEqual(loaded.background_choice, "accent")
+            self.assertEqual(loaded.radius_choice, "large")
+            self.assertEqual(loaded.font_scale_choice, "large")
+            self.assertEqual(loaded.font_weight_choice, "bold")
+            self.assertFalse(loaded.animations_enabled)
+            self.assertFalse(loaded.hints_visible)
+
+            reloaded = ChessApp(create_root(self), data_layout=layout, locale="en")
+            self.addCleanup(reloaded.close)
+            self.assertEqual(reloaded.settings.theme_id, "glass-dark")
+            self.assertEqual(reloaded._corner_radius, 18)
+            self.assertEqual(reloaded.theme.window, pal.window)
+
+            dialog = app.open_appearance_dialog(modal=False)
+            self.assertIsInstance(dialog, AppearanceDialog)
+            dialog.theme_var.set("dopamine")
+            dialog._update_preview()
+            dialog._apply()
+            root.update()
+            self.assertEqual(app.settings.theme_id, "dopamine")
+            self.assertFalse(dialog.winfo_exists())
 
 
 if __name__ == "__main__":

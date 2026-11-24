@@ -4,7 +4,7 @@
 
 Auf GitHub wird entwickelt und erklärt, wie die fertige App funktionieren soll. [Englische README](../../README.md) und [deutsche README](../../README.de.md) zeigen Zielbild und aktuellen Entwicklungsstand. Nach Fertigstellung und Freigabe erscheint die App auf GitHub sowie im hauseigenen Software-Katalog kostenlos neben den anderen Programmen. Launch-Materialien werden erst zu einem späteren Zeitpunkt beauftragt. [Vertriebsentscheidung](../decisions/ADR-006_DISTRIBUTION.md)
 
-Für den aktuellen Stand V.0.2.0 gilt der Inhalt der beiden READMEs. Der Prototyp
+Für den aktuellen Stand V.0.3.0 gilt der Inhalt der beiden READMEs. Der Prototyp
 enthält lokales Spiel, Demo-Rätsel und V.02-SVG-Figuren. Die folgenden Texte und
 Claims sind historische Entwürfe aus W04.
 

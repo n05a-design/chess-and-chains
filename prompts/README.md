@@ -1,6 +1,6 @@
 # Copilot-Auftragskette
 
-Die Prompts beschreiben Aufträge und Abnahmeziele. Für einen neuen Checkout zuerst `00_MASTER_BOOTSTRAP.md` als Inventur verwenden. Vor einer Fortsetzung den tatsächlichen [Status je Paket](../docs/roadmap/WORK_PACKAGES.md) und die [aktuelle Reihenfolge](../docs/roadmap/ROADMAP.md) prüfen. Das [Dokumentations- und Ablageaudit](../docs/reports/2026-11-21_W11-dokumentations-und-ablageaudit.md) beschreibt den aktuellen Stand, der [Standabgleich V.0.2.0](../docs/reports/2026-11-21_W11-v0.0.1-standsaudit.md) die Einführung der Version.
+Die Prompts beschreiben Aufträge und Abnahmeziele. Für einen neuen Checkout zuerst `00_MASTER_BOOTSTRAP.md` als Inventur verwenden. Vor einer Fortsetzung den tatsächlichen [Status je Paket](../docs/roadmap/WORK_PACKAGES.md) und die [aktuelle Reihenfolge](../docs/roadmap/ROADMAP.md) prüfen. Das [Dokumentations- und Ablageaudit](../docs/reports/2026-11-21_W11-dokumentations-und-ablageaudit.md) beschreibt den aktuellen Stand, der [Standabgleich V.0.3.0](../docs/reports/2026-11-21_W11-v0.0.1-standsaudit.md) die Einführung der Version.
 
 | Reihenfolge | Prompt | Ergebnis |
 | --- | --- | --- |

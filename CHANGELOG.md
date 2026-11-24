@@ -1,6 +1,27 @@
 # Changelog
 
-## V.0.2.0 – Full Glide Design Language Integration (2026-11-24)
+## V.0.3.0 – Full Glide v1.0.2 Design Language, Rounded Canvas Cards & Appearance Customization (2026-11-24)
+
+### Design & Tokens
+- **`ui/theme.py` updated to Glide v1.0.2 / Glide Shell 0.6.2 neutral design tokens**: removed pre-Glide yellow-white/parchment defaults (`#FAF6EC`, `#EFE8D8`, `#FFFCF4`, `#F4C400`) from UI palettes and `docs/design/brand-tokens.json`; primary accent is Cobalt blue (`#086FD6` light / `#2C95FF` dark), keeping `#9E4AC8` excluded.
+- **All 10 Glide themes + `system` + `w06-provisional` alias**: `light`, `dark`, `glass-light`, `glass-dark`, `dopamine`, `pixel`, `contrast-light`, `contrast-dark`, `minimal-light`, `minimal-dark`, each verified at >= 4.5:1 WCAG 2.2 AA contrast.
+- **Full customization API**: 8 `ACCENT_CHOICES`, 10 `BACKGROUND_CHOICES` (`with_accent`, `with_background`, `customize_palette`), 4 `RADIUS_CHOICES` (`18`, `12`, `6`, `0` px), 3 `FONT_SCALE_CHOICES` (`0.9`, `1.0`, `1.15`), and 3 `FONT_WEIGHT_CHOICES` (`auto`, `standard`, `bold`), plus `animations_enabled` and `hints_visible` persisted in `settings.py` and localized in `i18n/catalog.py` (DE/EN).
+
+### Canvas Components & UI Widgets
+- **`RoundedSurfaceCard` (`ui/theme.py`)**: rounded Canvas surfaces with `fill_color`, `outline_color`, dynamic `radius`, and `bg_color` matching the parent window/paper for `header_card`, `_side_slot`, `_board_slot`, `_rail_slot`, and `atlas_section` (replacing rectangular `_sheet_pair` frames).
+- **`RoundedButton` (`ui/theme.py`)**: seamless `carrier_bg` Canvas corner blending, `button_colors`, natural auto-height, and stretched/un-stretched modes across sidebar action buttons, header buttons, and `TabRail` tabs (with `takefocus=False` on header buttons and focus handoff preserved on `TabRail`).
+- **`AppearanceDialog` (`ui/appearance_dialog.py`)**: modal customization dialog (`Cmd/Ctrl+,`, header button, View menu) with live `RoundedSurfaceCard`/`RoundedButton` preview calling `ChessApp.apply_appearance()`.
+- **Full component theming**: `board.py`, `marble_board.py`, `atlas.py`, `dialogs.py`, `replay.py`, and `text_board.py` adopt `ThemePalette`; `ReplayDialog` and `TextBoardDialog` adopt `ThemedAutoScrollbar`.
+
+### Verification
+- **Full test suite**: 276/276 tests passing (`PYTHONPATH=src python3 -m unittest discover -s tests -q`), including WCAG coverage across all 10 distinct Glide themes (`test_27`) and rounded-card / carrier-blending / `AppearanceDialog` round-trip tests (`test_29`).
+- **Governance & Policy checks**: `scripts/verify_starter.py`, `scripts/check_policy.py`, and `scripts/verify_document_links.py` passing.
+
+## V.0.2.0 – Full Glide Design Language (ttk Styles, Tokens, Dark/Light) (2026-11-24)
+
+(Former V.0.3.0 content — see above for the definitive V.0.3.0 changelog.)
+
+
 
 - **`install_ttk_theme(root, palette)`** in `theme.py`: configures all `ttk` widget styles
   (`TButton`, `TEntry`, `TLabel`, `TFrame`, `TCheckbutton`, `TRadiobutton`, `TScrollbar`,

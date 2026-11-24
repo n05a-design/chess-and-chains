@@ -13,7 +13,7 @@ import tkinter as tk
 from ..chess import Color, Piece
 from .board import BoardCanvas, screen_cell
 from .piece_contract import PIECE_FILE_NAMES
-from .theme import CHROME_YELLOW, INK, PAPER, WINDOW
+from .theme import ThemePalette
 
 REFERENCE_PIXELS = 160
 ANGLE = -pi / 12
@@ -81,7 +81,12 @@ class MarbleBoardCanvas(BoardCanvas):
         self._press_point = None
         self._drag_active = False
         self._drag_pointer = None
-        self.configure(background=WINDOW if enabled else PAPER)
+        self.configure(background=self._theme.window if enabled else self._theme.acetate)
+        self.redraw()
+
+    def set_theme(self, theme: ThemePalette) -> None:
+        self._theme = theme
+        self.configure(background=theme.window if self.marble else theme.acetate)
         self.redraw()
 
     def _image(self, name: str) -> tk.PhotoImage:
@@ -151,21 +156,23 @@ class MarbleBoardCanvas(BoardCanvas):
                                 self._point(*start, -BOARD_DEPTH), fill=color, tags=("marble-side",))
         self.create_image(left, top, image=self._image(self.orientation), anchor="nw", tags=("marble-board",))
 
+        t = self._theme
         if self._last_move is not None:
             for square in (self._last_move.from_square, self._last_move.to_square):
-                self._outline(square, "#be8b00", 0.045, width=2, tags=("last-move",))
+                self._outline(square, t.last_move, 0.045, width=2, tags=("last-move",))
         if self.selected_square is not None:
-            self._outline(self.selected_square, CHROME_YELLOW, 0.095, width=3)
+            self._outline(self.selected_square, t.action_new_bg, 0.095, width=3)
         if self._state is not None:
             self._draw_marble_position()
         if self._has_focus and self._focused_square is not None:
-            self._outline(self._focused_square, PAPER, 0.12, width=4, tags=("square-focus",))
-            self._outline(self._focused_square, INK, 0.12, width=2, dash=(4, 3), tags=("square-focus",))
+            self._outline(self._focused_square, t.paper, 0.12, width=4, tags=("square-focus",))
+            self._outline(self._focused_square, t.focus_ink, 0.12, width=2, dash=(4, 3), tags=("square-focus",))
         self._draw_marble_coordinates()
         while len(self._images) > 48:
             self._images.popitem(last=False)
 
     def _draw_marble_position(self) -> None:
+        t = self._theme
         centers = [(self._point(c + 0.5, r + 0.5), square, piece)
                    for square, piece in enumerate(self._state.board) if piece is not None
                    for c, r in (screen_cell(square, self.orientation),)]
@@ -173,13 +180,13 @@ class MarbleBoardCanvas(BoardCanvas):
             if not self._drag_active or square != self._press_square:
                 self._disk(x, y, piece)
         for target in {move.to_square for move in self._legal_moves if move.from_square == self.selected_square}:
-            self._outline(target, PAPER, 0.18, width=4)
-            self._outline(target, INK, 0.18, width=2, tags=("legal-target",))
+            self._outline(target, t.paper, 0.18, width=4)
+            self._outline(target, t.ink, 0.18, width=2, tags=("legal-target",))
         if self._hint_square is not None:
-            self._outline(self._hint_square, PAPER, 0.09, width=4, tags=("hint",))
-            self._outline(self._hint_square, INK, 0.09, width=2, dash=(3, 3), tags=("hint",))
+            self._outline(self._hint_square, t.paper, 0.09, width=4, tags=("hint",))
+            self._outline(self._hint_square, t.focus_ink, 0.09, width=2, dash=(3, 3), tags=("hint",))
         if self._in_check:
-            self._outline(self._state.king_square(self._state.turn), "#bd2e23", 0.07, width=3)
+            self._outline(self._state.king_square(self._state.turn), t.brand_red, 0.07, width=3)
         if self._drag_active and self._drag_pointer and self._press_square is not None:
             piece = self._state.board[self._press_square]
             if piece is not None:
@@ -187,11 +194,13 @@ class MarbleBoardCanvas(BoardCanvas):
 
     def _draw_marble_coordinates(self) -> None:
         font = ("TkFixedFont", -max(8, int(self._square_size * 0.21)), "bold")
+        t = self._theme
+        coord_color = t.paper if not t.is_dark else t.ink
         for i in range(8):
             rank = 8 - i if self.orientation == "white" else i + 1
             file = "abcdefgh"[i if self.orientation == "white" else 7 - i]
-            self.create_text(*self._point(-0.16, i + 0.5), text=str(rank), fill=PAPER, font=font)
-            self.create_text(*self._point(i + 0.5, 8.15), text=file, fill=PAPER, font=font)
+            self.create_text(*self._point(-0.16, i + 0.5), text=str(rank), fill=coord_color, font=font)
+            self.create_text(*self._point(i + 0.5, 8.15), text=file, fill=coord_color, font=font)
 
     def _square_at(self, x: float, y: float) -> int | None:
         if not self.marble:

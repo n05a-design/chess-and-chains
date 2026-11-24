@@ -15,6 +15,7 @@ from glide_shell import desktop_adapter, modal_session, text_fit
 from ..chess import ChessError, GameState, to_fen
 from ..i18n import Translator
 from ..storage.exchange import parse_fen_text, read_fen_file, write_fen_file
+from .theme import LIGHT_THEME, ThemePalette
 
 
 def bind_button_enter(button: tk.Button | ttk.Button | ttk.Checkbutton) -> None:
@@ -32,10 +33,13 @@ class PositionDialog(tk.Toplevel):
     def __init__(
         self, parent: tk.Tk, translator: Translator, position: GameState,
         confirm_replacement: Callable[[tk.Misc], bool],
+        *, theme: ThemePalette | None = None,
     ) -> None:
         super().__init__(parent)
         self.withdraw()
         self._remembered_focus = modal_session.remember_focus(parent, self, parent)
+        self._theme = theme or LIGHT_THEME
+        self.configure(background=self._theme.acetate)
         self.title(translator("position.title"))
         if parent.winfo_viewable():
             self.transient(parent)

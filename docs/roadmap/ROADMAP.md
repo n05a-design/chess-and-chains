@@ -1,6 +1,6 @@
 # Chess & Chains – Roadmap
 
-**V.0.2.0 · Stand 24.11.2026 · geprüfte Basis `main` = `8d5bcc6` (PR #21).** Der lokale Desktop-Prototyp ist als Entwicklungsstand versioniert und nicht veröffentlicht. Der [Merge-Lauf von PR #21](https://github.com/n05a-design/chess-and-chains/actions/runs/44972693793) bestand 14 von 14 Jobs auf Windows, macOS und Linux. Status und offene Gate-Punkte je Paket stehen in den [Work Packages](WORK_PACKAGES.md), die Anforderungen im [MVP-Vertrag](../product/MVP_CONTRACT.md).
+**V.0.3.0 · Stand 24.11.2026 · geprüfte Basis `main` = `8d5bcc6` (PR #21).** Der lokale Desktop-Prototyp ist als Entwicklungsstand versioniert und nicht veröffentlicht. Der [Merge-Lauf von PR #21](https://github.com/n05a-design/chess-and-chains/actions/runs/44972693793) bestand 14 von 14 Jobs auf Windows, macOS und Linux. Status und offene Gate-Punkte je Paket stehen in den [Work Packages](WORK_PACKAGES.md), die Anforderungen im [MVP-Vertrag](../product/MVP_CONTRACT.md).
 
 ## Wo das Projekt steht
 
@@ -50,8 +50,8 @@ Vorschlag zur Fortschreibung der historischen Zielmarken. Die Nummern gelten ers
 
 | Meilenstein | Inhalt | Ausgangskriterium | Blockiert durch |
 | --- | --- | --- | --- |
-| 0.2.0 · Interner Prototyp | Regeln, Brett, Bibliothek, Demo-Rätsel, DE/EN | W05, W06, W09, W10 ohne offene native Prüfpunkte; Owner-Abnahme der Bedienung | Native Abnahme, finale Bretter (optional als 0.1.x nachziehen) |
-| 0.2.0 · Offline-Bot | Echte lokale Engine, kalibrierte Stufen | Vollständige Offline-Partie mit identifiziertem Binary; Kalibrierbericht | ADR-001, ADR-007, Q-021, Q-023 |
+| 0.3.0 · Interner Prototyp | Regeln, Brett, Bibliothek, Demo-Rätsel, DE/EN | W05, W06, W09, W10 ohne offene native Prüfpunkte; Owner-Abnahme der Bedienung | Native Abnahme, finale Bretter (optional als 0.1.x nachziehen) |
+| 0.3.0 · Offline-Bot | Echte lokale Engine, kalibrierte Stufen | Vollständige Offline-Partie mit identifiziertem Binary; Kalibrierbericht | ADR-001, ADR-007, Q-021, Q-023 |
 | 0.3.0 · Puzzle-MVP | Mitgeliefertes Rätselpaket, Profile, Fortschritt | Realdatenimport mit Bericht; P-05/P-06 erfüllt | Q-008, Q-009, Q-012, Q-022, ADR-003, ADR-004 |
 | 0.9.0 · Release Candidate | Installer Windows/macOS, Lizenzhinweise, SBOM | Installations-, Update-, Deinstallations- und Offline-Nachweise je Plattform | ADR-005, ADR-006, Q-007, Q-016 |
 | 1.0.0 · Release | GitHub Release und Software-Katalog | Ausdrückliches Owner-Release-Gate | Alle vorherigen |
@@ -115,8 +115,8 @@ Die Aufwandswerte stammen aus der ursprünglichen Planung. Die Tabelle bildet Ab
 ## Historische Zielmarken und Versionspflege
 
 - **F0**: historisches Planungsstarterpaket.
-- **v0.2.0**: kontrollierter interner Board-/Regeln-Prototyp.
-- **v0.2.0**: Offline-Bot-Prototyp nach Lizenzentscheidung.
+- **v0.3.0**: kontrollierter interner Board-/Regeln-Prototyp.
+- **v0.3.0**: Offline-Bot-Prototyp nach Lizenzentscheidung.
 - **v0.3.0**: Puzzle-MVP + Profile/Save.
 - **v0.9.0**: Release Candidate mit Plattformabnahmen.
 - **v1.0.0**: Erst nach explizitem Owner-Release-Gate.
