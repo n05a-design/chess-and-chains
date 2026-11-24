@@ -436,3 +436,324 @@ def install_shell_providers() -> None:
     """Register Connected System typography providers on ``glide_shell.custom_controls``."""
     custom_controls.set_font_provider(_host_font_provider)
     custom_controls.set_ink_provider(_host_ink_provider)
+
+
+# ---------------------------------------------------------------------------
+# Glide Design Language – ttk.Style integration
+# ---------------------------------------------------------------------------
+# Tkinter's ttk widget set uses named styles which can be configured centrally.
+# We define a "Glide.TButton", "Glide.New.TButton", "Glide.TEntry", etc., so
+# that any dialog or panel using ttk widgets inherits the full Glide visual
+# language automatically.  Call install_ttk_theme(root, palette) once after
+# the Tk root is created, then again whenever the palette switches.
+#
+# Corner radius note: ttk on macOS Aqua delegates drawing to the native theme
+# engine, so true pixel-level rounding is OS-controlled.  On Windows/Linux the
+# clam base theme allows partial rounding via padding tricks.  We use the best
+# cross-platform approach (relief="flat" + generous padding) everywhere and
+# expose rounded_rect_points from custom_controls for Canvas-based widgets.
+
+def _ttk_style(root: "tk.Misc | None" = None) -> "ttk.Style":
+    """Return a ``ttk.Style`` associated with *root*'s interpreter.
+
+    A new instance is created each call; ``ttk.Style`` instances are cheap
+    view objects over the per-interpreter style engine.
+    """
+    from tkinter import ttk as _ttk
+    return _ttk.Style(root)
+
+
+def install_ttk_theme(root: "tk.Misc", palette: "ThemePalette") -> None:
+    """Apply the full Glide design language to all ttk widget styles.
+
+    Call once after root creation and again on every palette switch.
+    Covers TButton, TEntry, TLabel, TFrame, TCheckbutton, TRadiobutton,
+    TScrollbar, TSeparator, TCombobox and their Glide-specific variants.
+    """
+    from tkinter import ttk as _ttk
+
+    style = _ttk_style(root)
+
+    p = palette
+    body_font = ("TkDefaultFont", FONT_SIZES["body"])
+    body_bold = ("TkDefaultFont", FONT_SIZES["body"], "bold")
+    caption_font = ("TkDefaultFont", FONT_SIZES["caption"])
+    caption_bold = ("TkDefaultFont", FONT_SIZES["caption"], "bold")
+    section_font = ("TkDefaultFont", FONT_SIZES["section"], "bold")
+
+    # Shared padding derived from Glide spacing tokens
+    btn_padx = SPACING[10]
+    btn_pady = SPACING[7]
+    field_padx = SPACING[8]
+    field_pady = SPACING[5]
+
+    # ------------------------------------------------------------------
+    # TFrame / TLabelframe
+    # ------------------------------------------------------------------
+    style.configure("TFrame", background=p.acetate)
+    style.configure("Glide.TFrame", background=p.acetate)
+    style.configure("Glide.Paper.TFrame", background=p.paper)
+    style.configure("Glide.Window.TFrame", background=p.window)
+    style.configure("TLabelframe", background=p.acetate)
+    style.configure("TLabelframe.Label", background=p.acetate, foreground=p.ink,
+                    font=caption_bold)
+
+    # ------------------------------------------------------------------
+    # TLabel
+    # ------------------------------------------------------------------
+    style.configure("TLabel", background=p.acetate, foreground=p.ink, font=body_font)
+    style.configure("Glide.TLabel", background=p.acetate, foreground=p.ink, font=body_font)
+    style.configure("Glide.Caption.TLabel", background=p.acetate, foreground=p.ink,
+                    font=caption_font)
+    style.configure("Glide.Caption.Bold.TLabel", background=p.acetate, foreground=p.ink,
+                    font=caption_bold)
+    style.configure("Glide.Muted.TLabel", background=p.acetate, foreground=p.muted_ink,
+                    font=caption_font)
+    style.configure("Glide.Section.TLabel", background=p.acetate, foreground=p.ink,
+                    font=section_font)
+    style.configure("Glide.Title.TLabel", background=p.paper, foreground=p.view_title,
+                    font=("TkDefaultFont", FONT_SIZES["title"], "bold"))
+    style.configure("Glide.Paper.TLabel", background=p.paper, foreground=p.ink, font=body_font)
+
+    # ------------------------------------------------------------------
+    # TButton – neutral (paper surface)
+    # ------------------------------------------------------------------
+    style.configure(
+        "Glide.TButton",
+        background=p.paper, foreground=p.ink,
+        font=body_bold,
+        padding=(btn_padx, btn_pady),
+        relief="flat", borderwidth=0,
+        anchor="w",
+    )
+    style.map(
+        "Glide.TButton",
+        background=[
+            ("disabled", p.acetate),
+            ("pressed", p.ink),
+            ("active", p.hover),
+        ],
+        foreground=[
+            ("disabled", p.disabled_ink),
+            ("pressed", p.acetate),
+            ("active", p.ink),
+        ],
+        relief=[("pressed", "flat")],
+    )
+
+    # TButton – new/primary (chrome yellow)
+    style.configure(
+        "Glide.New.TButton",
+        background=p.action_new_bg, foreground=p.action_new_fg,
+        font=body_bold,
+        padding=(btn_padx, btn_pady),
+        relief="flat", borderwidth=0,
+        anchor="w",
+    )
+    style.map(
+        "Glide.New.TButton",
+        background=[
+            ("disabled", p.acetate),
+            ("pressed", p.ink),
+            ("active", p.hover),
+        ],
+        foreground=[
+            ("disabled", p.disabled_ink),
+            ("pressed", p.acetate),
+            ("active", p.ink),
+        ],
+    )
+
+    # TButton – header (compact, caption-sized)
+    style.configure(
+        "Glide.Header.TButton",
+        background=p.paper, foreground=p.ink,
+        font=caption_bold,
+        padding=(SPACING[10], SPACING[8]),
+        relief="flat", borderwidth=0,
+    )
+    style.map(
+        "Glide.Header.TButton",
+        background=[
+            ("disabled", p.acetate),
+            ("pressed", p.ink),
+            ("active", p.hover),
+        ],
+        foreground=[
+            ("disabled", p.disabled_ink),
+            ("pressed", p.acetate),
+            ("active", p.ink),
+        ],
+    )
+
+    # ------------------------------------------------------------------
+    # TEntry – input fields with Glide field radius token (applied via
+    # padding; true radius requires Canvas on Tk, but fieldbackground +
+    # borderwidth=1 flat achieves the Glide look on all platforms)
+    # ------------------------------------------------------------------
+    style.configure(
+        "Glide.TEntry",
+        fieldbackground=p.paper,
+        foreground=p.ink,
+        insertcolor=p.ink,
+        selectbackground=p.selection,
+        selectforeground=p.selection_text,
+        bordercolor=p.input_border,
+        lightcolor=p.input_border,
+        darkcolor=p.input_border,
+        relief="flat",
+        borderwidth=1,
+        padding=(field_padx, field_pady),
+        font=body_font,
+    )
+    style.map(
+        "Glide.TEntry",
+        fieldbackground=[("readonly", p.acetate), ("disabled", p.acetate)],
+        foreground=[("disabled", p.disabled_ink)],
+        bordercolor=[("focus", p.brand_blue), ("invalid", p.brand_red)],
+        lightcolor=[("focus", p.brand_blue)],
+        darkcolor=[("focus", p.brand_blue)],
+    )
+
+    # ------------------------------------------------------------------
+    # TCheckbutton / TRadiobutton
+    # ------------------------------------------------------------------
+    for style_name in ("Glide.TCheckbutton", "TCheckbutton"):
+        style.configure(
+            style_name,
+            background=p.acetate, foreground=p.ink,
+            font=body_font,
+            focuscolor=p.brand_blue,
+            indicatorcolor=p.paper,
+            indicatorrelief="flat",
+        )
+        style.map(
+            style_name,
+            background=[("active", p.acetate)],
+            foreground=[("disabled", p.disabled_ink)],
+            indicatorcolor=[
+                ("selected", p.action_new_bg),
+                ("pressed", p.hover),
+            ],
+        )
+
+    for style_name in ("Glide.TRadiobutton", "TRadiobutton"):
+        style.configure(
+            style_name,
+            background=p.acetate, foreground=p.ink,
+            font=body_font,
+            focuscolor=p.brand_blue,
+            indicatorcolor=p.paper,
+            indicatorrelief="flat",
+        )
+        style.map(
+            style_name,
+            background=[("active", p.acetate)],
+            foreground=[("disabled", p.disabled_ink)],
+            indicatorcolor=[
+                ("selected", p.action_new_bg),
+                ("pressed", p.hover),
+            ],
+        )
+
+    # ------------------------------------------------------------------
+    # TScrollbar – rendered via ThemedAutoScrollbar in custom_controls;
+    # configure the ttk version as well for dialogs using plain ttk.Scrollbar
+    # ------------------------------------------------------------------
+    for orient in ("Vertical.TScrollbar", "Horizontal.TScrollbar"):
+        style.configure(
+            orient,
+            background=p.acetate,
+            troughcolor=p.line,
+            arrowcolor=p.muted_ink,
+            bordercolor=p.acetate,
+            lightcolor=p.acetate,
+            darkcolor=p.acetate,
+            relief="flat",
+        )
+        style.map(
+            orient,
+            background=[("active", p.muted_ink), ("pressed", p.ink)],
+            arrowcolor=[("active", p.ink)],
+        )
+
+    # ------------------------------------------------------------------
+    # TSeparator
+    # ------------------------------------------------------------------
+    style.configure("TSeparator", background=p.line)
+    style.configure("Glide.TSeparator", background=p.line)
+
+    # ------------------------------------------------------------------
+    # TCombobox (used in some dialogs as an OptionMenu replacement)
+    # ------------------------------------------------------------------
+    style.configure(
+        "Glide.TCombobox",
+        fieldbackground=p.paper,
+        foreground=p.ink,
+        selectbackground=p.selection,
+        selectforeground=p.selection_text,
+        arrowcolor=p.ink,
+        bordercolor=p.input_border,
+        lightcolor=p.input_border,
+        darkcolor=p.input_border,
+        relief="flat",
+        padding=(field_padx, field_pady),
+        font=body_font,
+    )
+    style.map(
+        "Glide.TCombobox",
+        fieldbackground=[("readonly", p.paper)],
+        foreground=[("disabled", p.disabled_ink)],
+        bordercolor=[("focus", p.brand_blue)],
+    )
+
+    # Option menus (tk.OptionMenu) cannot use ttk styles directly; callers
+    # must call _apply_optionmenu_theme() on each individual widget.
+
+
+def apply_optionmenu_theme(menu_widget: "tk.Widget", palette: "ThemePalette") -> None:
+    """Apply Glide palette to a ``tk.OptionMenu`` and its dropdown menu."""
+    p = palette
+    menu_widget.configure(
+        background=p.paper,
+        foreground=p.ink,
+        activebackground=p.hover,
+        activeforeground=p.ink,
+        highlightthickness=1,
+        highlightbackground=p.input_border,
+        highlightcolor=p.brand_blue,
+        relief="solid",
+        borderwidth=1,
+        font=("TkDefaultFont", FONT_SIZES["body"]),
+    )
+    try:
+        dropdown = menu_widget["menu"]
+        dropdown.configure(
+            background=p.paper,
+            foreground=p.ink,
+            activebackground=p.selection,
+            activeforeground=p.selection_text,
+            font=("TkDefaultFont", FONT_SIZES["body"]),
+            borderwidth=1,
+            relief="solid",
+        )
+    except (tk.TclError, KeyError):
+        pass
+
+
+def apply_listbox_theme(listbox: "tk.Widget", palette: "ThemePalette") -> None:
+    """Apply Glide palette to a plain ``tk.Listbox``."""
+    p = palette
+    listbox.configure(
+        background=p.paper,
+        foreground=p.ink,
+        selectbackground=p.selection,
+        selectforeground=p.selection_text,
+        highlightthickness=1,
+        highlightbackground=p.input_border,
+        highlightcolor=p.brand_blue,
+        relief="flat",
+        borderwidth=0,
+        font=("TkDefaultFont", FONT_SIZES["body"]),
+        activestyle="none",
+    )

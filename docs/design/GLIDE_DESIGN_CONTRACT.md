@@ -50,3 +50,57 @@ Glide Shell ist ausschließlich technisches Desktop-Fundament. Die visuelle Prod
 
 - **Automatisierte Prüfungen:** Kontrastprüfung (`theme.contrast_ratio`), Fenstergeometrie (`window_geometry.clamp`), 2-Fenster-Layout-/Knopfschutz bei `860 × 700` und `1280 × 800`, 64-px-Symbolleiste, Kompaktmodus (`480 × 560`), Dichtestufen (1200 / 1000 / 800 / 700), Hover-Zustände, 24-Zeichen-Beschriftung und hohe Tk-Schriftskalierung in `tests/test_glide_shell_integration.py` und `tests/test_app_integration.py`.
 - **Manuelle Sichtabnahme (getrennt ausgewiesen):** Physische Prüfung unter Windows/macOS/Linux bei 100/150/200 % Systemskalierung und mit Screenreader (NVDA/VoiceOver).
+
+---
+
+## 5. ttk-Stile & Vollständige Glide-Designsprache (V.0.2.0)
+
+**Stand: 24.11.2026 · Implementierungsstatus: IMPLEMENTED · TESTED**
+
+### 5.1 Zentrale `install_ttk_theme(root, palette)` Funktion
+
+Registriert alle `ttk.Style`-Stile mit Glide-Tokens:
+
+| ttk-Stil | Verwendung |
+|---|---|
+| `Glide.TButton` | Neutrale Schaltflächen (`paper`-BG, hover via `style.map`) |
+| `Glide.New.TButton` | Primärschaltflächen (`action_new_bg`, z. B. Chrome Yellow) |
+| `Glide.Header.TButton` | Kompakte Header-Schaltflächen (caption-Schriftgröße) |
+| `Glide.TEntry` | Eingabefelder (flat, `input_border`, Fokus-`brand_blue`, invalid-`brand_red`) |
+| `Glide.TLabel` | Standard-Labels, plus Caption/Muted/Section/Title-Varianten |
+| `Glide.TFrame` / `Glide.Paper.TFrame` / `Glide.Window.TFrame` | Trägerflächen |
+| `Glide.TCheckbutton` / `Glide.TRadiobutton` | Auswahlsteuerelemente |
+| `Vertical.TScrollbar` / `Horizontal.TScrollbar` | Scrollleisten mit Glide-Farben |
+| `Glide.TSeparator` | Trennlinien in `theme.line` |
+| `Glide.TCombobox` | Vorbereitet für OptionMenu-Ersatz |
+
+### 5.2 `apply_optionmenu_theme(widget, palette)`
+
+Wendet Glide-Palette direkt auf ein `tk.OptionMenu` und sein Dropdown an.
+Wird für das Bot-Level-Auswahlmenü im Play-Panel verwendet.
+
+### 5.3 `apply_listbox_theme(widget, palette)`
+
+Wendet Glide-Palette auf `tk.Listbox` an:
+- `background = palette.paper`
+- `selectbackground = palette.selection`
+- `selectforeground = palette.selection_text`
+- `highlightthickness=1`, `highlightbackground = palette.input_border`
+- `activestyle="none"` (kein Unterstrich auf aktiver Zeile)
+
+### 5.4 Theme-Switch-Propagation
+
+`ChessApp.apply_theme()` ruft `install_ttk_theme(root, palette)` auf, bevor die
+Widget-Callbacks feuern. Dadurch werden alle `ttk`-Widgets automatisch neu eingefärbt
+ohne manuelle Einzelkonfiguration.
+
+### 5.5 Einschränkung: Border-Radius
+
+Echte Pixel-Radiusabrundung (`RADII["card"]=18`, `RADII["field"]=16`) ist für
+`tkinter.ttk`-Widgets auf macOS Aqua nicht direkt steuerbar (Rendering durch
+die native Theme-Engine). Die aktuell verfügbaren Annäherungen:
+- `relief="flat"` + großzügige `padding`-Werte erzeugen optisch das Glide-Profil.
+- Canvas-Widgets (Scrollbar, Scale, Board-Overlay) nutzen `rounded_rect_points()`
+  aus `glide_shell.custom_controls` für echte Pixel-Rundung.
+- Für vollständige Border-Radius-Unterstützung auf allen Plattformen wäre
+  `ttkbootstrap` oder ein eigenes Custom-Theme erforderlich (ADR-Entscheidung offen).

@@ -70,6 +70,7 @@ from .theme import (
     MUTED_INK,
     NORMAL_MIN,
     PAPER,
+    RADII,
     SHADOW,
     SIDEBAR_AUTO_NARROW_WIDTH,
     SIDEBAR_AUTO_RESTORE_WIDTH,
@@ -79,8 +80,11 @@ from .theme import (
     TAB_IDLE,
     WINDOW,
     ThemePalette,
+    apply_listbox_theme,
+    apply_optionmenu_theme,
     clip_button_text,
     install_shell_providers,
+    install_ttk_theme,
     resolve_theme,
     toggle_partner_theme,
 )
@@ -196,6 +200,7 @@ class ChessApp:
         else:
             self.settings, self.db = Settings(), None
         self.theme = resolve_theme(self.settings.theme_id, root)
+        install_ttk_theme(root, self.theme)
         self._theme_callbacks: list[Callable[[ThemePalette], None]] = []
         self._menus: list[tk.Menu] = []
         self._overflow_menu: tk.Menu | None = None
@@ -280,6 +285,7 @@ class ChessApp:
         palette = resolve_theme(theme_id, self.root)
         self.theme = palette
         self.root.configure(background=palette.window)
+        install_ttk_theme(self.root, palette)
         for callback in self._theme_callbacks:
             callback(palette)
         self.tab_rail.update_theme(palette)
@@ -1103,13 +1109,12 @@ class ChessApp:
         level_lbl.grid(row=0, column=0, sticky="w")
         self.level_menu = tk.OptionMenu(level_row, self.preset_var, *[self._preset_label(p.id) for p in self.presets],
                                         command=lambda _v: self._on_preset_changed())
-        self.level_menu.configure(background=theme.paper, foreground=theme.ink, highlightthickness=1,
-                                  relief="solid", borderwidth=1)
+        apply_optionmenu_theme(self.level_menu, theme)
         self.level_menu.grid(row=0, column=1, sticky="ew", padx=(8, 0))
         self._register_theme(lambda p: (
             level_row.configure(background=p.acetate),
             level_lbl.configure(background=p.acetate, foreground=p.ink),
-            self.level_menu.configure(background=p.paper, foreground=p.ink),
+            apply_optionmenu_theme(self.level_menu, p),
         ))
         row += 1
         self.new_game_button = self._button(panel, t("button.new_game"), self._new_game, role="new")
@@ -1274,14 +1279,11 @@ class ChessApp:
         list_frame.grid_rowconfigure(0, weight=1)
         list_frame.grid_columnconfigure(0, weight=1)
         self.move_list = tk.Listbox(
-            list_frame, background=theme.paper, foreground=theme.ink, selectbackground=theme.chrome_yellow,
-            selectforeground=theme.action_new_fg, font=("TkFixedFont", 11), relief="solid", borderwidth=1,
-            highlightthickness=2, highlightbackground=theme.paper, highlightcolor=theme.brand_blue,
-            exportselection=False,
+            list_frame, font=("TkFixedFont", 11), exportselection=False,
         )
+        apply_listbox_theme(self.move_list, theme)
         self.move_list.grid(row=0, column=0, sticky="nsew")
-        scrollbar = tk.Scrollbar(list_frame, orient="vertical", command=self.move_list.yview,
-                                 background=theme.chrome_yellow, troughcolor=theme.paper, activebackground=theme.ink)
+        scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=self.move_list.yview)
         scrollbar.grid(row=0, column=1, sticky="ns")
         self.move_list.configure(yscrollcommand=scrollbar.set)
         list_frame.grid_remove()
@@ -1291,11 +1293,7 @@ class ChessApp:
             panel.configure(background=p.acetate),
             title_lbl.configure(background=p.acetate, foreground=p.ink),
             list_frame.configure(background=p.acetate),
-            self.move_list.configure(
-                background=p.paper, foreground=p.ink, selectbackground=p.chrome_yellow,
-                selectforeground=p.action_new_fg, highlightbackground=p.paper, highlightcolor=p.brand_blue,
-            ),
-            scrollbar.configure(background=p.chrome_yellow, troughcolor=p.paper, activebackground=p.ink),
+            apply_listbox_theme(self.move_list, p),
         ))
 
     def _build_puzzle_panel(self) -> None:

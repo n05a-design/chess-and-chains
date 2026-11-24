@@ -53,7 +53,7 @@ class PositionDialog(tk.Toplevel):
         available = parent.winfo_width() if parent.winfo_viewable() else 500
         available_pixels = min(available, self.winfo_screenwidth()) - 64
         width = max(26, min(58, available_pixels // fixed_font.measure("0")))
-        self.entry = ttk.Entry(content, textvariable=self.draft, width=width, font="TkFixedFont")
+        self.entry = ttk.Entry(content, textvariable=self.draft, width=width, font="TkFixedFont", style="Glide.TEntry")
         self.entry.grid(row=1, column=0, columnspan=2, sticky="ew")
         self.entry.select_range(0, tk.END)
         self.entry.icursor(0)
@@ -74,7 +74,9 @@ class PositionDialog(tk.Toplevel):
             ("button.cancel", self._close, 7, 0),
             ("position.play", self._play, 7, 1),
         ):
-            button = ttk.Button(content, text=self.t(label), command=command)
+            is_primary = label == "position.play"
+            btn_style = "Glide.New.TButton" if is_primary else "Glide.TButton"
+            button = ttk.Button(content, text=self.t(label), command=command, style=btn_style)
             button.grid(row=row, column=column, sticky="ew", padx=(0, 4) if column == 0 else (4, 0), pady=3)
             bind_button_enter(button)
             if label == "position.play":

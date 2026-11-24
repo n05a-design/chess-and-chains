@@ -2,7 +2,7 @@
 
 **Status: PROPOSED, kein öffentlicher Download.**
 
-**V.0.1.0** ist der versionierte Entwicklungsstand. Die Quell- und Wheel-Version
+**V.0.2.0** ist der versionierte Entwicklungsstand. Die Quell- und Wheel-Version
 kann mit `--version` geprüft werden. Die Distribution wartet weiterhin auf die
 unten stehenden Gates. [Versionspflege](../governance/GOVERNANCE.md#projektversion)
 

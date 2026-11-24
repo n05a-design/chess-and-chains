@@ -1,5 +1,28 @@
 # Changelog
 
+## V.0.2.0 – Full Glide Design Language Integration (2026-11-24)
+
+- **`install_ttk_theme(root, palette)`** in `theme.py`: configures all `ttk` widget styles
+  (`TButton`, `TEntry`, `TLabel`, `TFrame`, `TCheckbutton`, `TRadiobutton`, `TScrollbar`,
+  `TSeparator`, `TCombobox`) with Glide design tokens — called on startup and on every theme switch.
+- **`apply_optionmenu_theme(widget, palette)`**: applies Glide palette to `tk.OptionMenu` and its
+  dropdown, used for the bot-level selector.
+- **`apply_listbox_theme(widget, palette)`**: applies Glide palette (paper background, semantic
+  selection colors, flat border, Glide font) to `tk.Listbox` widgets — used for the move-list panel.
+- **`RADII`** spacing tokens now explicitly imported in `app.py`; `SPACING` tokens consistently
+  applied to all widget padding/margins.
+- **Button styles**: `Glide.TButton` (neutral) and `Glide.New.TButton` (primary/chrome yellow)
+  applied to all `ttk.Button` instances in `dialogs.py`, `replay.py`, `text_board.py`.
+- **`Glide.TEntry`**: applied to FEN entry in `PositionDialog` with flat border, field background,
+  and Glide-aligned focus highlight.
+- **`move_list` scrollbar**: migrated from plain `tk.Scrollbar` to `ttk.Scrollbar` for consistent
+  Glide styling across all scroll areas.
+- **Replay & TextBoard dialogs**: Glide listbox defaults applied via `_style_listbox_from_ttk()`;
+  `Glide.TButton`/`Glide.New.TButton` styles used throughout.
+- **Dark/Light mode**: all six palettes (`light`, `dark`, `contrast-light`, `contrast-dark`,
+  `minimal-light`, `minimal-dark`) correctly propagate through `install_ttk_theme` on `apply_theme`.
+- **Test suite**: 275/275 passing (exit 0), zero regressions.
+
 ## V.0.1.0 – Glide Shell 0.6.2 Framework Integration & 2-Pane Responsive UI (2026-11-24)
 
 - Migrate entire desktop runtime onto **Glide Shell 0.6.2** (`AppHost`, `window_lifetime.AfterScope`, `modal_session`, `motion.Transitions`, `desktop_adapter`, `action_picker`, `system_appearance`, `window_geometry`, `runtime_paths`, `text_fit`).

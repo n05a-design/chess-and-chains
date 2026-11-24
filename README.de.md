@@ -1,6 +1,6 @@
 # Chess & Chains
 
-**V.0.1.0 · Entwicklungsstand.** [Änderungsverlauf](CHANGELOG.md) · [Versionspflege](docs/governance/GOVERNANCE.md#projektversion)
+**V.0.2.0 · Entwicklungsstand.** [Änderungsverlauf](CHANGELOG.md) · [Versionspflege](docs/governance/GOVERNANCE.md#projektversion)
 
 **Play. Think. Connect. – Schach offline spielen, verstehen und gestalten.**
 

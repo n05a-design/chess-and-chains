@@ -1,6 +1,6 @@
 # Chess & Chains
 
-**V.0.1.0 · Development snapshot.** [Changelog](CHANGELOG.md) · [Versioning policy](docs/governance/GOVERNANCE.md#projektversion)
+**V.0.2.0 · Development snapshot.** [Changelog](CHANGELOG.md) · [Versioning policy](docs/governance/GOVERNANCE.md#projektversion)
 
 **Play. Think. Connect.**
 

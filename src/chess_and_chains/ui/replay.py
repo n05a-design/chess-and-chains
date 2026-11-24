@@ -12,6 +12,28 @@ from ..chess import ChessGame, Color, GameStatus, to_san
 from ..i18n import Translator
 from .board import BoardCanvas
 from .dialogs import bind_button_enter
+from .theme import FONT_SIZES, SPACING
+
+
+def _style_listbox_from_ttk(lb: tk.Listbox) -> None:
+    """Apply Glide palette colors to a Listbox by reading the live ttk.Style."""
+    try:
+        from tkinter import ttk as _ttk
+        s = _ttk.Style(lb)
+        bg = s.lookup("Glide.TEntry", "fieldbackground") or "white"
+        fg = s.lookup("Glide.TEntry", "foreground") or "black"
+        sel_bg = s.lookup("Glide.TEntry", "selectbackground") or "#1A73E8"
+        sel_fg = s.lookup("Glide.TEntry", "selectforeground") or "white"
+        bdr = s.lookup("Glide.TEntry", "bordercolor") or "#C8C8C8"
+    except Exception:
+        bg, fg, sel_bg, sel_fg, bdr = "white", "black", "#1A73E8", "white", "#C8C8C8"
+    lb.configure(
+        background=bg, foreground=fg,
+        selectbackground=sel_bg, selectforeground=sel_fg,
+        highlightthickness=1, highlightbackground=bdr, highlightcolor=bdr,
+        relief="flat", borderwidth=0,
+        activestyle="none",
+    )
 
 
 class ReplayDialog(tk.Toplevel):
@@ -46,7 +68,9 @@ class ReplayDialog(tk.Toplevel):
         list_frame.grid(row=0, column=0, columnspan=2, sticky="nsew", pady=(0, 8))
         list_frame.columnconfigure(0, weight=1)
         list_frame.rowconfigure(0, weight=1)
-        self.move_list = tk.Listbox(list_frame, exportselection=False, width=16, height=8, selectmode=tk.BROWSE)
+        self.move_list = tk.Listbox(list_frame, exportselection=False, width=16, height=8, selectmode=tk.BROWSE,
+                                    font=("TkFixedFont", FONT_SIZES["body"]))
+        _style_listbox_from_ttk(self.move_list)
         self.move_list.grid(row=0, column=0, sticky="nsew")
         scrollbar = ttk.Scrollbar(list_frame, command=self.move_list.yview, takefocus=False)
         scrollbar.grid(row=0, column=1, sticky="ns")
@@ -83,7 +107,7 @@ class ReplayDialog(tk.Toplevel):
         self.grab_set()
 
     def _button(self, parent, key, command, row, column):
-        button = ttk.Button(parent, text=self.t(key), command=command)
+        button = ttk.Button(parent, text=self.t(key), command=command, style="Glide.TButton")
         button.grid(row=row, column=column, sticky="ew", padx=3, pady=3)
         bind_button_enter(button)
         return button

@@ -14,6 +14,28 @@ from glide_shell import modal_session
 from ..chess import GameState, Move, square_name
 from ..i18n import Translator
 from .dialogs import bind_button_enter
+from .theme import FONT_SIZES
+
+
+def _style_listbox_from_ttk(lb: tk.Listbox) -> None:
+    """Apply Glide palette colors to a Listbox by reading the live ttk.Style."""
+    try:
+        from tkinter import ttk as _ttk
+        s = _ttk.Style(lb)
+        bg = s.lookup("Glide.TEntry", "fieldbackground") or "white"
+        fg = s.lookup("Glide.TEntry", "foreground") or "black"
+        sel_bg = s.lookup("Glide.TEntry", "selectbackground") or "#1A73E8"
+        sel_fg = s.lookup("Glide.TEntry", "selectforeground") or "white"
+        bdr = s.lookup("Glide.TEntry", "bordercolor") or "#C8C8C8"
+    except Exception:
+        bg, fg, sel_bg, sel_fg, bdr = "white", "black", "#1A73E8", "white", "#C8C8C8"
+    lb.configure(
+        background=bg, foreground=fg,
+        selectbackground=sel_bg, selectforeground=sel_fg,
+        highlightthickness=1, highlightbackground=bdr, highlightcolor=bdr,
+        relief="flat", borderwidth=0,
+        activestyle="none",
+    )
 
 
 class TextBoardDialog(tk.Toplevel):
@@ -48,9 +70,9 @@ class TextBoardDialog(tk.Toplevel):
         self._availability.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(5, 7))
         self._availability.configure(text=self.t("text_board.no_targets"))
 
-        close = ttk.Button(content, text=self.t("text_board.close"), command=self._close)
+        close = ttk.Button(content, text=self.t("text_board.close"), command=self._close, style="Glide.TButton")
         close.grid(row=5, column=0, sticky="ew", padx=(0, 5))
-        self.play_button = ttk.Button(content, text=self.t("text_board.play"), command=self._play, state="disabled")
+        self.play_button = ttk.Button(content, text=self.t("text_board.play"), command=self._play, state="disabled", style="Glide.New.TButton")
         self.play_button.grid(row=5, column=1, sticky="ew", padx=(5, 0))
         for button in (close, self.play_button):
             bind_button_enter(button)
@@ -78,7 +100,9 @@ class TextBoardDialog(tk.Toplevel):
         frame.grid(row=3, column=column, sticky="nsew", padx=padding)
         frame.columnconfigure(0, weight=1)
         frame.rowconfigure(0, weight=1)
-        items = tk.Listbox(frame, width=20, height=8, exportselection=False, selectmode=tk.BROWSE)
+        items = tk.Listbox(frame, width=20, height=8, exportselection=False, selectmode=tk.BROWSE,
+                           font=("TkDefaultFont", FONT_SIZES["body"]))
+        _style_listbox_from_ttk(items)
         scrollbar = ttk.Scrollbar(frame, orient="vertical", command=items.yview, takefocus=False)
         items.configure(yscrollcommand=scrollbar.set)
         items.grid(row=0, column=0, sticky="nsew")

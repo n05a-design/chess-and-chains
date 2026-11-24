@@ -2,7 +2,7 @@
 
 **Historische Baseline (F0, 2026-11-19):** alle W00–W12 NOT_STARTED (in `project-manifest.json` als `foundation_baseline` erhalten).
 
-**Aktueller Stand V.0.1.0 vom 24.11.2026.** Acht Pakete haben geprüfte Teilumfänge, vier sind in Arbeit und eines ist blockiert. Für kein Paket ist eine vollständige Abnahme belegt. Maßgeblich sind [Maschinenmanifest](../../project-manifest.json) und [Statusmodell](../governance/STATUS_MODEL.md). [Nachweise für W00–W12](../reports/2026-11-21_W00-W12-paketabgleich.md)
+**Aktueller Stand V.0.2.0 vom 24.11.2026.** Acht Pakete haben geprüfte Teilumfänge, vier sind in Arbeit und eines ist blockiert. Für kein Paket ist eine vollständige Abnahme belegt. Maßgeblich sind [Maschinenmanifest](../../project-manifest.json) und [Statusmodell](../governance/STATUS_MODEL.md). [Nachweise für W00–W12](../reports/2026-11-21_W00-W12-paketabgleich.md)
 
 | ID | Status | Umfang des Nachweises / offene Gate-Punkte |
 | --- | --- | --- |

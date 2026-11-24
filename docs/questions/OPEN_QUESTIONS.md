@@ -1,6 +1,6 @@
 # Offene Rückfragen & Entscheidungsregister
 
-**Single Source of Truth für offene Owner-Fragen.** Stand V.0.1.0 · 24.11.2026. Entscheidungen nach Owner-Antwort mit Referenz im passenden ADR und hier dokumentieren.
+**Single Source of Truth für offene Owner-Fragen.** Stand V.0.2.0 · 24.11.2026. Entscheidungen nach Owner-Antwort mit Referenz im passenden ADR und hier dokumentieren.
 
 | ID | Priorität | Rückfrage an Owner | Vorgeschlagene Default-Richtung | Gate/Status |
 | --- | --- | --- | --- | --- |
