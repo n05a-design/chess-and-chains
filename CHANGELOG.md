@@ -1,6 +1,6 @@
 # Changelog
 
-## V.0.3.1 – Post-Audit Bugfixes: Marmorbrett SVG-Fallback, Settings Transaction Safety, UI & CI Polish (2026-11-24)
+## V.0.3.0 – Full Glide v1.0.2 Design Language, Post-Audit Bugfixes & Appearance Customization (2026-11-24)
 
 ### P0 – Marmorbrett-Kompatibilität & SVG-Fallback (`ui/board_artwork.py`)
 - **Laufzeit-SVG-Erkennung (`_probe_svg_support`)**: Prüft einmalig pro Interpreter, ob `tk.PhotoImage` das Format `svg` nativ unterstützt (Tk 9 / Tk 8.6 mit NanoSVG).

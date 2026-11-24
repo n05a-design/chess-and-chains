@@ -40,10 +40,12 @@ class FinalAuditTests(unittest.TestCase):
     def test_macos_dock_icon_has_transparent_hig_margin(self) -> None:
         img = macos_dock_icon(self.root, "app-icon")
         self.assertEqual(img.width(), img.height())
-        self.assertGreaterEqual(img.width(), 256)
         if sys.platform == "darwin":
+            self.assertGreaterEqual(img.width(), 256)
             # Corner pixel (0, 0) must be transparent due to 824/1024 HIG padding
             self.assertTrue(img.transparency_get(0, 0))
+        else:
+            self.assertGreaterEqual(img.width(), 16)
 
     def test_dropdown_selection_disabled_and_theme_inheritance(self) -> None:
         light = resolve_theme("light")

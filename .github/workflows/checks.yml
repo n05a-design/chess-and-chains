@@ -103,6 +103,7 @@ jobs:
             tests.test_app_integration \
             tests.test_final_audit \
             tests.test_glide_shell_integration \
+            tests.test_regression_audit \
             -v
       - name: Glide Shell self-test (manifest + 13/13 checks)
         run: xvfb-run -a python -m glide_shell.selftest
@@ -133,6 +134,7 @@ jobs:
             tests.test_app_integration \
             tests.test_final_audit \
             tests.test_glide_shell_integration \
+            tests.test_regression_audit \
             -v
       - name: Glide Shell self-test (manifest + 13/13 checks)
         run: python -m glide_shell.selftest
