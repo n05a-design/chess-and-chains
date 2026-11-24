@@ -9,18 +9,55 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Callable
 
+from glide_shell import modal_session
+from glide_shell.custom_controls import ThemedAutoScrollbar
+
 from ..chess import GameState, Move, square_name
 from ..i18n import Translator
 from .dialogs import bind_button_enter
+from .theme import FONT_SIZES, LIGHT_THEME, ThemePalette
+
+
+def _style_listbox_from_ttk(lb: tk.Listbox, theme: ThemePalette | None = None) -> tuple[str, str, str, str]:
+    """Apply Glide palette colors to a Listbox from theme or live ttk.Style."""
+    t = theme or LIGHT_THEME
+    try:
+        from tkinter import ttk as _ttk
+        s = _ttk.Style(lb)
+        card_bg = s.lookup("Glide.TFrame", "background")       or t.acetate
+        bg      = s.lookup("Glide.TEntry", "fieldbackground")  or t.paper
+        fg      = s.lookup("Glide.TEntry", "foreground")       or t.ink
+        sel_bg  = s.lookup("Glide.TEntry", "selectbackground") or t.selection
+        sel_fg  = s.lookup("Glide.TEntry", "selectforeground") or t.selection_text
+        bdr     = s.lookup("Glide.TEntry", "bordercolor")      or t.input_border
+        muted   = s.lookup("Glide.Muted.TLabel", "foreground") or t.muted_ink
+    except Exception:
+        card_bg, bg, fg, sel_bg, sel_fg, bdr, muted = (
+            t.acetate, t.paper, t.ink, t.selection, t.selection_text, t.input_border, t.muted_ink,
+        )
+    lb.configure(
+        background=bg, foreground=fg,
+        selectbackground=sel_bg, selectforeground=sel_fg,
+        highlightthickness=1, highlightbackground=bdr, highlightcolor=bdr,
+        relief="flat", borderwidth=0,
+        activestyle="none",
+    )
+    return card_bg, bdr, muted, fg
 
 
 class TextBoardDialog(tk.Toplevel):
     """Keep a textual move picker synchronized with the visible board."""
 
-    def __init__(self, parent: tk.Tk, translator: Translator, on_move: Callable[[Move], None]) -> None:
-        previous_focus = parent.focus_lastfor()
+    def __init__(
+        self, parent: tk.Tk, translator: Translator, on_move: Callable[[Move], None],
+        *, theme: ThemePalette | None = None,
+    ) -> None:
         super().__init__(parent)
         self.withdraw()
+        self._remembered_focus = modal_session.remember_focus(parent, self, parent)
+        previous_focus = self._remembered_focus[1]
+        self._theme = theme or LIGHT_THEME
+        self.configure(background=self._theme.acetate)
         self.title(translator("text_board.title"))
         self.t = translator
         self._on_move = on_move
@@ -39,15 +76,15 @@ class TextBoardDialog(tk.Toplevel):
         self._status.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 3))
         self._feedback = ttk.Label(content)
         self._feedback.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(0, 10))
-        self.pieces = self._add_list(content, self.t("text_board.pieces"), 0)
-        self.targets = self._add_list(content, self.t("text_board.targets"), 1)
+        self.pieces = self._add_list(content, self.t("text_board.pieces"), 0, self._theme)
+        self.targets = self._add_list(content, self.t("text_board.targets"), 1, self._theme)
         self._availability = ttk.Label(content)
         self._availability.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(5, 7))
         self._availability.configure(text=self.t("text_board.no_targets"))
 
-        close = ttk.Button(content, text=self.t("text_board.close"), command=self._close)
+        close = ttk.Button(content, text=self.t("text_board.close"), command=self._close, style="Glide.TButton")
         close.grid(row=5, column=0, sticky="ew", padx=(0, 5))
-        self.play_button = ttk.Button(content, text=self.t("text_board.play"), command=self._play, state="disabled")
+        self.play_button = ttk.Button(content, text=self.t("text_board.play"), command=self._play, state="disabled", style="Glide.New.TButton")
         self.play_button.grid(row=5, column=1, sticky="ew", padx=(5, 0))
         for button in (close, self.play_button):
             bind_button_enter(button)
@@ -68,15 +105,20 @@ class TextBoardDialog(tk.Toplevel):
         self.grab_set()
 
     @staticmethod
-    def _add_list(content: ttk.Frame, title: str, column: int) -> tk.Listbox:
+    def _add_list(content: ttk.Frame, title: str, column: int, theme: ThemePalette | None = None) -> tk.Listbox:
         padding = (0, 5) if column == 0 else (5, 0)
         ttk.Label(content, text=title).grid(row=2, column=column, sticky="w", padx=padding, pady=(0, 4))
         frame = ttk.Frame(content)
         frame.grid(row=3, column=column, sticky="nsew", padx=padding)
         frame.columnconfigure(0, weight=1)
         frame.rowconfigure(0, weight=1)
-        items = tk.Listbox(frame, width=20, height=8, exportselection=False, selectmode=tk.BROWSE)
-        scrollbar = ttk.Scrollbar(frame, orient="vertical", command=items.yview, takefocus=False)
+        items = tk.Listbox(frame, width=20, height=8, exportselection=False, selectmode=tk.BROWSE,
+                           font=("TkDefaultFont", FONT_SIZES["body"]))
+        card_bg, line_c, muted_c, ink_c = _style_listbox_from_ttk(items, theme)
+        scrollbar = ThemedAutoScrollbar(
+            frame, bg_color=card_bg, track_color=line_c, thumb_color=muted_c, active_thumb_color=ink_c, width=12,
+        )
+        scrollbar.set_command(items.yview)
         items.configure(yscrollcommand=scrollbar.set)
         items.grid(row=0, column=0, sticky="nsew")
         scrollbar.grid(row=0, column=1, sticky="ns")
@@ -154,8 +196,7 @@ class TextBoardDialog(tk.Toplevel):
         return "break"
 
     def _close(self, _event: tk.Event | None = None) -> str:
-        focus = self._previous_focus
-        if focus is not None and focus.winfo_exists() and focus.winfo_viewable():
-            focus.focus_set()
+        if not getattr(self, modal_session.ACTIVE_ATTRIBUTE, False):
+            modal_session.return_focus(self.master, self, self._remembered_focus)
         self.destroy()
         return "break"

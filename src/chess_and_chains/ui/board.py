@@ -10,15 +10,8 @@ from ..i18n import Translator
 from .board_artwork import MAX_BOARD_PREVIEW_SIZE, BoardArtwork
 from .pieces import OwnerSvgPieces, PieceRenderer
 from .theme import (
-    CHROME_YELLOW,
-    FOCUS_INK,
-    INK,
-    LAST_MOVE,
-    LEGAL_MARK,
-    MUTED_INK,
-    PAPER,
-    SQUARE_DARK,
-    SQUARE_LIGHT,
+    LIGHT_THEME,
+    ThemePalette,
 )
 
 Orientation = Literal["white", "black"]
@@ -79,10 +72,12 @@ class BoardCanvas(tk.Canvas):
         *,
         artwork: BoardArtwork | None = None,
         translator: Translator | None = None,
+        theme: ThemePalette = LIGHT_THEME,
     ) -> None:
+        self._theme = theme
         super().__init__(
             master,
-            background=PAPER,
+            background=theme.acetate,
             highlightthickness=0,
             takefocus=True,
             borderwidth=0,
@@ -144,6 +139,12 @@ class BoardCanvas(tk.Canvas):
         self._hint_square = square
         self.redraw()
 
+    def set_theme(self, theme: ThemePalette) -> None:
+        """Apply a Glide ThemePalette to the board canvas and redraw."""
+        self._theme = theme
+        self.configure(background=theme.acetate)
+        self.redraw()
+
     @property
     def orientation(self) -> Orientation:
         return self._orientation
@@ -178,7 +179,7 @@ class BoardCanvas(tk.Canvas):
             self._draw_position()
         self._draw_focus()
         self._draw_coordinates()
-        outline = FOCUS_INK if self._has_focus else MUTED_INK
+        outline = self._theme.focus_ink if self._has_focus else self._theme.muted_ink
         self.create_rectangle(
             self._board_x - 2,
             self._board_y - 2,
@@ -190,6 +191,7 @@ class BoardCanvas(tk.Canvas):
 
     def _draw_board(self) -> None:
         size = self._square_size
+        t = self._theme
         artwork_item = None
         if self._artwork is not None:
             image = self._artwork.image(self, int(size), flipped=self._orientation == "black")
@@ -198,7 +200,7 @@ class BoardCanvas(tk.Canvas):
             for column in range(8):
                 x1 = self._board_x + column * size
                 y1 = self._board_y + row * size
-                fill = SQUARE_LIGHT if (row + column) % 2 == 0 else SQUARE_DARK
+                fill = t.square_light if (row + column) % 2 == 0 else t.square_dark
                 square = self._square_for_cell(column, row)
                 base = self.create_rectangle(
                     x1,
@@ -221,7 +223,7 @@ class BoardCanvas(tk.Canvas):
                         y1 + 2,
                         x1 + size - 2,
                         y1 + size - 2,
-                        outline=INK,
+                        outline=t.ink,
                         width=max(3, int(size * 0.04)),
                     )
                     self.create_rectangle(
@@ -229,24 +231,26 @@ class BoardCanvas(tk.Canvas):
                         y1 + 6,
                         x1 + size - 6,
                         y1 + size - 6,
-                        fill=CHROME_YELLOW,
+                        fill=t.action_new_bg,
                         stipple="gray25",
                         outline="",
                     )
     def _draw_focus(self) -> None:
         if not self._has_focus or self._focused_square is None:
             return
+        t = self._theme
         column, row = screen_cell(self._focused_square, self._orientation)
         size = self._square_size
         x, y = self._board_x + column * size, self._board_y + row * size
         inset = min(5, size / 4)
         bounds = (x + inset, y + inset, x + size - inset, y + size - inset)
-        self.create_rectangle(*bounds, outline=PAPER, width=4, tags=("square-focus",))
-        self.create_rectangle(*bounds, outline=FOCUS_INK, dash=(4, 3), width=2, tags=("square-focus",))
+        self.create_rectangle(*bounds, outline=t.paper, width=4, tags=("square-focus",))
+        self.create_rectangle(*bounds, outline=t.focus_ink, dash=(4, 3), width=2, tags=("square-focus",))
 
     def _draw_position(self) -> None:
         if self._state is None:
             return
+        t = self._theme
         size = self._square_size
         legal_from_selected = (
             tuple(move for move in self._legal_moves if move.from_square == self._selected)
@@ -286,7 +290,7 @@ class BoardCanvas(tk.Canvas):
                     center_y - radius,
                     center_x + radius,
                     center_y + radius,
-                    outline=LEGAL_MARK,
+                    outline=t.legal_mark,
                     width=max(3, int(size * 0.04)),
                 )
                 inner = radius * 0.78
@@ -295,7 +299,7 @@ class BoardCanvas(tk.Canvas):
                     center_y - inner,
                     center_x + inner,
                     center_y + inner,
-                    outline=PAPER,
+                    outline=t.paper,
                     width=max(1, int(size * 0.018)),
                 )
             else:
@@ -305,8 +309,8 @@ class BoardCanvas(tk.Canvas):
                     center_y - radius,
                     center_x + radius,
                     center_y + radius,
-                    fill=PAPER,
-                    outline=LEGAL_MARK,
+                    fill=t.paper,
+                    outline=t.legal_mark,
                     width=max(2, int(size * 0.025)),
                 )
                 dot = radius * 0.45
@@ -315,8 +319,8 @@ class BoardCanvas(tk.Canvas):
                     center_y - dot,
                     center_x + dot,
                     center_y + dot,
-                    fill=LEGAL_MARK,
-                    outline=LEGAL_MARK,
+                    fill=t.legal_mark,
+                    outline=t.legal_mark,
                 )
 
         if self._hint_square is not None:
@@ -327,7 +331,7 @@ class BoardCanvas(tk.Canvas):
                 self._board_y + row * size + inset,
                 self._board_x + (column + 1) * size - inset,
                 self._board_y + (row + 1) * size - inset,
-                outline=FOCUS_INK,
+                outline=t.focus_ink,
                 dash=(2, 4),
                 width=max(2, int(size * 0.04)),
                 tags=("hint",),
@@ -341,7 +345,7 @@ class BoardCanvas(tk.Canvas):
                 self._board_y + row * size + 3,
                 self._board_x + (column + 1) * size - 3,
                 self._board_y + (row + 1) * size - 3,
-                outline=INK,
+                outline=t.brand_red,
                 width=max(3, int(size * 0.04)),
             )
             self.create_rectangle(
@@ -349,7 +353,7 @@ class BoardCanvas(tk.Canvas):
                 self._board_y + row * size + 8,
                 self._board_x + (column + 1) * size - 8,
                 self._board_y + (row + 1) * size - 8,
-                outline=PAPER,
+                outline=t.paper,
                 dash=(5, 3),
                 width=2,
             )
@@ -372,20 +376,21 @@ class BoardCanvas(tk.Canvas):
             y,
             x + size,
             y + size,
-            fill=LAST_MOVE,
+            fill=self._theme.last_move,
             stipple="gray25",
             outline="",
         )
 
     def _draw_coordinates(self) -> None:
         size = self._square_size
+        t = self._theme
         for row in range(8):
             rank = 8 - row if self._orientation == "white" else row + 1
             self.create_text(
                 self._board_x - 12,
                 self._board_y + (row + 0.5) * size,
                 text=str(rank),
-                fill=INK,
+                fill=t.ink,
                 font=("TkFixedFont", -max(8, int(size * 0.20))),
             )
         for column in range(8):
@@ -394,7 +399,7 @@ class BoardCanvas(tk.Canvas):
                 self._board_x + (column + 0.5) * size,
                 self._board_y + 8 * size + 12,
                 text=chr(ord("a") + file_index),
-                fill=INK,
+                fill=t.ink,
                 font=("TkFixedFont", -max(8, int(size * 0.20))),
             )
 

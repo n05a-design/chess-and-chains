@@ -1,7 +1,63 @@
 # Changelog
 
-## V.0.0.1 – Development snapshot (2026-11-21)
+## V.0.3.0 – Full Glide v1.0.2 Design Language, Rounded Canvas Cards & Appearance Customization (2026-11-24)
 
+### Design & Tokens
+- **`ui/theme.py` updated to Glide v1.0.2 / Glide Shell 0.6.2 neutral design tokens**: removed pre-Glide yellow-white/parchment defaults (`#FAF6EC`, `#EFE8D8`, `#FFFCF4`, `#F4C400`) from UI palettes and `docs/design/brand-tokens.json`; primary accent is Cobalt blue (`#086FD6` light / `#2C95FF` dark), keeping `#9E4AC8` excluded.
+- **All 10 Glide themes + `system` + `w06-provisional` alias**: `light`, `dark`, `glass-light`, `glass-dark`, `dopamine`, `pixel`, `contrast-light`, `contrast-dark`, `minimal-light`, `minimal-dark`, each verified at >= 4.5:1 WCAG 2.2 AA contrast.
+- **Full customization API**: 8 `ACCENT_CHOICES`, 10 `BACKGROUND_CHOICES` (`with_accent`, `with_background`, `customize_palette`), 4 `RADIUS_CHOICES` (`18`, `12`, `6`, `0` px), 3 `FONT_SCALE_CHOICES` (`0.9`, `1.0`, `1.15`), and 3 `FONT_WEIGHT_CHOICES` (`auto`, `standard`, `bold`), plus `animations_enabled` and `hints_visible` persisted in `settings.py` and localized in `i18n/catalog.py` (DE/EN).
+
+### Canvas Components & UI Widgets
+- **`RoundedSurfaceCard` (`ui/theme.py`)**: rounded Canvas surfaces with `fill_color`, `outline_color`, dynamic `radius`, and `bg_color` matching the parent window/paper for `header_card`, `_side_slot`, `_board_slot`, `_rail_slot`, and `atlas_section` (replacing rectangular `_sheet_pair` frames).
+- **`RoundedButton` (`ui/theme.py`)**: seamless `carrier_bg` Canvas corner blending, `button_colors`, natural auto-height, and stretched/un-stretched modes across sidebar action buttons, header buttons, and `TabRail` tabs (with `takefocus=False` on header buttons and focus handoff preserved on `TabRail`).
+- **`AppearanceDialog` (`ui/appearance_dialog.py`)**: modal customization dialog (`Cmd/Ctrl+,`, header button, View menu) with live `RoundedSurfaceCard`/`RoundedButton` preview calling `ChessApp.apply_appearance()`.
+- **Full component theming**: `board.py`, `marble_board.py`, `atlas.py`, `dialogs.py`, `replay.py`, and `text_board.py` adopt `ThemePalette`; `ReplayDialog` and `TextBoardDialog` adopt `ThemedAutoScrollbar`.
+
+### Verification
+- **Full test suite**: 276/276 tests passing (`PYTHONPATH=src python3 -m unittest discover -s tests -q`), including WCAG coverage across all 10 distinct Glide themes (`test_27`) and rounded-card / carrier-blending / `AppearanceDialog` round-trip tests (`test_29`).
+- **Governance & Policy checks**: `scripts/verify_starter.py`, `scripts/check_policy.py`, and `scripts/verify_document_links.py` passing.
+
+## V.0.2.0 – Full Glide Design Language (ttk Styles, Tokens, Dark/Light) (2026-11-24)
+
+(Former V.0.3.0 content — see above for the definitive V.0.3.0 changelog.)
+
+
+
+- **`install_ttk_theme(root, palette)`** in `theme.py`: configures all `ttk` widget styles
+  (`TButton`, `TEntry`, `TLabel`, `TFrame`, `TCheckbutton`, `TRadiobutton`, `TScrollbar`,
+  `TSeparator`, `TCombobox`) with Glide design tokens — called on startup and on every theme switch.
+- **`apply_optionmenu_theme(widget, palette)`**: applies Glide palette to `tk.OptionMenu` and its
+  dropdown, used for the bot-level selector.
+- **`apply_listbox_theme(widget, palette)`**: applies Glide palette (paper background, semantic
+  selection colors, flat border, Glide font) to `tk.Listbox` widgets — used for the move-list panel.
+- **`RADII`** spacing tokens now explicitly imported in `app.py`; `SPACING` tokens consistently
+  applied to all widget padding/margins.
+- **Button styles**: `Glide.TButton` (neutral) and `Glide.New.TButton` (primary/chrome yellow)
+  applied to all `ttk.Button` instances in `dialogs.py`, `replay.py`, `text_board.py`.
+- **`Glide.TEntry`**: applied to FEN entry in `PositionDialog` with flat border, field background,
+  and Glide-aligned focus highlight.
+- **`move_list` scrollbar**: migrated from plain `tk.Scrollbar` to `ttk.Scrollbar` for consistent
+  Glide styling across all scroll areas.
+- **Replay & TextBoard dialogs**: Glide listbox defaults applied via `_style_listbox_from_ttk()`;
+  `Glide.TButton`/`Glide.New.TButton` styles used throughout.
+- **Dark/Light mode**: all six palettes (`light`, `dark`, `contrast-light`, `contrast-dark`,
+  `minimal-light`, `minimal-dark`) correctly propagate through `install_ttk_theme` on `apply_theme`.
+- **Test suite**: 275/275 passing (exit 0), zero regressions.
+
+## V.0.1.0 – Glide Shell 0.6.2 Framework Integration & 2-Pane Responsive UI (2026-11-24)
+
+- Migrate entire desktop runtime onto **Glide Shell 0.6.2** (`AppHost`, `window_lifetime.AfterScope`, `modal_session`, `motion.Transitions`, `desktop_adapter`, `action_picker`, `system_appearance`, `window_geometry`, `runtime_paths`, `text_fit`).
+- Implement Glide-aligned **2-Pane Layout**: navigation/controls sidebar on the left (`column=0`, minsize=328) with a 64-px narrow symbol rail (`SIDEBAR_RAIL_WIDTH = 64`) and complete hide/show toggle; right board workspace (`column=1`) dynamically expands to 100% width.
+- Implement **Compact Mode** (`COMPACT_MIN = (480, 560)`) with separate geometry persistence (`compact_window`) and automatic geometry restoration, without exiting on Escape.
+- Implement responsive **Header Density & Height Density Breakpoints** (Width: `>= 1120` full, `900..1119` compact with overflow menu `⋯`, `< 900` minimal; Height: `>= 850` / `780..849` / `< 780`; auto-narrow rail `< 760`).
+- Incorporate **Glide Design Guidelines & Themes**: 6 WCAG 2.2 AA (`>= 4.5:1`) palettes (`light`, `dark`, `contrast-light`, `contrast-dark`, `minimal-light`, `minimal-dark`, `system`), Okabe-Ito CVD-safe palette, interactive button hover feedback (`theme.hover`), 24-char button label clipping (`clip_button_text`), and aligned menu checkmarks (`action_picker.check_label`).
+- Implement interactive in-app header logo (Connected System signet) opening the accessible `AboutDialog` modal session.
+
+## V.0.0.1 – Development snapshot (2026-11-23)
+
+- Integrate **Glide Shell 0.6.2** from Glide `1.0.2` (`v1.0.2`, commit `7dcd8dc04366f88943fa17827882cef4d81421b8`, MPL-2.0) into `src/glide_shell/` with `SHELL_MANIFEST.json`, packaging support in `pyproject.toml`, and 13/13 selftest verification.
+- Migrate `ChessApp` startup, menu bar, keyboard shortcuts, and macOS quit handling to `AppHost` and `desktop_adapter`; migrate timers to `window_lifetime.AfterScope` and `motion.Transitions`; migrate modal dialogs (`PositionDialog`, `ReplayDialog`, `TextBoardDialog`, `EngineDialog`, promotion, and item chooser) to `modal_session`.
+- Integrate Connected System Light/Dark/System theme resolution (`system_appearance`, WCAG 2.2 AA contrast), `window_geometry` clamping/validation, `runtime_paths` storage resolution, portable design contract (`docs/design/GLIDE_DESIGN_CONTRACT.md`), and multi-agent skills (`.agents/skills/`, `.claude/skills/`).
 - Establish `0.0.1` as the package version and `V.0.0.1` as the display label. The CLI and window title expose the same version as the package metadata. Foundation CI checks the manifest and current documentation.
 - Integrate Connected System branding and the optically balanced V.02 front-view pieces with stronger shading for dark pieces. Keep the separate top-view set, editable SVG masters, offline PNG fallbacks, and the Tk 9 session preview for custom SVG boards.
 - Test configured local UCI engines through `readyok`, show the advertised name and option count, and clean up the process and the Tk poll independently.

@@ -1,6 +1,6 @@
 # Audit und Übergaben
 
-**V.0.0.1 · Stand 22.11.2026.** Hier stehen nur tatsächlich ausgeführte Prüfberichte und Agentenübergaben unter `JJJJ-MM-TT_Wxx-kurz.md`. **Keine fiktiven grünen Testprotokolle.** Vorlage: [Agent-Handover](../governance/AGENT_HANDOFF_TEMPLATE.md). Ein Bericht, der mehrere Pakete betrifft, steht beim ersten genannten Paket.
+**V.0.3.0 · Stand 24.11.2026.** Hier stehen nur tatsächlich ausgeführte Prüfberichte und Agentenübergaben unter `JJJJ-MM-TT_Wxx-kurz.md`. **Keine fiktiven grünen Testprotokolle.** Vorlage: [Agent-Handover](../governance/AGENT_HANDOFF_TEMPLATE.md). Ein Bericht, der mehrere Pakete betrifft, steht beim ersten genannten Paket.
 
 **Aktuell maßgeblich:** [Dokumentations- und Ablageaudit](2026-11-21_W11-dokumentations-und-ablageaudit.md) · [Paketabgleich W00–W12](2026-11-21_W00-W12-paketabgleich.md) · [Roadmap](../roadmap/ROADMAP.md)
 
@@ -12,6 +12,7 @@ Neue Berichte bitte in der passenden Gruppe ergänzen. `scripts/verify_document_
 
 ## W00–W04 · Foundation, Scope, Lizenz, Shell, Recherche
 
+- 2026-11-23 · [W03/W06/W10 – Glide Shell 0.6.2 (Glide v1.0.2) Integration & Migration](2026-11-23_W03-W06-W10-glide-shell-1.0.2-integration.md)
 - 2026-11-21 · [W04 – Plattenfiguren und Materialstudien](2026-11-21_W04_plattenfiguren-svg.md)
 - 2026-11-20 · [W04 – Konkurrenz-, Design- und Assetrecherche](2026-11-20_W04_competitor-design.md)
 - 2026-11-20 · [W03 – Glide Shell Reuse Audit](2026-11-20_W03_glide-audit.md)

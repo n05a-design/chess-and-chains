@@ -1,6 +1,6 @@
 # Product Brief – Chess & Chains
 
-Status der Produktvision: **VORGESCHLAGEN** · F0 vom 19.11.2026, Iststand geprüft für V.0.0.1.
+Status der Produktvision: **VORGESCHLAGEN** · F0 vom 19.11.2026, Iststand geprüft für V.0.3.0.
 
 Der [aktuelle Prototyp](../../README.de.md#was-bereits-vorhanden-ist) enthält
 lokales Zweispieler-Spiel, Mock-UCI, fünf eigene Demo-Rätsel und die lokale

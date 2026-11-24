@@ -2,14 +2,14 @@
 
 **Historische Baseline (F0, 2026-11-19):** alle W00–W12 NOT_STARTED (in `project-manifest.json` als `foundation_baseline` erhalten).
 
-**Aktueller Stand V.0.0.1 vom 21.11.2026.** Acht Pakete haben geprüfte Teilumfänge, vier sind in Arbeit und eines ist blockiert. Für kein Paket ist eine vollständige Abnahme belegt. Maßgeblich sind [Maschinenmanifest](../../project-manifest.json) und [Statusmodell](../governance/STATUS_MODEL.md). [Nachweise für W00–W12](../reports/2026-11-21_W00-W12-paketabgleich.md)
+**Aktueller Stand V.0.3.0 vom 24.11.2026.** Acht Pakete haben geprüfte Teilumfänge, vier sind in Arbeit und eines ist blockiert. Für kein Paket ist eine vollständige Abnahme belegt. Maßgeblich sind [Maschinenmanifest](../../project-manifest.json) und [Statusmodell](../governance/STATUS_MODEL.md). [Nachweise für W00–W12](../reports/2026-11-21_W00-W12-paketabgleich.md)
 
 | ID | Status | Umfang des Nachweises / offene Gate-Punkte |
 | --- | --- | --- |
 | W00 | TESTED | Struktur-, Status- und Linkprüfung; Dokumentations- und Ablageaudit vom 21.11.2026. Owner-Abnahme offen. [Audit](../reports/2026-11-21_W11-dokumentations-und-ablageaudit.md) |
 | W01 | IN_PROGRESS | MVP-Vertrag und Fragenregister ausgearbeitet. ADR-000 und weitere Scope-Entscheidungen offen. |
 | W02 | IN_PROGRESS | Rechte- und Engine-Vergleich dokumentiert. Konkrete Vertriebsentscheidung ADR-001 und Lieferinventar offen. |
-| W03 | IN_PROGRESS | Inventar mit aktuellem Glide-/Steps-Quellabgleich. Isolierte Verträge und Q-006 offen. |
+| W03 | TESTED | Glide Shell `0.6.2` aus `n05a-design/glide-to-do` Tag `v1.0.2` (`7dcd8dc04366`) vollständig nach `src/glide_shell/` übernommen (`SHELL_MANIFEST.json`, `selftest` 13/13), `AppHost`/Dialoge/Timer/Themes/Pfade migriert, Designvertrag und Multi-Agent-Skills integriert. Owner-Abnahme von W03 offen. [Integration Gate](../../integrations/glide_shell/INTEGRATION_GATE.md) · [Bericht](../reports/2026-11-23_W03-W06-W10-glide-shell-1.0.2-integration.md) |
 | W04 | IN_PROGRESS | Quellenrecherche, Connected System und Assetregister vorhanden. Freigabe der Markenexporte und Detailentscheidungen nach ADR-005 offen. |
 | W05 | TESTED | Regelkern mit Remisansprüchen, Perft, FEN und PGN-Hauptvariante geprüft. Tote Stellungen werden bei kurzen Zwangsfolgen und nachweisbar geschlossenen Bauernsperren erkannt. Allgemeine Erkennung und Gesamtregelabnahme stehen aus. [Zwangsfolgen](../reports/2026-11-21_W05-mehrzuegige-tote-stellungen.md) · [Bauernsperren](../reports/2026-11-21_W05-bauernsperren.md) |
 | W06 | TESTED | Tk-Brett mit V.02, Draufsicht, PNG-Fallbacks und Tk-9-Brettvorschau. Perspektivwechsel mit wiederverwendeten Feldbildern bestand nach PR #13 die Plattformmatrix. Finale Inhaber-Bretter, native Sichtprüfung, High-DPI und Barrierefreiheit stehen aus. [Figuren V.02](../reports/2026-11-21_W06-figurenschatten-v02.md) · [Brettvorschau](../reports/2026-11-21_W06-svg-brettcache.md) · [Lokaler 3D-Marmorprototyp](../reports/2026-11-21_W06_marmorbrett-3d.md) |
@@ -43,7 +43,7 @@
 | W00 | Owner-Abnahme der Struktur | Inhaber |
 | W01 | ADR-000 bestätigen, Q-010/Q-011 beantworten | Inhaber |
 | W02 | Weg A prüfen und ADR-001 entscheiden | Inhaber, Rechtsprüfung |
-| W03 | Q-006 entscheiden, danach isolierte Shell-Verträge | Inhaber |
+| W03 | Owner-Abnahme der Glide-Shell-0.6.2-Integration | Inhaber |
 | W04 | Markenexporte nach ADR-005 freigeben | Inhaber |
 | W05 | Weitere verblockte Stellungen und längere Zwangsfolgen | – |
 | W06 | Finale Bretter prüfen, native Sichtprüfung | Bretter (Q-004), Gerät |

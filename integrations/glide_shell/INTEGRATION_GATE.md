@@ -1,74 +1,44 @@
-# Glide Shell Integration Gate – RESERVED / NOT APPROVED
+# Glide Shell Integration Gate – APPROVED & INTEGRATED (Glide Shell 0.6.2)
 
-Dieser Ordner ist ein vorgesehener **Integrationspunkt** und **enthält absichtlich keinen Glide-Quellcode**.
+**Status: DECIDED & IMPLEMENTED (23.11.2026) · Glide `1.0.2` (Tag `v1.0.2`) · Glide-System `V1.86` · Glide Shell `0.6.2` · Commit `7dcd8dc04366f88943fa17827882cef4d81421b8` · Lizenz `MPL-2.0`**
 
-**Referenzquellen**
-- https://github.com/n05a-design/glide-to-do/blob/main/01_Repository/Glide/docs/GLIDE_SHELL_FRAMEWORK_KONZEPT.md
-- https://github.com/n05a-design/glide-to-do/blob/main/01_Repository/Glide/src/glide/README.md
-- https://github.com/n05a-design/steps/blob/main/docs/architecture/REUSE_AND_MIGRATION_MATRIX.md
+Die technische Integration der anwendungsneutralen **Glide Shell 0.6.2** in Chess & Chains wurde durch den Projektinhaber am 23.11.2026 ausdrücklich freigegeben (`ADR-002`, `Q-006`).
 
-## Voraussetzungen pro übernommener Komponente
+## 1. Quellenvalidierung & Abweichungsmatrix (Lokal vs. Tag `v1.0.2`)
 
-- Quelle (`repo`, `branch`, SHA, Pfad, Datei-Hash), kopier-/importierbar laut Lizenz.
-- Dependency-Graph inkl. indirekter Fonts/Vendorfiles/Tk-APIs und Herkunft.
-- Nachweis, dass kein Aufgaben-/Musik-Fachmodell importiert wird.
-- API-Contract plus Mock-bare Headless-Tests und native UI-Regressionstests.
-- Release-/Versionierungsstrategie, Eigentümer, update/rollback, dokumentiertes Dependency-Management.
+- **Offizielle GitHub-Referenz:** `n05a-design/glide-to-do`, Tag `v1.0.2` (`160201387d7440c010916fbf35a98ec39ccd3e9b`), Commit `7dcd8dc04366f88943fa17827882cef4d81421b8` (`main` zeigt auf denselben Commit).
+- **Lokale Quelle:** `/Github/steps/src/Glide-Shell-Framework/V.1.0.2 glide-to-do-main` (innerhalb des übergeordneten `steps`-Repos ohne eigenes `.git`).
+- **Abgleich gegen `7dcd8dc04366f88943fa17827882cef4d81421b8` (1714 Dateien):**
+  - `IDENTISCH`: **1714** (davon 1706 byte-exakt, 8 nur CRLF/LF in Windows-Skripten)
+  - `GEÄNDERT`: **0**
+  - `FEHLT`: **0**
+  - `ZUSÄTZLICH`: **0**
+  - Alle 22 Shell-Dateien (`01_Repository/Glide/src/glide/glide_shell/*`), `LICENSE`, `VERSION`, `GLIDE_SYSTEM_VERSION`, `DESIGN_RICHTLINIEN.md` und `shell_uebernehmen.py` sind 100 % byte-identisch mit Tag `v1.0.2`.
 
-## Reuse-Kandidaten (nur Kandidaten)
+## 2. Übernommenes Paket & Integrität
 
-`appearance`, `ui_design`, `custom_controls`, `desktop_adapter`, `modal_session`, `runtime_config`, lokalisierte Menüs, brand-/svg-Helfer, settings/storage-adapter. Keine großen Komplettdateien oder `ListApp` kopieren.
+- **Zielpfad:** `src/glide_shell/` (unveränderte Kopie über `shell_uebernehmen.py --commit 7dcd8dc04366f88943fa17827882cef4d81421b8 --agenten-bootstrap`)
+- **Integritätsanker:** [`src/glide_shell/SHELL_MANIFEST.json`](../../src/glide_shell/SHELL_MANIFEST.json) (23 Dateien mit SHA-256)
+- **Einzelmodul-Register:** [`REUSE_REGISTER.csv`](REUSE_REGISTER.csv)
+- **Vertragsgrenzen:**
+  - `src/glide_shell/` importiert nur Standardbibliothek, `tkinter` und eigene Module (kein `chess_and_chains`, kein `glide`).
+  - `chess_and_chains.chess`, `game`, `engines` und `puzzles` bleiben frei von `tkinter` und `glide_shell`.
+  - Keine Übernahme von Glide-Aufgabenmodellen, `app.pyw` oder Glide-Markenassets.
 
-## Migrationsmanifest
+## 3. Migrationsmatrix Chess & Chains → Glide Shell 0.6.2
 
-Erst nach Approval eine Zeile pro Datei in `REUSE_REGISTER.csv` mit `candidate -> isolated -> ported -> reviewed`; `reviewed` setzt unabhängige Tests voraus.
-
-## Quellenstand N02 (2026-11-20, nur lesend via `git ls-remote`/GitHub-Tree)
-
-- `n05a-design/glide-to-do` HEAD `4b6bce086a6dcb8984b8d2ee95e0a267f7a91adb`
-- `n05a-design/steps` HEAD `47af95372bf07002d61d88911774119ce1708644`
-- Befund: weiterhin **kein eigenständiges Glide-Shell-Paket** (kein `pyproject`/Paket „glide_shell“); neu ist nur
-  `01_Repository/Glide/docs/FABLE_GLIDE_SHELL_MIGRATION_PROMPT.md` (Migrationsauftrag, kein Code). Chess & Chains bleibt
-  unabhängig; Andockpunkte sind `ui/theme.py` (Tokens), `i18n/`, `storage/settings.py` und `ui/pieces.py` (Renderer-Protokoll).
-
-## Quellenstand W03 (2026-11-20)
-
-Der aktuelle, ausschließlich lesende Audit ist in
-`docs/reports/2026-11-20_W03_glide-audit.md` dokumentiert:
-
-- Glide-Referenz: `n05a-design/glide-to-do`,
-  `a53e779026295d315983c421bfbc9f42124037f5`.
-- Steps-Referenz: `n05a-design/steps`,
-  `5c66183bc9833d2fa6cbdeb1be54ebc307ed6f3d`.
-- Die Konzeptdatei und das Glide-Systemregister bestätigen kein eigenständig
-  freigegebenes Shell-Paket. Die Steps-Migrationsmatrix weist selbst auf ihren
-  historischen Basisteil hin.
-
-Dies ist eine Quellenaktualisierung und keine Übernahmefreigabe. Das Register
-bleibt bis zu Owner-Approval leer; es wurde kein Glide-Code importiert oder
-kopiert.
-
-## Nachprüfung am 20.11.2026
-
-| Repository | GitHub HEAD | Lokaler Stand | Befund |
-| --- | --- | --- | --- |
-| `n05a-design/glide-to-do` | `55ad7e95e5824820098fb0a1d5d5cab66c0a9947` | `4b6bce086a6dcb8984b8d2ee95e0a267f7a91adb`, Arbeitsbaum mit unversionierten Dateien | Der aktuelle GitHub-Tree enthält flache Glide-Module. Das Shell-Konzept beschreibt das unabhängige Paket als ausstehend. |
-| `n05a-design/steps` | `e6baf69d41305be6c499c249d7668c17ea823b7c` | Entwicklungsbranch bei `b05d164733ba0282a14a4a5638d5206d2cfa3bd6` | `pyproject.toml` paketiert `steps-music`. Der Tk-Host importiert Musikmodelle und eigene Dialoge. Die Glide-Migration ist im Architektur-Handover als Ziel beschrieben. |
-
-Die zehn Glide-Blob-SHAs im [W03-Audit](../../docs/reports/2026-11-20_W03_glide-audit.md)
-stimmen mit dem aktuellen GitHub-Tree überein. Die dort beschriebene
-API-, Lizenz-, Test- und Kopplungslage bleibt die Grundlage für
-Themes, Dialoge, Desktopadapter, i18n, Storage und SVG/Branding.
-
-| Kandidat am obigen GitHub-Commit | Git-Blob-SHA | API und Abhängigkeiten | Lizenz, Tests und Übernahmerisiko |
-| --- | --- | --- | --- |
-| Glide `window_lifetime.py` | `8e5cf1fca73135253cd139b3709f9723a5ffefd0` | `AfterScope` verwaltet Tk-Zeitgeber, `tkinter`, `weakref` | MPL-2.0 im Dateikopf. `test_shell_importregel.py` prüft statisch. Fensterabbau und verbliebene Host-Callbacks brauchen eigene Integrationstests. |
-| Glide `action_menu.py` | `6bac9c892c504e14c217b9a13c55272903243b65` | `Entry`, `entries`, `search`, `grouped`. `dataclasses` und internes `content_search` | MPL-2.0 im Dateikopf. `test_action_menu.py` vorhanden. Die transitive Suche und Menüsemantik müssten isoliert werden. |
-| Steps `app/ui/main_window.py` | `37a1c522ad19f7b04f49207233ebd86590a10bce` | `StepsMainWindow`, Tk, `LocaleManager`, `ThemeManager`, Musikcontroller und Modelle | Projektlizenz MPL-2.0 laut Paketmanifest. Fassade ist fachlich gekoppelt. Keine Wiederverwendung des Hosts. |
-| Steps `design/tokens/tokens.json` | `f4dd9d85b626c6f34750d7010b0aa9417eea03d6` | JSON für den Steps-Theme-Manager, projektspezifische Werte | Projektlizenz laut Paketmanifest. `tests/test_theme_tokens.py` vorhanden. Eignung des Schemas getrennt von Markenwerten und Accessibility prüfen. |
-
-Quellen für das Zielbild und den Ist-Stand stehen in den gepinnten
-[Glide-Shell-Unterlagen](https://github.com/n05a-design/glide-to-do/blob/55ad7e95e5824820098fb0a1d5d5cab66c0a9947/01_Repository/Glide/docs/GLIDE_SHELL_FRAMEWORK_KONZEPT.md)
-und [Steps-Unterlagen](https://github.com/n05a-design/steps/blob/e6baf69d41305be6c499c249d7668c17ea823b7c/docs/architecture/APP_SHELL_HANDOVER_AND_GLIDE_ROADMAP.md).
-Die Upstream-Tests wurden für diese Nachprüfung nur inventarisiert. Der
-Integrationsstatus lautet weiterhin RESERVED / NOT APPROVED.
+| Chess-Komponente | Vorher | Glide-Shell-Modul | Aktuelle Integration |
+|---|---|---|---|
+| Start & Lebenszyklus (`ui/app.py`) | Direktes `tk.Tk()` in `launch()` | `app_host` | `create_app_host` & `launch` nutzen `AppHost` (`before_tk`, `preflight`, `bind_shortcuts`, `primary_shortcuts`, `attach_menubar`, `install_close`) |
+| Timer & Polling (`ui/app.py`, `EngineDialog`) | Rohes `root.after` / `window.after` | `window_lifetime`, `motion` | `AfterScope` (`self.scope`) auf Hauptfenster und `EngineDialog`; `motion.Transitions` innerhalb `self.scope` |
+| Modale Dialoge (`dialogs.py`, `replay.py`, `text_board.py`, `app.py`) | Eigene `grab_set` / `wait_window` / Fokus-Logik | `modal_session` | `create_dialog`, `ensure_min_width`, `bring_to_front`, `wait_modal`, `remember_focus`, `return_focus` |
+| Menüs & Zwischenablage (`ui/app.py`, `dialogs.py`) | Manuelles Clipboard, keine Menüleiste | `desktop_adapter`, `action_picker` | `build_menu_tree`, `copy_to_clipboard`, `available_menu_actions` via `action_picker` |
+| Fenstergeometrie (`ui/app.py`, `storage/settings.py`) | Fester String `"1180x820"` | `window_geometry` | `parse`, `clamp`, `format_geometry` mit Mindestmaß `860x700`; Settings-Schema validiert `window_geometry` |
+| Theme & Erscheinungsbild (`ui/theme.py`, `ui/app.py`) | Statische Light-Konstanten | `system_appearance`, `custom_controls` | `ThemePalette` für 6 barrierefreie Themes (`light`, `dark`, `contrast-light`, `contrast-dark`, `minimal-light`, `minimal-dark`, `system`), WCAG 2.2 AA Kontrast (`≥ 4,5:1`), `set_font_provider` / `set_ink_provider`, Hover-Feedback über `theme.hover` |
+| 2-Fenster-Layout & Seitenleiste (`ui/app.py`) | Feste 2-Spalten-Anordnung (Brett links, Sidebar rechts) | Glide 2-Pane-Layout | Linke Seitenleiste (`column=0`, 328 px) mit 64-px-Symbolleiste (`SIDEBAR_RAIL_WIDTH`) und vollständigem Ausblenden; rechtes Brettarbeitsblatt (`column=1`) dehnt sich bei ausgeblendeter Leiste auf 100 % aus; native Tab-Reihenfolge (Brett → linker Reiter → Brett) gewahrt |
+| Kompaktmodus (`ui/app.py`, `storage/settings.py`) | Nicht vorhanden | Glide Compact Mode (`E-U1 A`, `D55`) | `COMPACT_MIN = (480, 560)`, Menüeintrag mit Häkchen, separate Geometrieprüfung und Wiederherstellung (`compact_window` in Settings), kein Verlassen auf Escape |
+| Responsive Dichte (`ui/app.py`) | Starre Breiten | Glide Dichtestufen & Breakpoints | Breite: `≥ 1120` (full), `900..1119` (compact mit Mehr-Aktionen `⋯`), `< 900` (minimal, Logo ausgeblendet für linksbündigen Titel); automatische Verschmälerung `< 760 px`; Höhe: `≥ 850` / `780..849` / `< 780` |
+| In-App-Logo & Dialog (`ui/app.py`, `branding.py`) | Starre Kopfzeilen-Grafik | Glide In-App Header Logo (`B05`, `B07`) | Klickbares Kettensignet öffnet barrierefreien Info-Dialog (`AboutDialog`) via `modal_session`, fluchtende Titel-/Statuszeile (`theme.view_title`) |
+| Fehlertext-Kürzung (`ui/dialogs.py`, `ui/theme.py`) | Manuelles Slicing | `text_fit` | `text_fit.clip(..., ellipsis="…")`, Knöpfe auf 24 Zeichen (`clip_button_text`), Titel auf 40 Zeichen |
+| Datenpfade (`storage/paths.py`) | Eigene Plattformabfrage | `runtime_paths` | `platform_data_dir` & `resolve_base` unter Beibehaltung von `CHESS_AND_CHAINS_DATA_DIR` |
+| Undo/Redo (`ui/app.py`, `game/controller.py`) | `GameController.undo/redo` | `command_history`, `redo_history` | `GameController` bleibt alleinige Schach-Zustandsquelle; `self.ui_history = CommandHistory(limit=50)` für UI-Aktionen |

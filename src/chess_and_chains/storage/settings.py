@@ -12,10 +12,23 @@ from dataclasses import asdict, dataclass, fields, replace
 from datetime import datetime, timezone
 from pathlib import Path
 
+from glide_shell import window_geometry
+
 SETTINGS_SCHEMA = 1
 LOCALES = (None, "en", "de")
 ORIENTATIONS = ("white", "black", "auto")
 PLAY_MODES = ("human-vs-human", "human-vs-bot-white", "human-vs-bot-black")
+BACKGROUND_CHOICES = (
+    "default", "surface", "accent", "clear", "due_action",
+    "export", "flag", "delete", "import", "muted",
+)
+ACCENT_CHOICES = (
+    "accent", "clear", "due_action", "export",
+    "flag", "delete", "import", "muted",
+)
+RADIUS_CHOICES = ("large", "standard", "subtle", "flat")
+FONT_SCALE_CHOICES = ("compact", "standard", "large")
+FONT_WEIGHT_CHOICES = ("auto", "standard", "bold")
 
 
 class SettingsError(ValueError):
@@ -33,6 +46,17 @@ class Settings:
     bot_preset_id: str = "level-3"
     play_mode: str = "human-vs-human"
     last_pack_id: str | None = None
+    window_geometry: str | None = None
+    compact_window: str | None = None
+    sidebar_visible: bool = True
+    sidebar_narrow: bool = False
+    background_choice: str = "default"
+    accent_choice: str = "accent"
+    radius_choice: str = "standard"
+    font_scale_choice: str = "standard"
+    font_weight_choice: str = "standard"
+    animations_enabled: bool = True
+    hints_visible: bool = True
 
     def validate(self) -> Settings:
         if self.schema_version != SETTINGS_SCHEMA:
@@ -47,8 +71,25 @@ class Settings:
             value = getattr(self, name)
             if not isinstance(value, str) or not value or len(value) > 64:
                 raise SettingsError(f"Invalid {name}.")
+        for name in ("sidebar_visible", "sidebar_narrow", "animations_enabled", "hints_visible"):
+            if not isinstance(getattr(self, name), bool):
+                raise SettingsError(f"Invalid {name}.")
+        if self.background_choice not in BACKGROUND_CHOICES:
+            raise SettingsError(f"Unsupported background choice {self.background_choice!r}.")
+        if self.accent_choice not in ACCENT_CHOICES:
+            raise SettingsError(f"Unsupported accent choice {self.accent_choice!r}.")
+        if self.radius_choice not in RADIUS_CHOICES:
+            raise SettingsError(f"Unsupported radius choice {self.radius_choice!r}.")
+        if self.font_scale_choice not in FONT_SCALE_CHOICES:
+            raise SettingsError(f"Unsupported font scale {self.font_scale_choice!r}.")
+        if self.font_weight_choice not in FONT_WEIGHT_CHOICES:
+            raise SettingsError(f"Unsupported font weight {self.font_weight_choice!r}.")
         if self.engine_path is not None and (not isinstance(self.engine_path, str) or "\n" in self.engine_path):
             raise SettingsError("Invalid engine path.")
+        if self.window_geometry is not None and window_geometry.parse(self.window_geometry) is None:
+            raise SettingsError("Invalid window geometry.")
+        if self.compact_window is not None and window_geometry.parse(self.compact_window) is None:
+            raise SettingsError("Invalid compact window geometry.")
         return self
 
 

@@ -4,8 +4,8 @@
   "slug": "chess-and-chains",
   "repository": "n05a-design/chess-and-chains",
   "proposed_repository": "n05a-design/chess-and-chains",
-  "snapshot_date": "2026-11-21",
-  "project_version": "0.0.1",
+  "snapshot_date": "2026-11-24",
+  "project_version": "0.3.0",
   "foundation_version": "F0",
   "product_status": "PROTOTYPE_LOCAL_PLAY_NOT_RELEASED",
   "language_policy": {
@@ -102,13 +102,17 @@
       "depends_on": "W00",
       "gate": "Aktuellster Referenz-Commit, isolierbare Komponenten, Lizenz-/Testplan, Rollback; keine Komplettkopie",
       "phase": "F0",
-      "status": "IN_PROGRESS",
+      "status": "TESTED",
+      "scope": "Neutral Glide Shell 0.6.2 from n05a-design/glide-to-do tag v1.0.2 (commit 7dcd8dc04366f88943fa17827882cef4d81421b8) transferred into src/glide_shell/ with SHELL_MANIFEST.json, AppHost/modal_session/window_lifetime/theme/runtime_paths migration, portable design contract, multi-agent skills, 13/13 selftest and integration tests",
       "status_evidence": [
-        "docs/reports/2026-11-20_W03_glide-audit.md",
-        "docs/reports/2026-11-21_W00-W12-paketabgleich.md"
+        "src/glide_shell/SHELL_MANIFEST.json",
+        "integrations/glide_shell/INTEGRATION_GATE.md",
+        "integrations/glide_shell/REUSE_REGISTER.csv",
+        "tests/test_glide_shell_integration.py",
+        "docs/reports/2026-11-23_W03-W06-W10-glide-shell-1.0.2-integration.md"
       ],
       "open_gate_items": [
-        "Q-006 shell integration decision and independent contract tests before any reuse"
+        "Owner acceptance of W03 Glide Shell 0.6.2 integration"
       ]
     },
     {
@@ -360,8 +364,8 @@
     },
     {
       "repository": "n05a-design/glide-to-do",
-      "ref": "main",
-      "sha": "55ad7e95e5824820098fb0a1d5d5cab66c0a9947"
+      "ref": "v1.0.2",
+      "sha": "7dcd8dc04366f88943fa17827882cef4d81421b8"
     }
   ],
   "not_included": [

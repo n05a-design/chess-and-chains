@@ -1,6 +1,6 @@
 # Offene Rückfragen & Entscheidungsregister
 
-**Single Source of Truth für offene Owner-Fragen.** Stand V.0.0.1 · 21.11.2026. Entscheidungen nach Owner-Antwort mit Referenz im passenden ADR und hier dokumentieren.
+**Single Source of Truth für offene Owner-Fragen.** Stand V.0.3.0 · 24.11.2026. Entscheidungen nach Owner-Antwort mit Referenz im passenden ADR und hier dokumentieren.
 
 | ID | Priorität | Rückfrage an Owner | Vorgeschlagene Default-Richtung | Gate/Status |
 | --- | --- | --- | --- | --- |
@@ -9,7 +9,7 @@
 | Q-003 | HIGH | Unter welcher Lizenz dürfen die **SVG-Schachfiguren** verwendet und mit der App verteilt werden? | Der Inhaber bestätigt seine Rechte und gibt die Figuren unter MPL-2.0 zur Aufnahme in die App frei. [Master und Provenienz](../../assets/chess_pieces/source_svg/masters/PROVENANCE.md) | ADR-005 / CLOSED am 20.11.2026 für Urheberschaft und App-Lizenz. Die [Einzelgrafiken](../../src/chess_and_chains/ui/piece_assets/PROVENANCE.md) sind lokal integriert. |
 | Q-004 | HIGH | Welche **Brettgestaltung, Farben, Schriftstile und Atlas-Regeln** sollen nach dem Review verbindlich werden? | Der Inhaber liefert die Brettdesigns. Manufacturing Consent ist für große Überschriften gesetzt. Konkrete Brettmotive, weitere UI-Schriftrollen und Atlas-Detailabnahme folgen. [Marmor-Kandidat](../../design/source/marmor-3d/README.md) für die lokale 3D-Ansicht. [SVG-Formate](../../assets/boards/source/README.md) | ADR-005 / PARTIALLY DECIDED |
 | Q-005 | HIGH | Tk/Tk9 strikt beibehalten oder bei klaren SVG-/DPI-Nachteilen nach prototypischem Vergleich Qt zulassen? | Owner wählte am 20.11.2026 Tk als W06-Basis und beauftragte die CairoSVG-Plattform-/Offline-Paketierungsprüfung; Qt wurde nicht gewählt. Die CairoSVG-Runtime bleibt bis zu vollständiger Paketierungs-, Plattform- und Lizenzprüfung ungeprüft. | ADR-002 / CLOSED für W06-Stackrichtung; CairoSVG-Integration weiterhin gesperrt bis Prüfung |
-| Q-006 | HIGH | Soll die Glide-Shell später **eigenes Repository/Paket** werden oder aus Glide in Einzelmodulen übernommen werden? | Paket-Bridge ohne Kopie | ADR-002 / OPEN |
+| Q-006 | HIGH | Soll die Glide-Shell später **eigenes Repository/Paket** werden oder aus Glide in Einzelmodulen übernommen werden? | Owner-Freigabe am 23.11.2026: Übernahme der vollständigen, neutralen Glide Shell `0.6.2` aus `n05a-design/glide-to-do` Tag `v1.0.2` (`7dcd8dc04366f88943fa17827882cef4d81421b8`) nach `src/glide_shell/` über `shell_uebernehmen.py` mit `SHELL_MANIFEST.json`. | ADR-002 / CLOSED am 23.11.2026 für die Integration von Glide Shell 0.6.2 |
 | Q-007 | MEDIUM | Welche Plattformen haben **Release-Priorität**: Windows x64, Mac ARM64, Mac Intel, Linux? | Windows + Mac zuerst | ADR-006 / OPEN |
 | Q-008 | MEDIUM | Welche **Ratingspanne** oberhalb 1000 bevorzugst du (1000–2000 oder offen bis 3000+)? | Filter bis 3000+ | ADR-003 / OPEN |
 | Q-009 | MEDIUM | Wieviele Aufgaben sollen direkt mitgeliefert werden (z. B. 20k/50k)? Wie groß darf der Download sein? | 20k initial; später Packs | ADR-003 / OPEN |

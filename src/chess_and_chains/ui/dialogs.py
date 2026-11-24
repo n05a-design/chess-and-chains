@@ -10,9 +10,12 @@ from pathlib import Path
 from tkinter import filedialog, font, ttk
 from typing import Callable
 
+from glide_shell import desktop_adapter, modal_session, text_fit
+
 from ..chess import ChessError, GameState, to_fen
 from ..i18n import Translator
 from ..storage.exchange import parse_fen_text, read_fen_file, write_fen_file
+from .theme import LIGHT_THEME, ThemePalette
 
 
 def bind_button_enter(button: tk.Button | ttk.Button | ttk.Checkbutton) -> None:
@@ -30,16 +33,19 @@ class PositionDialog(tk.Toplevel):
     def __init__(
         self, parent: tk.Tk, translator: Translator, position: GameState,
         confirm_replacement: Callable[[tk.Misc], bool],
+        *, theme: ThemePalette | None = None,
     ) -> None:
-        previous_focus = parent.focus_lastfor()
         super().__init__(parent)
         self.withdraw()
+        self._remembered_focus = modal_session.remember_focus(parent, self, parent)
+        self._theme = theme or LIGHT_THEME
+        self.configure(background=self._theme.acetate)
         self.title(translator("position.title"))
         if parent.winfo_viewable():
             self.transient(parent)
         self.t = translator
         self.result: GameState | None = None
-        self._previous_focus = previous_focus
+        self._previous_focus = self._remembered_focus[1]
         self._confirm_replacement = confirm_replacement
 
         content = ttk.Frame(self, padding=16)
@@ -51,7 +57,7 @@ class PositionDialog(tk.Toplevel):
         available = parent.winfo_width() if parent.winfo_viewable() else 500
         available_pixels = min(available, self.winfo_screenwidth()) - 64
         width = max(26, min(58, available_pixels // fixed_font.measure("0")))
-        self.entry = ttk.Entry(content, textvariable=self.draft, width=width, font="TkFixedFont")
+        self.entry = ttk.Entry(content, textvariable=self.draft, width=width, font="TkFixedFont", style="Glide.TEntry")
         self.entry.grid(row=1, column=0, columnspan=2, sticky="ew")
         self.entry.select_range(0, tk.END)
         self.entry.icursor(0)
@@ -72,7 +78,9 @@ class PositionDialog(tk.Toplevel):
             ("button.cancel", self._close, 7, 0),
             ("position.play", self._play, 7, 1),
         ):
-            button = ttk.Button(content, text=self.t(label), command=command)
+            is_primary = label == "position.play"
+            btn_style = "Glide.New.TButton" if is_primary else "Glide.TButton"
+            button = ttk.Button(content, text=self.t(label), command=command, style=btn_style)
             button.grid(row=row, column=column, sticky="ew", padx=(0, 4) if column == 0 else (4, 0), pady=3)
             bind_button_enter(button)
             if label == "position.play":
@@ -95,9 +103,7 @@ class PositionDialog(tk.Toplevel):
         self._feedback.configure(text="")
 
     def _show_error(self, key: str, error: Exception) -> None:
-        detail = str(error)
-        if len(detail) > 160:
-            detail = detail[:159] + "…"
+        detail = text_fit.clip(str(error), 160, ellipsis="…")
         self._feedback.configure(text=self.t(key, error=detail))
 
     def _validated_draft(self) -> GameState | None:
@@ -146,8 +152,7 @@ class PositionDialog(tk.Toplevel):
         if position is None:
             return
         try:
-            self.clipboard_clear()
-            self.clipboard_append(to_fen(position))
+            desktop_adapter.copy_to_clipboard(self, to_fen(position))
         except tk.TclError:
             self._feedback.configure(text=self.t("position.copy_error"))
             return
@@ -161,9 +166,8 @@ class PositionDialog(tk.Toplevel):
         return "break"
 
     def _close(self, _event: tk.Event | None = None) -> str:
-        focus = self._previous_focus
-        if focus is not None and focus.winfo_exists() and focus.winfo_viewable():
-            focus.focus_set()
+        if not getattr(self, modal_session.ACTIVE_ATTRIBUTE, False):
+            modal_session.return_focus(self.master, self, self._remembered_focus)
         self.destroy()
         return "break"
 

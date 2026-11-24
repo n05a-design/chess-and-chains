@@ -1,6 +1,6 @@
 # MASTER MANIFEST – Chess & Chains
 
-**V.0.0.1 · Stand 21.11.2026 · Entwicklungsprototyp.** Der Stand umfasst den lokalen Regelkern, Tk mit Figurensatz V.02, Mock-UCI mit lokalem Bereitschaftstest, Demo-Puzzle-Lab und SQLite-Bibliothek. [Work Packages](docs/roadmap/WORK_PACKAGES.md) und [Statusmodell](docs/governance/STATUS_MODEL.md) erklären Umfang und Abnahme. `foundation_baseline` im Maschinenmanifest bleibt der historische Planungsstand.
+**V.0.3.0 · Stand 24.11.2026 · Entwicklungsprototyp.** Der Stand umfasst den lokalen Regelkern, Tk mit Figurensatz V.02, Mock-UCI mit lokalem Bereitschaftstest, Demo-Puzzle-Lab und SQLite-Bibliothek. [Work Packages](docs/roadmap/WORK_PACKAGES.md) und [Statusmodell](docs/governance/STATUS_MODEL.md) erklären Umfang und Abnahme. `foundation_baseline` im Maschinenmanifest bleibt der historische Planungsstand.
 
 ## Single Sources of Truth (SSOT)
 
@@ -9,7 +9,7 @@
 | Produktvision, Zielgruppen, Scope | `docs/product/PRODUCT_BRIEF.md` |
 | Scope und Abgrenzung MVP/Später | `docs/product/MVP_CONTRACT.md` |
 | Architektur-/Schnittstellengrenzen | `docs/architecture/ARCHITECTURE.md` |
-| Glide-Shell-Integration | `integrations/glide_shell/INTEGRATION_GATE.md` |
+| Glide-Shell-Integration | `integrations/glide_shell/INTEGRATION_GATE.md` + `src/glide_shell/SHELL_MANIFEST.json` |
 | Produkt-/Technik-/Lizenzentscheidungen | `docs/decisions/ADR_INDEX.md` + ADR-Dateien |
 | Nicht entschiedene Fragen | `docs/questions/OPEN_QUESTIONS.md` |
 | Aktive Aufträge und Abnahmen | `docs/roadmap/WORK_PACKAGES.md` |

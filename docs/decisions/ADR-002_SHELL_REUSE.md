@@ -1,12 +1,14 @@
 # ADR-002 – UI-Stack und Glide Shell
 
-**Status: PROPOSED – keine Portierung freigegeben.**
+**Status: DECIDED (23.11.2026) – Technische Integration von Glide Shell 0.6.2 (Glide `v1.0.2`) freigegeben; CairoSVG-Runtime weiterhin gesperrt.**
 
-Vorschlag: Python; Standardbibliothek für Headless-Core und initiale Prüfungen; Tk/Tk9 als bevorzugter UI-Stack **nach prototypischem SVG-Benchmark**. Die Glide-Shell ist laut Glide-Konzept vom 17.11.2026 noch kein unabhängig abgenommenes Paket. Kein `from glide.app ...`, kein Kopieren von `ListApp`.
+Entscheidung des Inhabers (23.11.2026, Argon Master-Prompt / Q-006):
+- **UI-Fundament:** Chess & Chains übernimmt die anwendungsneutrale **Glide Shell `0.6.2`** aus `n05a-design/glide-to-do` Release `1.0.2`, Git-Tag `v1.0.2`, Commit `7dcd8dc04366f88943fa17827882cef4d81421b8` (Lizenz `MPL-2.0`).
+- **Übernahmeweg:** Reproduzierbare Paketkopie nach `src/glide_shell/` mittels `01_Repository/Glide/scripts/pflege/shell_uebernehmen.py --commit 7dcd8dc04366f88943fa17827882cef4d81421b8 --agenten-bootstrap` mit SHA-256-Integritätsanker (`src/glide_shell/SHELL_MANIFEST.json`).
+- **Architekturgrenze:** Kein Import von `glide.app` oder Glide-To-do-Fachmodellen; keine manuelle Bearbeitung von `src/glide_shell/`; `chess_and_chains.chess`, `game`, `engines` und `puzzles` bleiben frei von Tk- und Shell-Imports.
+- **Abgrenzung:** Die Freigabe betrifft die technische Framework-Migration, nicht automatisch eine Produktveröffentlichung (W12) oder die Aufnahme zusätzlicher Drittkomponenten (z. B. CairoSVG oder GPL-Engines).
 
-Ein Wiederverwendungsmodul wird nur übernommen nach: exakter Quell-SHA, Dateien-/Lizenzinventar, Abhängigkeitsmatrix, Testisolierung, API-Vertrag, Performance/Mac-Windows-Linux-Befund, Regressionsnachweisen, Rollback. Ziel `integrations/glide_shell/` bleibt bis dahin reserviert. Alternative PySide6 nur nach UX-/Performance-Vergleich samt Lizenzcheck; Qt bringt eigene Paket- und UI-Migrationskosten.
-
-Offen: Bridge vs. eigenständiges `glide-shell`-Package; gemeinsamer Codeowner; Versionierung, Akzeptanzkriterien.
+Vorschlag (historischer Ausgangsstand vor Freigabe): Python; Standardbibliothek für Headless-Core und initiale Prüfungen; Tk/Tk9 als bevorzugter UI-Stack **nach prototypischem SVG-Benchmark**. Alternative PySide6 wurde vom Inhaber nicht ausgewählt.
 
 ## W06-SVG-Prototypvergleich (2026-11-20; Tk-Richtung beibehalten)
 

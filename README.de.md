@@ -1,6 +1,6 @@
 # Chess & Chains
 
-**V.0.0.1 · Entwicklungsstand.** [Änderungsverlauf](CHANGELOG.md) · [Versionspflege](docs/governance/GOVERNANCE.md#projektversion)
+**V.0.3.0 · Entwicklungsstand.** [Änderungsverlauf](CHANGELOG.md) · [Versionspflege](docs/governance/GOVERNANCE.md#projektversion)
 
 **Play. Think. Connect. – Schach offline spielen, verstehen und gestalten.**
 
@@ -21,7 +21,7 @@ GitHub ist der Entwicklungsort und beschreibt, wie das fertige Produkt funktioni
 
 ## Was bereits vorhanden ist
 
-Der **GUI-freie Python-Regelkern** unterstützt legale Züge, FEN/SAN/PGN, Remisregeln und Rückgängig/Wiederholen. Perft- und Golden-Tests decken die Umsetzung ab. Der Regelkern erkennt tote Stellungen in kurzen Zwangsfolgen zu Patt oder ungenügendem Material sowie geschlossene Bauernsperren, die kein König öffnen kann. Die allgemeine Erkennung und die Inhaberabnahme stehen aus.
+Der **GUI-freie Python-Regelkern** unterstützt legale Züge, FEN/SAN/PGN, Remisregeln und Rückgängig/Wiederholen. Die Tk-Desktop-Anwendung nutzt **Glide Shell 0.6.2** aus Glide `1.0.2` (Git-Tag `v1.0.2`, Commit `7dcd8dc04366f88943fa17827882cef4d81421b8`, MPL-2.0) unter `src/glide_shell/` als technisches Fundament (`AppHost`, `window_lifetime`, `modal_session`, `desktop_adapter`, `action_picker`, `window_geometry`, `system_appearance`, `motion`, `runtime_paths`, `command_history`, `text_fit`, `custom_controls`) bei voller Wahrung der Markenidentität **Connected System** (Light-/Dark-/System-Theme mit WCAG 2.2 AA Kontrast). Perft- und Golden-Tests decken die Umsetzung ab. Der Regelkern erkennt tote Stellungen in kurzen Zwangsfolgen zu Patt oder ungenügendem Material sowie geschlossene Bauernsperren, die kein König öffnen kann. Die allgemeine Erkennung und die Inhaberabnahme stehen aus.
 
 Der lokale Tk-Prototyp umfasst folgende Funktionen.
 

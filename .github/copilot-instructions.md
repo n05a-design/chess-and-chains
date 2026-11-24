@@ -12,9 +12,12 @@ open owner decisions. Do not mark proposals as accepted or tests as passed
 without evidence.
 
 Keep the app independent, Python-based, and offline-first. Do not add Stockfish,
-`python-chess`, other GPL runtime components, or Glide Shell code before the
-applicable review and owner approval. Do not add unlicensed assets, access or
-modify other checkouts, push, or merge without explicit authorization.
+`python-chess`, or other GPL runtime components before the applicable review and
+owner approval. Chess & Chains uses the owner-approved neutral **Glide Shell 0.6.2**
+(`src/glide_shell/`, pinned to `v1.0.2` commit `7dcd8dc04366f88943fa17827882cef4d81421b8`);
+never edit `src/glide_shell/` manually and never import Glide product/to-do models.
+Do not add unlicensed assets, access or modify other checkouts, push, or merge without
+explicit authorization.
 
 For changes, update the canonical documentation and tests in the same work
 package. Run the relevant Foundation checks and record exact commands, runtime,

@@ -28,6 +28,7 @@ version = {attr = "chess_and_chains.__version__"}
 where = ["src"]
 
 [tool.setuptools.package-data]
+"glide_shell" = ["*.json", "*.md", "LICENSE"]
 "chess_and_chains.engines" = ["*.json"]
 "chess_and_chains.puzzles" = ["data/demo/*.jsonl", "data/demo/*.json"]
 "chess_and_chains.ui" = [

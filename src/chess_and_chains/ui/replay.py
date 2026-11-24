@@ -6,17 +6,54 @@
 import tkinter as tk
 from tkinter import ttk
 
+from glide_shell import modal_session
+from glide_shell.custom_controls import ThemedAutoScrollbar
+
 from ..chess import ChessGame, Color, GameStatus, to_san
 from ..i18n import Translator
 from .board import BoardCanvas
 from .dialogs import bind_button_enter
+from .theme import FONT_SIZES, LIGHT_THEME, SPACING, ThemePalette
+
+
+def _style_listbox_from_ttk(lb: tk.Listbox, theme: ThemePalette | None = None) -> tuple[str, str, str, str]:
+    """Apply Glide palette colors to a Listbox from theme or live ttk.Style."""
+    t = theme or LIGHT_THEME
+    try:
+        from tkinter import ttk as _ttk
+        s = _ttk.Style(lb)
+        card_bg = s.lookup("Glide.TFrame", "background")       or t.acetate
+        bg      = s.lookup("Glide.TEntry", "fieldbackground")  or t.paper
+        fg      = s.lookup("Glide.TEntry", "foreground")       or t.ink
+        sel_bg  = s.lookup("Glide.TEntry", "selectbackground") or t.selection
+        sel_fg  = s.lookup("Glide.TEntry", "selectforeground") or t.selection_text
+        bdr     = s.lookup("Glide.TEntry", "bordercolor")      or t.input_border
+        muted   = s.lookup("Glide.Muted.TLabel", "foreground") or t.muted_ink
+    except Exception:
+        card_bg, bg, fg, sel_bg, sel_fg, bdr, muted = (
+            t.acetate, t.paper, t.ink, t.selection, t.selection_text, t.input_border, t.muted_ink,
+        )
+    lb.configure(
+        background=bg, foreground=fg,
+        selectbackground=sel_bg, selectforeground=sel_fg,
+        highlightthickness=1, highlightbackground=bdr, highlightcolor=bdr,
+        relief="flat", borderwidth=0,
+        activestyle="none",
+    )
+    return card_bg, bdr, muted, fg
 
 
 class ReplayDialog(tk.Toplevel):
-    def __init__(self, parent: tk.Tk, game: ChessGame, t: Translator, artwork, renderer, orientation) -> None:
-        self._previous_focus = parent.focus_lastfor()
+    def __init__(
+        self, parent: tk.Tk, game: ChessGame, t: Translator, artwork, renderer, orientation,
+        *, theme: ThemePalette | None = None,
+    ) -> None:
         super().__init__(parent)
         self.withdraw()
+        self._remembered_focus = modal_session.remember_focus(parent, self, parent)
+        self._previous_focus = self._remembered_focus[1]
+        self._theme = theme or LIGHT_THEME
+        self.configure(background=self._theme.acetate)
         self.title(t("replay.title"))
         self.t = t
         self._positions = game.played_positions()
@@ -32,7 +69,9 @@ class ReplayDialog(tk.Toplevel):
         panel.rowconfigure(1, weight=1)
         self.status = ttk.Label(panel, anchor="w")
         self.status.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 8))
-        self.board = BoardCanvas(panel, lambda _moves: None, renderer=renderer, artwork=artwork, translator=t)
+        self.board = BoardCanvas(
+            panel, lambda _moves: None, renderer=renderer, artwork=artwork, translator=t, theme=self._theme,
+        )
         self.board.set_orientation(orientation)
         self.board.grid(row=1, column=0, sticky="nsew", padx=(0, 12))
         sidebar = ttk.Frame(panel)
@@ -43,9 +82,14 @@ class ReplayDialog(tk.Toplevel):
         list_frame.grid(row=0, column=0, columnspan=2, sticky="nsew", pady=(0, 8))
         list_frame.columnconfigure(0, weight=1)
         list_frame.rowconfigure(0, weight=1)
-        self.move_list = tk.Listbox(list_frame, exportselection=False, width=16, height=8, selectmode=tk.BROWSE)
+        self.move_list = tk.Listbox(list_frame, exportselection=False, width=16, height=8, selectmode=tk.BROWSE,
+                                    font=("TkFixedFont", FONT_SIZES["body"]))
+        card_bg, line_c, muted_c, ink_c = _style_listbox_from_ttk(self.move_list, self._theme)
         self.move_list.grid(row=0, column=0, sticky="nsew")
-        scrollbar = ttk.Scrollbar(list_frame, command=self.move_list.yview, takefocus=False)
+        scrollbar = ThemedAutoScrollbar(
+            list_frame, bg_color=card_bg, track_color=line_c, thumb_color=muted_c, active_thumb_color=ink_c, width=12,
+        )
+        scrollbar.set_command(self.move_list.yview)
         scrollbar.grid(row=0, column=1, sticky="ns")
         self.move_list.configure(yscrollcommand=scrollbar.set)
         self.move_list.insert(tk.END, t("replay.start"))
@@ -80,7 +124,7 @@ class ReplayDialog(tk.Toplevel):
         self.grab_set()
 
     def _button(self, parent, key, command, row, column):
-        button = ttk.Button(parent, text=self.t(key), command=command)
+        button = ttk.Button(parent, text=self.t(key), command=command, style="Glide.TButton")
         button.grid(row=row, column=column, sticky="ew", padx=3, pady=3)
         bind_button_enter(button)
         return button
@@ -114,8 +158,7 @@ class ReplayDialog(tk.Toplevel):
             button.configure(state="normal" if self.index < len(self._moves) else "disabled")
 
     def _close(self, _event: tk.Event | None = None) -> str:
-        focus = self._previous_focus
-        if focus is not None and focus.winfo_exists() and focus.winfo_viewable():
-            focus.focus_set()
+        if not getattr(self, modal_session.ACTIVE_ATTRIBUTE, False):
+            modal_session.return_focus(self.master, self, self._remembered_focus)
         self.destroy()
         return "break"

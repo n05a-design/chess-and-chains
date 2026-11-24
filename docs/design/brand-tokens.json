@@ -2,33 +2,33 @@
   "name": "Connected System",
   "status": "PROPOSED",
   "brand": {
-    "primary": "#2447D8",
-    "secondary": "#F4C400",
-    "accent": "#B12729",
-    "background": "#FAF6EC",
-    "foreground": "#171920"
+    "primary": "#086FD6",
+    "secondary": "#2C95FF",
+    "accent": "#B8221A",
+    "background": "#F5F5F7",
+    "foreground": "#15243C"
   },
   "surface": {
-    "primary": "#FFFCF4",
-    "secondary": "#EFE8D8",
-    "shadow": "#CFC4B0",
-    "mutedInk": "#514B44",
-    "disabledInk": "#6B645C"
+    "primary": "#FFFFFF",
+    "secondary": "#E5E5EA",
+    "shadow": "#D8D8DE",
+    "mutedInk": "#595960",
+    "disabledInk": "#707074"
   },
   "board": {
-    "light": "#ECE2CA",
-    "dark": "#8D7862",
-    "selected": "#F4C400",
-    "legalMove": "#171920",
-    "lastMove": "#FAF6EC",
-    "check": ["#171920", "#FAF6EC"]
+    "light": "#E8EEF5",
+    "dark": "#6B7F99",
+    "selected": "#086FD6",
+    "legalMove": "#15243C",
+    "lastMove": "#C5DCF8",
+    "check": ["#B8221A", "#FFFFFF"]
   },
   "puzzle": {
-    "path": "#8D7862",
-    "node": "#FAF6EC",
-    "completed": "#2447D8",
-    "active": "#F4C400",
-    "revealed": "#B12729"
+    "path": "#5C6F8E",
+    "node": "#FFFFFF",
+    "completed": "#086FD6",
+    "active": "#086FD6",
+    "revealed": "#B8221A"
   },
   "typography": {
     "display": {"family": "Manufacturing Consent", "weight": 400, "fallback": "Georgia, serif"},

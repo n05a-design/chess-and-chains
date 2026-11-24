@@ -1,6 +1,6 @@
 # QA-Matrix – Foundation / Produkt
 
-Stand **V.0.0.1**. Der [Merge-Lauf von PR #21](https://github.com/n05a-design/chess-and-chains/actions/runs/44972693793)
+Stand **V.0.3.0**. Der [Merge-Lauf von PR #21](https://github.com/n05a-design/chess-and-chains/actions/runs/44972693793)
 auf `main` bestand 14 von 14 Jobs. In beiden nativen macOS-Tk-Jobs
 blieb die Partie beim Wechsel auf das Marmorbrett und zurück erhalten.
 Der Entwicklungsabgleich belegt die Prüfung der
