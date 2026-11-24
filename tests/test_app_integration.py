@@ -620,6 +620,22 @@ class BrandingUiTests(AppTestCase):
                 self.assertEqual((image.width(), image.height()), expected_size)
                 self.assertTrue(image.transparency_get(0, 0))
 
+    def test_in_app_monochrome_logo_renders_transparent_fallback_without_svg(self):
+        from chess_and_chains.ui.branding import in_app_logo_photo
+
+        root = create_root(self)
+        with patch("chess_and_chains.ui.branding.has_svg_support", return_value=False):
+            photo = in_app_logo_photo(root, 44, "#0767C7")
+            self.assertEqual(photo.height(), 44)
+            self.assertTrue(photo.transparency_get(0, 0))
+            opaque = {
+                tuple(int(v) for v in photo.get(x, y))
+                for y in range(photo.height())
+                for x in range(photo.width())
+                if not photo.transparency_get(x, y)
+            }
+            self.assertEqual(opaque, {(7, 103, 199)})
+
     def test_test_piece_letter_fits_its_disc_at_double_text_scale(self):
         root = create_root(self)
         scale = root.tk.call("tk", "scaling")

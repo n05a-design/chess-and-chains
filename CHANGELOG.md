@@ -13,8 +13,11 @@
 - **`AppearanceDialog` (`ui/appearance_dialog.py`)**: modal customization dialog (`Cmd/Ctrl+,`, header button, View menu) with live `RoundedSurfaceCard`/`RoundedButton` preview calling `ChessApp.apply_appearance()`.
 - **Full component theming**: `board.py`, `marble_board.py`, `atlas.py`, `dialogs.py`, `replay.py`, and `text_board.py` adopt `ThemePalette`; `ReplayDialog` and `TextBoardDialog` adopt `ThemedAutoScrollbar`.
 
+- **Borderless Monochrome In-App Header Logo (`ui/branding.py`, `ui/app.py`, `ui/theme.py`)**: replaced the framed multi-color square `tk.Button` in the header with `HeaderLogoCanvas` (`tk.Canvas`), rendering the cropped inked bounding box (`signet_bounding_box`) of `signet.svg` transparently in the WCAG-verified active theme accent color (`theme.view_title`, via `legible_accent()`) with pure-Python transparent RGBA PNG fallback (`render_signet_rgba_png`), aligned optically to cap-top and subtitle baseline across font scales while keeping original master SVGs and OS icons intact.
+- **Uniform 12 px Glide Card Spacing & Standalone Startup**: enforced constant `PANEL_GAP = 12 px` across all panels and unified Glide Settings (`AppearanceDialog` + `start_chess_and_chains.py` / `build_app.py`).
+
 ### Verification
-- **Full test suite**: 276/276 tests passing (`PYTHONPATH=src python3 -m unittest discover -s tests -q`), including WCAG coverage across all 10 distinct Glide themes (`test_27`) and rounded-card / carrier-blending / `AppearanceDialog` round-trip tests (`test_29`).
+- **Full test suite**: `PYTHONPATH=src python3 -m unittest discover -s tests -q` passing (including WCAG contrast checks across all 10 Glide themes and 8 accents, `test_30` panel spacing/Settings parity/standalone launchers, and `test_31` monochrome header logo across themes/accents/font scales/PNG fallback).
 - **Governance & Policy checks**: `scripts/verify_starter.py`, `scripts/check_policy.py`, and `scripts/verify_document_links.py` passing.
 
 ## V.0.2.0 – Full Glide Design Language (ttk Styles, Tokens, Dark/Light) (2026-11-24)

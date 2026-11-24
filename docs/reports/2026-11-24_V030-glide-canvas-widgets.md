@@ -34,9 +34,14 @@ all 10 Glide themes, and interactive Appearance customization while keeping Glid
 - **`install_ttk_theme()` / `apply_listbox_theme()` / `apply_optionmenu_theme()`:** updated
   to Glide tokens with Cobalt blue accent (`#086FD6` light / `#2C95FF` dark).
 
-### `src/chess_and_chains/ui/appearance_dialog.py` & `app.py`
-- Added modal `AppearanceDialog` (`Cmd/Ctrl+,`, header button, View menu) with live
-  `RoundedSurfaceCard` + `RoundedButton` preview.
+### `src/chess_and_chains/ui/branding.py`, `appearance_dialog.py` & `app.py`
+- Added borderless monochrome `HeaderLogoCanvas` (`signet_bounding_box`, `in_app_logo_photo`,
+  `render_signet_rgba_png`) rendered directly in WCAG-verified `theme.view_title` via
+  `legible_accent()` and optically aligned to title cap-top & subtitle baseline across font scales,
+  while keeping master SVGs and multi-color OS app icons untouched.
+- Added unified Glide Settings (`AppearanceDialog`, `Cmd/Ctrl+,`, header `⚙`), enforced uniform
+  `PANEL_GAP = 12 px` card spacing, and added standalone startup (`start_chess_and_chains.py`,
+  `Start Chess & Chains.command`, `packaging/macos/build_app.py`).
 - Replaced rectangular `_sheet_pair` frames and `TabRail` `tk.Button` widgets with
   `RoundedSurfaceCard` (`header_card`, `_side_slot`, `_board_slot`, `_rail_slot`, `atlas_section`)
   and `RoundedButton`.
@@ -59,7 +64,7 @@ all 10 Glide themes, and interactive Appearance customization while keeping Glid
 
 ## Test & Verification Evidence
 
-- **Full unittest suite:** `PYTHONPATH=src python3 -m unittest discover -s tests -q` → `276` tests `OK` (exit `0`)
+- **Full unittest suite:** `PYTHONPATH=src python3 -m unittest discover -s tests -q` → `279` tests `OK` (exit `0`)
 - **Starter & status audit:** `python3 scripts/verify_starter.py` → `PASS` (exit `0`)
 - **Policy check:** `python3 scripts/check_policy.py` → `PASS` (exit `0`)
 - **Document link audit:** `python3 scripts/verify_document_links.py` → `PASS` (exit `0`)
@@ -68,5 +73,4 @@ all 10 Glide themes, and interactive Appearance customization while keeping Glid
 
 ## Next Actions
 
-1. Review PR #23 on `feat/chess-glide-1.0.2-shell-integration` and merge to `main` only upon explicit owner approval.
-2. Perform manual visual & scaling acceptance (100% / 150% / 200%, VoiceOver/NVDA) on macOS/Windows/Linux.
+1. Perform manual visual & scaling acceptance (100% / 150% / 200%, VoiceOver/NVDA) on macOS/Windows/Linux.

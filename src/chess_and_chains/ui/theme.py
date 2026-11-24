@@ -18,7 +18,7 @@ from dataclasses import dataclass, replace
 import tkinter as tk
 from tkinter import font as tkfont
 from types import MappingProxyType
-from typing import Callable
+from typing import Callable, Sequence
 
 from glide_shell import custom_controls, system_appearance, text_fit, window_lifetime
 
@@ -384,7 +384,7 @@ LIGHT_THEME = ThemePalette(
     hover="#D8E9FE",
     selection="#086FD6",
     selection_text="#FFFFFF",
-    view_title="#15243C",
+    view_title="#0767C7",
     confirm="#196B2E",
     delete="#B8221A",
 )
@@ -415,7 +415,7 @@ DARK_THEME = ThemePalette(
     hover="#243A55",
     selection="#2C95FF",
     selection_text="#111113",
-    view_title="#F5F5F7",
+    view_title="#4EA6FF",
     confirm="#30D158",
     delete="#FF8078",
 )
@@ -446,7 +446,7 @@ GLASS_LIGHT_THEME = ThemePalette(
     hover="#DCE8F7",
     selection="#086FD6",
     selection_text="#FFFFFF",
-    view_title="#15243C",
+    view_title="#0766C5",
     confirm="#196B2E",
     delete="#B8221A",
 )
@@ -477,7 +477,7 @@ GLASS_DARK_THEME = ThemePalette(
     hover="#2E3E59",
     selection="#4DA6FF",
     selection_text="#111113",
-    view_title="#F5F5F7",
+    view_title="#5BADFF",
     confirm="#3BE068",
     delete="#FF8C85",
 )
@@ -508,7 +508,7 @@ DOPAMINE_THEME = ThemePalette(
     hover="#2A1A5A",
     selection="#00D9FF",
     selection_text="#050310",
-    view_title="#FFFBFF",
+    view_title="#00D9FF",
     confirm="#00FF9C",
     delete="#FF6E94",
 )
@@ -539,7 +539,7 @@ PIXEL_THEME = ThemePalette(
     hover="#1B2150",
     selection="#3D7BFF",
     selection_text="#000000",
-    view_title="#FFFFFF",
+    view_title="#4E87FF",
     confirm="#35E0A1",
     delete="#FF6E88",
 )
@@ -570,7 +570,7 @@ CONTRAST_LIGHT_THEME = ThemePalette(
     hover="#D4E8F6",
     selection="#0072B2",
     selection_text="#FFFFFF",
-    view_title="#101014",
+    view_title="#006BA7",
     confirm="#00664C",
     delete="#B03A00",
 )
@@ -601,7 +601,7 @@ CONTRAST_DARK_THEME = ThemePalette(
     hover="#13354A",
     selection="#56B4E9",
     selection_text="#000000",
-    view_title="#FFFFFF",
+    view_title="#56B4E9",
     confirm="#33D6A6",
     delete="#FF8F4D",
 )
@@ -632,7 +632,7 @@ MINIMAL_LIGHT_THEME = ThemePalette(
     hover="#E4E4E4",
     selection="#2B2B2B",
     selection_text="#FFFFFF",
-    view_title="#171717",
+    view_title="#2B2B2B",
     confirm="#2B2B2B",
     delete="#171717",
 )
@@ -663,7 +663,7 @@ MINIMAL_DARK_THEME = ThemePalette(
     hover="#2B2B2B",
     selection="#D6D6D6",
     selection_text="#111111",
-    view_title="#F4F4F4",
+    view_title="#D6D6D6",
     confirm="#E4E4E4",
     delete="#F4F4F4",
 )
@@ -704,6 +704,26 @@ _ACCENT_MAP_DARK = {
 }
 
 
+def legible_accent(
+    color: str,
+    surfaces: Sequence[str],
+    *,
+    is_dark: bool,
+    minimum: float = 4.5,
+) -> str:
+    """Return ``color`` or blend it cleanly until every surface achieves ``minimum`` contrast."""
+    bg_list = tuple(s for s in surfaces if s)
+    if not bg_list or all(contrast_ratio(color, bg) >= minimum for bg in bg_list):
+        return color
+    pole = (255, 255, 255) if is_dark else (0, 0, 0)
+    base = hex_rgb(color)
+    for step in range(1, 101):
+        candidate = rgb_hex(mix_rgb(base, pole, step / 100.0))
+        if all(contrast_ratio(candidate, bg) >= minimum for bg in bg_list):
+            return candidate
+    return "#FFFFFF" if is_dark else "#000000"
+
+
 def with_accent(palette: ThemePalette, choice: str) -> ThemePalette:
     """Apply an interactive UI accent color choice with WCAG 2.2 AA contrast."""
     if choice not in ACCENT_KEYS or choice == "accent":
@@ -715,6 +735,12 @@ def with_accent(palette: ThemePalette, choice: str) -> ThemePalette:
     c_dark = contrast_ratio("#111113", target)
     c_light = contrast_ratio("#FFFFFF", target)
     fg = "#111113" if c_dark >= c_light else "#FFFFFF"
+    title_color = palette.ink if choice == "muted" else legible_accent(
+        target,
+        (palette.window, palette.paper, palette.acetate, palette.hover),
+        is_dark=palette.is_dark,
+        minimum=4.5,
+    )
     return replace(
         palette,
         focus_ink=target,
@@ -723,6 +749,7 @@ def with_accent(palette: ThemePalette, choice: str) -> ThemePalette:
         action_new_fg=fg,
         selection=target,
         selection_text=fg,
+        view_title=title_color,
     )
 
 
@@ -740,7 +767,13 @@ def with_background(palette: ThemePalette, choice: str) -> ThemePalette:
     tint = hex_rgb(tint_hex)
     share = 0.14 if palette.is_dark else 0.08
     tinted_window = rgb_hex(mix_rgb(base, tint, share))
-    return replace(palette, window=tinted_window)
+    safe_title = legible_accent(
+        palette.view_title,
+        (tinted_window, palette.paper, palette.acetate, palette.hover),
+        is_dark=palette.is_dark,
+        minimum=4.5,
+    )
+    return replace(palette, window=tinted_window, view_title=safe_title)
 
 
 def customize_palette(

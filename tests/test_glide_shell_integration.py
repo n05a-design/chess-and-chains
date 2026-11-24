@@ -694,6 +694,77 @@ class GlideShellIntegrationTests(unittest.TestCase):
             self.assertEqual(proc.returncode, 0, f"{script} failed: {proc.stderr}")
             self.assertIn("Chess & Chains", proc.stdout)
 
+    def test_31_monochrome_header_logo_all_themes_accents_and_font_scales(self):
+        from chess_and_chains.ui.branding import in_app_logo_photo, signet_aspect
+        from chess_and_chains.ui.theme import ACCENT_CHOICES
+
+        root = create_root(self)
+        app = ChessApp(root, locale="de")
+        self.addCleanup(app.close)
+        root.deiconify()
+        root.update()
+
+        logo = app.header_logo
+        self.assertIsInstance(logo, tk.Canvas)
+        self.assertEqual(int(str(logo.cget("bd"))), 0)
+        self.assertEqual(int(str(logo.cget("highlightthickness"))), 0)
+        self.assertEqual(logo.cget("bg"), app.theme.paper)
+        self.assertGreater(logo.winfo_width(), logo.winfo_height())  # cropped 60:56 ratio
+
+        # Monochrome header logo + view_title share theme accent across all 10 themes
+        for tid in (k for k in THEMES if k != "w06-provisional"):
+            pal = app.apply_appearance(theme_id=tid, accent_choice="accent", persist=False)
+            root.update()
+            self.assertEqual(logo.cget("bg"), pal.paper)
+            self.assertEqual(logo._logo_color, pal.view_title)
+            self.assertEqual(app.title_row.cget("foreground"), pal.view_title)
+
+        # Accent choices update logo and title dynamically
+        for acc, _lbl in ACCENT_CHOICES:
+            pal = app.apply_appearance(theme_id="light", accent_choice=acc, persist=False)
+            root.update()
+            self.assertEqual(logo._logo_color, pal.view_title)
+            self.assertEqual(app.title_row.cget("foreground"), pal.view_title)
+
+        # Font scaling resizes the optical logo height proportionally
+        heights: list[int] = []
+        for scale in ("compact", "standard", "large"):
+            app.apply_appearance(theme_id="light", accent_choice="accent", font_scale_choice=scale, persist=False)
+            root.update()
+            opt_h, _top, _bot = app.header_logo_metrics()
+            self.assertEqual(logo._logo_height, opt_h)
+            self.assertAlmostEqual(logo.winfo_width() / logo.winfo_height(), signet_aspect(), delta=0.12)
+            heights.append(opt_h)
+        self.assertLess(heights[0], heights[1])
+        self.assertLess(heights[1], heights[2])
+
+        # Responsive minimal header hides logo < 900 px and click opens About dialog
+        app.sync_header_density(800)
+        root.update()
+        self.assertEqual(logo.winfo_manager(), "")
+        app.sync_header_density(1200)
+        root.update()
+        self.assertTrue(logo.winfo_manager())
+
+        about = app.show_about_dialog(modal=False)
+        self.assertIsNotNone(about)
+        if about.winfo_exists():
+            about.destroy()
+
+        # Verify transparent PNG fallback when native SVG is unavailable
+        with patch("chess_and_chains.ui.branding.has_svg_support", return_value=False):
+            png_photo = in_app_logo_photo(root, 45, "#00D9FF")
+            self.assertEqual(png_photo.height(), 45)
+            self.assertEqual(png_photo.width(), round(45 * signet_aspect()))
+            self.assertTrue(png_photo.transparency_get(0, 0))
+            opaque_colors = {
+                tuple(int(c) for c in png_photo.get(x, y))
+                for y in range(png_photo.height())
+                for x in range(png_photo.width())
+                if not png_photo.transparency_get(x, y)
+            }
+            self.assertEqual(opaque_colors, {(0, 217, 255)})
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -53,7 +53,7 @@ from .appearance_dialog import AppearanceDialog
 from .atlas import PuzzleAtlas
 from .board import Orientation
 from .board_artwork import BoardArtwork, BoardArtworkError, BoardDesign
-from .branding import brand_image
+from .branding import brand_image, draw_signet_canvas, in_app_logo_photo
 from .dialogs import PositionDialog, bind_button_enter as _bind_button_enter
 from .marble_board import MarbleBoardCanvas
 from .pieces import OwnerSvgPieces, PieceRenderer
@@ -119,6 +119,24 @@ ProviderFactory = Callable[[BotPreset, Settings], MoveProvider]
 def default_provider_factory(preset: BotPreset, settings: Settings) -> MoveProvider:
     config, _warning = resolve_engine_config(settings.engine_path)
     return UCIBot(config, preset)
+
+
+class HeaderLogoCanvas(tk.Canvas):
+    """Borderless monochrome header logo canvas matching Glide's header logo anatomy."""
+
+    def __init__(self, master: tk.Misc, *, on_invoke: Callable[[], object], **kwargs) -> None:
+        super().__init__(master, width=1, height=1, **kwargs)
+        self._on_invoke = on_invoke
+        self.bind("<Button-1>", self._handle_invoke)
+        self.bind("<Return>", self._handle_invoke)
+        self.bind("<space>", self._handle_invoke)
+
+    def _handle_invoke(self, _event: tk.Event | None = None) -> str:
+        self._on_invoke()
+        return "break"
+
+    def invoke(self) -> None:
+        self._on_invoke()
 
 
 class TabRail(tk.Frame):
@@ -622,31 +640,31 @@ class ChessApp:
         self.header_frame = header = tk.Frame(self.header_card.inner, background=theme.paper, padx=SPACING[16], pady=SPACING[10])
         header.pack(fill="x")
 
-        self._header_signet = brand_image(self.root, "signet", scale=40 / 64)
-        self.header_logo = tk.Button(
-            header, image=self._header_signet, command=self.show_about_dialog,
-            background=theme.paper, activebackground=theme.hover, relief="flat",
-            borderwidth=0, highlightthickness=1, highlightbackground=theme.paper,
-            highlightcolor=theme.brand_blue, padx=SPACING[2], pady=SPACING[2],
-            takefocus=True, cursor="hand2",
+        self.header_logo = HeaderLogoCanvas(
+            header,
+            on_invoke=self.show_about_dialog,
+            background=theme.paper,
+            bd=0,
+            highlightthickness=0,
+            relief="flat",
+            cursor="hand2",
+            takefocus=0,
         )
-        self.header_logo.pack(side="left", padx=(0, SPACING[12]))
-        _bind_button_enter(self.header_logo)
 
         self.title_block = tk.Frame(header, background=theme.paper)
-        self.title_block.pack(side="left", fill="both", expand=True)
+        self.title_block.pack(side="left", fill="x", expand=True, anchor="w")
         self.title_row = tk.Label(
             self.title_block, text=t("app.title"), background=theme.paper,
             foreground=theme.view_title,
             font=font_spec("title", "bold", scale_choice=self.settings.font_scale_choice, weight_choice=self.settings.font_weight_choice),
-            anchor="w", justify="left",
+            anchor="w", justify="left", padx=0, pady=0, bd=0, highlightthickness=0,
         )
         self.title_row.pack(fill="x", anchor="w")
         self.subtitle_row = tk.Label(
             self.title_block, textvariable=self.header_mode_text, background=theme.paper,
             foreground=theme.muted_ink,
             font=font_spec("caption", "bold", scale_choice=self.settings.font_scale_choice, weight_choice=self.settings.font_weight_choice, mono=True),
-            anchor="w", justify="left", wraplength=480,
+            anchor="w", justify="left", wraplength=480, padx=0, pady=0, bd=0, highlightthickness=0,
         )
         self.subtitle_row.pack(fill="x", anchor="w", pady=(SPACING[2], 0))
         self.title_block.bind(
@@ -655,7 +673,7 @@ class ChessApp:
         )
 
         self.header_controls = tk.Frame(header, background=theme.paper, height=38)
-        self.header_controls.pack(side="right", anchor="ne", padx=(SPACING[12], 0))
+        self.header_controls.pack(side="right", anchor="e", padx=(SPACING[12], 0))
         self.sidebar_toggle_button = self._header_button(self.header_controls, "", self.toggle_sidebar)
         self.sidebar_narrow_button = self._header_button(self.header_controls, "", self.toggle_sidebar_narrow)
         self.theme_toggle_button = self._header_button(self.header_controls, "", self._toggle_theme_mode)
@@ -668,10 +686,6 @@ class ChessApp:
             masthead.configure(background=p.window),
             self.header_card.set_theme(bg_color=p.window, fill_color=p.paper, outline_color=p.line, radius=self._corner_radius),
             header.configure(background=p.paper),
-            self.header_logo.configure(
-                background=p.paper, activebackground=p.hover,
-                highlightbackground=p.paper, highlightcolor=p.brand_blue,
-            ),
             self.title_block.configure(background=p.paper),
             self.title_row.configure(
                 background=p.paper, foreground=p.view_title,
@@ -682,6 +696,7 @@ class ChessApp:
                 font=font_spec("caption", "bold", scale_choice=self.settings.font_scale_choice, weight_choice=self.settings.font_weight_choice, mono=True),
             ),
             self.header_controls.configure(background=p.paper),
+            self.sync_header_logo(),
         ))
 
         self._body = body = tk.Frame(self.root, background=theme.window, padx=PANEL_GAP, pady=0)
@@ -1126,13 +1141,45 @@ class ChessApp:
             return "compact"
         return "minimal"
 
+    def header_logo_color(self) -> str:
+        """Return the active monochrome theme color for the in-app header logo."""
+        return self.theme.view_title
+
+    def header_logo_metrics(self) -> tuple[int, int, int]:
+        """Compute optical ``(height, top_inset, bottom_inset)`` aligned to title + subtitle ink."""
+        title_font = font.Font(root=self.root, font=self.title_row.cget("font"))
+        sub_font = font.Font(root=self.root, font=self.subtitle_row.cget("font"))
+        top_inset = max(1, round(title_font.metrics("ascent") * 0.18))
+        bottom_inset = max(1, int(sub_font.metrics("descent")))
+        optical_height = max(24, (title_font.metrics("linespace") - top_inset) + SPACING[2] + sub_font.metrics("ascent"))
+        return optical_height, top_inset, bottom_inset
+
     def sync_header_logo(self) -> None:
-        if not hasattr(self, "header_logo"):
+        if not hasattr(self, "header_logo") or not hasattr(self, "title_row") or not hasattr(self, "subtitle_row"):
             return
+        canvas = self.header_logo
         if self._header_density == "minimal" or self._compact_mode:
-            self.header_logo.pack_forget()
-        elif not self.header_logo.winfo_manager():
-            self.header_logo.pack(side="left", padx=(0, SPACING[12]), before=self.title_block)
+            if canvas.winfo_manager():
+                canvas.pack_forget()
+            return
+        height, top_inset, bottom_inset = self.header_logo_metrics()
+        color = self.header_logo_color()
+        carrier_bg = self.theme.paper
+        canvas.configure(background=carrier_bg)
+        key = (height, color, carrier_bg)
+        if key != getattr(self, "_header_logo_key", None):
+            self._header_logo_key = key
+            draw_signet_canvas(canvas, height, color)
+        pack_geom = (top_inset, bottom_inset)
+        if not canvas.winfo_manager() or pack_geom != getattr(self, "_header_logo_geom", None):
+            canvas.pack(
+                side="left",
+                anchor="w",
+                padx=(0, SPACING[12]),
+                pady=(top_inset, bottom_inset),
+                before=self.title_block,
+            )
+            self._header_logo_geom = pack_geom
 
     def pack_header_controls(self) -> None:
         if not hasattr(self, "header_controls"):
@@ -1280,11 +1327,11 @@ class ChessApp:
             resizable=(False, False),
         )
         dialog.configure(padx=SPACING[22], pady=SPACING[18])
-        signet = brand_image(dialog, "signet", scale=48 / 64)
+        signet = in_app_logo_photo(dialog, 48, theme.view_title)
         dialog._about_signet = signet  # keep PhotoImage alive while dialog exists
         header_row = tk.Frame(dialog, background=theme.acetate)
         header_row.pack(fill="x", anchor="w")
-        tk.Label(header_row, image=signet, background=theme.acetate, borderwidth=0).pack(
+        tk.Label(header_row, image=signet, background=theme.acetate, borderwidth=0, highlightthickness=0).pack(
             side="left", padx=(0, SPACING[12]),
         )
         title_box = tk.Frame(header_row, background=theme.acetate)
