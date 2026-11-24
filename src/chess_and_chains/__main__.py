@@ -1,8 +1,16 @@
 """CLI entry point for the local desktop prototype."""
+from __future__ import annotations
+
 import argparse
+import sys
 from pathlib import Path
 
-from . import DISPLAY_VERSION
+if __package__ in (None, ""):
+    _SRC_DIR = str(Path(__file__).resolve().parents[1])
+    if _SRC_DIR not in sys.path:
+        sys.path.insert(0, _SRC_DIR)
+
+from chess_and_chains import DISPLAY_VERSION
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -13,14 +21,22 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="report the installed version without opening the desktop window",
     )
-    parser.add_argument("--board-design", type=Path, metavar="SVG_OR_DIRECTORY",
-                        help="preview a local SVG board or a directory of square SVGs for this session")
-    parser.add_argument("--piece-view", choices=("front", "top"), default="front",
-                        help="choose the front or top view of the pieces for this session")
+    parser.add_argument(
+        "--board-design",
+        type=Path,
+        metavar="SVG_OR_DIRECTORY",
+        help="preview a local SVG board or a directory of square SVGs for this session",
+    )
+    parser.add_argument(
+        "--piece-view",
+        choices=("front", "top"),
+        default="front",
+        help="choose the front or top view of the pieces for this session",
+    )
     args = parser.parse_args(argv)
     design = None
     if args.board_design is not None:
-        from .ui.board_artwork import BoardArtworkError, load_board_design
+        from chess_and_chains.ui.board_artwork import BoardArtworkError, load_board_design
 
         try:
             design = load_board_design(args.board_design)
@@ -33,9 +49,8 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 0
 
-    from .ui import launch
-
-    from .ui.board_artwork import BoardArtworkError
+    from chess_and_chains.ui import launch
+    from chess_and_chains.ui.board_artwork import BoardArtworkError
 
     try:
         launch(board_design=design, top_pieces=args.piece_view == "top")

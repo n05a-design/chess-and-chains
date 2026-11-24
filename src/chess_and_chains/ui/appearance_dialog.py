@@ -1,14 +1,14 @@
-"""Appearance & Glide Customization Modal Dialog for Chess & Chains – V.0.3.0.
+"""Unified Glide Settings & Customization Modal Dialog for Chess & Chains – V.0.3.0.
 
-Provides the full Glide v1.0.2 customization suite:
-- Theme (System + 10 canonical Glide themes)
+Provides full parity with the Glide v1.0.2 customization suite:
+- Theme (System + 10 canonical Glide themes) with dynamic contextual notes
 - Accent color (8 WCAG-compliant semantic choices)
-- Background tint (10 surface/tint choices)
+- Background tint (10 surface/tint choices) with explanatory note
 - Corner radius (18 px / 12 px / 6 px / 0 px)
-- Font scale (90% / 100% / 115%)
-- Font weight (Auto / Standard / Bold)
-- Animations & Hints toggles
-- Real-time live preview using RoundedSurfaceCard and RoundedButton
+- Font scale (90% / 100% / 115%) & Font weight (Auto / Standard / Bold)
+- Interface Language (Deutsch / English)
+- Behavior & Sidebar visibility toggles + Engine Settings shortcut
+- Uniform 12 px Glide card rhythm and real-time RoundedSurfaceCard preview
 
 SPDX-License-Identifier: MPL-2.0
 """
@@ -18,6 +18,7 @@ SPDX-License-Identifier: MPL-2.0
 
 from __future__ import annotations
 
+import inspect
 import tkinter as tk
 from typing import Callable
 
@@ -29,7 +30,6 @@ from .theme import (
     ACCENT_CHOICES,
     BACKGROUND_CHOICES,
     FONT_SCALE_CHOICES,
-    FONT_SIZES,
     FONT_WEIGHT_CHOICES,
     RADIUS_CHOICES,
     RADIUS_MAP,
@@ -44,9 +44,11 @@ from .theme import (
     resolve_theme,
 )
 
+CARD_GAP = SPACING[12]
+
 
 class AppearanceDialog(tk.Toplevel):
-    """Interactive Glide appearance and geometry customization dialog."""
+    """Interactive Glide Settings & Appearance customization dialog."""
 
     def __init__(
         self,
@@ -62,6 +64,10 @@ class AppearanceDialog(tk.Toplevel):
         font_weight_choice: str = "standard",
         animations_enabled: bool = True,
         hints_visible: bool = True,
+        locale: str = "de",
+        sidebar_visible: bool = True,
+        sidebar_narrow: bool = False,
+        on_open_engine: Callable[[], None] | None = None,
         on_apply: Callable[..., None] | None = None,
         modal: bool = True,
     ) -> None:
@@ -74,6 +80,7 @@ class AppearanceDialog(tk.Toplevel):
         self._weight_choice = font_weight_choice
         self.t = translator
         self.on_apply = on_apply
+        self.on_open_engine = on_open_engine
 
         self.theme_var = tk.StringVar(self, value=theme_id)
         self.bg_var = tk.StringVar(self, value=background_choice)
@@ -83,12 +90,15 @@ class AppearanceDialog(tk.Toplevel):
         self.weight_var = tk.StringVar(self, value=font_weight_choice)
         self.animations_var = tk.BooleanVar(self, value=animations_enabled)
         self.hints_var = tk.BooleanVar(self, value=hints_visible)
+        self.locale_var = tk.StringVar(self, value=locale)
+        self.sidebar_visible_var = tk.BooleanVar(self, value=sidebar_visible)
+        self.sidebar_narrow_var = tk.BooleanVar(self, value=sidebar_narrow)
 
         self.title(self.t("appearance.dialog.title"))
         self.configure(background=palette.window)
         if parent.winfo_viewable():
             self.transient(parent)
-        apply_window_geometry(self, 780, 720, 620, 540)
+        apply_window_geometry(self, 820, 740, 680, 560)
 
         self._build_ui()
         self._update_preview()
@@ -106,12 +116,20 @@ class AppearanceDialog(tk.Toplevel):
         if modal:
             modal_session.run_modal(parent, self, focus=self.apply_btn)
 
+    def _theme_note_text(self, theme_id: str) -> str:
+        key = f"theme.note.{theme_id.replace('-', '_')}"
+        try:
+            note = self.t(key)
+        except KeyError:
+            note = self.t("theme.note.light")
+        return f"{note} {self.t('settings.design_note')}"
+
     def _build_ui(self) -> None:
         p = self._palette
         t = self.t
         r = self._corner_radius
 
-        container = tk.Frame(self, background=p.window, padx=SPACING[16], pady=SPACING[14])
+        container = tk.Frame(self, background=p.window, padx=CARD_GAP, pady=CARD_GAP)
         container.pack(fill="both", expand=True)
 
         self.heading_lbl = tk.Label(
@@ -122,11 +140,11 @@ class AppearanceDialog(tk.Toplevel):
             font=font_spec("section", "bold", scale_choice=self._scale_choice, weight_choice=self._weight_choice),
             anchor="w",
         )
-        self.heading_lbl.pack(fill="x", pady=(0, SPACING[10]))
+        self.heading_lbl.pack(fill="x", pady=(0, CARD_GAP))
 
         # Action bar packed at bottom so controls stay protected (B15)
         action_bar = tk.Frame(container, background=p.window)
-        action_bar.pack(side="bottom", fill="x", pady=(SPACING[10], 0))
+        action_bar.pack(side="bottom", fill="x", pady=(CARD_GAP, 0))
 
         self.cancel_btn = RoundedButton(
             action_bar,
@@ -143,7 +161,7 @@ class AppearanceDialog(tk.Toplevel):
             radius=r,
             font=font_spec("body", "bold", scale_choice=self._scale_choice, weight_choice=self._weight_choice),
         )
-        self.cancel_btn.pack(side="right", padx=(SPACING[8], 0))
+        self.cancel_btn.pack(side="right", padx=(CARD_GAP, 0))
 
         self.apply_btn = RoundedButton(
             action_bar,
@@ -189,14 +207,55 @@ class AppearanceDialog(tk.Toplevel):
             "<Configure>",
             lambda _e: self.scroll_canvas.configure(scrollregion=self.scroll_canvas.bbox("all")),
         )
+        body.columnconfigure((0, 1), weight=1, uniform="settings_cols")
 
         left = tk.Frame(body, background=p.window)
-        left.pack(side="left", fill="both", expand=True, padx=(0, SPACING[8]))
+        left.grid(row=0, column=0, sticky="new", padx=(0, CARD_GAP // 2))
         right = tk.Frame(body, background=p.window)
-        right.pack(side="right", fill="both", expand=True)
+        right.grid(row=0, column=1, sticky="new", padx=(CARD_GAP // 2, 0))
 
-        self._build_radio_card(left, t("theme.menu"), THEME_OPTIONS, self.theme_var)
-        self._build_radio_card(left, t("theme.background.label"), BACKGROUND_CHOICES, self.bg_var)
+        tk.Label(
+            left,
+            text=t("settings.column.appearance"),
+            background=p.window,
+            foreground=p.view_title,
+            font=font_spec("body", "bold", scale_choice=self._scale_choice, weight_choice=self._weight_choice),
+            anchor="w",
+        ).pack(fill="x", pady=(0, SPACING[8]))
+
+        tk.Label(
+            right,
+            text=t("settings.column.preferences"),
+            background=p.window,
+            foreground=p.view_title,
+            font=font_spec("body", "bold", scale_choice=self._scale_choice, weight_choice=self._weight_choice),
+            anchor="w",
+        ).pack(fill="x", pady=(0, SPACING[8]))
+
+        theme_card = self._build_radio_card(left, t("theme.menu"), THEME_OPTIONS, self.theme_var)
+        self.design_note_label = tk.Label(
+            theme_card.inner,
+            text=self._theme_note_text(self.theme_var.get()),
+            background=p.paper,
+            foreground=p.muted_ink,
+            font=font_spec("caption", scale_choice=self._scale_choice, weight_choice=self._weight_choice),
+            anchor="w",
+            justify="left",
+            wraplength=330,
+        )
+        self.design_note_label.pack(fill="x", pady=(SPACING[6], 0))
+
+        bg_card = self._build_radio_card(left, t("theme.background.label"), BACKGROUND_CHOICES, self.bg_var)
+        tk.Label(
+            bg_card.inner,
+            text=t("settings.background_note"),
+            background=p.paper,
+            foreground=p.muted_ink,
+            font=font_spec("caption", scale_choice=self._scale_choice, weight_choice=self._weight_choice),
+            anchor="w",
+            justify="left",
+            wraplength=330,
+        ).pack(fill="x", pady=(SPACING[6], 0))
 
         self._build_radio_card(right, t("theme.accent.label"), ACCENT_CHOICES, self.accent_var)
         self._build_radio_card(
@@ -208,8 +267,14 @@ class AppearanceDialog(tk.Toplevel):
             [(k, lbl) for k, lbl, _ in FONT_SCALE_CHOICES], self.scale_var,
         )
         self._build_radio_card(right, t("theme.font_weight.label"), FONT_WEIGHT_CHOICES, self.weight_var)
+        self._build_radio_card(
+            right,
+            t("settings.language.label"),
+            (("de", "settings.language.de"), ("en", "settings.language.en")),
+            self.locale_var,
+        )
 
-        # Behavior checkboxes inside a RoundedSurfaceCard
+        # Behavior & Sidebar card
         behavior_card = RoundedSurfaceCard(
             right,
             bg_color=p.window,
@@ -219,7 +284,7 @@ class AppearanceDialog(tk.Toplevel):
             padding=SPACING[8],
             auto_height=True,
         )
-        behavior_card.pack(fill="x", pady=(0, SPACING[8]))
+        behavior_card.pack(fill="x", pady=(0, CARD_GAP))
         tk.Label(
             behavior_card.inner,
             text=t("settings.behavior"),
@@ -228,7 +293,12 @@ class AppearanceDialog(tk.Toplevel):
             font=font_spec("caption", "bold", scale_choice=self._scale_choice, weight_choice=self._weight_choice),
             anchor="w",
         ).pack(fill="x", pady=(0, SPACING[4]))
-        for var, key in ((self.animations_var, "settings.animations"), (self.hints_var, "settings.hints")):
+        for var, key in (
+            (self.animations_var, "settings.animations"),
+            (self.hints_var, "settings.hints"),
+            (self.sidebar_visible_var, "view.sidebar"),
+            (self.sidebar_narrow_var, "view.sidebar_narrow"),
+        ):
             cb = GlideCheckbutton(
                 behavior_card.inner,
                 text=t(key),
@@ -243,18 +313,46 @@ class AppearanceDialog(tk.Toplevel):
             )
             cb.pack(fill="x", pady=2)
 
-        # Live Preview Card
-        preview_heading = tk.Label(
-            right,
+        if self.on_open_engine is not None:
+            self.engine_btn = RoundedButton(
+                behavior_card.inner,
+                text=clip_button_text(t("settings.engine_button")),
+                command=self._open_engine_settings,
+                background=p.tab_idle,
+                foreground=p.ink,
+                hover_bg=p.hover,
+                activebackground=p.ink,
+                activeforeground=p.acetate,
+                border_color=p.line,
+                focus_color=p.focus_ink,
+                carrier_bg=p.paper,
+                radius=min(r, RADIUS_MAP.get("field", 12)),
+                font=font_spec("caption", "bold", scale_choice=self._scale_choice, weight_choice=self._weight_choice),
+            )
+            self.engine_btn.pack(anchor="w", pady=(SPACING[6], 0))
+
+        # Live Preview Card in Left Column (matches total height balance & uniform CARD_GAP)
+        preview_outer = RoundedSurfaceCard(
+            left,
+            bg_color=p.window,
+            fill_color=p.paper,
+            outline_color=p.line,
+            radius=r,
+            padding=SPACING[8],
+            auto_height=True,
+        )
+        preview_outer.pack(fill="x", pady=(0, CARD_GAP))
+
+        tk.Label(
+            preview_outer.inner,
             text=t("appearance.dialog.preview_title"),
-            background=p.window,
+            background=p.paper,
             foreground=p.muted_ink,
             font=font_spec("caption", "bold", scale_choice=self._scale_choice, weight_choice=self._weight_choice),
             anchor="w",
-        )
-        preview_heading.pack(fill="x", pady=(SPACING[6], SPACING[4]))
+        ).pack(fill="x", pady=(0, SPACING[6]))
 
-        self.preview_window_frame = tk.Frame(right, background=p.window, padx=SPACING[8], pady=SPACING[8])
+        self.preview_window_frame = tk.Frame(preview_outer.inner, background=p.window, padx=SPACING[8], pady=SPACING[8])
         self.preview_window_frame.pack(fill="x")
 
         self.preview_card = RoundedSurfaceCard(
@@ -308,7 +406,7 @@ class AppearanceDialog(tk.Toplevel):
         title: str,
         options: list[tuple[str, str]] | tuple[tuple[str, str], ...],
         variable: tk.StringVar,
-    ) -> None:
+    ) -> RoundedSurfaceCard:
         p = self._palette
         t = self.t
         card = RoundedSurfaceCard(
@@ -320,7 +418,7 @@ class AppearanceDialog(tk.Toplevel):
             padding=SPACING[8],
             auto_height=True,
         )
-        card.pack(fill="x", pady=(0, SPACING[8]))
+        card.pack(fill="x", pady=(0, CARD_GAP))
         tk.Label(
             card.inner,
             text=title,
@@ -344,6 +442,13 @@ class AppearanceDialog(tk.Toplevel):
                 font=font_spec("body", scale_choice=self._scale_choice, weight_choice=self._weight_choice),
             )
             radio.pack(fill="x", pady=1)
+        return card
+
+    def _open_engine_settings(self) -> None:
+        callback = self.on_open_engine
+        self._cancel()
+        if callable(callback):
+            callback()
 
     def _compute_preview(self) -> tuple[ThemePalette, int, str, str]:
         palette = resolve_theme(
@@ -358,6 +463,8 @@ class AppearanceDialog(tk.Toplevel):
     def _update_preview(self) -> None:
         try:
             pal, radius, scale, weight = self._compute_preview()
+            if hasattr(self, "design_note_label"):
+                self.design_note_label.configure(text=self._theme_note_text(self.theme_var.get()))
             self.preview_window_frame.configure(background=pal.window)
             self.preview_card.set_theme(
                 bg_color=pal.window,
@@ -391,16 +498,27 @@ class AppearanceDialog(tk.Toplevel):
 
     def _apply(self) -> None:
         if callable(self.on_apply):
-            self.on_apply(
-                theme_id=self.theme_var.get(),
-                background_choice=self.bg_var.get(),
-                accent_choice=self.accent_var.get(),
-                radius_choice=self.radius_var.get(),
-                font_scale_choice=self.scale_var.get(),
-                font_weight_choice=self.weight_var.get(),
-                animations_enabled=bool(self.animations_var.get()),
-                hints_visible=bool(self.hints_var.get()),
-            )
+            payload = {
+                "theme_id": self.theme_var.get(),
+                "background_choice": self.bg_var.get(),
+                "accent_choice": self.accent_var.get(),
+                "radius_choice": self.radius_var.get(),
+                "font_scale_choice": self.scale_var.get(),
+                "font_weight_choice": self.weight_var.get(),
+                "animations_enabled": bool(self.animations_var.get()),
+                "hints_visible": bool(self.hints_var.get()),
+                "locale": self.locale_var.get(),
+                "sidebar_visible": bool(self.sidebar_visible_var.get()),
+                "sidebar_narrow": bool(self.sidebar_narrow_var.get()),
+            }
+            try:
+                sig = inspect.signature(self.on_apply)
+                accepts_var_kw = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values())
+                if not accepts_var_kw:
+                    payload = {k: v for k, v in payload.items() if k in sig.parameters}
+            except (TypeError, ValueError):
+                pass
+            self.on_apply(**payload)
         self._cancel()
 
     def _cancel(self, _event: tk.Event | None = None) -> str:

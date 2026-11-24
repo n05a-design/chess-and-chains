@@ -64,11 +64,22 @@ ein und aus. Beide Ansichten spielen dieselbe Partie. Die Ansicht
 ```bash
 python -m unittest discover -s tests -v
 python scripts/verify_starter.py
-python -m pip install -e .
+python -m pip install --no-build-isolation --no-deps -e .
 python -m chess_and_chains --version
 python -m chess_and_chains --headless-check
 python -m chess_and_chains
 ```
+
+Für einen sauberen Start außerhalb einer IDE oder eines Editors:
+
+```bash
+python3 start_chess_and_chains.py          # isoliert Bytecode-Cache und startet ohne PYTHONPATH
+# oder per Doppelklick auf "Start Chess & Chains.command" im macOS-Finder
+# oder als eigenständiges macOS-Bundle bauen und starten:
+python3 packaging/macos/build_app.py && open "build/macos/Chess & Chains.app"
+```
+
+Nach einmaliger Installation (`pip install --no-build-isolation --no-deps -e .`) funktionieren `chess-and-chains` und `python3 -m chess_and_chains` zudem aus jedem Verzeichnis ohne `PYTHONPATH=src`.
 
 Eine bereits lokal installierte UCI-Engine kann zur Entwicklung über `CHESS_AND_CHAINS_ENGINE=/pfad/zur/engine` oder *Engine-Einstellungen…* genutzt werden; die App lädt niemals Engines herunter. Der Standardaufruf öffnet den lokalen Tk-Prototyp; `--headless-check` prüft die Verfügbarkeit ohne Fenster. Für Tk-Unterstützung muss die Python-Installation Tk enthalten. Der Regeldomänenkern hat keine Laufzeitabhängigkeit auf eine Schachbibliothek.
 

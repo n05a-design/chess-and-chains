@@ -67,7 +67,16 @@ To try a locally installed UCI engine during development (never downloaded by th
 
 *Test engine* waits for the UCI handshake and `readyok`, then displays the engine name and advertised option count. The test closes its process. Use *Save* to apply the path.
 
-For a source-only run, put `src` on `PYTHONPATH`. `--version` prints the project version without loading Tk, and `--headless-check` reports the available prototype features. The default command opens the local Tk prototype. The chess domain has no runtime chess-library dependency.
+For a standalone desktop launch outside any IDE or editor:
+
+```sh
+python3 start_chess_and_chains.py          # isolates bytecode cache and starts without PYTHONPATH
+# or double-click "Start Chess & Chains.command" in macOS Finder
+# or build a standalone macOS .app bundle:
+python3 packaging/macos/build_app.py && open "build/macos/Chess & Chains.app"
+```
+
+After `python -m pip install --no-build-isolation --no-deps -e .`, `chess-and-chains` and `python -m chess_and_chains` also work globally from any directory without `PYTHONPATH=src`. `--version` prints the project version without loading Tk, and `--headless-check` reports the available prototype features. The default command opens the local Tk prototype. The chess domain has no runtime chess-library dependency.
 
 With Tk 9, preview a local vector board for one session with `python -m chess_and_chains --board-design assets/boards/source/board-template.svg`. The [SVG delivery guide](assets/boards/source/README.md) covers complete boards and collections of individual squares.
 

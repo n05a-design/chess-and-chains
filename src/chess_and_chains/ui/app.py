@@ -109,6 +109,7 @@ from .theme import (
 )
 
 POLL_MS = 40
+PANEL_GAP = SPACING[12]  # 12 px uniform outer margin and inter-card gap (Glide layout parity)
 PUZZLE_RATING_RANGES: tuple[tuple[int, int | None], ...] = (
     (1000, 1199), (1200, 1599), (1600, 1999), (2000, None),
 )
@@ -357,6 +358,9 @@ class ChessApp:
         font_weight_choice: str | None = None,
         animations_enabled: bool | None = None,
         hints_visible: bool | None = None,
+        locale: str | None = None,
+        sidebar_visible: bool | None = None,
+        sidebar_narrow: bool | None = None,
         persist: bool = True,
     ) -> ThemePalette:
         """Apply Glide theme, accent, background tint, radius, typography and behavior settings."""
@@ -369,6 +373,9 @@ class ChessApp:
         eff_weight = self.settings.font_weight_choice if font_weight_choice is None else font_weight_choice
         eff_anim = self.settings.animations_enabled if animations_enabled is None else bool(animations_enabled)
         eff_hints = self.settings.hints_visible if hints_visible is None else bool(hints_visible)
+        eff_locale = self.settings.locale if locale is None else locale
+        eff_sidebar_vis = self.sidebar_visible if sidebar_visible is None else bool(sidebar_visible)
+        eff_sidebar_narrow = self._sidebar_narrow if sidebar_narrow is None else bool(sidebar_narrow)
 
         for key, val in (
             ("theme_id", eff_theme),
@@ -379,14 +386,31 @@ class ChessApp:
             ("font_weight_choice", eff_weight),
             ("animations_enabled", eff_anim),
             ("hints_visible", eff_hints),
+            ("locale", eff_locale),
+            ("sidebar_visible", eff_sidebar_vis),
+            ("sidebar_narrow", eff_sidebar_narrow),
         ):
             if getattr(self.settings, key) != val:
                 changes[key] = val
+
+        locale_changed = locale is not None and locale != self.t.locale
+        sidebar_changed = (sidebar_visible is not None and eff_sidebar_vis != self.sidebar_visible) or (
+            sidebar_narrow is not None and eff_sidebar_narrow != self._sidebar_narrow
+        )
 
         if changes and persist:
             self._store_settings(**changes)
         elif changes:
             self.settings = replace(self.settings, **changes)
+
+        if locale_changed:
+            self.t = Translator(eff_locale)
+            self.root.title(f'{self.t("app.window_title")} · {DISPLAY_VERSION}')
+        if sidebar_changed:
+            self.sidebar_visible = eff_sidebar_vis
+            self._sidebar_narrow = eff_sidebar_narrow
+            if self._compact_mode and self.sidebar_visible:
+                self.leave_compact_mode()
 
         self._corner_radius = RADIUS_MAP.get(eff_rad, 12)
         palette = resolve_theme(
@@ -411,7 +435,13 @@ class ChessApp:
             scale_choice=eff_scale,
             weight_choice=eff_weight,
         )
-        self.refresh_sidebar_rail()
+        if sidebar_changed:
+            self._apply_sidebar_visibility()
+        else:
+            self.refresh_sidebar_rail()
+        if locale_changed:
+            self.pack_header_controls()
+            self._refresh()
         if hasattr(self, "menubar"):
             self._build_menubar()
         return palette
@@ -421,7 +451,7 @@ class ChessApp:
         return self.apply_appearance(theme_id=theme_id, persist=persist)
 
     def open_appearance_dialog(self, *, modal: bool = True) -> AppearanceDialog:
-        """Open the Glide Appearance & Geometry customization dialog."""
+        """Open the unified Glide Settings & Appearance dialog."""
         return AppearanceDialog(
             self.root,
             self.t,
@@ -434,6 +464,10 @@ class ChessApp:
             font_weight_choice=self.settings.font_weight_choice,
             animations_enabled=self.settings.animations_enabled,
             hints_visible=self.settings.hints_visible,
+            locale=self.t.locale,
+            sidebar_visible=self.sidebar_visible,
+            sidebar_narrow=self._sidebar_narrow,
+            on_open_engine=self._open_engine_dialog,
             on_apply=lambda **kw: self.apply_appearance(**kw, persist=True),
             modal=modal,
         )
@@ -578,13 +612,13 @@ class ChessApp:
         self.root.grid_rowconfigure(1, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
 
-        self.masthead = masthead = tk.Frame(self.root, background=theme.window, padx=SPACING[18], pady=SPACING[4])
-        masthead.grid(row=0, column=0, sticky="ew")
+        self.masthead = masthead = tk.Frame(self.root, background=theme.window, padx=PANEL_GAP, pady=0)
+        masthead.grid(row=0, column=0, sticky="ew", pady=(PANEL_GAP, 0))
         self.header_card = RoundedSurfaceCard(
             masthead, bg_color=theme.window, fill_color=theme.paper,
             outline_color=theme.line, radius=self._corner_radius, padding=4, auto_height=True,
         )
-        self.header_card.pack(fill="x", pady=(SPACING[4], 0))
+        self.header_card.pack(fill="x", pady=0)
         self.header_frame = header = tk.Frame(self.header_card.inner, background=theme.paper, padx=SPACING[16], pady=SPACING[10])
         header.pack(fill="x")
 
@@ -625,8 +659,8 @@ class ChessApp:
         self.sidebar_toggle_button = self._header_button(self.header_controls, "", self.toggle_sidebar)
         self.sidebar_narrow_button = self._header_button(self.header_controls, "", self.toggle_sidebar_narrow)
         self.theme_toggle_button = self._header_button(self.header_controls, "", self._toggle_theme_mode)
-        self.appearance_header_button = self._header_button(self.header_controls, "", self.open_appearance_dialog)
-        self.settings_header_button = self._header_button(self.header_controls, "", self._open_engine_dialog)
+        self.settings_header_button = self._header_button(self.header_controls, "", self.open_appearance_dialog)
+        self.appearance_header_button = self.settings_header_button
         self.header_overflow_button = self._header_button(self.header_controls, "⋯", self.show_header_overflow_menu)
         self.about_dialog: tk.Toplevel | None = None
 
@@ -650,8 +684,8 @@ class ChessApp:
             self.header_controls.configure(background=p.paper),
         ))
 
-        self._body = body = tk.Frame(self.root, background=theme.window, padx=SPACING[18])
-        body.grid(row=1, column=0, sticky="nsew", pady=(SPACING[4], SPACING[12]))
+        self._body = body = tk.Frame(self.root, background=theme.window, padx=PANEL_GAP, pady=0)
+        body.grid(row=1, column=0, sticky="nsew", pady=(PANEL_GAP, PANEL_GAP))
         body.grid_rowconfigure(0, weight=1)
         body.grid_columnconfigure(0, weight=0, minsize=SIDEBAR_WIDTH)
         body.grid_columnconfigure(1, weight=1, minsize=450)
@@ -716,7 +750,7 @@ class ChessApp:
         ))
 
         # Place the wide navigation/control sidebar on the LEFT (column 0).
-        self._side_slot, self.side_sheet = self._sheet_pair(body, 0, padx=(0, SPACING[14]))
+        self._side_slot, self.side_sheet = self._sheet_pair(body, 0, padx=(0, PANEL_GAP))
         side_sheet = self.side_sheet
         side_sheet.grid_rowconfigure(2, weight=1)
         side_sheet.grid_columnconfigure(0, weight=1)
@@ -762,7 +796,7 @@ class ChessApp:
         self.panel.bind("<Configure>", self._update_panel_wraplengths)
 
         # Narrow 64-px left symbol rail shares column 0 when collapsed/auto-narrowed.
-        self._rail_slot, self.sidebar_rail_sheet = self._sheet_pair(body, 0, padx=(0, SPACING[10]), padding=3)
+        self._rail_slot, self.sidebar_rail_sheet = self._sheet_pair(body, 0, padx=(0, PANEL_GAP), padding=3)
         self._rail_slot.configure(width=SIDEBAR_RAIL_WIDTH)
         self._rail_slot.grid_propagate(False)
         self._build_sidebar_rail()
@@ -789,7 +823,7 @@ class ChessApp:
             radius=self._corner_radius,
             padding=padding,
         )
-        slot.grid(row=0, column=column, sticky="nsew", padx=padx, pady=(SPACING[4], SPACING[10]))
+        slot.grid(row=0, column=column, sticky="nsew", padx=padx, pady=0)
         self._register_theme(lambda p, card=slot: card.set_theme(
             bg_color=p.window,
             fill_color=p.acetate,
@@ -1109,7 +1143,6 @@ class ChessApp:
             self.sidebar_toggle_button,
             self.sidebar_narrow_button,
             self.theme_toggle_button,
-            self.appearance_header_button,
             self.settings_header_button,
             self.header_overflow_button,
         ):
@@ -1121,24 +1154,22 @@ class ChessApp:
             self.sidebar_toggle_button.configure(text=clip_button_text(f"◧ {side_text}"))
             self.sidebar_narrow_button.configure(text=clip_button_text(("» " if self.sidebar_narrow() else "« ") + narrow_text))
             self.theme_toggle_button.configure(text=clip_button_text(f"◐ {t('theme.toggle')}"))
-            self.appearance_header_button.configure(text=clip_button_text(f"◈ {t('header.appearance')}"))
             self.settings_header_button.configure(text=clip_button_text(f"⚙ {t('header.settings')}"))
             visible = [
                 self.sidebar_toggle_button,
                 self.sidebar_narrow_button,
                 self.theme_toggle_button,
-                self.appearance_header_button,
                 self.settings_header_button,
             ]
         elif density == "compact":
             self.sidebar_toggle_button.configure(text="◧")
             self.theme_toggle_button.configure(text="◐")
-            self.appearance_header_button.configure(text="◈")
+            self.settings_header_button.configure(text="⚙")
             self.header_overflow_button.configure(text="⋯")
             visible = [
                 self.sidebar_toggle_button,
                 self.theme_toggle_button,
-                self.appearance_header_button,
+                self.settings_header_button,
                 self.header_overflow_button,
             ]
         else:
@@ -1165,13 +1196,10 @@ class ChessApp:
             return self._height_density
         if self._height_density == "full":
             self.header_frame.configure(pady=SPACING[12])
-            self._body.grid_configure(pady=(SPACING[4], SPACING[12]))
         elif self._height_density == "compact":
             self.header_frame.configure(pady=SPACING[8])
-            self._body.grid_configure(pady=(SPACING[2], SPACING[8]))
         else:
             self.header_frame.configure(pady=SPACING[6])
-            self._body.grid_configure(pady=(SPACING[2], SPACING[6]))
         return self._height_density
 
     def _on_root_configure(self, event: tk.Event) -> None:

@@ -6,6 +6,7 @@ import ast
 import json
 import os
 import re
+import subprocess
 import sys
 import tempfile
 import tomllib
@@ -37,7 +38,7 @@ from chess_and_chains.chess import Move  # noqa: E402
 from chess_and_chains.engines.bot import EngineConfig, UCIBot  # noqa: E402
 from chess_and_chains.puzzles import load_demo_pack  # noqa: E402
 from chess_and_chains.storage import DataLayout, Settings, SettingsError, default_data_dir, load_settings  # noqa: E402
-from chess_and_chains.ui.app import ChessApp, EngineDialog, check_tk_version, create_app_host, launch  # noqa: E402
+from chess_and_chains.ui.app import PANEL_GAP, ChessApp, EngineDialog, check_tk_version, create_app_host, launch  # noqa: E402
 from chess_and_chains.ui.appearance_dialog import AppearanceDialog  # noqa: E402
 from chess_and_chains.ui.pieces import PIECE_FILE_NAMES, validate_svg_piece_set  # noqa: E402
 from chess_and_chains.ui.theme import (  # noqa: E402
@@ -635,6 +636,63 @@ class GlideShellIntegrationTests(unittest.TestCase):
             root.update()
             self.assertEqual(app.settings.theme_id, "dopamine")
             self.assertFalse(dialog.winfo_exists())
+
+    def test_30_uniform_panel_gaps_glide_settings_and_standalone_start(self):
+        root = create_root(self)
+        app = ChessApp(root, locale="en")
+        self.addCleanup(app.close)
+        root.deiconify()
+        root.update()
+
+        self.assertEqual(PANEL_GAP, 12)
+        for h in (920, 800, 700):
+            app.sync_height_density(h)
+            root.update()
+            self.assertEqual(int(str(app.masthead.cget("padx"))), PANEL_GAP)
+            self.assertEqual(int(str(app._body.cget("padx"))), PANEL_GAP)
+            body_info = app._body.grid_info()
+            self.assertEqual(body_info["pady"], PANEL_GAP)
+            side_info = app._side_slot.grid_info()
+            self.assertEqual(tuple(int(x) for x in side_info["padx"]), (0, PANEL_GAP))
+            self.assertEqual(int(str(side_info["pady"])), 0)
+
+        app.toggle_sidebar_narrow()
+        root.update()
+        self.assertEqual(tuple(int(x) for x in app._rail_slot.grid_info()["padx"]), (0, PANEL_GAP))
+        app.toggle_sidebar_narrow()
+        root.update()
+
+        # Header gear opens the unified Glide Settings dialog
+        self.assertIs(app.appearance_header_button, app.settings_header_button)
+        dlg = app.open_appearance_dialog(modal=False)
+        self.addCleanup(dlg._cancel)
+        root.update()
+        self.assertEqual(dlg.title(), "Settings — Chess & Chains")
+        self.assertTrue(hasattr(dlg, "design_note_label"))
+        self.assertEqual(dlg.locale_var.get(), "en")
+        self.assertTrue(hasattr(dlg, "sidebar_visible_var"))
+        self.assertTrue(hasattr(dlg, "sidebar_narrow_var"))
+        self.assertTrue(hasattr(dlg, "engine_btn"))
+        dlg.locale_var.set("de")
+        dlg.sidebar_narrow_var.set(True)
+        dlg._apply()
+        root.update()
+        self.assertEqual(app.t.locale, "de")
+        self.assertTrue(app._sidebar_narrow)
+
+        # Standalone launch without PYTHONPATH
+        clean_env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}
+        for script in ("start_chess_and_chains.py", "src/chess_and_chains/__main__.py"):
+            proc = subprocess.run(
+                [sys.executable, str(ROOT / script), "--headless-check"],
+                cwd=str(ROOT),
+                env=clean_env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(proc.returncode, 0, f"{script} failed: {proc.stderr}")
+            self.assertIn("Chess & Chains", proc.stdout)
 
 
 if __name__ == "__main__":
