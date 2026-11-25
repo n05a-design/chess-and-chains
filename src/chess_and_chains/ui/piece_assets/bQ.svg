@@ -1,33 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-  <title>Black Queen</title>
-  <desc>Owner's revised front view with editable interior shading.</desc>
-  <metadata>Copyright Tim von Trostorff · MPL-2.0 · Owner front-view SVG V.02 SHA-256 e0a6733c3420393bb72436c12ea9618d7d44c9d8f6a0137036d92908c33c3d65 · wQ-0-silhouette1</metadata>
-  <defs>
-    <linearGradient id="surface" gradientUnits="userSpaceOnUse" x1="13" y1="16" x2="51" y2="40">
-      <stop offset="0" stop-color="#646870" />
-      <stop offset=".40" stop-color="#4B5058" />
-      <stop offset=".76" stop-color="#292D34" />
-      <stop offset="1" stop-color="#15171C" />
-    </linearGradient>
-    <linearGradient id="side-depth" gradientUnits="userSpaceOnUse" x1="30" y1="19" x2="49" y2="19">
-      <stop offset="0" stop-color="#07080C" stop-opacity="0" />
-      <stop offset="1" stop-color="#07080C" stop-opacity=".52" />
-    </linearGradient>
-    <linearGradient id="collar-depth" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0" stop-color="#000000" stop-opacity=".46" />
-      <stop offset="1" stop-color="#000000" stop-opacity="0" />
-    </linearGradient>
-    <linearGradient id="foot-depth" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0" stop-color="#000000" stop-opacity="0" />
-      <stop offset="1" stop-color="#000000" stop-opacity=".52" />
-    </linearGradient>
-  </defs>
-  <path id="silhouette" d="M13.5,8C13.5,6.667 14,6 15,6C16,6 16.833,8.381 17.5,9.714C18.167,11.381 18.833,11.381 19.5,9.714C20.167,8.381 21.5,6 23.5,6C27.5,6 28,12 32,12C36,12 36.5,6 40.5,6C42.5,6 43.833,8.381 44.5,9.714C45.167,11.381 45.833,11.381 46.5,9.714C47.167,8.381 48,6 49,6C50,6 50.5,6.667 50.5,8L50.5,19.643C50.5,20.976 49.833,21 48.5,22C47.833,22.667 47.5,24.167 47.5,26.5L50.5,51.714L50.5,54.429C50.5,56.429 47.167,58 40.5,58L23.5,58C16.833,58 13.5,56.429 13.5,54.429L13.5,51.714L16.5,26.5C16.5,24.167 16.167,22.667 15.5,22C14.167,21 13.5,20.976 13.5,19.643L13.5,8Z" fill="url(#surface)" fill-rule="nonzero" stroke="white" stroke-width="1.14" stroke-linejoin="round" />
-  <g id="shadows">
-    <path id="crown-shadow" fill="url(#side-depth)" d="M 48.8 7.3 Q 49.4 7.3 49.4 8.5 V 19.3 Q 49.4 20.2 48 21.1 H 36 Q 43.8 18.4 46.2 14.1 Q 47.6 11.8 48.8 7.3 Z" />
-    <path id="flank-shadow" fill="url(#side-depth)" d="M 41.7 27.4 H 46.6 L 49.3 52.9 V 54.2 Q 49.3 56 44.5 56.8 H 33.3 Q 43.1 54.4 43.3 46.9 Z" />
-    <path id="collar-shadow" fill="url(#collar-depth)" d="M 17.5 27.3 H 46.5 Q 46.25 28.8 46.05 30 H 17.95 Q 17.75 28.8 17.5 27.3 Z" />
-    <path id="foot-shadow" fill="url(#foot-depth)" d="M 16 53.6 C 21.9 55.4 27.3 55.5 32 55.5 C 37.2 55.5 44.1 55.2 48 53.6 C 47.6 55.7 44.1 57.1 39.8 57.1 H 24.3 C 19.4 57.1 16.9 56 16 53.6 Z" />
-  </g>
-  <path id="collar" d="M15.5,22L48.5,22M16.5,26.429L47.5,26.429" transform="matrix(1,0,0,1,0,0.238432)" fill="none" stroke="white" stroke-width="1.14" stroke-linejoin="miter" />
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><title>Black Queen</title><desc>Owner front-view piece Dame V.03 with interior shading.</desc><metadata>Copyright Tim von Trostorff · MPL-2.0 · Source V.03 SHA-256 d1d80e25df53b20f602f4fbbf05a7e13d5dd38363c2f8ecac0df38c6d74a825d · 64x64 tile</metadata><g transform="matrix(0.5714285714,0,0,0.5714285714,-318.2857142857,-146.2857142857)"><g transform="matrix(0.963855,0,0,0.963855,18.783133,31.668065)">
+                <g transform="matrix(1,0,0,1,0,117.288133)">
+                    <path d="M645.368,208.455C645.373,208.387 645.375,208.319 645.375,208.251L645.375,208.499L645.368,208.455Z" style="fill:rgb(245,245,245);" />
+                    <g transform="matrix(1.0375,-0,-0,1.0375,-19.4875,-153.810461)">
+                        </g>
+                </g>
+                <g transform="matrix(1,0,0,1,0,117.288133)">
+                    <path d="M637.202,164L639.125,166.375L644.368,208.455C644.145,211.857 638.314,213.5 626.875,213.5L605.125,213.5C593.686,213.5 587.855,211.857 587.632,208.455L592.875,166.375L594.798,164L637.202,164Z" style="fill:rgb(41,41,41);stroke:rgb(225,225,225);stroke-width:1.5px;stroke-miterlimit:4;" />
+                </g>
+                <g transform="matrix(1,0,0,1,0,117.288133)">
+                    <path d="M593.531,159L589.625,155.375L589.625,134C589.625,131.667 590.5,130.5 592.25,130.5C594,130.5 598.526,139.179 599.851,139.187C601.192,139.196 603.625,130.5 606.125,130.5C609.125,130.5 612,142 616,142C620,142 622.875,130.5 625.875,130.5C628.375,130.5 630.786,139.184 632.116,139.187C633.452,139.191 638,130.5 639.75,130.5C641.5,130.5 642.375,131.667 642.375,134L642.375,155.375L638.469,159L593.531,159Z" style="fill:rgb(41,41,41);stroke:rgb(225,225,225);stroke-width:1.5px;stroke-miterlimit:4;" />
+                </g>
+                <g transform="matrix(1,0,0,1,0,117.288133)">
+                    <path d="M587.632,208.455L587.625,208.499L587.625,208.251C587.625,208.319 587.627,208.387 587.632,208.455Z" style="fill:rgb(245,245,245);" />
+                    <g transform="matrix(1.0375,-0,-0,1.0375,-19.4875,-153.810461)">
+                        </g>
+                </g>
+                <g id="large-wQ-crown-shadow1" transform="matrix(1.75,0,0,1.75,554.497531,237.288133)">
+                    <path d="M48.8,7.3C49.2,7.3 49.143,7.7 49.143,8.5L49.143,19.3L47.429,21.1L36,21.1C41.2,19.3 44.6,16.967 46.2,14.1C47.133,12.567 48,10.3 48.8,7.3Z" style="fill:rgb(85,85,85);fill-rule:nonzero;" />
+                </g>
+                <g id="large-wQ-flank-shadow1" transform="matrix(1.75,0,0,1.75,556,239.288133)">
+                    <path d="M41.7,25.114L44.781,25.114C45.817,25.114 46.688,25.892 46.804,26.921C47.433,32.497 49.3,49.057 49.3,49.057C49.3,50.257 47.7,50.552 44.5,51.086L33.3,51.086C39.833,49.486 43.167,49.614 43.3,44.614L41.7,25.114Z" style="fill:rgb(85,85,85);fill-rule:nonzero;" />
+                </g>
+            </g>
+            </g></svg>

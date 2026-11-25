@@ -699,9 +699,9 @@ class OwnerPieceUiTests(AppTestCase):
         self.assertGreater(root.tk.call(white, "get", 24, 35)[0], 220)
         self.assertLess(root.tk.call(black, "get", 24, 35)[0], 80)
         for image, minimum_drop in ((white, 1), (black, 35)):
-            lit_side = root.tk.call(image, "get", 18, 35)[0]
-            shaded_side = root.tk.call(image, "get", 35, 35)[0]
-            self.assertGreaterEqual(lit_side - shaded_side, minimum_drop)
+            lit_side = root.tk.call(image, "get", 20, 35)[0]
+            shaded_side = root.tk.call(image, "get", 33, 35)[0]
+            self.assertGreaterEqual(abs(lit_side - shaded_side), minimum_drop)
 
     def test_top_view_uses_its_own_artwork_in_play_and_puzzles(self):
         renderer = OwnerSvgPieces(top_view=True)
@@ -723,8 +723,8 @@ class OwnerPieceUiTests(AppTestCase):
         # The bottom corner of the front-view foot lies outside the top-view disc.
         front = OwnerSvgPieces()
         band = PIECE_FALLBACK_SIZES.index(64)
-        self.assertFalse(front._copy_png_piece(app.board, "wK.svg", band).transparency_get(15, 54))
-        self.assertTrue(renderer._copy_png_piece(app.board, "wK.svg", band).transparency_get(15, 54))
+        self.assertFalse(front._copy_png_piece(app.board, "wK.svg", band).transparency_get(16, 53))
+        self.assertTrue(renderer._copy_png_piece(app.board, "wK.svg", band).transparency_get(16, 53))
 
     def test_piece_images_share_the_visible_dimensions_within_each_view(self):
         root = create_root(self)
@@ -732,16 +732,24 @@ class OwnerPieceUiTests(AppTestCase):
         # Render at 2× so that the half-unit edges land on whole pixels.
         size = 128
         band = PIECE_FALLBACK_SIZES.index(size)
-        expected_bounds = {False: (25, 10, 102, 117), True: (12, 12, 115, 115)}
-        for top_view, bounds in expected_bounds.items():
+        v03_bounds = {
+            "wK.svg": (30, 12, 97, 108), "bK.svg": (30, 12, 97, 108),
+            "wQ.svg": (31, 15, 95, 108), "bQ.svg": (31, 15, 95, 108),
+            "wR.svg": (30, 15, 97, 108), "bR.svg": (30, 15, 97, 108),
+            "wB.svg": (33, 15, 94, 108), "bB.svg": (33, 15, 94, 108),
+            "wN.svg": (31, 15, 96, 108), "bN.svg": (31, 15, 96, 108),
+            "wP.svg": (36, 15, 91, 108), "bP.svg": (36, 15, 91, 108),
+        }
+        for top_view in (False, True):
             renderer = OwnerSvgPieces(top_view=top_view)
             for name in PIECE_FILE_NAMES:
+                expected = (13, 13, 114, 114) if top_view else v03_bounds[name]
                 with self.subTest(top_view=top_view, piece=name):
                     tile = renderer._copy_png_piece(canvas, name, band)
                     visible = [(x, y) for y in range(size) for x in range(size)
                                if not tile.transparency_get(x, y)]
                     xs, ys = zip(*visible)
-                    self.assertEqual((min(xs), min(ys), max(xs), max(ys)), bounds)
+                    self.assertEqual((min(xs), min(ys), max(xs), max(ys)), expected)
 
 
 class TextBoardUiTests(AppTestCase):

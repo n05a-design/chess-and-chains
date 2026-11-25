@@ -29,7 +29,7 @@ class CatalogTests(unittest.TestCase):
                     self.assertEqual(placeholders(CATALOGS[locale][key]), placeholders(text))
 
     def test_no_empty_or_untranslated_values(self):
-        same_ok = {"app.title", "header.mode.puzzle", "board.design.standard"}
+        same_ok = {"app.title", "header.mode.puzzle", "board.design.standard", "board.piece_set.original"}
         for key, text in CATALOGS["de"].items():
             with self.subTest(key=key):
                 self.assertTrue(text.strip())

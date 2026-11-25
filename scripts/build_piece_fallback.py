@@ -45,7 +45,9 @@ def main() -> None:
     root.withdraw()
     try:
         build_atlas(root, assets)
+        build_atlas(root, assets / "original")
         build_atlas(root, assets / "top")
+        build_atlas(root, assets / "classic")
     finally:
         root.destroy()
 

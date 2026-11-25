@@ -9,6 +9,7 @@ import base64
 import tkinter as tk
 from bisect import bisect_right
 from collections import OrderedDict
+from dataclasses import dataclass
 from importlib.resources import files
 from typing import Protocol
 
@@ -24,7 +25,72 @@ from .theme import INK, PAPER
 PIECE_SVG_SIZE = 64
 PIECE_FALLBACK_SIZES = (4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 48, 56, 64, 72, 80, 96, 112, 128, 160, 192, 256)
 _PIECE_COLUMNS = len(PIECE_FILE_NAMES) // 2
-_PIECE_CACHE_LIMIT = 36
+_PIECE_CACHE_LIMIT = 48
+
+
+@dataclass(frozen=True, slots=True)
+class PieceSetInfo:
+    """Descriptor and runtime contract for an available chess piece set."""
+
+    set_id: str                   # "original", "top", "classic"
+    asset_version: str            # "V.03", "V.04", "V.05"
+    name_de: str                  # "Original", "Draufsicht", "Klassisch"
+    name_en: str                  # "Original", "Top view", "Classic"
+    subpath: str                  # subdirectory inside piece_assets
+    provenance_path: str          # path to provenance documentation
+    supports_svg: bool = True
+    supports_png_fallback: bool = True
+    perspective: str = "front"    # "front" or "top"
+
+    def display_name(self, locale: str = "de") -> str:
+        return self.name_de if (locale and locale.startswith("de")) else self.name_en
+
+
+PIECE_SETS: dict[str, PieceSetInfo] = {
+    "original": PieceSetInfo(
+        set_id="original",
+        asset_version="V.03",
+        name_de="Original",
+        name_en="Original",
+        subpath="original",
+        provenance_path="src/chess_and_chains/ui/piece_assets/original/PROVENANCE.md",
+        perspective="front",
+    ),
+    "top": PieceSetInfo(
+        set_id="top",
+        asset_version="V.04",
+        name_de="Draufsicht",
+        name_en="Top view",
+        subpath="top",
+        provenance_path="src/chess_and_chains/ui/piece_assets/top/PROVENANCE.md",
+        perspective="top",
+    ),
+    "classic": PieceSetInfo(
+        set_id="classic",
+        asset_version="V.05",
+        name_de="Klassisch",
+        name_en="Classic",
+        subpath="classic",
+        provenance_path="src/chess_and_chains/ui/piece_assets/classic/PROVENANCE.md",
+        perspective="front",
+    ),
+}
+
+DEFAULT_PIECE_SET = "original"
+
+
+def get_piece_set(set_id: str | None) -> PieceSetInfo:
+    """Return the registered piece set info or default fallback."""
+    if set_id and set_id in PIECE_SETS:
+        return PIECE_SETS[set_id]
+    if set_id == "front":
+        return PIECE_SETS["original"]
+    return PIECE_SETS[DEFAULT_PIECE_SET]
+
+
+def list_piece_sets() -> tuple[PieceSetInfo, ...]:
+    """Return all registered piece sets in display order."""
+    return tuple(PIECE_SETS.values())
 
 
 def piece_atlas_box(name: str, band: int) -> tuple[int, int, int, int]:
@@ -48,15 +114,39 @@ class OwnerSvgPieces:
 
     renderer_id = "owner-svg"
 
-    def __init__(self, *, top_view: bool = False) -> None:
-        self.top_view = bool(top_view)
-        self._assets = files(__package__).joinpath("piece_assets")
-        if top_view:
-            self._assets = self._assets.joinpath("top")
+    def __init__(self, *, top_view: bool = False, piece_set: str | None = None) -> None:
+        if piece_set is not None:
+            chosen = piece_set
+        elif top_view:
+            chosen = "top"
+        else:
+            chosen = DEFAULT_PIECE_SET
+        info = get_piece_set(chosen)
+        self.piece_set: str = info.set_id
+        self.asset_version: str = info.asset_version
+        self.top_view: bool = (info.perspective == "top")
+        self._assets = files(__package__).joinpath("piece_assets").joinpath(info.subpath)
         self._svg_sources = {name: self._assets.joinpath(name).read_bytes() for name in PIECE_FILE_NAMES}
         self._native_svg = True
         self._atlas: tk.PhotoImage | None = None
-        self._images: OrderedDict[tuple[str, int], tk.PhotoImage] = OrderedDict()
+        self._images: OrderedDict[tuple[str, str, str, int], tk.PhotoImage] = OrderedDict()
+
+    def set_piece_set(self, piece_set: str) -> None:
+        """Switch active piece set and clear cached images cleanly."""
+        info = get_piece_set(piece_set)
+        if info.set_id == self.piece_set:
+            return
+        self.piece_set = info.set_id
+        self.asset_version = info.asset_version
+        self.top_view = (info.perspective == "top")
+        self._assets = files(__package__).joinpath("piece_assets").joinpath(info.subpath)
+        self._svg_sources = {name: self._assets.joinpath(name).read_bytes() for name in PIECE_FILE_NAMES}
+        self.clear_cache()
+
+    def clear_cache(self) -> None:
+        """Invalidate all cached PhotoImages and offline atlas."""
+        self._images.clear()
+        self._atlas = None
 
     def draw(self, canvas, center_x: float, center_y: float, square_size: float,
              piece: Piece, *, lifted: bool = False) -> None:
@@ -66,8 +156,8 @@ class OwnerSvgPieces:
         canvas.create_image(center_x, center_y, image=image, tags=("piece",))
 
     def _load_image(self, canvas: tk.Canvas, name: str, size: int) -> tk.PhotoImage:
+        key = (self.piece_set, self.asset_version, name, size)
         if self._native_svg:
-            key = name, size
             if key not in self._images:
                 try:
                     image = tk.PhotoImage(master=canvas, data=self._svg_sources[name],
@@ -81,12 +171,12 @@ class OwnerSvgPieces:
 
         band = max(0, bisect_right(PIECE_FALLBACK_SIZES, size) - 1)
         tile_size = PIECE_FALLBACK_SIZES[band]
-        key = name, tile_size
-        if key not in self._images:
-            self._images[key] = self._copy_png_piece(canvas, name, band)
-        return self._use_cached(key)
+        fallback_key = (self.piece_set, self.asset_version, name, tile_size)
+        if fallback_key not in self._images:
+            self._images[fallback_key] = self._copy_png_piece(canvas, name, band)
+        return self._use_cached(fallback_key)
 
-    def _use_cached(self, key: tuple[str, int]) -> tk.PhotoImage:
+    def _use_cached(self, key: tuple[str, str, str, int]) -> tk.PhotoImage:
         self._images.move_to_end(key)
         if len(self._images) > _PIECE_CACHE_LIMIT:
             self._images.popitem(last=False)

@@ -1,33 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-  <title>White King</title>
-  <desc>Owner's revised front view with editable interior shading.</desc>
-  <metadata>Copyright Tim von Trostorff · MPL-2.0 · Owner front-view SVG V.02 SHA-256 e0a6733c3420393bb72436c12ea9618d7d44c9d8f6a0137036d92908c33c3d65 · wK-0-silhouette · optical size adjusted</metadata>
-  <defs>
-    <linearGradient id="surface" gradientUnits="userSpaceOnUse" x1="18" y1="11" x2="51" y2="53">
-      <stop offset="0" stop-color="#FFFFFF" />
-      <stop offset=".40" stop-color="#FDFDFD" />
-      <stop offset=".76" stop-color="#EFEFEF" />
-      <stop offset="1" stop-color="#DEDEDE" />
-    </linearGradient>
-    <linearGradient id="side-depth" gradientUnits="userSpaceOnUse" x1="34" y1="19" x2="49" y2="19">
-      <stop offset="0" stop-color="#24242A" stop-opacity="0" />
-      <stop offset="1" stop-color="#24242A" stop-opacity=".21" />
-    </linearGradient>
-    <linearGradient id="collar-depth" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0" stop-color="#24242A" stop-opacity=".18" />
-      <stop offset="1" stop-color="#24242A" stop-opacity="0" />
-    </linearGradient>
-    <linearGradient id="foot-depth" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0" stop-color="#24242A" stop-opacity="0" />
-      <stop offset="1" stop-color="#24242A" stop-opacity=".18" />
-    </linearGradient>
-  </defs>
-  <path id="silhouette" d="M 13.5 8.57 C 13.5 7.86 13.695 7.45 14.085 7.45 L 16.608 7.45 C 17.333 7.45 17.876 7.86 18.237 8.57 C 18.237 8.57 20.004 12.34 20.993 14.22 C 21.369 14.9 22.344 15.35 23.182 15.35 C 25.248 15.35 29 15.35 29 15.35 L 29 13 L 25 13 L 25 9.5 L 29.5 9.5 L 29.5 6 L 34.5 6 L 34.5 9.5 L 39 9.5 L 39 13 L 35 13 L 35 15.35 L 40.818 15.35 C 41.656 15.35 42.631 14.9 43.007 14.22 C 43.996 12.34 45.763 8.57 45.763 8.57 C 46.124 7.86 46.667 7.45 47.392 7.45 L 49.915 7.45 C 50.305 7.45 50.5 7.86 50.5 8.57 L 50.5 20.143 C 50.5 21.143 50.017 21.571 49.188 22.571 C 48.566 23.238 48.245 24.738 48.245 27.071 L 50.5 51.143 C 50.5 51.143 50.5 54.429 50.5 54.429 C 50.5 56.429 48.478 58 40.5 58 L 23.5 58 C 15.522 58 13.5 56.429 13.5 54.429 C 13.5 54.429 13.5 51.143 13.5 51.143 L 15.755 27.071 C 15.755 24.738 15.434 23.238 14.812 22.571 C 13.983 21.571 13.5 21.143 13.5 20.143 L 13.5 8.57 Z" fill="url(#surface)" fill-rule="nonzero" stroke="#171920" stroke-width="1.14" stroke-linejoin="round" />
-  <g id="shadows">
-    <path id="crown-shadow" fill="url(#side-depth)" d="M 47.562 8.67 H 49.837 Q 50.052 8.67 50.052 9.69 V 19.6 Q 50.052 20.5 48.695 21.65 H 37.2 Q 44.649 19 45.825 15.1 Z" />
-    <path id="flank-shadow" fill="url(#side-depth)" d="M 41.1 28.1 H 47.236 L 50.032 51.9 V 54.2 Q 50.032 56 45.607 56.8 H 33.4 Q 43.554 54.3 43.828 45.8 Z" />
-    <path id="collar-shadow" fill="url(#collar-depth)" d="M 16.764 27.9 H 47.236 Q 46.965 29.4 46.748 30.6 H 17.252 Q 17.035 29.4 16.764 27.9 Z" />
-    <path id="foot-shadow" fill="url(#foot-depth)" d="M 14.746 53.6 C 21.679 55.4 27.3 55.5 32 55.5 C 37.2 55.5 45.06 55.2 49.254 53.6 C 48.881 55.7 45.06 57.1 39.8 57.1 H 24.3 C 18.284 57.1 15.585 56 14.746 53.6 Z" />
-  </g>
-  <path id="collar" d="M 14.812 22 L 49.188 22 M 15.212 26.429 L 48.788 26.429" transform="matrix(1,0,0,1,0,0.80986)" fill="none" stroke="#171920" stroke-width="1.14" stroke-linejoin="miter" />
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><title>White King</title><desc>Owner front-view piece König V.03 with interior shading.</desc><metadata>Copyright Tim von Trostorff · MPL-2.0 · Source V.03 SHA-256 d1d80e25df53b20f602f4fbbf05a7e13d5dd38363c2f8ecac0df38c6d74a825d · 64x64 tile</metadata><g transform="matrix(0.5714285714,0,0,0.5714285714,-394.2857142857,-68.5714285714)"><g transform="matrix(0.965116,0,0,0.965116,26.023256,8.447674)">
+                <path d="M769.589,166.036L771.429,169.41L775.375,207.5L775.375,208.251C775.375,211.751 771.836,213.5 757.875,213.5L734.125,213.5C720.163,213.5 716.625,211.751 716.625,208.251L716.625,207.5L720.571,169.41L722.411,166.036L769.589,166.036Z" style="fill:rgb(245,245,245);stroke:rgb(23,25,32);stroke-width:1.5px;stroke-miterlimit:4;" />
+                <path d="M720.502,161.036L717.625,157.286L717.625,132.998C717.625,131.755 718.966,131.037 719.649,131.037L723.064,131.037C724.333,131.037 725.283,131.755 725.915,132.998C725.915,132.998 728.007,140.595 729.738,143.885C730.396,145.075 732.102,145.863 733.568,145.863L740.75,145.863L740.75,139.75L733.75,139.75L733.75,133.625L741.625,133.625L741.625,127.5L750.375,127.5L750.375,133.625L758.25,133.625L758.25,139.75L751.25,139.75L751.25,145.863L758.431,145.863C759.898,145.863 761.604,145.075 762.262,143.885C763.993,140.595 766.085,132.998 766.085,132.998C766.717,131.755 767.667,131.037 768.936,131.037L772.351,131.037C773.034,131.037 774.375,131.755 774.375,132.998L774.375,157.286L770.498,161.036L720.502,161.036Z" style="fill:rgb(245,245,245);stroke:rgb(23,25,32);stroke-width:1.5px;stroke-miterlimit:4;" />
+                <g id="large-wK-crown-shadow" transform="matrix(1.75,0,0,1.75,688.613855,119)">
+                    <path d="M46.209,8.736C46.334,8.356 46.69,8.099 47.091,8.099L47.771,8.099L47.766,20.764L45.838,22.814L35.486,22.814C40.452,21.047 43.327,17.129 44.111,14.529C44.111,14.529 45.64,10.463 46.209,8.736Z" style="fill:rgb(216,216,217);fill-rule:nonzero;" />
+                </g>
+                <g id="large-wK-flank-shadow" transform="matrix(1.75,0,0,1.75,689.497,122)">
+                    <path d="M39.386,26.406L43.983,26.406C44.856,26.406 45.587,27.069 45.672,27.938C46.172,33.028 47.746,49.057 47.746,49.057C47.746,50.257 45.7,50.552 42.75,51.086L31.686,51.086C38.455,49.419 41.931,49.181 42.114,43.514L39.386,26.406Z" style="fill:rgb(216,216,217);fill-rule:nonzero;" />
+                </g>
+            </g>
+            </g></svg>

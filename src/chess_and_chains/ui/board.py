@@ -8,7 +8,7 @@ from typing import Callable, Literal, Sequence
 from ..chess import GameState, Move, Piece, PieceType, square_name
 from ..i18n import Translator
 from .board_artwork import MAX_BOARD_PREVIEW_SIZE, BoardArtwork, Marble2DArtwork
-from .pieces import OwnerSvgPieces, PieceRenderer
+from .pieces import OwnerSvgPieces, PieceRenderer, get_piece_set
 from .theme import (
     LIGHT_THEME,
     ThemePalette,
@@ -144,6 +144,28 @@ class BoardCanvas(tk.Canvas):
         self._theme = theme
         self.configure(background=theme.acetate)
         self.redraw()
+
+    @property
+    def piece_set(self) -> str:
+        return getattr(self.renderer, "piece_set", "original")
+
+    @property
+    def piece_view(self) -> str:
+        return "top" if getattr(self.renderer, "top_view", False) else "front"
+
+    def set_piece_set(self, piece_set: str) -> None:
+        """Swap piece set without altering game or board state."""
+        info = get_piece_set(piece_set)
+        if hasattr(self.renderer, "set_piece_set"):
+            self.renderer.set_piece_set(info.set_id)
+        else:
+            self.renderer = OwnerSvgPieces(piece_set=info.set_id)
+        self.redraw()
+
+    def set_piece_view(self, view: str) -> None:
+        """Backward-compatible view switcher."""
+        target = "top" if view == "top" else "original"
+        self.set_piece_set(target)
 
     def set_piece_renderer(self, renderer: PieceRenderer) -> None:
         """Swap the active 2D piece renderer without altering the game or board state."""

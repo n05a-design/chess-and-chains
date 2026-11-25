@@ -16,7 +16,7 @@ from ..chess import Color, Piece, PieceType
 from .board import BoardCanvas, screen_cell
 from .board_artwork import Marble2DArtwork
 from .piece_contract import PIECE_FILE_NAMES
-from .pieces import OwnerSvgPieces, PieceRenderer
+from .pieces import OwnerSvgPieces, PieceRenderer, get_piece_set
 from .theme import ThemePalette
 
 BoardDesignChoice = Literal["standard", "marble", "custom"]
@@ -75,7 +75,7 @@ class MarbleBoardCanvas(BoardCanvas):
         self._board_design: BoardDesignChoice = "custom" if self._custom_artwork is not None else "standard"
         self._perspective: BoardPerspective = "2d"
         self._piece_view: PieceView = "top" if getattr(self.renderer, "top_view", False) else "front"
-        self._piece_renderers: dict[PieceView, PieceRenderer] = {self._piece_view: self.renderer}
+        self._piece_renderers: dict[str, PieceRenderer] = {getattr(self.renderer, "piece_set", "original"): self.renderer}
         self._masters: dict[str, tk.PhotoImage] = {}
         self._images: OrderedDict[tuple[int, str], tk.PhotoImage] = OrderedDict()
         self._factor = 1
@@ -92,7 +92,11 @@ class MarbleBoardCanvas(BoardCanvas):
 
     @property
     def piece_view(self) -> PieceView:
-        return self._piece_view
+        return "top" if self.piece_set == "top" else "front"
+
+    @property
+    def piece_set(self) -> str:
+        return getattr(self.renderer, "piece_set", "original")
 
     def supports_3d(self, design: BoardDesignChoice | None = None) -> bool:
         target = self._board_design if design is None else design
@@ -150,17 +154,28 @@ class MarbleBoardCanvas(BoardCanvas):
         self._perspective = perspective
         self._sync_render_mode()
 
+    def set_piece_set(self, piece_set: str) -> None:
+        """Switch active piece set across boards cleanly without altering game state."""
+        info = get_piece_set(piece_set)
+        renderer = self._piece_renderers.get(info.set_id)
+        if renderer is None:
+            if hasattr(self.renderer, "set_piece_set"):
+                self.renderer.set_piece_set(info.set_id)
+                renderer = self.renderer
+            else:
+                renderer = OwnerSvgPieces(piece_set=info.set_id)
+            self._piece_renderers[info.set_id] = renderer
+        else:
+            self.renderer = renderer
+        self._piece_view = "top" if info.perspective == "top" else "front"
+        self.redraw()
+
     def set_piece_view(self, view: PieceView) -> None:
         """Switch piece depiction between front and top views without altering game state."""
         if view not in ("front", "top"):
             raise ValueError(f"Unknown piece view: {view}")
-        renderer = self._piece_renderers.get(view)
-        if renderer is None:
-            renderer = OwnerSvgPieces(top_view=(view == "top"))
-            self._piece_renderers[view] = renderer
-        self._piece_view = view
-        self.renderer = renderer
-        self.redraw()
+        target = "top" if view == "top" else "original"
+        self.set_piece_set(target)
 
     def set_marble(self, enabled: bool) -> None:
         """Toggle 3D spatial marble mode cleanly while keeping backwards API compatibility."""

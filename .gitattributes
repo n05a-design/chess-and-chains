@@ -14,5 +14,7 @@ design/source/marmor-3d/** -text whitespace=cr-at-eol
 docs/archive/onedrive-2026-11-21/snapshots/** -text
 src/chess_and_chains/ui/brand_assets/*.svg text eol=lf
 src/chess_and_chains/ui/piece_assets/*.svg text eol=lf
+src/chess_and_chains/ui/piece_assets/original/*.svg text eol=lf
 src/chess_and_chains/ui/piece_assets/top/*.svg text eol=lf
+src/chess_and_chains/ui/piece_assets/classic/*.svg text eol=lf
 src/glide_shell/** text eol=lf

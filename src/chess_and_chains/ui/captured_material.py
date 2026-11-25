@@ -120,6 +120,21 @@ class CapturedMaterialBar(tk.Canvas):
         self._theme = theme
         self._render()
 
+    def set_piece_renderer(self, renderer: PieceRenderer) -> None:
+        """Swap active piece renderer and clear cached miniature images."""
+        self._piece_renderer = renderer
+        self._images.clear()
+        self._render()
+
+    def set_piece_set(self, piece_set: str) -> None:
+        """Switch piece set for captured material bar."""
+        if hasattr(self._piece_renderer, "set_piece_set"):
+            self._piece_renderer.set_piece_set(piece_set)
+        else:
+            self._piece_renderer = OwnerSvgPieces(piece_set=piece_set)
+        self._images.clear()
+        self._render()
+
     def _get_piece_image(self, piece: Piece, size: int) -> tk.PhotoImage:
         name = f"{piece.color.value}{piece.kind.value.upper()}.svg"
         key = (name, size)

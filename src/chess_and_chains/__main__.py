@@ -28,10 +28,16 @@ def main(argv: list[str] | None = None) -> int:
         help="preview a local SVG board or a directory of square SVGs for this session",
     )
     parser.add_argument(
+        "--piece-set",
+        choices=("original", "top", "classic"),
+        default=None,
+        help="choose the chess piece set (original, top, or classic) for this session",
+    )
+    parser.add_argument(
         "--piece-view",
         choices=("front", "top"),
         default="front",
-        help="choose the front or top view of the pieces for this session",
+        help="choose the front or top view of the pieces for this session (legacy option)",
     )
     args = parser.parse_args(argv)
     design = None
@@ -52,8 +58,15 @@ def main(argv: list[str] | None = None) -> int:
     from chess_and_chains.ui import launch
     from chess_and_chains.ui.board_artwork import BoardArtworkError
 
+    launch_kwargs: dict[str, object] = {
+        "board_design": design,
+        "top_pieces": (args.piece_view == "top" if args.piece_set is None else args.piece_set == "top"),
+    }
+    if args.piece_set is not None:
+        launch_kwargs["piece_set"] = args.piece_set
+
     try:
-        launch(board_design=design, top_pieces=args.piece_view == "top")
+        launch(**launch_kwargs)
     except BoardArtworkError as error:
         parser.error(str(error))
     return 0

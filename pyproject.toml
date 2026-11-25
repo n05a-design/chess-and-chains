@@ -34,7 +34,9 @@ where = ["src"]
 "chess_and_chains.ui" = [
     "brand_assets/*.svg", "brand_assets/*.png",
     "piece_assets/*.svg", "piece_assets/*.png", "piece_assets/PROVENANCE.md",
+    "piece_assets/original/*.svg", "piece_assets/original/*.png", "piece_assets/original/PROVENANCE.md",
     "piece_assets/top/*.svg", "piece_assets/top/*.png", "piece_assets/top/PROVENANCE.md",
+    "piece_assets/classic/*.svg", "piece_assets/classic/*.png", "piece_assets/classic/PROVENANCE.md",
     "marble_assets/*.png", "marble_assets/*.svg", "marble_assets/PROVENANCE.md",
 ]
 

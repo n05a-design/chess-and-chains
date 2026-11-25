@@ -32,6 +32,8 @@ FONT_WEIGHT_CHOICES = ("auto", "standard", "bold")
 BOARD_DESIGN_CHOICES = ("standard", "marble")
 BOARD_PERSPECTIVES = ("2d", "3d")
 PIECE_VIEWS = ("front", "top")
+PIECE_SET_CHOICES = ("original", "top", "classic")
+DEFAULT_PIECE_SET = "original"
 
 
 class SettingsError(ValueError):
@@ -48,6 +50,7 @@ class Settings:
     board_design_choice: str = "standard"
     board_perspective: str = "2d"
     piece_view: str = "front"
+    piece_set: str = "original"
     engine_path: str | None = None
     bot_preset_id: str = "level-3"
     play_mode: str = "human-vs-human"
@@ -77,6 +80,8 @@ class Settings:
             raise SettingsError(f"Unsupported board perspective {self.board_perspective!r}.")
         if self.piece_view not in PIECE_VIEWS:
             raise SettingsError(f"Unsupported piece view {self.piece_view!r}.")
+        if self.piece_set not in PIECE_SET_CHOICES:
+            raise SettingsError(f"Unsupported piece set {self.piece_set!r}.")
         if self.play_mode not in PLAY_MODES:
             raise SettingsError(f"Unsupported play mode {self.play_mode!r}.")
         for name in ("theme_id", "piece_set_id", "bot_preset_id"):
@@ -113,6 +118,13 @@ def load_settings(path: Path) -> tuple[Settings, str | None]:
         raw = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(raw, dict):
             raise SettingsError("Settings root must be an object.")
+        # Migration: populate piece_set from legacy piece_view if missing or invalid
+        if "piece_set" not in raw:
+            raw["piece_set"] = "top" if raw.get("piece_view") == "top" else "original"
+        elif raw["piece_set"] not in PIECE_SET_CHOICES:
+            raw["piece_set"] = "original"
+        # Keep piece_view in sync for backward compatibility
+        raw["piece_view"] = "top" if raw["piece_set"] == "top" else "front"
         known = {f.name for f in fields(Settings)}
         settings = Settings(**{k: v for k, v in raw.items() if k in known}).validate()
         return settings, None

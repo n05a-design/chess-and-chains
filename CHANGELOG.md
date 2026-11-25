@@ -1,5 +1,59 @@
 # Changelog
 
+## V.0.3.0 – Drei-Figurenset-Registry (Original V.03 / Draufsicht V.04 / Klassisch V.05) (2026-11-25)
+
+### P0 – Figurenset-Registry (`ui/pieces.py`)
+- **`PieceSetInfo`-Dataclass**: Stabile interne ID, Asset-Version, deutsche/englische Bezeichnung, Asset-Pfad, Perspektive, Herkunftsreferenz.
+- **Drei eingetragene Sets**: `original` (V.03, Vorderansicht), `top` (V.04, Draufsicht), `classic` (V.05, Vorderansicht / klassische Silhouetten).
+- **`get_piece_set(id)` / `list_piece_sets()`**: Zentrales Lookup; unbekannte IDs fallen sicher auf `original` zurück.
+- **`OwnerSvgPieces`**: Akzeptiert `piece_set`-Kwarg neben dem bisherigen `top_view`-Argument; exposes `.piece_set` Property und `.set_piece_set()`.
+- **V.03 als Standardfigurenset** für Neuinstallationen; `DEFAULT_PIECE_SET = "original"`.
+
+### P0 – SVG-Asset-Aufbereitung & Ablagestruktur
+- **36 Einzel-SVGs** (12 Figuren × 3 Sets) in `src/chess_and_chains/ui/piece_assets/original/`, `.../top/`, `.../classic/`.
+- **Einheitliche 128×128-ViewBox** innerhalb jedes Sets; transparenter Hintergrund; optisch konsistente Ausrichtung.
+- **PNG-Fallback-Atlas** für jeden Satz (`fallback.png`) mit `scripts/build_piece_fallback.py`.
+- **Masters-Ablage** in `assets/chess_pieces/masters/V.03/`, `V.04/`, `V.05/` und Archiv in `assets/chess_pieces/archive/V.02/`.
+- **`PROVENANCE.md`** pro Satz mit SHA-256-Hashes, Asset-Version, Lizenzstatus (Connected-System-Originalwerk des Inhabers / Tim von Trostorff).
+- **`docs/design/ASSET_REGISTER.csv`**: SHA-256 aller 24 SVGs (12 `original` + 12 `top`) und beider Fallback-PNGs aktualisiert; `classic`-Einträge ergänzt.
+
+### P1 – Rendering-Integration
+- **`board.py`**: `piece_set` / `piece_view`-Properties; `set_piece_set()` / `set_piece_view()` (rückwärtskompatible Hülle).
+- **`marble_board.py`**: `piece_set`-Property; `set_piece_set()`; Renderer-Cache nach `set_id` statt `PieceView`-Literal.
+- **`captured_material.py`**: `set_piece_renderer()` / `set_piece_set()` (löscht Bildcache bei Wechsel).
+
+### P1 – App-Integration (`ui/app.py`)
+- **`set_piece_set(piece_set, persist=True)`**: Schaltet Brett + beide Materialleisten gleichzeitig um.
+- **`set_piece_view()` delegiert** zu `set_piece_set()` (Abwärtskompatibilität).
+- **`_cycle_piece_set()`**: Zyklus original → top → classic → original; Tastaturkürzel erhalten.
+- **Menü**: „Piece View"-Untermenü durch „Piece Set"-Untermenü (original / top / classic) ersetzt.
+- **`_cycle_board_design()` / `_cycle_board_perspective()`** wiederhergestellt (waren versehentlich verloren gegangen).
+- **`apply_appearance`** akzeptiert `piece_set`-Kwarg (hat Vorrang vor `piece_view`).
+
+### P1 – Einstellungsdialog (`ui/appearance_dialog.py`)
+- **„Figurenset"-Dropdown**: Ersetzt „Perspektive" für die Figurenauswahl; original / top / classic.
+- **Live-Vorschau** der sechs weißen Figuren auf abwechselnden Feldern mit dem gewählten Satz.
+- **`_snapshot()`** enthält `piece_set`; `_on_piece_set_change()` synchronisiert `piece_view_var`.
+
+### P1 – Einstellungen & Migration (`storage/settings.py`)
+- **`Settings.piece_set`-Feld** (Standard `"original"`); `PIECE_SET_CHOICES`, `DEFAULT_PIECE_SET`.
+- **Migration**: Liest `piece_view == "top"` aus alten JSON-Dateien und erzeugt daraus `piece_set = "top"`.
+
+### P1 – CLI (`__main__.py`)
+- **`--piece-set original|top|classic`**: Neues Argument; Reihenfolge: `--piece-set` hat Vorrang vor `--piece-view`.
+- **`--piece-view front|top`** bleibt für Abwärtskompatibilität erhalten.
+
+### P1 – Lokalisierung (`i18n/catalog.py`)
+- Neue Keys: `board.piece_set.label`, `board.piece_set.original`, `board.piece_set.top`, `board.piece_set.classic` in DE und EN.
+
+### P2 – Testsuite
+- **`tests/test_piece_sets.py`** (11 Tests): Registry-Metadaten, `get_piece_set`-Fallbacks, SVG-Vertragskonformität, Fallback-PNG-Existenz, Provenance-Dateien, Settings-Validierung, Legacy-Migration, CLI-Argumente, GameController-Invarianz.
+- Bestehende Tests in `test_app_integration.py` an V.03-Bounds angepasst (nicht mehr uniform; per-Figur-Bounds gemessen).
+- **`scripts/generate_piece_proof_sheets.py`**: Generiert SVG- und PNG-Korrekturabzüge für alle drei Sets.
+- **Ergebnis: 347/347 Tests bestanden.**
+
+---
+
 ## V.0.3.0 – Full Glide v1.0.2 Design Language, Post-Audit Bugfixes & Appearance Customization (2026-11-24)
 
 ### P0 – Marmorbrett-Kompatibilität & SVG-Fallback (`ui/board_artwork.py`)

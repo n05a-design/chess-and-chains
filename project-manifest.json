@@ -4,7 +4,7 @@
   "slug": "chess-and-chains",
   "repository": "n05a-design/chess-and-chains",
   "proposed_repository": "n05a-design/chess-and-chains",
-  "snapshot_date": "2026-11-24",
+  "snapshot_date": "2026-11-25",
   "project_version": "0.3.0",
   "foundation_version": "F0",
   "product_status": "PROTOTYPE_LOCAL_PLAY_NOT_RELEASED",
@@ -187,7 +187,8 @@
       "open_gate_items": [
         "Owner-supplied final board designs and their review",
         "Manual native UI, high-DPI and accessibility acceptance"
-      ]
+      ],
+      "piece_set_note": "Three-set registry (original/top/classic) TESTED 2026-11-25; 347/347 tests."
     },
     {
       "id": "W07",

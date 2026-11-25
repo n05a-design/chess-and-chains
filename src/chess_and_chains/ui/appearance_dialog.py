@@ -22,8 +22,10 @@ from typing import Callable
 from glide_shell import modal_session
 from glide_shell.custom_controls import ThemedAutoScrollbar
 
+from ..chess import Color, Piece, PieceType
 from ..i18n import Translator
 from .dropdown import GlideDropdown
+from .pieces import OwnerSvgPieces
 from .theme import (
     ACCENT_CHOICES,
     BACKGROUND_CHOICES,
@@ -65,6 +67,7 @@ class AppearanceDialog(tk.Toplevel):
         sidebar_narrow: bool = False,
         board_design_choice: str = "standard",
         board_perspective: str = "2d",
+        piece_set: str | None = None,
         piece_view: str = "front",
         has_custom_board: bool = False,
         on_open_engine: Callable[[], None] | None = None,
@@ -100,7 +103,9 @@ class AppearanceDialog(tk.Toplevel):
         self.sidebar_narrow_var = tk.BooleanVar(self, value=sidebar_narrow)
         self.board_design_var = tk.StringVar(self, value=board_design_choice)
         self.perspective_var = tk.StringVar(self, value=board_perspective)
-        self.piece_view_var = tk.StringVar(self, value=piece_view)
+        chosen_set = piece_set if piece_set is not None else ("top" if piece_view == "top" else "original")
+        self.piece_set_var = tk.StringVar(self, value=chosen_set)
+        self.piece_view_var = tk.StringVar(self, value="top" if chosen_set == "top" else "front")
 
         # String proxies for binary dropdowns
         self._anim_str = tk.StringVar(self, value="on" if animations_enabled else "off")
@@ -145,6 +150,7 @@ class AppearanceDialog(tk.Toplevel):
             "sidebar_narrow": self.sidebar_narrow_var.get(),
             "board_design_choice": self.board_design_var.get(),
             "board_perspective": self.perspective_var.get(),
+            "piece_set": self.piece_set_var.get(),
             "piece_view": self.piece_view_var.get(),
         }
 
@@ -273,9 +279,10 @@ class AppearanceDialog(tk.Toplevel):
             ("2d", "Vogelperspektive (2D)" if is_de else "Top-down (2D)"),
             ("3d", "Räumlich (3D)" if is_de else "Spatial (3D)"),
         ]
-        piece_opts = [
-            ("front", "Vorderansicht" if is_de else "Front view"),
+        piece_set_opts = [
+            ("original", "Original"),
             ("top", "Draufsicht" if is_de else "Top view"),
+            ("classic", "Klassisch" if is_de else "Classic"),
         ]
         on_off = [("on", "Ein" if is_de else "On"), ("off", "Aus" if is_de else "Off")]
         sb_width = [
@@ -299,8 +306,34 @@ class AppearanceDialog(tk.Toplevel):
         self._add_section("Schachbrett" if is_de else "Chessboard", [
             ("Brettdesign" if is_de else "Board Design", self.board_design_var, board_opts, self._on_board_design_change),
             ("Perspektive" if is_de else "Perspective", self.perspective_var, persp_opts, self._on_any_change),
-            ("Figurenansicht" if is_de else "Piece View", self.piece_view_var, piece_opts, self._on_any_change),
+            ("Figurenset" if is_de else "Piece Set", self.piece_set_var, piece_set_opts, self._on_piece_set_change),
         ])
+
+        p = self._palette
+        preview_frame = tk.Frame(self._content, background=p.window, pady=6)
+        preview_lbl = tk.Label(
+            preview_frame,
+            text="Vorschau" if is_de else "Preview",
+            background=p.window,
+            foreground=p.muted_ink,
+            font=font_spec(9, scale_choice=self._scale_choice, weight_choice=self._weight_choice),
+            anchor="w",
+        )
+        preview_lbl.pack(anchor="w", pady=(0, 2))
+        self._row_labels.append(preview_lbl)
+
+        self._piece_preview_canvas = tk.Canvas(
+            preview_frame,
+            width=194,
+            height=34,
+            background=p.window,
+            highlightthickness=0,
+            bd=0,
+        )
+        self._piece_preview_canvas.pack(anchor="w")
+        self._row_frames.append(preview_frame)
+        self._row_items.append(("row", preview_frame))
+        self._update_piece_preview()
 
         self._add_section("Bedienung & Partie" if is_de else "Behavior & Match", [
             ("Animationen" if is_de else "Animations", self._anim_str, on_off, self._on_binary_change),
@@ -432,6 +465,41 @@ class AppearanceDialog(tk.Toplevel):
         self._sync_perspective_dependency()
         self._on_any_change(_val)
 
+    def _on_piece_set_change(self, val: str) -> None:
+        self.piece_view_var.set("top" if val == "top" else "front")
+        self._update_piece_preview()
+        self._on_any_change(val)
+
+    def _update_piece_preview(self) -> None:
+        if not hasattr(self, "_piece_preview_canvas"):
+            return
+        c = self._piece_preview_canvas
+        c.delete("all")
+        p = self._palette
+        c.configure(background=p.window)
+        renderer = OwnerSvgPieces(piece_set=self.piece_set_var.get())
+        sq_size = 32
+        pieces = [
+            (Piece(Color.WHITE, PieceType.PAWN), True),
+            (Piece(Color.BLACK, PieceType.ROOK), False),
+            (Piece(Color.WHITE, PieceType.KNIGHT), True),
+            (Piece(Color.BLACK, PieceType.BISHOP), False),
+            (Piece(Color.WHITE, PieceType.QUEEN), True),
+            (Piece(Color.BLACK, PieceType.KING), False),
+        ]
+        light_sq = p.square_light
+        dark_sq = p.square_dark
+        for i, (pc, is_dark) in enumerate(pieces):
+            x0 = i * sq_size + 1
+            y0 = 1
+            x1 = x0 + sq_size
+            y1 = y0 + sq_size
+            sq_fill = dark_sq if is_dark else light_sq
+            c.create_rectangle(x0, y0, x1, y1, fill=sq_fill, outline=p.line, width=1)
+            cx = (x0 + x1) / 2
+            cy = (y0 + y1) / 2
+            renderer.draw(c, cx, cy, sq_size - 4, pc)
+
     def _on_binary_change(self, _val: str) -> None:
         self.animations_var.set(self._anim_str.get() == "on")
         self.hints_var.set(self._hints_str.get() == "on")
@@ -517,6 +585,7 @@ class AppearanceDialog(tk.Toplevel):
                     scale_choice=self._scale_choice,
                     weight_choice=self._weight_choice,
                 )
+        self._update_piece_preview()
 
     def _emit_apply(self, payload: dict[str, object]) -> None:
         if self.on_apply is None:

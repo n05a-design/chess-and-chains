@@ -8,10 +8,15 @@ if TYPE_CHECKING:
     from .board_artwork import BoardDesign
 
 
-def launch(*, board_design: BoardDesign | None = None, top_pieces: bool = False) -> None:
+def launch(
+    *,
+    board_design: BoardDesign | None = None,
+    top_pieces: bool = False,
+    piece_set: str | None = None,
+) -> None:
     from .app import launch as run
 
-    run(board_design=board_design, top_pieces=top_pieces)
+    run(board_design=board_design, top_pieces=top_pieces, piece_set=piece_set)
 
 
 __all__ = ["launch"]

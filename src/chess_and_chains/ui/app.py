@@ -67,7 +67,7 @@ from .branding import brand_image, draw_signet_canvas, in_app_logo_photo, macos_
 from .captured_material import CapturedMaterialBar
 from .dialogs import PositionDialog, bind_button_enter as _bind_button_enter
 from .marble_board import MarbleBoardCanvas
-from .pieces import OwnerSvgPieces, PieceRenderer
+from .pieces import OwnerSvgPieces, PieceRenderer, get_piece_set
 from .replay import ReplayDialog
 from .text_board import TextBoardDialog
 from .theme import (
@@ -350,7 +350,7 @@ class ChessApp:
         effective_renderer = (
             piece_renderer
             if piece_renderer is not None
-            else OwnerSvgPieces(top_view=(self.settings.piece_view == "top"))
+            else OwnerSvgPieces(piece_set=self.settings.piece_set)
         )
         self._build(effective_renderer)
         self._build_menubar()
@@ -403,6 +403,7 @@ class ChessApp:
         sidebar_narrow: bool | None = None,
         board_design_choice: str | None = None,
         board_perspective: str | None = None,
+        piece_set: str | None = None,
         piece_view: str | None = None,
         persist: bool = True,
     ) -> ThemePalette:
@@ -420,8 +421,19 @@ class ChessApp:
         eff_sidebar_vis = self.sidebar_visible if sidebar_visible is None else bool(sidebar_visible)
         eff_sidebar_narrow = self._sidebar_narrow if sidebar_narrow is None else bool(sidebar_narrow)
 
-        if piece_view is not None and hasattr(self, "board"):
+        if piece_set is not None:
+            if hasattr(self, "board"):
+                self.board.set_piece_set(piece_set)
+            if hasattr(self, "top_material_bar"):
+                self.top_material_bar.set_piece_set(piece_set)
+            if hasattr(self, "bottom_material_bar"):
+                self.bottom_material_bar.set_piece_set(piece_set)
+        elif piece_view is not None and hasattr(self, "board"):
             self.board.set_piece_view(piece_view)  # type: ignore[arg-type]
+            if hasattr(self, "top_material_bar"):
+                self.top_material_bar.set_piece_set("top" if piece_view == "top" else "original")
+            if hasattr(self, "bottom_material_bar"):
+                self.bottom_material_bar.set_piece_set("top" if piece_view == "top" else "original")
         if board_design_choice is not None and hasattr(self, "board"):
             try:
                 self.board.set_board_design(board_design_choice)  # type: ignore[arg-type]
@@ -445,6 +457,7 @@ class ChessApp:
             if hasattr(self, "board") and self.board.board_design in ("standard", "marble")
             else self.settings.board_perspective
         )
+        eff_piece_set = getattr(self.board, "piece_set", self.settings.piece_set)
         eff_piece = self.board.piece_view if hasattr(self, "board") else self.settings.piece_view
 
         for key, val in (
@@ -461,6 +474,7 @@ class ChessApp:
             ("sidebar_narrow", eff_sidebar_narrow),
             ("board_design_choice", eff_design),
             ("board_perspective", eff_persp),
+            ("piece_set", eff_piece_set),
             ("piece_view", eff_piece),
         ):
             if getattr(self.settings, key) != val:
@@ -534,6 +548,7 @@ class ChessApp:
         """Open the unified Glide Settings & Appearance dialog."""
         cur_design = self.board.board_design if hasattr(self, "board") else self.settings.board_design_choice
         cur_persp = self.board.perspective if hasattr(self, "board") else self.settings.board_perspective
+        cur_piece_set = getattr(self.board, "piece_set", self.settings.piece_set)
         cur_piece = self.board.piece_view if hasattr(self, "board") else self.settings.piece_view
         return AppearanceDialog(
             self.root,
@@ -552,6 +567,7 @@ class ChessApp:
             sidebar_narrow=self._sidebar_narrow,
             board_design_choice=cur_design,
             board_perspective=cur_persp,
+            piece_set=cur_piece_set,
             piece_view=cur_piece,
             has_custom_board=self._custom_board_artwork is not None,
             on_open_engine=self._open_engine_dialog,
@@ -638,9 +654,10 @@ class ChessApp:
                     (chk(t("board.perspective.2d"), self.board.perspective == "2d"), lambda: self.set_board_perspective("2d"), "", "persp_2d"),
                     (chk(t("board.perspective.3d"), self.board.perspective == "3d"), lambda: self.set_board_perspective("3d"), "", "persp_3d"),
                 ]),
-                (t("board.piece_view.label"), [
-                    (chk(t("board.piece_view.front"), self.board.piece_view == "front"), lambda: self.set_piece_view("front"), "", "piece_front"),
-                    (chk(t("board.piece_view.top"), self.board.piece_view == "top"), lambda: self.set_piece_view("top"), "", "piece_top"),
+                (t("board.piece_set.label"), [
+                    (chk(t("board.piece_set.original"), getattr(self.board, "piece_set", "original") == "original"), lambda: self.set_piece_set("original"), "", "piece_set_original"),
+                    (chk(t("board.piece_set.top"), getattr(self.board, "piece_set", "original") == "top"), lambda: self.set_piece_set("top"), "", "piece_set_top"),
+                    (chk(t("board.piece_set.classic"), getattr(self.board, "piece_set", "original") == "classic"), lambda: self.set_piece_set("classic"), "", "piece_set_classic"),
                 ]),
                 (t("text_board.button"), self._open_text_board, "", "text_board"),
                 None,
@@ -2492,15 +2509,16 @@ class ChessApp:
                 text=clip_button_text(f"{t('board.perspective.label')}: {persp_short}"),
                 state=tk.NORMAL if self.board.supports_3d() else tk.DISABLED,
             )
+        cur_piece_set = getattr(self.board, "piece_set", self.settings.piece_set)
         if hasattr(self, "piece_view_button"):
             if perspective == "3d" and design == "marble":
                 piece_label = t("board.marble_pieces")
                 piece_state = tk.DISABLED
             else:
-                piece_label = t(f"board.piece_view.{piece_view}")
+                piece_label = t(f"board.piece_set.{cur_piece_set}")
                 piece_state = tk.NORMAL
             self.piece_view_button.configure(
-                text=clip_button_text(f"{t('board.piece_view.label')}: {piece_label}"),
+                text=clip_button_text(f"{t('board.piece_set.label')}: {piece_label}"),
                 state=piece_state,
             )
 
@@ -2536,14 +2554,28 @@ class ChessApp:
         if hasattr(self, "menubar"):
             self._build_menubar()
 
-    def set_piece_view(self, view: str, *, persist: bool = True) -> None:
-        """Switch piece depiction between front and top views without altering game state."""
-        self.board.set_piece_view(view)  # type: ignore[arg-type]
+    def set_piece_set(self, piece_set: str, *, persist: bool = True) -> None:
+        """Switch chess piece set without altering game or board state."""
+        info = get_piece_set(piece_set)
+        if hasattr(self, "board"):
+            self.board.set_piece_set(info.set_id)
+        if hasattr(self, "top_material_bar"):
+            self.top_material_bar.set_piece_set(info.set_id)
+        if hasattr(self, "bottom_material_bar"):
+            self.bottom_material_bar.set_piece_set(info.set_id)
         self._sync_board_controls()
         if persist:
-            self._store_settings(piece_view=self.board.piece_view)
+            self._store_settings(
+                piece_set=info.set_id,
+                piece_view="top" if info.perspective == "top" else "front",
+            )
         if hasattr(self, "menubar"):
             self._build_menubar()
+
+    def set_piece_view(self, view: str, *, persist: bool = True) -> None:
+        """Switch piece depiction between front and top views without altering game state."""
+        target = "top" if view == "top" else "original"
+        self.set_piece_set(target, persist=persist)
 
     def _cycle_board_design(self) -> None:
         order: tuple[str, ...] = ("standard", "marble", "custom") if self._custom_board_artwork is not None else ("standard", "marble")
@@ -2557,9 +2589,18 @@ class ChessApp:
         nxt = "2d" if self.board.perspective == "3d" else "3d"
         self.set_board_perspective(nxt)
 
+    def _cycle_piece_set(self) -> None:
+        order = ("original", "top", "classic")
+        current = getattr(self.board, "piece_set", self.settings.piece_set)
+        try:
+            idx = order.index(current)
+            nxt = order[(idx + 1) % len(order)]
+        except ValueError:
+            nxt = "original"
+        self.set_piece_set(nxt)
+
     def _cycle_piece_view(self) -> None:
-        nxt = "top" if self.board.piece_view == "front" else "front"
-        self.set_piece_view(nxt)
+        self._cycle_piece_set()
 
     def _toggle_marble_view(self) -> None:
         enabled = self.marble_view.get()
@@ -3320,6 +3361,7 @@ def launch(
     *,
     board_design: BoardDesign | None = None,
     top_pieces: bool = False,
+    piece_set: str | None = None,
     mainloop: bool = True,
     data_layout: DataLayout | None = None,
 ) -> ChessApp:
@@ -3335,7 +3377,8 @@ def launch(
             except tk.TclError as error:
                 root.destroy()
                 raise BoardArtworkError(f"SVG board preview needs an SVG-capable Tk renderer: {error}") from error
-        renderer = OwnerSvgPieces(top_view=True) if top_pieces else None
+        chosen_set = piece_set if piece_set is not None else ("top" if top_pieces else None)
+        renderer = OwnerSvgPieces(piece_set=chosen_set) if chosen_set is not None else None
         layout = DataLayout.default() if data_layout is None else data_layout
         return ChessApp(root, data_layout=layout, board_artwork=artwork, piece_renderer=renderer)
 

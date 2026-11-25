@@ -1,33 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-  <title>Black Bishop</title>
-  <desc>Owner's revised front view with editable interior shading.</desc>
-  <metadata>Copyright Tim von Trostorff · MPL-2.0 · Owner front-view SVG V.02 SHA-256 e0a6733c3420393bb72436c12ea9618d7d44c9d8f6a0137036d92908c33c3d65 · wB-0-silhouette1 · optical size adjusted</metadata>
-  <defs>
-    <linearGradient id="surface" gradientUnits="userSpaceOnUse" x1="13" y1="16" x2="51" y2="40">
-      <stop offset="0" stop-color="#646870" />
-      <stop offset=".40" stop-color="#4B5058" />
-      <stop offset=".76" stop-color="#292D34" />
-      <stop offset="1" stop-color="#15171C" />
-    </linearGradient>
-    <linearGradient id="side-depth" gradientUnits="userSpaceOnUse" x1="30" y1="19" x2="49" y2="19">
-      <stop offset="0" stop-color="#07080C" stop-opacity="0" />
-      <stop offset="1" stop-color="#07080C" stop-opacity=".52" />
-    </linearGradient>
-    <linearGradient id="collar-depth" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0" stop-color="#000000" stop-opacity=".46" />
-      <stop offset="1" stop-color="#000000" stop-opacity="0" />
-    </linearGradient>
-    <linearGradient id="foot-depth" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0" stop-color="#000000" stop-opacity="0" />
-      <stop offset="1" stop-color="#000000" stop-opacity=".52" />
-    </linearGradient>
-  </defs>
-  <path id="silhouette" d="M 16.232 9.6 L 20.451 9.6 C 21.817 9.6 22.5 10.1 22.5 11.18 L 22.5 13 C 22.5 15 23.333 16 25 16 C 26.667 16 27.5 15 27.5 13 L 27.5 7.5 C 27.5 6.5 28 6 29 6 L 37.943 6 C 40.746 6 44.14 7.114 46.588 9.097 C 48.677 11.08 49.711 13.769 49.71 16.571 C 49.71 16.571 49.71 16.571 49.71 16.571 L 49.71 20.143 C 49.71 21.143 49.243 21 48.31 22 C 47.949 23 47.949 24.667 48.31 27 C 48.31 27 50.5 50.143 50.5 51.143 L 50.5 54.429 C 50.5 56.429 48.466 58 40.5 58 L 23.5 58 C 15.534 58 13.5 56.429 13.5 54.429 L 13.5 51.143 C 13.5 50.143 15.69 27 15.69 27 C 16.051 24.667 16.051 23 15.69 22 C 14.757 21 14.29 21.143 14.29 20.143 L 14.29 11.68 C 14.29 10.37 14.913 9.6 16.232 9.6 Z" fill="url(#surface)" fill-rule="nonzero" stroke="white" stroke-width="1.14" stroke-linejoin="round" />
-  <g id="shadows">
-    <path id="crown-shadow" fill="url(#side-depth)" d="M 41 7.8 C 45.598 9 48.497 12.5 48.544 16.7 V 19.5 Q 48.497 20.4 47.659 21.1 H 33.5 Q 42.456 17.4 43.412 13.1 Q 44.095 10.2 41 7.8 Z" />
-    <path id="flank-shadow" fill="url(#side-depth)" d="M 41.637 27.4 H 47.334 L 50.026 52.9 V 54.2 Q 50.026 56.2 45.598 56.8 H 33.9 Q 44.778 53.7 43.412 45.5 Z" />
-    <path id="collar-shadow" fill="url(#collar-depth)" d="M 16.775 27.3 H 47.225 Q 46.954 28.8 46.737 30 H 17.263 Q 17.046 28.8 16.775 27.3 Z" />
-    <path id="foot-shadow" fill="url(#foot-depth)" d="M 14.757 53.6 C 21.68 55.4 27.3 55.5 32 55.5 C 37.2 55.5 45.051 55.2 49.243 53.6 C 48.87 55.7 45.051 57.1 39.8 57.1 H 24.3 C 18.294 57.1 15.596 56 14.757 53.6 Z" />
-  </g>
-  <path id="collar" d="M 15.69 22 L 48.31 22 M 15.69 26.429 L 48.31 26.429" transform="matrix(1,0,0,1,0,0.238432)" fill="none" stroke="white" stroke-width="1.14" stroke-linejoin="miter" />
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><title>Black Bishop</title><desc>Owner front-view piece Läufer V.03 with interior shading.</desc><metadata>Copyright Tim von Trostorff · MPL-2.0 · Source V.03 SHA-256 d1d80e25df53b20f602f4fbbf05a7e13d5dd38363c2f8ecac0df38c6d74a825d · 64x64 tile</metadata><g transform="matrix(0.5714285714,0,0,0.5714285714,-242.2857142857,-146.2857142857)"><g transform="matrix(0.963855,0,0,0.963855,12.048193,31.668065)">
+                <g transform="matrix(1,0,0,1,0,117.288133)">
+                    <path d="M506.153,164L508.543,167.25C508.543,167.25 512.375,205.75 512.375,207.5L512.375,208.251C512.375,211.751 508.815,213.5 494.875,213.5L476.125,213.5C462.184,213.5 458.625,211.751 458.625,208.251L458.625,207.5C458.625,205.75 462.457,167.25 462.457,167.25L465.847,164L506.153,164Z" style="fill:rgb(41,41,41);stroke:rgb(225,225,225);stroke-width:1.5px;stroke-miterlimit:4;" />
+                </g>
+                <g transform="matrix(1,0,0,1,1,117.288133)">
+                    <path d="M463.612,159L460.007,155.25L460.007,137.44C460.007,135.148 461.098,133.8 463.406,133.8L467.789,133.8C470.18,133.8 471.375,135.675 471.375,137.565L471.375,142.75C471.375,146.25 471.833,148 474.75,148C477.667,148 478.125,146.25 478.125,142.75L478.125,134.125C478.125,132.375 480,130.5 481.75,130.5L486.4,130.5C491.305,130.5 500.764,132.503 504.529,135.92C508.294,139.336 509.994,146.096 509.993,150.999L509.993,155.25L506.388,159L463.612,159Z" style="fill:rgb(41,41,41);stroke:rgb(225,225,225);stroke-width:1.5px;stroke-miterlimit:4;" />
+                </g>
+                <g id="large-wB-crown-shadow1" transform="matrix(1.75,0,0,1.75,425,237.288133)">
+                    <path d="M40.429,7.8C45.027,9 47.926,12.5 47.973,16.7L47.973,19.5C47.941,20.1 47.075,20.633 46.516,21.1L32.357,21.1C38.328,18.633 42.203,15.967 42.841,13.1C43.296,11.167 42.492,9.4 40.429,7.8Z" style="fill:rgb(85,85,85);fill-rule:nonzero;" />
+                </g>
+                <g id="large-wB-flank-shadow1" transform="matrix(1.75,0,0,1.75,423,238.288133)">
+                    <path d="M42.208,25.686L46.001,25.686C47.08,25.686 47.98,26.508 48.077,27.582C48.583,33.149 50.026,49.057 50.026,49.057C50.026,50.39 48.55,51.257 45.598,51.657L33.9,51.657C41.152,49.59 44.323,48.681 43.412,43.214L42.208,25.686Z" style="fill:rgb(85,85,85);fill-rule:nonzero;" />
+                </g>
+            </g>
+            </g></svg>
