@@ -720,11 +720,11 @@ class OwnerPieceUiTests(AppTestCase):
         self.assertTrue(images())
         self.assertEqual(len(app.board.find_withtag("piece")), sum(piece is not None for piece in app.puzzle.state.board))
 
-        # The bottom corner of the front-view foot lies outside the top-view disc.
+        # The top-view disc extends farther sideways than the V.06 front-view king.
         front = OwnerSvgPieces()
         band = PIECE_FALLBACK_SIZES.index(64)
-        self.assertFalse(front._copy_png_piece(app.board, "wK.svg", band).transparency_get(16, 53))
-        self.assertTrue(renderer._copy_png_piece(app.board, "wK.svg", band).transparency_get(16, 53))
+        self.assertTrue(front._copy_png_piece(app.board, "wK.svg", band).transparency_get(10, 32))
+        self.assertFalse(renderer._copy_png_piece(app.board, "wK.svg", band).transparency_get(10, 32))
 
     def test_piece_images_share_the_visible_dimensions_within_each_view(self):
         root = create_root(self)
@@ -732,18 +732,18 @@ class OwnerPieceUiTests(AppTestCase):
         # Render at 2× so that the half-unit edges land on whole pixels.
         size = 128
         band = PIECE_FALLBACK_SIZES.index(size)
-        v03_bounds = {
-            "wK.svg": (30, 12, 97, 108), "bK.svg": (30, 12, 97, 108),
-            "wQ.svg": (31, 15, 95, 108), "bQ.svg": (31, 15, 95, 108),
-            "wR.svg": (30, 15, 97, 108), "bR.svg": (30, 15, 97, 108),
-            "wB.svg": (33, 15, 94, 108), "bB.svg": (33, 15, 94, 108),
-            "wN.svg": (31, 15, 96, 108), "bN.svg": (31, 15, 96, 108),
-            "wP.svg": (36, 15, 91, 108), "bP.svg": (36, 15, 91, 108),
+        v06_bounds = {
+            "wK.svg": (30, 14, 97, 107), "bK.svg": (30, 14, 97, 107),
+            "wQ.svg": (31, 18, 95, 107), "bQ.svg": (31, 18, 95, 107),
+            "wR.svg": (30, 18, 97, 107), "bR.svg": (30, 18, 97, 107),
+            "wB.svg": (33, 18, 94, 107), "bB.svg": (33, 18, 94, 107),
+            "wN.svg": (31, 18, 96, 107), "bN.svg": (31, 17, 96, 107),
+            "wP.svg": (36, 18, 91, 107), "bP.svg": (36, 18, 91, 107),
         }
         for top_view in (False, True):
             renderer = OwnerSvgPieces(top_view=top_view)
             for name in PIECE_FILE_NAMES:
-                expected = (13, 13, 114, 114) if top_view else v03_bounds[name]
+                expected = (11, 11, 116, 116) if top_view else v06_bounds[name]
                 with self.subTest(top_view=top_view, piece=name):
                     tile = renderer._copy_png_piece(canvas, name, band)
                     visible = [(x, y) for y in range(size) for x in range(size)
