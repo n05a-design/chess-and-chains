@@ -26,7 +26,7 @@ Der **GUI-freie Python-Regelkern** unterstützt legale Züge, FEN/SAN/PGN, Remis
 Der lokale Tk-Prototyp umfasst folgende Funktionen.
 
 - Partie für zwei Personen und **Bot-Modus** (Bot spielt Weiß oder Schwarz) über einen asynchronen Game-Controller,
-- **Connected System** mit eigener Wortmarke, drei auswählbaren Figurensets (Original V.03, Draufsicht V.04, Klassisch V.05) als Original-SVGs (je 12 Einzelfiguren + PNG-Atlas-Fallback),
+- **Connected System** mit eigener Wortmarke, drei auswählbaren Figurensets (Original V.06, Draufsicht V.04.2, Klassisch V.05.1) als Original-SVGs (je 12 Einzelfiguren + PNG-Atlas-Fallback),
 - UCI-Prozessadapter, getestet **nur mit einer projekteigenen Mock-Engine** – diese ist **keine Schach-KI**,
 - sechs datengetriebenen Bot-Stufen (Optionen nur, wenn die Engine sie anbietet; Spielstärke **nicht kalibriert**),
 - **Puzzle Lab** mit fünf projekteigenen Demo-Rätseln und Import eigener Paketordner. Unter **Rätselpakete…** lassen sich lokale Pakete öffnen. Die App merkt sich das zuletzt geöffnete Paket und speichert den Fortschritt je Paket. Der [Offline-Builder](data/puzzle_packs/README.md) verarbeitet CSV im Lichess-Format ab Rating 1000,
@@ -87,7 +87,7 @@ Eine bereits lokal installierte UCI-Engine kann zur Entwicklung über `CHESS_AND
 
 Mit Tk 9 lässt sich ein lokaler Brettentwurf für einen Programmaufruf in der App anzeigen. Beispiel: `python -m chess_and_chains --board-design assets/boards/source/board-template.svg`. Die [SVG-Lieferanleitung](assets/boards/source/README.md) beschreibt die Formate für Gesamtbretter und einzelne Felder.
 
-`python -m chess_and_chains --piece-set original|top|classic` wählt das Figurenset für die Sitzung. `--piece-set original` (V.03, Vorderansicht-Design) ist der Standard. `--piece-set top` lädt die Draufsicht-Figuren (V.04) und `--piece-set classic` die klassischen Silhouetten (V.05). Das veraltete Argument `--piece-view top` bleibt unterstützt. Alle drei Sets nutzen [editierbare Einzel-SVGs](assets/chess_pieces/source_svg/README.md) und einen per-Set PNG-Atlas-Fallback für Tk ohne SVG-Unterstützung. Das Figurenset lässt sich auch zur Laufzeit im Dialog **Darstellung…** oder über das Menü wechseln.
+`python -m chess_and_chains --piece-set original|top|classic` wählt das Figurenset für die Sitzung. `--piece-set original` (V.06, Vorderansicht-Design) ist der Standard. `--piece-set top` lädt die Draufsicht-Figuren (V.04.2) und `--piece-set classic` die klassischen Silhouetten (V.05.1). Das veraltete Argument `--piece-view top` bleibt unterstützt. Alle drei Sets nutzen [editierbare Einzel-SVGs](assets/chess_pieces/source_svg/README.md) und einen per-Set PNG-Atlas-Fallback für Tk ohne SVG-Unterstützung. Das Figurenset lässt sich auch zur Laufzeit im Dialog **Darstellung…** oder über das Menü wechseln.
 
 Der [lokale 3D-Prototyp mit kühlem Marmor](app/marble_3d/README.md) startet
 im Checkout mit `python app/marble_3d/server.py`. Zwei Personen spielen

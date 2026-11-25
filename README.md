@@ -27,7 +27,7 @@ The local Tk desktop prototype supports two-player play, a project-owned mock en
 | --- | --- |
 | Product requirements, roadmap and documentation | Maintained; MVP contract and most ADRs are proposals awaiting owner decisions ([Roadmap](docs/roadmap/ROADMAP.md)) |
 | Headless rules domain (legal moves, FEN/SAN/PGN, draw rules, undo/redo) | Perft and golden tests cover the implemented rules, including dead positions in short forced continuations into stalemate or insufficient material and closed pawn barriers that neither king can open. General dead-position detection and owner acceptance remain open. |
-| Desktop board and local two-player UI | Tk prototype with Connected System branding; three selectable piece sets: Original V.03, Top-view V.04 and Classic V.05 (each 12 individual SVGs + PNG fallback atlas) |
+| Desktop board and local two-player UI | Tk prototype with Connected System branding; three selectable piece sets: Original V.06, Top-view V.04.2 and Classic V.05.1 (each 12 individual SVGs + PNG fallback atlas) |
 | UCI process adapter | Implemented; tested only against a project-owned mock engine |
 | Game controller + asynchronous bot (play as White or Black) | Implemented; tested with the mock engine, which is **not a chess AI** |
 | Real engine (e.g. Stockfish) bot play | Not bundled, not tested; user-configured engine path supported but unverified (ADR-001 open) |
@@ -80,7 +80,7 @@ After `python -m pip install --no-build-isolation --no-deps -e .`, `chess-and-ch
 
 With Tk 9, preview a local vector board for one session with `python -m chess_and_chains --board-design assets/boards/source/board-template.svg`. The [SVG delivery guide](assets/boards/source/README.md) covers complete boards and collections of individual squares.
 
-Run `python -m chess_and_chains --piece-set original|top|classic` to select a piece set for the session. `--piece-set original` (V.03, front-view design) is the default. `--piece-set top` loads the top-view pieces (V.04) and `--piece-set classic` loads the classic silhouette pieces (V.05). The legacy `--piece-view top` flag remains supported. All three sets use [editable individual SVGs](assets/chess_pieces/source_svg/README.md) and a per-set PNG atlas fallback for Tk without SVG support. The piece set can also be changed at runtime from the **Appearance…** dialog or the View menu.
+Run `python -m chess_and_chains --piece-set original|top|classic` to select a piece set for the session. `--piece-set original` (V.06, front-view design) is the default. `--piece-set top` loads the top-view pieces (V.04.2) and `--piece-set classic` loads the classic silhouette pieces (V.05.1). The legacy `--piece-view top` flag remains supported. All three sets use [editable individual SVGs](assets/chess_pieces/source_svg/README.md) and a per-set PNG atlas fallback for Tk without SVG support. The piece set can also be changed at runtime from the **Appearance…** dialog or the View menu.
 
 Run `python app/marble_3d/server.py` from the checkout to open the
 [local 3D marble board](app/marble_3d/README.md) for two players on one

@@ -1,4 +1,4 @@
-"""Extract the 36 runtime piece SVGs from owner vector sheets V.03, V.04, and V.05."""
+"""Extract the 36 runtime piece SVGs from owner vector sheets V.06, V.04.2, and V.05.1."""
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -69,9 +69,9 @@ def build_svg_document(title: str, desc: str, metadata: str, inner_element: ET.E
     return cleaned + "\n"
 
 
-def extract_v03(output_dir: Path) -> None:
-    """Extract 12 pieces from V.03-Schachfiguren-Vorderansicht-Schatten.svg."""
-    source_path = ROOT / "design" / "V.03-Schachfiguren-Vorderansicht-Schatten.svg"
+def extract_v06(output_dir: Path) -> None:
+    """Extract 12 pieces from V.06-Schachfiguren-Vorderansicht-Schatten.svg."""
+    source_path = ROOT / "assets" / "chess_pieces" / "masters" / "V.06" / "V.06-Schachfiguren-Vorderansicht-Schatten.svg"
     sha = hashlib.sha256(source_path.read_bytes()).hexdigest()
     tree = ET.parse(source_path)
     root = tree.getroot()
@@ -105,99 +105,54 @@ def extract_v03(output_dir: Path) -> None:
         off_x = -sq_x * scale
         off_y = -sq_y * scale
         wrapper = ET.Element("g", {
-            "transform": f"matrix({scale:.10f},0,0,{scale:.10f},{off_x:.10f},{off_y:.10f})"
+            "transform": f"matrix({scale:.10f},0,0,{scale:.10f},{off_x:.10f},{off_y:.10f})",
+            "style": root.get("style", ""),
         })
         wrapper.append(elem)
 
         title_en, piece_de = PIECE_NAMES[name]
-        desc = f"Owner front-view piece {piece_de} V.03 with interior shading."
-        metadata = f"Copyright Tim von Trostorff · MPL-2.0 · Source V.03 SHA-256 {sha} · 64x64 tile"
+        desc = f"Owner front-view piece {piece_de} V.06 with interior shading."
+        metadata = f"Copyright Tim von Trostorff · MPL-2.0 · Source V.06 SHA-256 {sha} · 64x64 tile"
         doc = build_svg_document(title_en, desc, metadata, wrapper)
         (output_dir / f"{name}.svg").write_text(doc, encoding="utf-8")
 
 
 def extract_v04(output_dir: Path) -> None:
-    """Extract 12 pieces from V.04-Schachfiguren-Vorderansicht-Schatten.svg."""
-    source_path = ROOT / "design" / "V.04-Schachfiguren-Vorderansicht-Schatten.svg"
+    """Extract the geometrically smoothed V.04.2 top-view SVGs from the owner master."""
+    source_path = ROOT / "assets" / "chess_pieces" / "masters" / "V.04.2" / "V.04.2-Schachfiguren-Draufsicht-Smooth.svg"
     sha = hashlib.sha256(source_path.read_bytes()).hexdigest()
-    tree = ET.parse(source_path)
-    root = tree.getroot()
-    v41 = [c for c in root.iter() if c.attrib.get("id") == "V.41"][0]
-
-    m_base_w = v41[4].attrib.get("transform")
-    m_base_b = v41[5].attrib.get("transform")
-
-    pairs = {
-        "wP": (0, 19, 4, 25.0, 1097.53418, m_base_w),
-        "bP": (0, 20, 5, 25.0, 1233.53418, m_base_b),
-        "wR": (1, 13, 4, 158.0, 1097.53418, m_base_w),
-        "bR": (1, 14, 5, 158.0, 1233.53418, m_base_b),
-        "wN": (2, 15, 4, 291.0, 1097.53418, m_base_w),
-        "bN": (2, 16, 5, 291.0, 1233.53418, m_base_b),
-        "wB": (3, 11, 4, 424.0, 1097.53418, m_base_w),
-        "bB": (3, 12, 5, 424.0, 1233.53418, m_base_b),
-        "wQ": (4, 17, 4, 557.0, 1097.53418, m_base_w),
-        "bQ": (4, 18, 5, 557.0, 1233.53418, m_base_b),
-        "wK": (5, 21, 4, 690.0, 1097.53418, m_base_w),
-        "bK": (5, 22, 5, 690.0, 1233.53418, m_base_b),
-    }
-
-    scale = 64.0 / 112.0
-    for name, (base_idx, inner_idx, base_grp, sq_x, sq_y, m_base) in pairs.items():
-        off_x = -sq_x * scale
-        off_y = -sq_y * scale
-        wrapper = ET.Element("g", {
-            "transform": f"matrix({scale:.10f},0,0,{scale:.10f},{off_x:.10f},{off_y:.10f})"
-        })
-        g_base = ET.SubElement(wrapper, "g", {"transform": m_base})
-        g_base.append(copy.deepcopy(v41[base_grp][base_idx]))
-        wrapper.append(copy.deepcopy(v41[inner_idx]))
-
-        title_en, piece_de = PIECE_NAMES[name]
-        desc = f"Owner orthogonal top-view piece {piece_de} V.04."
-        metadata = f"Copyright Tim von Trostorff · MPL-2.0 · Source V.04 SHA-256 {sha} · 64x64 tile"
-        doc = build_svg_document(f"{title_en} (top view)", desc, metadata, wrapper)
-        (output_dir / f"{name}.svg").write_text(doc, encoding="utf-8")
+    root = ET.parse(source_path).getroot()
+    ns = "http://www.w3.org/2000/svg"
+    tag = lambda name: "{" + ns + "}" + name
+    ET.register_namespace("", ns)
+    for name, (title_en, _) in PIECE_NAMES.items():
+        tile = next(e for e in root.iter() if e.get("id") == f"tile-{name}")
+        geometry = copy.deepcopy(tile[0])
+        svg = ET.Element(tag("svg"), {"width": "64", "height": "64", "viewBox": "0 0 64 64"})
+        ET.SubElement(svg, tag("title")).text = f"{title_en} (top view)"
+        ET.SubElement(svg, tag("desc")).text = "Owner top-view V.04.2: geometric smoothing derived from the supplied V.04 vector sheet."
+        ET.SubElement(svg, tag("metadata")).text = f"Copyright Tim von Trostorff · MPL-2.0 · Source V.04.2 SHA-256 {sha} · 64x64 tile"
+        svg.append(geometry)
+        (output_dir / f"{name}.svg").write_bytes(ET.tostring(svg, encoding="utf-8") + b"\n")
 
 
 def extract_v05(output_dir: Path) -> None:
-    """Extract 12 pieces from V.05-Schachfiguren-Vorderansicht-Schatten.svg."""
-    source_path = ROOT / "design" / "V.05-Schachfiguren-Vorderansicht-Schatten.svg"
+    """Extract the shaded V.05.1 classic SVGs from the owner master."""
+    source_path = ROOT / "assets" / "chess_pieces" / "masters" / "V.05.1" / "V.05.1-Schachfiguren-Klassisch-Schatten.svg"
     sha = hashlib.sha256(source_path.read_bytes()).hexdigest()
-    tree = ET.parse(source_path)
-    root = tree.getroot()
-    v51 = [c for c in root.iter() if c.attrib.get("id") == "V.51"][0]
-
-    mapping = {
-        "wP": ("bauer-figur", 25.0, 610.53418),
-        "bP": ("bauer-figur1", 25.0, 746.53418),
-        "wR": ("turm-figur", 158.0, 610.53418),
-        "bR": ("turm-figur1", 158.0, 746.53418),
-        "wN": ("springer-figur", 291.0, 610.53418),
-        "bN": ("springer-figur1", 291.0, 746.53418),
-        "wB": ("laeufer-figur", 424.0, 610.53418),
-        "bB": ("laeufer-figur1", 424.0, 746.53418),
-        "wQ": ("dame-figur", 557.0, 610.53418),
-        "bQ": ("dame-figur1", 557.0, 746.53418),
-        "wK": ("koenig-figur", 690.0, 610.53418),
-        "bK": ("koenig-figur1", 690.0, 746.53418),
-    }
-
-    scale = 64.0 / 112.0
-    for name, (elem_id, sq_x, sq_y) in mapping.items():
-        elem = copy.deepcopy([c for c in v51 if c.attrib.get("id") == elem_id][0])
-        off_x = -sq_x * scale
-        off_y = -sq_y * scale
-        wrapper = ET.Element("g", {
-            "transform": f"matrix({scale:.10f},0,0,{scale:.10f},{off_x:.10f},{off_y:.10f})"
-        })
-        wrapper.append(elem)
-
-        title_en, piece_de = PIECE_NAMES[name]
-        desc = f"Owner classic silhouette piece {piece_de} V.05."
-        metadata = f"Copyright Tim von Trostorff · MPL-2.0 · Source V.05 SHA-256 {sha} · 64x64 tile"
-        doc = build_svg_document(f"{title_en} (classic)", desc, metadata, wrapper)
-        (output_dir / f"{name}.svg").write_text(doc, encoding="utf-8")
+    root = ET.parse(source_path).getroot()
+    ns = "http://www.w3.org/2000/svg"
+    tag = lambda name: "{" + ns + "}" + name
+    ET.register_namespace("", ns)
+    for name, (title_en, _) in PIECE_NAMES.items():
+        tile = next(e for e in root.iter() if e.get("id") == f"tile-{name}")
+        geometry = copy.deepcopy(tile[0])
+        svg = ET.Element(tag("svg"), {"width": "64", "height": "64", "viewBox": "0 0 64 64"})
+        ET.SubElement(svg, tag("title")).text = f"{title_en} (classic)"
+        ET.SubElement(svg, tag("desc")).text = "Owner classic V.05.1: interior directional shading and real transparent cutouts."
+        ET.SubElement(svg, tag("metadata")).text = f"Owner artwork · Source V.05.1 SHA-256 {sha} · 64x64 tile; derived from V.05 owner master."
+        svg.append(geometry)
+        (output_dir / f"{name}.svg").write_bytes(ET.tostring(svg, encoding="utf-8") + b"\n")
 
 
 def write_provenance(directory: Path, set_id: str, version: str, title: str, source_rel: str) -> None:
@@ -230,23 +185,23 @@ def main() -> None:
     for d in (original_dir, top_dir, classic_dir):
         d.mkdir(parents=True, exist_ok=True)
 
-    print("Extracting V.03 (original)...")
-    extract_v03(original_dir)
-    write_provenance(original_dir, "original", "V.03", "Original Chess Pieces", "design/V.03-Schachfiguren-Vorderansicht-Schatten.svg")
+    print("Extracting V.06 (original)...")
+    extract_v06(original_dir)
+    write_provenance(original_dir, "original", "V.06", "Original Chess Pieces", "assets/chess_pieces/masters/V.06/V.06-Schachfiguren-Vorderansicht-Schatten.svg")
 
-    print("Extracting V.04 (top view)...")
+    print("Extracting V.04.2 (top view)...")
     extract_v04(top_dir)
-    write_provenance(top_dir, "top", "V.04", "Top-View Chess Pieces", "design/V.04-Schachfiguren-Vorderansicht-Schatten.svg")
+    shutil.copy2(ROOT / "assets/chess_pieces/masters/V.04.2/TOP_PROVENANCE.txt", top_dir / "PROVENANCE.md")
 
-    print("Extracting V.05 (classic)...")
+    print("Extracting V.05.1 (classic)...")
     extract_v05(classic_dir)
-    write_provenance(classic_dir, "classic", "V.05", "Classic Chess Pieces", "design/V.05-Schachfiguren-Vorderansicht-Schatten.svg")
+    shutil.copy2(ROOT / "assets/chess_pieces/masters/V.05.1/CLASSIC_PROVENANCE.txt", classic_dir / "PROVENANCE.md")
 
-    # Mirror V.03 to root ASSETS_DIR for complete backward compatibility
-    print("Mirroring V.03 to piece_assets root...")
+    # Mirror V.06 to root ASSETS_DIR for complete backward compatibility
+    print("Mirroring V.06 to piece_assets root...")
     for svg_file in original_dir.glob("*.svg"):
         shutil.copy2(svg_file, ASSETS_DIR / svg_file.name)
-    write_provenance(ASSETS_DIR, "original", "V.03", "Chess & Chains Piece Assets (Default V.03)", "design/V.03-Schachfiguren-Vorderansicht-Schatten.svg")
+    write_provenance(ASSETS_DIR, "original", "V.06", "Chess & Chains Piece Assets (Default V.06)", "assets/chess_pieces/masters/V.06/V.06-Schachfiguren-Vorderansicht-Schatten.svg")
 
     print("Done. All 36 SVGs extracted and verified.")
 

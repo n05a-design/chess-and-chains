@@ -49,7 +49,7 @@ class PieceSetInfo:
 PIECE_SETS: dict[str, PieceSetInfo] = {
     "original": PieceSetInfo(
         set_id="original",
-        asset_version="V.03",
+        asset_version="V.06",
         name_de="Original",
         name_en="Original",
         subpath="original",
@@ -58,7 +58,7 @@ PIECE_SETS: dict[str, PieceSetInfo] = {
     ),
     "top": PieceSetInfo(
         set_id="top",
-        asset_version="V.04",
+        asset_version="V.04.2",
         name_de="Draufsicht",
         name_en="Top view",
         subpath="top",
@@ -67,7 +67,7 @@ PIECE_SETS: dict[str, PieceSetInfo] = {
     ),
     "classic": PieceSetInfo(
         set_id="classic",
-        asset_version="V.05",
+        asset_version="V.05.1",
         name_de="Klassisch",
         name_en="Classic",
         subpath="classic",

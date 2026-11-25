@@ -34,21 +34,21 @@ class TestPieceSetRegistry:
     def test_registered_metadata(self) -> None:
         orig = get_piece_set("original")
         assert orig.set_id == "original"
-        assert orig.asset_version == "V.03"
+        assert orig.asset_version == "V.06"
         assert orig.display_name("de") == "Original"
         assert orig.display_name("en") == "Original"
         assert orig.perspective == "front"
 
         top = get_piece_set("top")
         assert top.set_id == "top"
-        assert top.asset_version == "V.04"
+        assert top.asset_version == "V.04.2"
         assert top.display_name("de") == "Draufsicht"
         assert top.display_name("en") == "Top view"
         assert top.perspective == "top"
 
         classic = get_piece_set("classic")
         assert classic.set_id == "classic"
-        assert classic.asset_version == "V.05"
+        assert classic.asset_version == "V.05.1"
         assert classic.display_name("de") == "Klassisch"
         assert classic.display_name("en") == "Classic"
         assert classic.perspective == "front"

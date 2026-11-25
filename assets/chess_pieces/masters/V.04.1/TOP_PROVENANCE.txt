@@ -1,0 +1,14 @@
+# Top-View Chess Pieces (V.04.1)
+
+**Copyright:** Tim von Trostorff. **SPDX-License-Identifier: MPL-2.0.** Existing owner-asset licensing convention; owner to confirm if changed.
+
+- **Set ID:** `top`
+- **Asset Version:** `V.04.1` (geometric smoothing of V.04)
+- **Source Master:** [`V.04.1-Schachfiguren-Draufsicht-Smooth.svg`](../../../../../assets/chess_pieces/masters/V.04.1/V.04.1-Schachfiguren-Draufsicht-Smooth.svg)
+- **Source SHA-256:** `5cac621c13baa44dab5c4551a2651c719d4f9c8a6e98a3e22a7f2d1d83aa250e`
+- **Original reference:** [`V.04-Original-Referenz.svg`](../../../../../assets/chess_pieces/masters/V.04.1/V.04-Original-Referenz.svg)
+- **Original SHA-256:** `f915eeca3dbaf32c19b3d6d88847ecda6247452167cf3c1c8a8bfeb7e63aa583`
+- **Tile Dimensions:** 64 × 64, transparent background
+- **Number of Pieces:** 12 SVGs; offline fallback PNG atlas, 21 sizes, 252 tiles.
+
+Pixel-traced contours were reconstructed as exact circular primitives and straight strokes, using measured source geometry. Original light/dark colours, ring and spoke counts, bishop slit, knight dividers and king X are retained. Small source irregularities are intentionally removed. PNG atlas generated from these SVGs with CairoSVG and supersampled downsampling.

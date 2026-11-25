@@ -224,3 +224,7 @@ __marimo__/
 .DS_Store
 *.af~lock~
 references/Glide-Shell-Framework/
+
+# Local asset installation packages
+/design/Chess-and-Chains-*-Austausch/
+/design/Chess-and-Chains-*-Austausch.zip

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate visual verification proof sheets for extracted chess piece sets.
 
-Renders all 12 pieces for each set (V.03 Original, V.04 Top view, V.05 Classic)
+Renders all 12 pieces for each set (V.06 Original, V.04.2 Top view, V.05.1 Classic)
 on alternating light and dark chess squares for visual comparison with reference JPGs.
 
 SPDX-License-Identifier: MPL-2.0
@@ -23,9 +23,9 @@ PIECE_COLS = ["P", "R", "N", "B", "Q", "K"]
 PIECE_LABELS_DE = ["Bauer", "Turm", "Springer", "Läufer", "Dame", "König"]
 
 SETS = [
-    ("original", "V.03", "Original – Vorderansicht"),
-    ("top", "V.04", "Draufsicht – Orthogonal"),
-    ("classic", "V.05", "Klassisch – Silhouette"),
+    ("original", "V.06", "Original – Vorderansicht"),
+    ("top", "V.04.2", "Draufsicht – Orthogonal"),
+    ("classic", "V.05.1", "Klassisch – Silhouette"),
 ]
 
 # Colors matching the owner reference JPG overview sheets
