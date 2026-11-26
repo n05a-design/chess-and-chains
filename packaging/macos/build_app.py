@@ -2,10 +2,13 @@
 # SPDX-License-Identifier: MPL-2.0
 """Build a standalone local macOS ``Chess & Chains.app`` development bundle.
 
-No extra third-party packager required — uses macOS built-in ``sips``,
-``iconutil``, and ad-hoc ``codesign`` together with the active python.org
-framework executable so Chess & Chains can launch cleanly from Finder, Dock,
-or Spotlight outside any IDE/host tool.
+No extra third-party packager required — uses ad-hoc ``codesign`` together
+with the active python.org framework executable so Chess & Chains can launch
+cleanly from Finder, Dock, or Spotlight outside any IDE/host tool.
+
+The bundle icon is Logo 03 (``design/01_Logo/svg/Logo_Chess-&-Chains-03.svg``)
+as ``ChessAndChains.icns``, generated platform-independently by
+``scripts/build_brand_assets.py`` with the transparent 824/1024 Apple icon grid.
 """
 from __future__ import annotations
 
@@ -15,12 +18,11 @@ import plistlib
 import shutil
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 SRC = REPO / "src"
-ICON_PNG = SRC / "chess_and_chains" / "ui" / "brand_assets" / "app-icon.png"
+ICON_ICNS = REPO / "assets" / "branding" / "icons" / "chess-and-chains.icns"
 APP_NAME = "Chess & Chains"
 BUNDLE_ID = "de.n05a.chessandchains"
 
@@ -42,30 +44,6 @@ def python_starter() -> Path:
         if cand.is_file():
             return cand
     raise SystemExit("No Python executable found to embed into the local macOS .app bundle.")
-
-
-MACOS_ICON_BODY_RATIO = 824.0 / 1024.0
-
-
-def build_icns(png_path: Path, icns_path: Path) -> None:
-    from PIL import Image
-
-    with tempfile.TemporaryDirectory() as tmp:
-        iconset = Path(tmp) / "ChessAndChains.iconset"
-        iconset.mkdir()
-        with Image.open(png_path) as src_img:
-            rgba = src_img.convert("RGBA")
-            for base in (16, 32, 128, 256, 512):
-                for scale, suffix in ((1, ""), (2, "@2x")):
-                    px = base * scale
-                    body_px = max(1, round(px * MACOS_ICON_BODY_RATIO))
-                    offset = (px - body_px) // 2
-                    canvas = Image.new("RGBA", (px, px), (0, 0, 0, 0))
-                    resized = rgba.resize((body_px, body_px), Image.Resampling.LANCZOS)
-                    canvas.paste(resized, (offset, offset), resized)
-                    target = iconset / f"icon_{base}x{base}{suffix}.png"
-                    canvas.save(target, format="PNG")
-        subprocess.run(["iconutil", "-c", "icns", str(iconset), "-o", str(icns_path)], check=True)
 
 
 def build_app(target_dir: Path) -> Path:
@@ -100,8 +78,9 @@ def build_app(target_dir: Path) -> Path:
     launcher.chmod(0o755)
 
     icns_file = "ChessAndChains.icns"
-    if ICON_PNG.is_file():
-        build_icns(ICON_PNG, resources / icns_file)
+    if not ICON_ICNS.is_file():
+        raise SystemExit(f"Missing {ICON_ICNS}; run python3 -B scripts/build_brand_assets.py first.")
+    shutil.copy2(ICON_ICNS, resources / icns_file)
 
     info = {
         "CFBundleName": APP_NAME,

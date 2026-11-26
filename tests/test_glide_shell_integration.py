@@ -519,7 +519,7 @@ class GlideShellIntegrationTests(unittest.TestCase):
         try:
             self.assertIsNotNone(about)
             self.assertTrue(about.winfo_exists())
-            self.assertTrue(hasattr(about, "_about_signet"))
+            self.assertTrue(hasattr(about, "_about_emblem"))  # Logo 02
             about.focus_force()
             root.update()
             about.event_generate("<Escape>", when="tail")
@@ -725,7 +725,7 @@ class GlideShellIntegrationTests(unittest.TestCase):
         self.assertEqual(int(str(logo.cget("bd"))), 0)
         self.assertEqual(int(str(logo.cget("highlightthickness"))), 0)
         self.assertEqual(logo.cget("bg"), app.theme.paper)
-        self.assertGreater(logo.winfo_width(), logo.winfo_height())  # cropped 60:56 ratio
+        self.assertGreater(logo.winfo_width(), logo.winfo_height())  # Logo 01 visible ink ~1.49:1
 
         # Monochrome header logo + view_title share theme accent across all 10 themes
         for tid in (k for k in THEMES if k != "w06-provisional"):

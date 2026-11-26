@@ -1,5 +1,18 @@
 # Changelog
 
+## Unveröffentlicht – Logo-Integration der drei Inhaber-Master (2026-11-26)
+
+Keine Versionserhöhung. Vertrag: [`design/01_Logo/README.md`](design/01_Logo/README.md) · Bericht: [`docs/reports/2026-11-26_logo-integration.md`](docs/reports/2026-11-26_logo-integration.md).
+
+- **Logo 01 (In-App-Signet):** ersetzt das orthogonale Connected-System-Signet in Kopfzeile und Themenfarben-Vorschau des Einstellungsdialogs. Beide Kettenglieder in der Themenrolle `view_title`, Trennbänder als transparente Aussparungen, Höhe = Versalhöhe Titel bis Grundlinie Unterzeile.
+- **Logo 02 (Markenemblem):** vollfarbig im Info-Dialog.
+- **Logo 03 (App-Symbol):** Fenster, Dialoge, Taskleiste/Alt-Tab (ICO), macOS-Dock und `.app`-Bundle (ICNS), README-Kopf, Social Preview, Favicon-Satz, Linux-`.desktop`-Vorlage.
+- **`ui/brand_raster.py`:** Standardbibliotheks-SVG-Rasterer für die Master (Matrix-Transformationen, kubische Pfade, `evenodd`, Konturen, Erase), mit Sicherheitsprüfung; ersetzt den alten M/Q/V/H-Linienparser und die Pillow-Abhängigkeit des Dock-Icons.
+- **`scripts/build_brand_assets.py`:** erzeugt 41 Ressourcen und das Herkunftsmanifest; `--check` vergleicht Pixel und läuft in der CI.
+- **README.md / README.de.md:** zentrierter Markenkopf mit Logo 03, Claim, Badges, Navigation und echten Screenshots.
+- **Tests:** `tests/test_brand_assets.py` (27 Tests inkl. Negativfälle), GUI-Test für Logo-Rollen über alle Themes und Themenfarben.
+- **Asset-Register:** 5 Logo-Zeilen aktualisiert, 24 ergänzt. Figurensätze, Figurentests und Schachlogik unverändert.
+
 ## V.0.3.0 – Drei-Figurenset-Registry (Original V.03 / Draufsicht V.04 / Klassisch V.05) (2026-11-25)
 
 ### P0 – Figurenset-Registry (`ui/pieces.py`)

@@ -26,7 +26,11 @@ Die [Vergleichstafel](../../design/concepts/connected-system-v01/00-variantenver
 | [Modular Bauhaus](../../design/concepts/connected-system-v01/04-modular-bauhaus.svg) | Rechte Winkel, gegenläufige Viertelkreise und Negativräume | Expressive, gut skalierbare Kampagnenflächen | Die Verbindung der Glieder liest sich abstrakter. Großflächen benötigen Distanz zum aktiven Spielfeld. |
 | [Connected Atelier](../../design/concepts/connected-system-v01/05-connected-atelier.svg) | Zwei gegenläufige C-Module und diagonaler Steg | Variable Wiederholung und gute Eignung für Erscheinungsvarianten | Die Silhouette kann beim ersten Blick als Schalter gelesen werden. |
 
-## Geometrie und SVG-Bibliothek
+## Aktive Logos (seit 26.11.2026)
+
+Die Markenrichtung Connected System gilt weiter. Als Logos gelten die drei Master des Inhabers in [`design/01_Logo/svg/`](../../design/01_Logo/README.md): Logo 01 als themenabhängiges In-App-Signet, Logo 02 als vollfarbiges Markenemblem, Logo 03 als App-Symbol und öffentliche Identität. Die folgenden Abschnitte zur Geometrie des orthogonalen Signets und der dunklen App-Kachel beschreiben den **historischen** Kandidaten vom 20.11.2026. Er wird nicht mehr als Programmsymbol oder Produktlogo verwendet.
+
+## Geometrie und SVG-Bibliothek (historisch)
 
 - Das 64er Signet arbeitet mit `u = 2` SVG-Einheiten. Das horizontale Grundglied misst außen 48 × 31 bei einem Steg von 8. Der Außenradius beträgt nominell 10 und der Innenradius 2. Durchgang 1 unterbricht den oberen horizontalen Steg, Durchgang 2 den unteren vertikalen Steg. Die vertikale Form ist zur optischen Einpassung mit 33 × 46 Außenmaßen angepasst. Die beiden Lücken bestehen aus echter Pfadgeometrie.
 - App-Kachel und Signet sind als [laufzeitgenutzte SVGs](../../src/chess_and_chains/ui/brand_assets/) editierbar. Die farbige Kachel verwendet Creme und Gold auf dunklem Grund. Der blaue horizontale Steg bleibt der hellen Fläche vorbehalten.
@@ -46,4 +50,4 @@ Gold hebt Aktionen und das aktive Register hervor, ergänzt durch Unterstreichun
 
 Der Atlas zeigt bis zu fünf benachbarte Stationen der tatsächlich gefilterten Auswahl. Nummern sind Positionen in dieser Auswahl. Der Doppelring markiert die aktuelle Station. Ein Haken markiert eine lokal gespeicherte Lösung oder die gerade gelöste Aufgabe in einer Sitzung ohne Speicher. Ein Kreuz markiert die aufgedeckte aktuelle Lösung, sofern das Rätsel noch nie erfolgreich gelöst wurde. Der bestehende Text zeigt aktuelle Aufgabe, Feedback und bei verfügbarer Datenbank die Gesamtzahl gelöster Rätsel der Auswahl. Bei leerem Filter wird der Atlas ausgeblendet.
 
-Tk 9 zeichnet Signet und Fenster-Icon direkt aus SVG. Wenn der SVG-Decoder fehlt, lädt Tk die aus denselben Dateien erzeugten PNGs. Das Prüfprotokoll dokumentiert Renderer, Auflösungen und Windows-Smoke. [Prüfprotokoll](../reports/2026-11-20_N02-connected-system.md)
+Seit 26.11.2026 rastert `brand_raster.py` das Signet (Logo 01) in jeder Tk-Version selbst; Logo 02 und 03 liest Tk 9 aus SVG und Tk 8.6 aus den generierten PNGs ([Logo-Vertrag](../../design/01_Logo/README.md)). Historisch: Tk 9 zeichnete Signet und Fenster-Icon direkt aus SVG. Das Prüfprotokoll dokumentiert Renderer, Auflösungen und Windows-Smoke. [Prüfprotokoll](../reports/2026-11-20_N02-connected-system.md)

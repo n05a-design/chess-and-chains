@@ -1,12 +1,48 @@
-# Chess & Chains
+<p align="right"><a href="README.md">English</a> · <strong>Deutsch</strong></p>
 
-**V.0.3.0 · Entwicklungsstand.** [Änderungsverlauf](CHANGELOG.md) · [Versionspflege](docs/governance/GOVERNANCE.md#projektversion)
+<p align="center">
+  <img src="assets/branding/icons/chess-and-chains-512.png" alt="App-Symbol von Chess &amp; Chains" width="96" height="96">
+</p>
 
-**Play. Think. Connect. – Schach offline spielen, verstehen und gestalten.**
+<h1 align="center">Chess &amp; Chains</h1>
 
-Chess & Chains soll eine **dauerhaft kostenlos angebotene, quelloffene und offlinefähige Desktop-Schach-App** werden: lokal spielbare Computergegner mit einstellbarer Schwierigkeit, anspruchsvolle Taktikaufgaben und ein eigenständiges Design auf Basis eigener SVG-Schachfiguren und Bretter.
+<p align="center">
+  <strong>Play. Think. Connect.</strong><br>
+  Eine kostenlose, quelloffene und offlinefähige Desktop-Schach-App. Lokale Partien spielen, im Puzzle Lab trainieren und Brett, Figuren und Erscheinungsbild anpassen – ohne Konto und ohne Cloud.
+</p>
 
-[English](README.md) · [Einstieg](START_HERE.md) · [Manifest](MANIFEST.md) · [Roadmap](docs/roadmap/ROADMAP.md) · [Offene Fragen](docs/questions/OPEN_QUESTIONS.md) · [Mitwirken](CONTRIBUTING.md)
+<p align="center">
+  <img alt="Status: Entwicklungsstand V.0.3.0" src="https://img.shields.io/badge/Status-V.0.3.0%20Entwicklungsstand-555">
+  <img alt="Python 3.11 bis 3.14" src="https://img.shields.io/badge/Python-3.11%E2%80%933.14-2447D8">
+  <a href="LICENSE"><img alt="Lizenz MPL-2.0" src="https://img.shields.io/badge/Lizenz-MPL--2.0-2447D8"></a>
+  <img alt="CI: Windows, macOS, Linux" src="https://img.shields.io/badge/CI-Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-171920">
+  <a href="https://github.com/n05a-design/chess-and-chains/actions/workflows/checks.yml"><img alt="Checks" src="https://github.com/n05a-design/chess-and-chains/actions/workflows/checks.yml/badge.svg?branch=main"></a>
+</p>
+
+<p align="center">
+  <a href="#bildschirmfotos"><strong>Bildschirmfotos</strong></a> ·
+  <a href="#entwicklerstart">Schnellstart</a> ·
+  <a href="#geplanter-funktionsumfang">Funktionen</a> ·
+  <a href="#was-bereits-vorhanden-ist">Projektstand</a> ·
+  <a href="docs/roadmap/ROADMAP.md">Roadmap</a> ·
+  <a href="CONTRIBUTING.md">Mitwirken</a> ·
+  <a href="README.md">English</a>
+</p>
+
+<p align="center"><sub>V.0.3.0 · <a href="CHANGELOG.md">Änderungsverlauf</a> · <a href="docs/governance/GOVERNANCE.md#projektversion">Versionspflege</a> · <a href="START_HERE.md">Einstieg</a> · <a href="MANIFEST.md">Manifest</a> · <a href="docs/questions/OPEN_QUESTIONS.md">Offene Fragen</a></sub></p>
+
+## Bildschirmfotos
+
+Echte Aufnahmen der laufenden Tk-App (Entwicklungsstand V.0.3.0 mit den neuen Logos, Windows 11, Tk 9.0.4, 26.11.2026). Das Signet in der Kopfzeile übernimmt die gewählte Themenfarbe.
+
+<p align="center">
+  <img src="marketing/screenshots/2026-11-26/main-cobalt-original.png" alt="Hauptfenster, helles Design, Kobaltblau, Figurenset Original V.06" width="49%">
+  <img src="marketing/screenshots/2026-11-26/main-dark-classic.png" alt="Hauptfenster, dunkles Design, Figurenset Klassisch V.05.1" width="49%">
+</p>
+<p align="center">
+  <img src="marketing/screenshots/2026-11-26/main-sky-top.png" alt="Hauptfenster, helles Design, Himmelblau, Figurenset Draufsicht V.04.2" width="49%">
+  <img src="marketing/screenshots/2026-11-26/about-dialog.png" alt="Info-Dialog mit dem vollfarbigen Markenemblem" width="34%">
+</p>
 
 ## Geplanter Funktionsumfang
 

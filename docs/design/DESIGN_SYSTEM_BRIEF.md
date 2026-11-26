@@ -32,7 +32,7 @@ Eigenständige, hochwertige Desktop-UI zwischen konzentriertem Schachspiel und p
 - `design/source/` – editierbare Illustrator-/Affinity-/Figma-/SVG-/PDF-Quelldateien, soweit lizenzfrei für Veröffentlichung; keine vertraulichen Kundendateien.
 - `assets/chess_pieces/source_svg/` – Provenienz und Einstieg zu den Figuren. Die 24 Laufzeit-SVGs und beide PNG-Atlanten liegen unter `src/chess_and_chains/ui/piece_assets/`. Die editierbaren V.02-Prüfbögen liegen unter `design/source/chess_pieces/`.
 - `assets/boards/source/` – Brettmuster/Texture/Shape-Quellen, `assets/boards/runtime/` – optimierte Assets.
-- `assets/branding/` – eigene Wort- und Bildmarke, App-Icons, Favicon, Avatar-Exports.
+- `assets/branding/` – aus den drei Logo-Mastern generierte App-Icons (PNG, ICO, ICNS), Favicon, Emblem- und Signet-Exporte ([Logo-Vertrag](../../design/01_Logo/README.md)).
 - `marketing/source/` – editable Social/Website/Store-Assets, `marketing/exports/` – erzeugte Ausgabe (aus .gitignore).
 - `references/inspiration/` – URLs, Designanalysen, Rechtebeurteilung. Kein unlizenzierter Screenshot-Import.
 
@@ -42,7 +42,7 @@ Vier Testauflösungen inkl. Retina, 100/150/200% DPI, Farbsehschwäche/Kontrast,
 
 ## Fragen
 
-Siehe Q-003, Q-004, Q-005, Q-014, Q-020. Exakte Brandfarben, Logo und Schriften bleiben Owner-Entscheidungen.
+Siehe Q-003, Q-004, Q-005, Q-014, Q-020. Exakte Brandfarben und Schriften bleiben Owner-Entscheidungen. Die Logos hat der Inhaber am 26.11.2026 als drei Master geliefert.
 
 ## Weitere eigenständige Richtungen (W04-Vorschläge, nicht ausgewählt)
 

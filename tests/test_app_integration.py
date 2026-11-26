@@ -54,6 +54,10 @@ def mock_factory(delay_ms=0, mode="normal"):
     return factory
 
 
+def _hex_rgb(value: str) -> tuple[int, int, int]:
+    return (int(value[1:3], 16), int(value[3:5], 16), int(value[5:7], 16))
+
+
 class AppTestCase(unittest.TestCase):
     def make_app(self, *, tk_dpi=None, **kwargs):
         self.root = create_root(self)
@@ -615,11 +619,60 @@ class BrandingUiTests(AppTestCase):
 
         with patch("chess_and_chains.ui.branding.tk.PhotoImage", side_effect=without_svg):
             for name, scale, expected_size in (
-                ("signet", 40 / 64, (40, 40)), ("app-icon", 1, (64, 64)), ("wordmark", 1, (254, 40)),
+                ("signet", 1, (372, 256)), ("app-icon", 1, (256, 256)),
+                ("brand-emblem", 1, (96, 96)), ("wordmark", 1, (254, 40)),
             ):
                 image = brand_image(root, name, scale=scale)
                 self.assertEqual((image.width(), image.height()), expected_size)
                 self.assertTrue(image.transparency_get(0, 0))
+
+    @staticmethod
+    def _opaque_colors(photo: tk.PhotoImage) -> set[tuple[int, int, int]]:
+        return {
+            tuple(int(v) for v in photo.get(x, y))
+            for y in range(photo.height())
+            for x in range(photo.width())
+            if not photo.transparency_get(x, y)
+        }
+
+    def test_logo_roles_signet_follows_theme_emblem_and_app_icon_keep_colours(self):
+        """Logo 01 is tinted in every theme/accent; Logo 02 and 03 keep the master colours."""
+        from chess_and_chains.ui.appearance_dialog import AppearanceDialog
+        from chess_and_chains.ui.theme import ACCENT_CHOICES, THEMES
+
+        app = self.make_app()
+        self.root.deiconify()
+        self.root.update()
+        logo = app.header_logo
+        for theme_id in (k for k in THEMES if k != "w06-provisional"):
+            for accent, _label in ACCENT_CHOICES:
+                palette = app.apply_appearance(theme_id=theme_id, accent_choice=accent, persist=False)
+                self.root.update()
+                if not logo.winfo_manager():
+                    continue
+                self.assertEqual(self._opaque_colors(logo._logo_image), {_hex_rgb(palette.view_title)})
+                self.assertTrue(logo._logo_image.transparency_get(0, 0))
+        # Logo 02 in the About dialog keeps yellow, blue and the dark board.
+        about = app.show_about_dialog(modal=False)
+        self.addCleanup(lambda: about.winfo_exists() and about.destroy())
+        emblem_colours = self._opaque_colors(about._about_emblem)
+        for colour in ((255, 220, 11), (36, 71, 216), (23, 25, 32)):
+            self.assertIn(colour, emblem_colours)
+        about.destroy()
+        # Logo 03 is the window icon, never tinted.
+        icon_colours = self._opaque_colors(app._window_icons[-1])
+        self.assertIn((255, 220, 11), icon_colours)
+        self.assertTrue(app._window_icons[0].transparency_get(0, 0))
+        # Theme colour changes while the settings dialog is open update its signet preview.
+        dialog = app.open_appearance_dialog(modal=False)
+        self.addCleanup(lambda: dialog.winfo_exists() and dialog.destroy())
+        self.assertIsInstance(dialog, AppearanceDialog)
+        before = dialog._swatch_canvas._logo_color
+        dialog.accent_var.set("flag")
+        dialog._on_any_change("flag")
+        self.root.update()
+        self.assertEqual(dialog._swatch_canvas._logo_color, dialog._palette.view_title)
+        self.assertNotEqual(dialog._swatch_canvas._logo_color, before)
 
     def test_in_app_monochrome_logo_renders_transparent_fallback_without_svg(self):
         from chess_and_chains.ui.branding import in_app_logo_photo

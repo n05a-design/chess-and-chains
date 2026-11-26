@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Version=1.5
+Name=Chess & Chains
+GenericName=Chess
+Comment=Local offline chess and puzzle training
+Comment[de]=Lokales Offline-Schach und Rätseltraining
+Exec=python3 -m chess_and_chains
+Icon=chess-and-chains
+Terminal=false
+Categories=Game;BoardGame;
+Keywords=chess;schach;puzzle;
