@@ -47,15 +47,15 @@ GENERATOR_VERSION = 1
 MASTERS: dict[str, dict[str, str]] = {
     "in_app": {
         "file": "Logo_Chess-&-Chains-01.svg",
-        "sha256": "d133adb801f70b04f303331d35c8769ef988887c2a4272c03f20067dcd1a3f62",
+        "sha256": "339851432a878ee7f8081ae734a48ca0eac62c240754af21e53b658ac5cdd394",
     },
     "internal_brand": {
         "file": "Logo_Chess-&-Chains-02.svg",
-        "sha256": "a2e1cb7854f76c2c9bd7078a9855cddf7bef6a7c1db0ca9d4e6819b725142c0e",
+        "sha256": "278c85904a701df0570d78d995c285b23dd3c3c2b2a5590bb82a3f45e6990bca",
     },
     "app_icon": {
         "file": "Logo_Chess-&-Chains-03.svg",
-        "sha256": "228a289fade583e92206aa9b69cd9f7b329640809f593a250373192fbb637618",
+        "sha256": "81026097772f53ab0dfcb7c41d1dcc0a755948e18c252fe00dea8788c721baf4",
     },
 }
 

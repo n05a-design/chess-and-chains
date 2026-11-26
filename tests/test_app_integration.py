@@ -54,6 +54,14 @@ def mock_factory(delay_ms=0, mode="normal"):
     return factory
 
 
+def _png_size(name: str) -> tuple[int, int]:
+    """Width/height of a generated brand PNG (aspect follows the current Logo 01 master)."""
+    from chess_and_chains.ui.branding import asset_bytes
+
+    header = asset_bytes(name)[16:24]
+    return int.from_bytes(header[:4], "big"), int.from_bytes(header[4:], "big")
+
+
 def _hex_rgb(value: str) -> tuple[int, int, int]:
     return (int(value[1:3], 16), int(value[3:5], 16), int(value[5:7], 16))
 
@@ -619,7 +627,7 @@ class BrandingUiTests(AppTestCase):
 
         with patch("chess_and_chains.ui.branding.tk.PhotoImage", side_effect=without_svg):
             for name, scale, expected_size in (
-                ("signet", 1, (372, 256)), ("app-icon", 1, (256, 256)),
+                ("signet", 1, _png_size("signet.png")), ("app-icon", 1, (256, 256)),
                 ("brand-emblem", 1, (96, 96)), ("wordmark", 1, (254, 40)),
             ):
                 image = brand_image(root, name, scale=scale)

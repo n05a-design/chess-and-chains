@@ -2,13 +2,15 @@
 
 **Datum:** 26.11.2026 · **Branch:** `claude/chess-chains-brand-integration-8d2f9b` (Worktree) · **Basis:** `9209e3d` (= `origin/main` beim Start, enthält `78507f4`) · **Umgebung:** Windows 11 Pro, Python 3.15.1, Tk 9.0.4, Pillow 13.0.0 (nur Entwicklerwerkzeuge) · **KI-Unterstützung:** umgesetzt mit Claude Code (Claude Opus 5.5); Gestaltungsfreigabe und Rechtsaussagen bleiben beim Inhaber.
 
+**Master-Stand:** V.2 des Inhabers (26.11.2026, geliefert als `design/01_Logo/V.2 Logo_Chess-&-Chains*.svg` samt aktualisiertem `.af`), unter den festen Namen in `design/01_Logo/svg/` abgelegt. V.1 ist unverändert archiviert in `design/01_Logo/Archiv/Chess-&-Chains_V.1_2026-11-25/`. Alle Ableitungen, Screenshots, Social Preview und Assetregister-Prüfsummen beruhen auf V.2.
+
 Status: **IMPLEMENTED**, lokal **TESTED** (Windows). CI: **OPEN** (nicht gepusht). Native macOS-/Linux-Sichtprüfung: **OPEN**.
 
 ## Ergebnis
 
 | Abschlusskriterium | Stand |
 | --- | --- |
-| Drei Master vorhanden und dokumentiert | ja – [Logo-Vertrag](../../design/01_Logo/README.md), SHA-256 im Generator, im Vertrag und im Assetregister |
+| Drei Master vorhanden und dokumentiert | ja (V.2) – [Logo-Vertrag](../../design/01_Logo/README.md), SHA-256 im Generator, im Vertrag und im Assetregister |
 | Altes In-App-Signet vollständig durch Logo 01 ersetzt | ja – Kopfzeile, Themenfarben-Vorschau; `signet.svg` ist Bytekopie von Logo 01 |
 | Logo 01 reagiert dynamisch auf die Themenfarbe | ja – Rolle `view_title`, Test über alle 10 Themes × 8 Themenfarben |
 | Verschlingung und Originalgeometrie erhalten | ja – Trennbänder als transparente Aussparungen, Geometrie unverändert aus dem Master |
@@ -70,7 +72,7 @@ Alle Befehle im Worktree auf Basis `9209e3d` plus dieser Änderung, Windows 11, 
 | `python scripts/check_policy.py` · `python -m compileall -q src app scripts tests` | PASS · ohne Fehler |
 | `PYTHONPATH=src python -m unittest tests.test_foundation tests.test_i18n` | 23 Tests OK |
 | `PYTHONPATH=src python -m unittest tests.test_brand_assets` | 27 Tests OK |
-| `PYTHONPATH=src PYTHONWARNINGS=error::ResourceWarning python -m unittest discover -s tests` | 365 Tests, 364 OK; 1 Ladefehler: `test_piece_sets` importiert `pytest`, das in dieser Python-Installation fehlt (vorbestehend, nicht durch diese Änderung) |
+| `PYTHONPATH=src PYTHONWARNINGS=error::ResourceWarning python -m unittest discover -s tests` (Stand V.2) | 365 Tests in drei Läufen. Logo- und Branding-Tests stets grün. Immer: 1 Ladefehler `test_piece_sets`, weil `pytest` fehlt (vorbestehend). Zeitweise: `test_tk_event_loop_keeps_running_while_bot_thinks` (Tk-Pause 0,27–0,45 s statt < 0,25 s), auf dem unveränderten Basis-Commit `9209e3d` ebenfalls in 2 von 5 Läufen rot, also vorbestehend; `test_34_promotion_dialog…` einmal rot im Gesamtlauf, bei zwei Einzelwiederholungen grün. |
 | `PYTHONPATH=src python -m pytest tests/test_piece_sets.py -q` (separate Wegwerf-venv mit pytest) | 11 passed |
 | `cd src && python -m glide_shell.selftest` | 13/13 checks passed, Manifest 23 Dateien |
 | `python start_chess_and_chains.py --headless-check` | Exit 0 |

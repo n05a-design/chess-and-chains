@@ -69,7 +69,7 @@ class MasterTests(unittest.TestCase):
         doc = _doc("in_app")
         self.assertEqual(doc.view_box, (0.0, 0.0, 842.0, 842.0))
         links, separators = br.signet_roles(doc)
-        self.assertEqual([s.fill for s in links], [YELLOW, BLUE])
+        self.assertEqual({s.fill for s in links}, {YELLOW, BLUE})
         self.assertTrue(all(s.stroke == (0, 0, 0) and s.fill_rule == "evenodd" for s in separators))
         x, y, w, h = br.bounds([s.subpaths for s in doc.shapes])
         self.assertTrue(0 < x and 0 < y and x + w < 842 and y + h < 842)
@@ -154,7 +154,7 @@ class SignetRenderingTests(unittest.TestCase):
 
     def test_visible_box_excludes_transparent_viewbox_margins(self):
         x, y, w, h = self.box
-        self.assertAlmostEqual(w / h, 1.491, places=2)
+        self.assertAlmostEqual(w / h, 1.508, places=2)  # Logo 01 V.2
         self.assertGreater(x, 60)
         self.assertLess(w, 842 * 0.9)
 

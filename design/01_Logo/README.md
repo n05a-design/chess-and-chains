@@ -2,17 +2,17 @@
 
 Diese Datei ist die einzige führende Übersicht aller Logo-Master, Logo-Fundorte und des Logo-Wechsels. Aufbau nach dem Grafik-Master von [Glide](https://github.com/n05a-design/glide-to-do/blob/main/20_Grafik_Master/README.md) und `design/brand/README.md` von [STEPS](https://github.com/n05a-design/steps/blob/main/design/brand/README.md). Deren Markenzeichen und Anwendungslogik sind nicht übernommen.
 
-Stand: 26.11.2026 · Status: IMPLEMENTED und lokal TESTED (Windows 11). CI- und native macOS-/Linux-Abnahme siehe [Prüfbericht](../../docs/reports/2026-11-26_logo-integration.md).
+Stand: 26.11.2026, Master **V.2** · Status: IMPLEMENTED und lokal TESTED (Windows 11). CI- und native macOS-/Linux-Abnahme siehe [Prüfbericht](../../docs/reports/2026-11-26_logo-integration.md).
 
 ## Die drei Master
 
-Die Master in [`svg/`](svg/) sind verbindliche Originalgestaltungen des Projektinhabers (Affinity-Export aus [`Logo_Chess-&-Chains.af`](Logo_Chess-&-Chains.af)). Sie werden nie bearbeitet. Alle Laufzeit-, Paket- und Veröffentlichungsdateien werden daraus abgeleitet.
+Die Master in [`svg/`](svg/) sind verbindliche Originalgestaltungen des Projektinhabers (Affinity-Export aus [`Logo_Chess-&-Chains.af`](Logo_Chess-&-Chains.af)). Aktiv ist **V.2** vom 26.11.2026 (vom Inhaber als `V.2 Logo_Chess-&-Chains.svg`, `…-02.svg`, `…-03.svg` geliefert und hier unter den festen Masternamen abgelegt). V.1 vom 25.11.2026 liegt unverändert in [`Archiv/Chess-&-Chains_V.1_2026-11-25/`](Archiv/Chess-&-Chains_V.1_2026-11-25/). Sie werden nie bearbeitet. Alle Laufzeit-, Paket- und Veröffentlichungsdateien werden daraus abgeleitet.
 
 | Master | Rolle im Code | Funktion | Einfärbung | SHA-256 (LF-Checkout) |
 | --- | --- | --- | --- | --- |
-| [`Logo_Chess-&-Chains-01.svg`](svg/Logo_Chess-&-Chains-01.svg) | `in_app` | Signet in der Anwendung | dynamisch, Themenfarbe | `d133adb801f70b04f303331d35c8769ef988887c2a4272c03f20067dcd1a3f62` |
-| [`Logo_Chess-&-Chains-02.svg`](svg/Logo_Chess-&-Chains-02.svg) | `internal_brand` | vollfarbige interne Markendarstellung | nie | `a2e1cb7854f76c2c9bd7078a9855cddf7bef6a7c1db0ca9d4e6819b725142c0e` |
-| [`Logo_Chess-&-Chains-03.svg`](svg/Logo_Chess-&-Chains-03.svg) | `app_icon` | offizielles App-Symbol und öffentliche Identität | nie | `228a289fade583e92206aa9b69cd9f7b329640809f593a250373192fbb637618` |
+| [`Logo_Chess-&-Chains-01.svg`](svg/Logo_Chess-&-Chains-01.svg) | `in_app` | Signet in der Anwendung | dynamisch, Themenfarbe | `339851432a878ee7f8081ae734a48ca0eac62c240754af21e53b658ac5cdd394` |
+| [`Logo_Chess-&-Chains-02.svg`](svg/Logo_Chess-&-Chains-02.svg) | `internal_brand` | vollfarbige interne Markendarstellung | nie | `278c85904a701df0570d78d995c285b23dd3c3c2b2a5590bb82a3f45e6990bca` |
+| [`Logo_Chess-&-Chains-03.svg`](svg/Logo_Chess-&-Chains-03.svg) | `app_icon` | offizielles App-Symbol und öffentliche Identität | nie | `81026097772f53ab0dfcb7c41d1dcc0a755948e18c252fe00dea8788c721baf4` |
 
 `.gitattributes` setzt `design/01_Logo/svg/*.svg -text`. Damit sind die Bytes auf jedem Betriebssystem gleich und die Prüfsummen stabil.
 
@@ -22,7 +22,7 @@ Die Master in [`svg/`](svg/) sind verbindliche Originalgestaltungen des Projekti
 | --- | --- | --- | --- |
 | Gelbes Kettenglied `#F4C400` | ✓ | ✓ | ✓ |
 | Blaues Kettenglied `#2447D8` | ✓ | ✓ | ✓ |
-| Weiße Trennbänder `#FFFFFF` mit schwarzer Haarlinie (0,30 / 0,31 / 0,36 px lokal) | 2 | 2 | 2 |
+| Weiße Trennbänder `#FFFFFF` mit schwarzer Haarlinie (0,31 / 0,30 / 0,36 px lokal) | 2 | 2 | 2 |
 | Gelbe abgerundete Grundfläche `#FFDC0B` | – | ✓ (Brett bis nahe an den Rand) | ✓ (breiter gelber Außenrahmen) |
 | Dunkle Schachbrettfelder `#171920` | – | 99 | 100 |
 | Hintergrund | transparent | transparente Ecken | transparente Ecken |
@@ -32,9 +32,9 @@ Die Farben stehen als statische Logo-Farben in [`brand-tokens.json`](../../docs/
 ## Logo 01 – dynamisches In-App-Signet
 
 - Laufzeit: [`branding.py`](../../src/chess_and_chains/ui/branding.py) liest `brand_assets/signet.svg` (Bytekopie des Masters) und rastert mit dem Standardbibliotheks-Renderer [`brand_raster.py`](../../src/chess_and_chains/ui/brand_raster.py) in exakter Pixelhöhe.
-- **Ableitung:** `brand_raster.signet_layers()` ordnet die vier Flächen zu. Beide Kettenglieder erhalten die Themenrolle `ThemePalette.view_title` (mit `legible_accent()` auf mindestens 4,5 : 1 gegen alle Flächen geprüft). Die weißen Trennbänder werden zu **echten transparenten Aussparungen** (Erase-Compositing in Malreihenfolge). Ihre schwarzen Haarlinien entfallen. Dadurch bleibt die Verschlingung auch einfarbig lesbar: Das blaue Glied schneidet sein Trennband in das gelbe Glied. Ohne Aussparung verschmelzen beide Glieder (Test `test_separator_bands_become_transparent_cut_outs`). Ein zweiter Tonwert ist deshalb nicht nötig und nicht eingeführt. Keine Verläufe, Schatten, Umrandung oder Kachel.
+- **Ableitung:** `brand_raster.signet_layers()` ordnet die vier Flächen zu. Beide Kettenglieder erhalten die Themenrolle `ThemePalette.view_title` (mit `legible_accent()` auf mindestens 4,5 : 1 gegen alle Flächen geprüft). Die weißen Trennbänder werden zu **echten transparenten Aussparungen** (Erase-Compositing in Malreihenfolge). Ihre schwarzen Haarlinien entfallen. Dadurch bleibt die Verschlingung auch einfarbig lesbar: In V.2 malt der Master blaues Glied → Trennband → gelbes Glied → Trennband; das gelbe Glied schneidet sein Trennband in das blaue. Ohne Aussparung verschmelzen beide Glieder (Test `test_separator_bands_become_transparent_cut_outs`). Ein zweiter Tonwert ist deshalb nicht nötig und nicht eingeführt. Keine Verläufe, Schatten, Umrandung oder Kachel.
 - **Warum Raster statt Tk-SVG:** Tk 9 (nanosvg) kann keine Aussparung (Erase) zeichnen. Der Renderer liefert auf Tk 8.6 und Tk 9 dieselben Pixel. Für SVG-Verbraucher ohne Erase gibt es `tinted_signet_svg(color, background=…)` mit hintergrundangepassten Trennbändern.
-- **Sichtbare Begrenzung:** `signet_bounding_box()` misst nur die beiden Glieder nach allen Transformationen: x 67,2 · y 178,5 · 713,5 × 478,5 Einheiten, Seitenverhältnis 1,491. Die ViewBox-Ränder zählen nicht.
+- **Sichtbare Begrenzung:** `signet_bounding_box()` misst nur die beiden Glieder nach allen Transformationen: x 69,5 · y 177,1 · 703,2 × 466,2 Einheiten, Seitenverhältnis 1,508 (V.2). Die ViewBox-Ränder zählen nicht.
 - **Kopfzeilenhöhe (Glide B05/D66/D68):** `ChessApp.header_logo_metrics()` setzt die Signethöhe gleich der Strecke von der Versalhöhe des Titels bis zur Grundlinie der Unterzeile. Gemessen am Screenshot (Windows 11): Logo y 33–76, Titel-Versal 34, Unterzeilen-Grundlinie 76; bei großer Schrift 34–82 gegenüber 35/82. Schriftgröße, Schriftgewicht und HiDPI wirken über die Fontmetrik in Pixeln. Unter 900 px Breite und im Kompaktmodus blendet der Minimalkopf das Logo aus. Klick auf das Signet öffnet weiter den Info-Dialog.
 - **Themenwechsel:** `_register_theme` → `sync_header_logo()` zeichnet bei jeder Änderung von Theme, Themenfarbe, Hintergrund oder Schrift neu. Der Einstellungsdialog zeigt dasselbe Signet als Themenfarben-Vorschau und aktualisiert es live.
 
@@ -105,7 +105,8 @@ Der Renderer ist reine Standardbibliothek: 8 × 8-Überabtastung, Box-Filter, St
 ## Historische Logos
 
 - Das orthogonal konstruierte Connected-System-Signet und die dunkle App-Kachel (KI-unterstützter Kandidat, 20.11.2026) sind nicht mehr aktiv. Ihre Bytes liegen in der Git-Historie vor dieser Änderung. Die Studien in [`design/source/connected-system/`](../source/connected-system/), [`design/concepts/`](../concepts/) und `marketing/source/connected-system-*.svg` bleiben als historische Studien erhalten und dürfen nicht als Programmsymbol oder aktuelles Produktlogo verwendet werden.
-- `Logo_Glide-*.svg`, `Logo_Steps-*.svg`, [`Archiv/`](Archiv/) und [`Exporte/`](Exporte/) gehören zu Glide und STEPS (Produktfamilie, Ablagevorlage). Sie werden von Chess & Chains nicht verwendet.
+- Logo-Master V.1 (25.11.2026): [`Archiv/Chess-&-Chains_V.1_2026-11-25/`](Archiv/Chess-&-Chains_V.1_2026-11-25/) mit SVGs und `.af`, nicht aktiv.
+- `Logo_Glide-*.svg`, `Logo_Steps-*.svg`, die übrigen Dateien in [`Archiv/`](Archiv/) und [`Exporte/`](Exporte/) gehören zu Glide und STEPS (Produktfamilie, Ablagevorlage). Sie werden von Chess & Chains nicht verwendet.
 
 ## Freigaben und Rechte
 

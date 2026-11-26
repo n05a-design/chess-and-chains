@@ -5,15 +5,15 @@
   "masters": {
     "in_app": {
       "file": "design/01_Logo/svg/Logo_Chess-&-Chains-01.svg",
-      "sha256": "d133adb801f70b04f303331d35c8769ef988887c2a4272c03f20067dcd1a3f62"
+      "sha256": "339851432a878ee7f8081ae734a48ca0eac62c240754af21e53b658ac5cdd394"
     },
     "internal_brand": {
       "file": "design/01_Logo/svg/Logo_Chess-&-Chains-02.svg",
-      "sha256": "a2e1cb7854f76c2c9bd7078a9855cddf7bef6a7c1db0ca9d4e6819b725142c0e"
+      "sha256": "278c85904a701df0570d78d995c285b23dd3c3c2b2a5590bb82a3f45e6990bca"
     },
     "app_icon": {
       "file": "design/01_Logo/svg/Logo_Chess-&-Chains-03.svg",
-      "sha256": "228a289fade583e92206aa9b69cd9f7b329640809f593a250373192fbb637618"
+      "sha256": "81026097772f53ab0dfcb7c41d1dcc0a755948e18c252fe00dea8788c721baf4"
     }
   },
   "outputs": [
@@ -25,13 +25,13 @@
         512,
         512
       ],
-      "pixel_sha256": "7f984466d869ac47123eb06479fb3f95bc76a0ed45cfc9af4cae52303292c162"
+      "pixel_sha256": "e0500f990bf28b74627052709107b27ff06c0e53748513dc0b68d785353ff07c"
     },
     {
       "path": "assets/branding/emblem/chess-and-chains-emblem.svg",
       "kind": "copy",
       "master": "Logo_Chess-&-Chains-02.svg",
-      "sha256": "a2e1cb7854f76c2c9bd7078a9855cddf7bef6a7c1db0ca9d4e6819b725142c0e"
+      "sha256": "278c85904a701df0570d78d995c285b23dd3c3c2b2a5590bb82a3f45e6990bca"
     },
     {
       "path": "assets/branding/favicon/favicon-16.png",
@@ -41,7 +41,7 @@
         16,
         16
       ],
-      "pixel_sha256": "9f6e9a40601c78a6f6489006877773776253952422be941b581ed6d0259bfeb8"
+      "pixel_sha256": "184d5b704061d4ec2a018330d43fa2a18835544c72fd0034b1c08179aa58ee0b"
     },
     {
       "path": "assets/branding/favicon/favicon-192.png",
@@ -51,7 +51,7 @@
         192,
         192
       ],
-      "pixel_sha256": "09d197bd6ec183f859242f84b60d247e5946549e652a671fb94a503ca53cd3af"
+      "pixel_sha256": "4e1e3d5e02e458b2bd913f3a41f99c18ec7da950eac5e5ab239e14347a539b97"
     },
     {
       "path": "assets/branding/favicon/favicon-32.png",
@@ -61,7 +61,7 @@
         32,
         32
       ],
-      "pixel_sha256": "bda80d3d64c9459e9ff4f4c57c8c9adb0e90c64050adf5e97ce5a26c898235fe"
+      "pixel_sha256": "d6a33a5435017544079ade1e6b7ed4a7965a7d6f566c1d36bb03cb47f7b0347d"
     },
     {
       "path": "assets/branding/favicon/favicon-512.png",
@@ -71,7 +71,7 @@
         512,
         512
       ],
-      "pixel_sha256": "1a306940a590e72d13da21f7d430cd1896de608cb0fecf17d2df67ec36de78e5"
+      "pixel_sha256": "5e7480cb0d446abaa8dae2c4e970bc92f9377856210721eecc32ebc62d257a5d"
     },
     {
       "path": "assets/branding/favicon/favicon-64.png",
@@ -81,23 +81,23 @@
         64,
         64
       ],
-      "pixel_sha256": "8502b1ca9836742f7b90d09b5b57bfef225c1fc782d0a0759ca6e4e98165371f"
+      "pixel_sha256": "0644692aeed665cc6be2bfd1869652b533a90017846af2b4639c7c05ea5d35ab"
     },
     {
       "path": "assets/branding/favicon/favicon.ico",
       "kind": "ico",
       "master": "Logo_Chess-&-Chains-03.svg",
       "entries": {
-        "16": "9f6e9a40601c78a6f6489006877773776253952422be941b581ed6d0259bfeb8",
-        "32": "bda80d3d64c9459e9ff4f4c57c8c9adb0e90c64050adf5e97ce5a26c898235fe",
-        "48": "114e2d705dbd307a13bab67b33070ca7d8563743332d2460a2b970bd2d4cfaf1"
+        "16": "184d5b704061d4ec2a018330d43fa2a18835544c72fd0034b1c08179aa58ee0b",
+        "32": "d6a33a5435017544079ade1e6b7ed4a7965a7d6f566c1d36bb03cb47f7b0347d",
+        "48": "816bd74eb13e0d331e6636e7a010144a8cb9c547b293e7483c25c5b00d936f23"
       }
     },
     {
       "path": "assets/branding/favicon/favicon.svg",
       "kind": "copy",
       "master": "Logo_Chess-&-Chains-03.svg",
-      "sha256": "228a289fade583e92206aa9b69cd9f7b329640809f593a250373192fbb637618"
+      "sha256": "81026097772f53ab0dfcb7c41d1dcc0a755948e18c252fe00dea8788c721baf4"
     },
     {
       "path": "assets/branding/icons/chess-and-chains-1024.png",
@@ -107,7 +107,7 @@
         1024,
         1024
       ],
-      "pixel_sha256": "65fa073d95c8be007aeaeb6d9a5bcfa3022beea83fc794c1f361025f9289c0cf"
+      "pixel_sha256": "83d286bde286c6d16eb37f38cc9a1aa3e603735f9d52e1ee46df5c4f3240346f"
     },
     {
       "path": "assets/branding/icons/chess-and-chains-128.png",
@@ -117,7 +117,7 @@
         128,
         128
       ],
-      "pixel_sha256": "cc62f27b865c6052d717c631764ce8c6dbf30ec6e076fbc40aff75c41e125b7a"
+      "pixel_sha256": "f24f3e45e57a033c162bff6f921bc40f7080a67240081d46cef3d33f0e7a56db"
     },
     {
       "path": "assets/branding/icons/chess-and-chains-16.png",
@@ -127,7 +127,7 @@
         16,
         16
       ],
-      "pixel_sha256": "9f6e9a40601c78a6f6489006877773776253952422be941b581ed6d0259bfeb8"
+      "pixel_sha256": "184d5b704061d4ec2a018330d43fa2a18835544c72fd0034b1c08179aa58ee0b"
     },
     {
       "path": "assets/branding/icons/chess-and-chains-192.png",
@@ -137,7 +137,7 @@
         192,
         192
       ],
-      "pixel_sha256": "09d197bd6ec183f859242f84b60d247e5946549e652a671fb94a503ca53cd3af"
+      "pixel_sha256": "4e1e3d5e02e458b2bd913f3a41f99c18ec7da950eac5e5ab239e14347a539b97"
     },
     {
       "path": "assets/branding/icons/chess-and-chains-24.png",
@@ -147,7 +147,7 @@
         24,
         24
       ],
-      "pixel_sha256": "7226fc1b410e0f0640fd3a12bb678143f536d74c78fa975f95981761891f8a78"
+      "pixel_sha256": "d59d7af1a46a0059237634a26a1fbf4c9fa1421ed53472fbce4b24baf000d77d"
     },
     {
       "path": "assets/branding/icons/chess-and-chains-256.png",
@@ -157,7 +157,7 @@
         256,
         256
       ],
-      "pixel_sha256": "b83aad2482a0d80f5447a755a65d91cf13eaa6cc6036e27b9ed36678c5bf6760"
+      "pixel_sha256": "be9045365cd219298c1b4fe3dbf45c03c5184fd70f57b9626056e20a75124f3d"
     },
     {
       "path": "assets/branding/icons/chess-and-chains-32.png",
@@ -167,7 +167,7 @@
         32,
         32
       ],
-      "pixel_sha256": "bda80d3d64c9459e9ff4f4c57c8c9adb0e90c64050adf5e97ce5a26c898235fe"
+      "pixel_sha256": "d6a33a5435017544079ade1e6b7ed4a7965a7d6f566c1d36bb03cb47f7b0347d"
     },
     {
       "path": "assets/branding/icons/chess-and-chains-48.png",
@@ -177,7 +177,7 @@
         48,
         48
       ],
-      "pixel_sha256": "114e2d705dbd307a13bab67b33070ca7d8563743332d2460a2b970bd2d4cfaf1"
+      "pixel_sha256": "816bd74eb13e0d331e6636e7a010144a8cb9c547b293e7483c25c5b00d936f23"
     },
     {
       "path": "assets/branding/icons/chess-and-chains-512.png",
@@ -187,7 +187,7 @@
         512,
         512
       ],
-      "pixel_sha256": "1a306940a590e72d13da21f7d430cd1896de608cb0fecf17d2df67ec36de78e5"
+      "pixel_sha256": "5e7480cb0d446abaa8dae2c4e970bc92f9377856210721eecc32ebc62d257a5d"
     },
     {
       "path": "assets/branding/icons/chess-and-chains-64.png",
@@ -197,7 +197,7 @@
         64,
         64
       ],
-      "pixel_sha256": "8502b1ca9836742f7b90d09b5b57bfef225c1fc782d0a0759ca6e4e98165371f"
+      "pixel_sha256": "0644692aeed665cc6be2bfd1869652b533a90017846af2b4639c7c05ea5d35ab"
     },
     {
       "path": "assets/branding/icons/chess-and-chains-96.png",
@@ -207,7 +207,7 @@
         96,
         96
       ],
-      "pixel_sha256": "189003cfa9ce07093f0553155aadbd31981320f433e4ebad5844296b08c5fb53"
+      "pixel_sha256": "79d4bc952f283aae49b4047589c3f60afb7f25ba2dab3da44d35f723531835b4"
     },
     {
       "path": "assets/branding/icons/chess-and-chains-macos-1024.png",
@@ -217,24 +217,24 @@
         1024,
         1024
       ],
-      "pixel_sha256": "2f53fabb6575c3bf4f19015e2f1a29c4ace84459b9e1bdb0d1c76ba2a42f7462"
+      "pixel_sha256": "d9063d486a9161c6643e23bdab175e6a0f7ad6fd70454871ce9c2c970ebb55f4"
     },
     {
       "path": "assets/branding/icons/chess-and-chains.icns",
       "kind": "icns",
       "master": "Logo_Chess-&-Chains-03.svg",
       "entries": {
-        "ic07": "f1770d5ebc6477a52a51be578bbe2ea77e3d5d7b246528c1bb80c5c1f7ce91e7",
-        "ic08": "8662ad9456aacb2f131087ef428f824e63c3c7b0ecb976b03a37300631907712",
-        "ic09": "6f2d2d292d9ccf01c487d6d8ece1fc526f0750e5215b8e9f5070eb6821da2007",
-        "ic10": "2f53fabb6575c3bf4f19015e2f1a29c4ace84459b9e1bdb0d1c76ba2a42f7462",
-        "ic11": "717c51b1d9e641246c407964fd698bf348241a43e38624e8b3504d492e9489dd",
-        "ic12": "bf6fd8dded2b78b6f47bf59006c7b8c63b6a5ca6f31be50a3f3a2837a45949e3",
-        "ic13": "8662ad9456aacb2f131087ef428f824e63c3c7b0ecb976b03a37300631907712",
-        "ic14": "6f2d2d292d9ccf01c487d6d8ece1fc526f0750e5215b8e9f5070eb6821da2007",
-        "icp4": "0db148764bc57ab3a259d544ebd71b73052d9b23d22b9552614adbc8de029229",
-        "icp5": "717c51b1d9e641246c407964fd698bf348241a43e38624e8b3504d492e9489dd",
-        "icp6": "bf6fd8dded2b78b6f47bf59006c7b8c63b6a5ca6f31be50a3f3a2837a45949e3"
+        "ic07": "59717585824886c8059e0dcf2e74e7c06191fe841b3f387fb57c49c9f11c8117",
+        "ic08": "418133312990789f78511d4c0f71cad67cdff1bd1e8b970e074a16834edb74b3",
+        "ic09": "d294e26b07ef515fa3e5d9cb85fb957bd52998b7cb43f259e0fda2aeecbca3a6",
+        "ic10": "d9063d486a9161c6643e23bdab175e6a0f7ad6fd70454871ce9c2c970ebb55f4",
+        "ic11": "9d15eb5b52ad228b74267a5adc57ae84ab3531de7822c5e593bb0e6af8939a75",
+        "ic12": "c4c7560b37b51e73b8c79248f8e95b138fa9ad41d0f886b11054ae9d1cb5932e",
+        "ic13": "418133312990789f78511d4c0f71cad67cdff1bd1e8b970e074a16834edb74b3",
+        "ic14": "d294e26b07ef515fa3e5d9cb85fb957bd52998b7cb43f259e0fda2aeecbca3a6",
+        "icp4": "3b974f2bbcb5bbff6ef95b6418a3509425fceb68c4780096193cda54e2c293fc",
+        "icp5": "9d15eb5b52ad228b74267a5adc57ae84ab3531de7822c5e593bb0e6af8939a75",
+        "icp6": "c4c7560b37b51e73b8c79248f8e95b138fa9ad41d0f886b11054ae9d1cb5932e"
       }
     },
     {
@@ -242,36 +242,36 @@
       "kind": "ico",
       "master": "Logo_Chess-&-Chains-03.svg",
       "entries": {
-        "16": "9f6e9a40601c78a6f6489006877773776253952422be941b581ed6d0259bfeb8",
-        "24": "7226fc1b410e0f0640fd3a12bb678143f536d74c78fa975f95981761891f8a78",
-        "32": "bda80d3d64c9459e9ff4f4c57c8c9adb0e90c64050adf5e97ce5a26c898235fe",
-        "48": "114e2d705dbd307a13bab67b33070ca7d8563743332d2460a2b970bd2d4cfaf1",
-        "64": "8502b1ca9836742f7b90d09b5b57bfef225c1fc782d0a0759ca6e4e98165371f",
-        "128": "cc62f27b865c6052d717c631764ce8c6dbf30ec6e076fbc40aff75c41e125b7a",
-        "256": "b83aad2482a0d80f5447a755a65d91cf13eaa6cc6036e27b9ed36678c5bf6760"
+        "16": "184d5b704061d4ec2a018330d43fa2a18835544c72fd0034b1c08179aa58ee0b",
+        "24": "d59d7af1a46a0059237634a26a1fbf4c9fa1421ed53472fbce4b24baf000d77d",
+        "32": "d6a33a5435017544079ade1e6b7ed4a7965a7d6f566c1d36bb03cb47f7b0347d",
+        "48": "816bd74eb13e0d331e6636e7a010144a8cb9c547b293e7483c25c5b00d936f23",
+        "64": "0644692aeed665cc6be2bfd1869652b533a90017846af2b4639c7c05ea5d35ab",
+        "128": "f24f3e45e57a033c162bff6f921bc40f7080a67240081d46cef3d33f0e7a56db",
+        "256": "be9045365cd219298c1b4fe3dbf45c03c5184fd70f57b9626056e20a75124f3d"
       }
     },
     {
       "path": "assets/branding/icons/chess-and-chains.svg",
       "kind": "copy",
       "master": "Logo_Chess-&-Chains-03.svg",
-      "sha256": "228a289fade583e92206aa9b69cd9f7b329640809f593a250373192fbb637618"
+      "sha256": "81026097772f53ab0dfcb7c41d1dcc0a755948e18c252fe00dea8788c721baf4"
     },
     {
       "path": "assets/branding/signet/chess-and-chains-signet-512.png",
       "kind": "png",
       "master": "Logo_Chess-&-Chains-01.svg",
       "size": [
-        732,
+        740,
         512
       ],
-      "pixel_sha256": "172baf84a46baa87bc04c025d638e497afb23829b6ffc17b3b7afc528ea580c1"
+      "pixel_sha256": "9a298585d3672801c0bb3426b3566ac088590bc05684278824107008dc7e625c"
     },
     {
       "path": "assets/branding/signet/chess-and-chains-signet.svg",
       "kind": "copy",
       "master": "Logo_Chess-&-Chains-01.svg",
-      "sha256": "d133adb801f70b04f303331d35c8769ef988887c2a4272c03f20067dcd1a3f62"
+      "sha256": "339851432a878ee7f8081ae734a48ca0eac62c240754af21e53b658ac5cdd394"
     },
     {
       "path": "src/chess_and_chains/ui/brand_assets/app-icon-128.png",
@@ -281,7 +281,7 @@
         128,
         128
       ],
-      "pixel_sha256": "cc62f27b865c6052d717c631764ce8c6dbf30ec6e076fbc40aff75c41e125b7a"
+      "pixel_sha256": "f24f3e45e57a033c162bff6f921bc40f7080a67240081d46cef3d33f0e7a56db"
     },
     {
       "path": "src/chess_and_chains/ui/brand_assets/app-icon-16.png",
@@ -291,7 +291,7 @@
         16,
         16
       ],
-      "pixel_sha256": "9f6e9a40601c78a6f6489006877773776253952422be941b581ed6d0259bfeb8"
+      "pixel_sha256": "184d5b704061d4ec2a018330d43fa2a18835544c72fd0034b1c08179aa58ee0b"
     },
     {
       "path": "src/chess_and_chains/ui/brand_assets/app-icon-32.png",
@@ -301,7 +301,7 @@
         32,
         32
       ],
-      "pixel_sha256": "bda80d3d64c9459e9ff4f4c57c8c9adb0e90c64050adf5e97ce5a26c898235fe"
+      "pixel_sha256": "d6a33a5435017544079ade1e6b7ed4a7965a7d6f566c1d36bb03cb47f7b0347d"
     },
     {
       "path": "src/chess_and_chains/ui/brand_assets/app-icon-48.png",
@@ -311,7 +311,7 @@
         48,
         48
       ],
-      "pixel_sha256": "114e2d705dbd307a13bab67b33070ca7d8563743332d2460a2b970bd2d4cfaf1"
+      "pixel_sha256": "816bd74eb13e0d331e6636e7a010144a8cb9c547b293e7483c25c5b00d936f23"
     },
     {
       "path": "src/chess_and_chains/ui/brand_assets/app-icon-64.png",
@@ -321,7 +321,7 @@
         64,
         64
       ],
-      "pixel_sha256": "8502b1ca9836742f7b90d09b5b57bfef225c1fc782d0a0759ca6e4e98165371f"
+      "pixel_sha256": "0644692aeed665cc6be2bfd1869652b533a90017846af2b4639c7c05ea5d35ab"
     },
     {
       "path": "src/chess_and_chains/ui/brand_assets/app-icon-macos.png",
@@ -331,20 +331,20 @@
         512,
         512
       ],
-      "pixel_sha256": "6f2d2d292d9ccf01c487d6d8ece1fc526f0750e5215b8e9f5070eb6821da2007"
+      "pixel_sha256": "d294e26b07ef515fa3e5d9cb85fb957bd52998b7cb43f259e0fda2aeecbca3a6"
     },
     {
       "path": "src/chess_and_chains/ui/brand_assets/app-icon.ico",
       "kind": "ico",
       "master": "Logo_Chess-&-Chains-03.svg",
       "entries": {
-        "16": "9f6e9a40601c78a6f6489006877773776253952422be941b581ed6d0259bfeb8",
-        "24": "7226fc1b410e0f0640fd3a12bb678143f536d74c78fa975f95981761891f8a78",
-        "32": "bda80d3d64c9459e9ff4f4c57c8c9adb0e90c64050adf5e97ce5a26c898235fe",
-        "48": "114e2d705dbd307a13bab67b33070ca7d8563743332d2460a2b970bd2d4cfaf1",
-        "64": "8502b1ca9836742f7b90d09b5b57bfef225c1fc782d0a0759ca6e4e98165371f",
-        "128": "cc62f27b865c6052d717c631764ce8c6dbf30ec6e076fbc40aff75c41e125b7a",
-        "256": "b83aad2482a0d80f5447a755a65d91cf13eaa6cc6036e27b9ed36678c5bf6760"
+        "16": "184d5b704061d4ec2a018330d43fa2a18835544c72fd0034b1c08179aa58ee0b",
+        "24": "d59d7af1a46a0059237634a26a1fbf4c9fa1421ed53472fbce4b24baf000d77d",
+        "32": "d6a33a5435017544079ade1e6b7ed4a7965a7d6f566c1d36bb03cb47f7b0347d",
+        "48": "816bd74eb13e0d331e6636e7a010144a8cb9c547b293e7483c25c5b00d936f23",
+        "64": "0644692aeed665cc6be2bfd1869652b533a90017846af2b4639c7c05ea5d35ab",
+        "128": "f24f3e45e57a033c162bff6f921bc40f7080a67240081d46cef3d33f0e7a56db",
+        "256": "be9045365cd219298c1b4fe3dbf45c03c5184fd70f57b9626056e20a75124f3d"
       }
     },
     {
@@ -355,13 +355,13 @@
         256,
         256
       ],
-      "pixel_sha256": "b83aad2482a0d80f5447a755a65d91cf13eaa6cc6036e27b9ed36678c5bf6760"
+      "pixel_sha256": "be9045365cd219298c1b4fe3dbf45c03c5184fd70f57b9626056e20a75124f3d"
     },
     {
       "path": "src/chess_and_chains/ui/brand_assets/app-icon.svg",
       "kind": "copy",
       "master": "Logo_Chess-&-Chains-03.svg",
-      "sha256": "228a289fade583e92206aa9b69cd9f7b329640809f593a250373192fbb637618"
+      "sha256": "81026097772f53ab0dfcb7c41d1dcc0a755948e18c252fe00dea8788c721baf4"
     },
     {
       "path": "src/chess_and_chains/ui/brand_assets/brand-emblem-192.png",
@@ -371,7 +371,7 @@
         192,
         192
       ],
-      "pixel_sha256": "462a25829d442aed70eaa6c68bf182a8623b57d0b4776c63858682b4a7d75651"
+      "pixel_sha256": "57ea349ada535d3360f56e2a7fe3c99e2da6cbda5e3e72f9c547e2c0af31ff7e"
     },
     {
       "path": "src/chess_and_chains/ui/brand_assets/brand-emblem.png",
@@ -381,29 +381,29 @@
         96,
         96
       ],
-      "pixel_sha256": "a834bfc41236abb84e2c8c579d9bc3f3718160338e5c43507595d5dc667bd368"
+      "pixel_sha256": "a7c081898d92b25042aaf7337b584b40af8d445c2b92469199a649380bc513dc"
     },
     {
       "path": "src/chess_and_chains/ui/brand_assets/brand-emblem.svg",
       "kind": "copy",
       "master": "Logo_Chess-&-Chains-02.svg",
-      "sha256": "a2e1cb7854f76c2c9bd7078a9855cddf7bef6a7c1db0ca9d4e6819b725142c0e"
+      "sha256": "278c85904a701df0570d78d995c285b23dd3c3c2b2a5590bb82a3f45e6990bca"
     },
     {
       "path": "src/chess_and_chains/ui/brand_assets/signet.png",
       "kind": "png",
       "master": "Logo_Chess-&-Chains-01.svg",
       "size": [
-        372,
+        377,
         256
       ],
-      "pixel_sha256": "85f6e4cf1f19a9d8c1af6a2d754dbcf4b104d2ca72dcca52efd6b8b2462a5e5d"
+      "pixel_sha256": "26785e28e90f22baaac64b93d931d597bd4f3c2d4a2775654e6c7270fd70220f"
     },
     {
       "path": "src/chess_and_chains/ui/brand_assets/signet.svg",
       "kind": "copy",
       "master": "Logo_Chess-&-Chains-01.svg",
-      "sha256": "d133adb801f70b04f303331d35c8769ef988887c2a4272c03f20067dcd1a3f62"
+      "sha256": "339851432a878ee7f8081ae734a48ca0eac62c240754af21e53b658ac5cdd394"
     }
   ]
 }
