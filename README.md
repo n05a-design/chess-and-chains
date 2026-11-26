@@ -1,12 +1,48 @@
-# Chess & Chains
+<p align="right"><strong>English</strong> · <a href="README.de.md">Deutsch</a></p>
 
-**V.0.3.0 · Development snapshot.** [Changelog](CHANGELOG.md) · [Versioning policy](docs/governance/GOVERNANCE.md#projektversion)
+<p align="center">
+  <img src="assets/branding/icons/chess-and-chains-512.png" alt="Chess &amp; Chains app icon" width="96" height="96">
+</p>
 
-**Play. Think. Connect.**
+<h1 align="center">Chess &amp; Chains</h1>
 
-**Chess & Chains** is a planned free, open-source, offline-first desktop chess experience featuring configurable local computer opponents, tactical puzzle training and a distinctive, customizable board designed around original SVG chess pieces.
+<p align="center">
+  <strong>Play. Think. Connect.</strong><br>
+  A free, open-source, offline-first desktop chess app. Play local games, train with the Puzzle Lab and shape board, pieces and theme to your taste – no account, no cloud.
+</p>
 
-**[Deutsch](README.de.md)** · [Roadmap](docs/roadmap/ROADMAP.md) · [Project Manifest](MANIFEST.md) · [Open Questions](docs/questions/OPEN_QUESTIONS.md) · [Contributing](CONTRIBUTING.md)
+<p align="center">
+  <img alt="Status: development snapshot V.0.3.0" src="https://img.shields.io/badge/Status-V.0.3.0%20development%20snapshot-555">
+  <img alt="Python 3.11 to 3.14" src="https://img.shields.io/badge/Python-3.11%E2%80%933.14-2447D8">
+  <a href="LICENSE"><img alt="MPL-2.0 license" src="https://img.shields.io/badge/License-MPL--2.0-2447D8"></a>
+  <img alt="CI: Windows, macOS, Linux" src="https://img.shields.io/badge/CI-Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-171920">
+  <a href="https://github.com/n05a-design/chess-and-chains/actions/workflows/checks.yml"><img alt="Checks" src="https://github.com/n05a-design/chess-and-chains/actions/workflows/checks.yml/badge.svg?branch=main"></a>
+</p>
+
+<p align="center">
+  <a href="#screenshots"><strong>Screenshots</strong></a> ·
+  <a href="#quick-start-for-contributors">Quick start</a> ·
+  <a href="#product-direction">Features</a> ·
+  <a href="#current-implementation-status">Project status</a> ·
+  <a href="docs/roadmap/ROADMAP.md">Roadmap</a> ·
+  <a href="CONTRIBUTING.md">Contributing</a> ·
+  <a href="README.de.md">Deutsch</a>
+</p>
+
+<p align="center"><sub>V.0.3.0 · <a href="CHANGELOG.md">Changelog</a> · <a href="docs/governance/GOVERNANCE.md#projektversion">Versioning policy</a> · <a href="MANIFEST.md">Project manifest</a> · <a href="docs/questions/OPEN_QUESTIONS.md">Open questions</a></sub></p>
+
+## Screenshots
+
+Real screenshots of the running Tk app (V.0.3.0 development state with the new logos, Windows 11, Tk 9.0.4, 2026-11-26). The header signet takes the selected theme colour.
+
+<p align="center">
+  <img src="marketing/screenshots/2026-11-26/main-cobalt-original.png" alt="Chess &amp; Chains main window, light theme, cobalt theme colour, Original V.06 pieces" width="49%">
+  <img src="marketing/screenshots/2026-11-26/main-dark-classic.png" alt="Chess &amp; Chains main window, dark theme, Classic V.05.1 pieces" width="49%">
+</p>
+<p align="center">
+  <img src="marketing/screenshots/2026-11-26/main-sky-top.png" alt="Chess &amp; Chains main window, light theme, sky blue theme colour, top-view V.04.2 pieces" width="49%">
+  <img src="marketing/screenshots/2026-11-26/about-dialog.png" alt="About dialog with the full-colour Chess &amp; Chains emblem" width="34%">
+</p>
 
 ## Product direction
 

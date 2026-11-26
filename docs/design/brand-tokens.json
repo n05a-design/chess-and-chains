@@ -1,6 +1,28 @@
 {
   "name": "Connected System",
   "status": "PROPOSED",
+  "logo": {
+    "_comment": "Static logo colours read from design/01_Logo/svg (owner masters, 2026-11-25). Never used as theme, status, board or piece colours. Logo 01 in the app is tinted with the theme role view_title instead.",
+    "masters": {
+      "in_app": "design/01_Logo/svg/Logo_Chess-&-Chains-01.svg",
+      "internal_brand": "design/01_Logo/svg/Logo_Chess-&-Chains-02.svg",
+      "app_icon": "design/01_Logo/svg/Logo_Chess-&-Chains-03.svg"
+    },
+    "colors": {
+      "linkBlue": "#2447D8",
+      "linkYellow": "#F4C400",
+      "iconYellow": "#FFDC0B",
+      "boardDark": "#171920",
+      "separatorWhite": "#FFFFFF",
+      "separatorHairline": "#000000"
+    },
+    "dynamicSignet": {
+      "themeRole": "ThemePalette.view_title",
+      "minimumContrast": 4.5,
+      "links": "both links in the theme role",
+      "separators": "transparent cut-outs, hairline strokes dropped"
+    }
+  },
   "brand": {
     "primary": "#086FD6",
     "secondary": "#2C95FF",
@@ -21,7 +43,10 @@
     "selected": "#086FD6",
     "legalMove": "#15243C",
     "lastMove": "#C5DCF8",
-    "check": ["#B8221A", "#FFFFFF"]
+    "check": [
+      "#B8221A",
+      "#FFFFFF"
+    ]
   },
   "puzzle": {
     "path": "#5C6F8E",
@@ -31,18 +56,45 @@
     "revealed": "#B8221A"
   },
   "typography": {
-    "display": {"family": "Manufacturing Consent", "weight": 400, "fallback": "Georgia, serif"},
-    "body": {"family": "Rubik", "weight": 400, "fallback": "Segoe UI, sans-serif"},
-    "mono": {"family": "DM Mono", "weights": [400, 500], "fallback": "Consolas, monospace"},
-    "tkPointSizes": {"caption": 10, "body": 11, "section": 16, "title": 22}
+    "display": {
+      "family": "Manufacturing Consent",
+      "weight": 400,
+      "fallback": "Georgia, serif"
+    },
+    "body": {
+      "family": "Rubik",
+      "weight": 400,
+      "fallback": "Segoe UI, sans-serif"
+    },
+    "mono": {
+      "family": "DM Mono",
+      "weights": [
+        400,
+        500
+      ],
+      "fallback": "Consolas, monospace"
+    },
+    "tkPointSizes": {
+      "caption": 10,
+      "body": 11,
+      "section": 16,
+      "title": 22
+    }
   },
   "geometry": {
+    "_comment": "Historical Connected System signet construction (W06, until 2026-11-25). Not used by the active logo masters.",
     "unit": 2,
-    "linkSize": [48, 31],
+    "linkSize": [
+      48,
+      31
+    ],
     "linkRadius": 10,
     "innerRadius": 2,
     "linkStroke": 8,
-    "grid": [64, 64],
+    "grid": [
+      64,
+      64
+    ],
     "signetClearSpace": 4
   }
 }

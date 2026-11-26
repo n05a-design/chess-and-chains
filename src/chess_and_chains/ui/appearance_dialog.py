@@ -26,6 +26,7 @@ from ..chess import Color, Piece, PieceType
 from ..i18n import Translator
 from .dropdown import GlideDropdown
 from .pieces import OwnerSvgPieces
+from .branding import draw_signet_canvas
 from .theme import (
     ACCENT_CHOICES,
     BACKGROUND_CHOICES,
@@ -445,7 +446,8 @@ class AppearanceDialog(tk.Toplevel):
         c.delete("all")
         p = self._palette
         c.configure(background=p.window)
-        c.create_oval(4, 2, 24, 18, fill=p.action_new_bg, outline=p.line, width=1)
+        # Theme-colour preview with the in-app signet (Logo 01) in its live tint role.
+        draw_signet_canvas(c, 22, p.view_title, tag="swatch")
 
     def _sync_perspective_dependency(self) -> None:
         if self._persp_dropdown is None:

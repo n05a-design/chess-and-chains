@@ -18,3 +18,15 @@ src/chess_and_chains/ui/piece_assets/original/*.svg text eol=lf
 src/chess_and_chains/ui/piece_assets/top/*.svg text eol=lf
 src/chess_and_chains/ui/piece_assets/classic/*.svg text eol=lf
 src/glide_shell/** text eol=lf
+# Logo masters: SHA-256 registered in scripts/build_brand_assets.py (byte-identical checkout).
+design/01_Logo/svg/*.svg -text
+# Derived brand rasters and icons are binary; SVG copies must stay byte-identical to the masters.
+assets/branding/**/*.svg -text
+assets/branding/**/*.png binary
+assets/branding/**/*.ico binary
+assets/branding/**/*.icns binary
+src/chess_and_chains/ui/brand_assets/*.ico binary
+assets/branding/brand-manifest.json -text
+design/01_Logo/Archiv/Chess-&-Chains_V.1_2026-11-25/*.svg -text
+# Asset-Register hash of the social preview source must match checkout bytes.
+marketing/source/chess-and-chains-social-preview.svg -text

@@ -63,7 +63,7 @@ from .appearance_dialog import AppearanceDialog
 from .atlas import PuzzleAtlas
 from .board import Orientation
 from .board_artwork import BoardArtwork, BoardArtworkError, BoardDesign
-from .branding import brand_image, draw_signet_canvas, in_app_logo_photo, macos_dock_icon
+from .branding import apply_window_icon, draw_signet_canvas, emblem_image
 from .captured_material import CapturedMaterialBar
 from .dialogs import PositionDialog, bind_button_enter as _bind_button_enter
 from .marble_board import MarbleBoardCanvas
@@ -721,8 +721,9 @@ class ChessApp:
         # Child widgets can outlive the window while a worker is winding down.
         app = proxy(self)
         self.root.title(f'{t("app.window_title")} · {DISPLAY_VERSION}')
-        self._window_icon = macos_dock_icon(self.root, "app-icon")
-        self.root.iconphoto(True, self._window_icon)
+        # Logo 03 (official app icon, never tinted) for window, dialogs, taskbar and Dock.
+        self._window_icons = apply_window_icon(self.root)
+        self._window_icon = self._window_icons[0]
         self.root.configure(background=theme.window)
         initial_geom = self._initial_geometry()
         self.root.geometry(initial_geom)
@@ -1399,7 +1400,7 @@ class ChessApp:
         return "minimal"
 
     def header_logo_color(self) -> str:
-        """Return the active monochrome theme color for the in-app header logo."""
+        """Theme role tinting Logo 01: ``view_title``, the contrast-checked (>= 4.5:1) Themenfarbe."""
         return self.theme.view_title
 
     def header_logo_metrics(self) -> tuple[int, int, int]:
@@ -1585,12 +1586,13 @@ class ChessApp:
         )
         remembered_focus = modal_session.remember_focus(self.root, dialog, self.board)
         dialog.configure(padx=SPACING[22], pady=SPACING[18])
-        signet = in_app_logo_photo(dialog, 48, theme.view_title)
-        dialog._about_signet = signet  # keep PhotoImage alive while dialog exists
+        # Logo 02: full-colour internal brand emblem (never tinted by the theme colour).
+        emblem = emblem_image(dialog, 88)
+        dialog._about_emblem = emblem  # keep PhotoImage alive while dialog exists
         header_row = tk.Frame(dialog, background=theme.acetate)
         header_row.pack(fill="x", anchor="w")
-        tk.Label(header_row, image=signet, background=theme.acetate, borderwidth=0, highlightthickness=0).pack(
-            side="left", padx=(0, SPACING[12]),
+        tk.Label(header_row, image=emblem, background=theme.acetate, borderwidth=0, highlightthickness=0).pack(
+            side="left", padx=(0, SPACING[16]),
         )
         title_box = tk.Frame(header_row, background=theme.acetate)
         title_box.pack(side="left", fill="both", expand=True)

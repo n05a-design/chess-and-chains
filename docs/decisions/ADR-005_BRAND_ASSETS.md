@@ -22,6 +22,14 @@ Der Owner hat am 20.11.2026 den Push und einen Pull Request für den KI-unterst�
 - **Tim von Trostorff** bestätigt, dass die Schachfiguren seine eigenen Entwürfe sind und er alle Rechte hält. Die Figuren dürfen innerhalb der App unter MPL-2.0 angeboten werden. Der [Originalmaster und seine Provenienz](../../assets/chess_pieces/source_svg/masters/PROVENANCE.md) sind dokumentiert. Aufbereitung, Rendering- und Paketprüfung bleiben für die Integration erforderlich.
 - **Der Inhaber entscheidet und erteilt die Freigaben.** Die Herausgeberangabe orientiert sich am öffentlichen Glide-Installer, der Tim von Trostorff als Publisher nennt. Weitere Angaben für ein späteres Impressum benötigen den belegten Geltungsbereich. [Glide-Installerdefinition](https://github.com/n05a-design/glide-to-do/blob/bde7fa12ed048273f2916d21ad1e06b3a0426d0b/01_Repository/Glide/packaging/windows/glide_setup.iss)
 
+## Logo-Master des Inhabers (26.11.2026)
+
+Der Inhaber Tim von Trostorff hat drei eigene Logo-Master gestaltet und als verbindliche Markenidentität bereitgestellt: [`design/01_Logo/svg/`](../../design/01_Logo/README.md). Logo 01 ist das themenabhängig eingefärbte In-App-Signet, Logo 02 das vollfarbige interne Markenemblem, Logo 03 das offizielle App-Symbol und die öffentliche Produktidentität. Sie ersetzen das KI-unterstützte orthogonale Signet und die dunkle App-Kachel vom 20.11.2026, die nur noch historisch sind.
+
+- **Freigabeumfang:** App (alle Plattformen), Pakete und Installer, README, GitHub-Projektseite, Social Preview, Presskit, Favicon und künftige Produktseite oder Softwarekatalog des Inhabers.
+- **Nicht erteilt:** Lizenzierung der Marke für beliebige Drittverwendung. Die MPL-2.0 des Codes umfasst die Marke nicht. Markenrecherche (DPMA/EUIPO) bleibt offen.
+- **Herkunft und Prüfsummen:** [Logo-Vertrag](../../design/01_Logo/README.md) und Zeilen `BRAND-LOGO-0*-MASTER` im [Assetregister](../design/ASSET_REGISTER.csv). Alle Ableitungen erzeugt `scripts/build_brand_assets.py`.
+
 ## Figuren im lokalen Prototyp
 
 Die [historischen Designquellen](../../design/brand_exploration/README.md)

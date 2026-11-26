@@ -40,18 +40,15 @@ class FinalAuditTests(unittest.TestCase):
     def test_macos_dock_icon_has_transparent_hig_margin(self) -> None:
         img = macos_dock_icon(self.root, "app-icon")
         self.assertEqual(img.width(), img.height())
-        try:
-            import PIL  # noqa: F401
-            has_pil = True
-        except ImportError:
-            has_pil = False
-
-        if sys.platform == "darwin" and has_pil:
-            self.assertGreaterEqual(img.width(), 256)
-            # Corner pixel (0, 0) must be transparent due to 824/1024 HIG padding
-            self.assertTrue(img.transparency_get(0, 0))
-        else:
-            self.assertGreaterEqual(img.width(), 16)
+        # Logo 03 is pre-rendered by scripts/build_brand_assets.py; no Pillow at runtime.
+        self.assertGreaterEqual(img.width(), 256)
+        self.assertTrue(img.transparency_get(0, 0))
+        if sys.platform == "darwin":
+            # 824/1024 Apple icon grid: a transparent band surrounds the icon body.
+            edge = img.width()
+            margin = round(edge * 100 / 1024) - 2
+            self.assertTrue(img.transparency_get(margin, edge // 2))
+            self.assertFalse(img.transparency_get(edge // 2, edge // 2))
 
     def test_dropdown_selection_disabled_and_theme_inheritance(self) -> None:
         light = resolve_theme("light")
