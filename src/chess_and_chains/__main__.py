@@ -39,7 +39,32 @@ def main(argv: list[str] | None = None) -> int:
         default="front",
         help="choose the front or top view of the pieces for this session (legacy option)",
     )
+    backup = parser.add_mutually_exclusive_group()
+    backup.add_argument(
+        "--create-backup", type=Path, metavar="ZIP",
+        help="back up the local profile (close the desktop window first)",
+    )
+    backup.add_argument(
+        "--restore-backup", type=Path, metavar="ZIP_OR_SQLITE",
+        help="restore the local profile and keep a recovery copy (close the desktop window first)",
+    )
     args = parser.parse_args(argv)
+    if args.create_backup or args.restore_backup:
+        from chess_and_chains.storage import DataLayout, StorageError, UnsafeDataPathError
+        from chess_and_chains.storage.backup_bundle import restore_backup, write_backup
+
+        try:
+            layout = DataLayout.default()
+            if args.create_backup:
+                print(write_backup(layout, args.create_backup))
+            else:
+                result = restore_backup(layout, args.restore_backup)
+                print(f"Recovery backup: {result.recovery_bundle}")
+                if result.missing_packs:
+                    print(f"Missing puzzle packs: {', '.join(result.missing_packs)}")
+        except (OSError, StorageError, UnsafeDataPathError) as error:
+            parser.error(str(error))
+        return 0
     design = None
     if args.board_design is not None:
         from chess_and_chains.ui.board_artwork import BoardArtworkError, load_board_design

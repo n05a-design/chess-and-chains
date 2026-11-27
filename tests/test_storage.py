@@ -7,6 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+from zipfile import ZipFile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -25,6 +26,7 @@ from chess_and_chains.storage import (  # noqa: E402
     save_settings,
     update_settings,
 )
+from chess_and_chains.storage.backup_bundle import restore_backup, write_backup  # noqa: E402
 from chess_and_chains.storage.database import MAX_PGN_FILE_BYTES, MIGRATIONS  # noqa: E402
 from chess_and_chains.storage.exchange import (  # noqa: E402
     MAX_FEN_FILE_BYTES, parse_fen_text, read_fen_file, write_fen_file,
@@ -550,6 +552,99 @@ class DatabaseTests(TempDirTestCase):
         self.assertEqual((stats.puzzles_attempted, stats.puzzles_solved, stats.puzzles_clean), (2, 2, 1))
         with self.assertRaises(sqlite3.IntegrityError):
             db.record_puzzle_attempt("demo", "c", solved=True, mistakes=-1, hints_used=0, duration_ms=1)
+
+
+class BackupBundleTests(TempDirTestCase):
+    def test_portable_restore_keeps_local_engine_preferences_and_reports_missing_packs(self):
+        source = DataLayout(self.tmp / "source")
+        target = DataLayout(self.tmp / "target")
+        engine_import = str(self.tmp / "other" / "engine")
+        engine_local = str(self.tmp / "local" / "engine")
+        save_settings(source.settings, Settings(locale="de", last_pack_id="club-mate", engine_path=engine_import,
+                                                registered_engine_paths=(engine_import,)))
+        save_settings(target.settings, Settings(locale="en", engine_path=engine_local,
+                                                registered_engine_paths=(engine_local,)))
+        with Database.open(source.database) as db:
+            archived = db.import_pgn("1. e4 *")
+        with Database.open(target.database) as db:
+            db.import_pgn("1. d4 *")
+        archive = write_backup(source, self.tmp / "profile.zip")
+        result = restore_backup(target, archive)
+        self.assertEqual(result.missing_packs, ("club-mate",))
+        restored, _ = load_settings(target.settings)
+        self.assertEqual((restored.locale, restored.last_pack_id), ("de", "club-mate"))
+        self.assertEqual((restored.engine_path, restored.registered_engine_paths), (engine_local, (engine_local,)))
+        with Database.open(target.database) as db:
+            self.assertEqual(db.load_game(archived).moves, (Move.from_uci("e2e4"),))
+        restore_backup(target, result.recovery_bundle)
+        self.assertEqual(load_settings(target.settings)[0].locale, "en")
+        with Database.open(target.database) as db:
+            self.assertEqual(db.load_game(1).moves, (Move.from_uci("d2d4"),))
+
+    def test_settings_failure_rolls_back_database_and_preserves_settings(self):
+        source = DataLayout(self.tmp / "source")
+        target = DataLayout(self.tmp / "target")
+        save_settings(source.settings, Settings(locale="de"))
+        save_settings(target.settings, Settings(locale="en"))
+        with Database.open(source.database) as db:
+            db.import_pgn("1. e4 *")
+        with Database.open(target.database) as db:
+            saved = db.import_pgn("1. d4 *")
+        archive = write_backup(source, self.tmp / "profile.zip")
+
+        def save_except_live(path, settings):
+            if path == target.settings:
+                raise OSError("card full")
+            save_settings(path, settings)
+
+        with patch("chess_and_chains.storage.backup_bundle.save_settings", side_effect=save_except_live):
+            with self.assertRaisesRegex(StorageError, "database rolled back"):
+                restore_backup(target, archive)
+        self.assertEqual(load_settings(target.settings)[0].locale, "en")
+        with Database.open(target.database) as db:
+            self.assertEqual(db.load_game(saved).moves, (Move.from_uci("d2d4"),))
+        self.assertEqual(len(list(target.backups.glob("pre-profile-restore-*.zip"))), 1)
+
+    def test_invalid_bundle_is_rejected_without_touching_current_profile(self):
+        layout = DataLayout(self.tmp / "profile")
+        save_settings(layout.settings, Settings(locale="de"))
+        with Database.open(layout.database) as db:
+            db.import_pgn("1. e4 *")
+        baseline_db = layout.database.read_bytes()
+        baseline_settings = layout.settings.read_bytes()
+        original = write_backup(layout, self.tmp / "valid.zip")
+        with ZipFile(original) as archive:
+            contents = {name: archive.read(name) for name in archive.namelist()}
+        for label, changes, message in (
+            ("traversal", {"../escaped.txt": b"bad"}, "unexpected or missing"),
+            ("checksum", {"settings.json": b"{}"}, "integrity"),
+            ("schema", {"manifest.json": b'{"schema": 999, "profile": "local"}'}, "schema"),
+            ("size", {"settings.json": b"x" * 131073}, "Invalid backup member"),
+        ):
+            with self.subTest(label=label):
+                candidate = self.tmp / f"{label}.zip"
+                with ZipFile(candidate, "w") as archive:
+                    for name, content in (contents | changes).items():
+                        archive.writestr(name, content)
+                with self.assertRaisesRegex(StorageError, message):
+                    restore_backup(layout, candidate)
+                self.assertEqual(layout.database.read_bytes(), baseline_db)
+                self.assertEqual(layout.settings.read_bytes(), baseline_settings)
+        self.assertFalse((layout.root / "escaped.txt").exists())
+
+    def test_legacy_database_backup_leaves_settings_untouched(self):
+        layout = DataLayout(self.tmp / "profile")
+        save_settings(layout.settings, Settings(locale="de"))
+        settings_before = layout.settings.read_bytes()
+        with Database.open(layout.database) as db:
+            game_id = db.import_pgn("1. e4 *")
+            backup = db.backup(self.tmp / "legacy.sqlite3")
+            db.import_pgn("1. d4 *")
+        result = restore_backup(layout, backup)
+        self.assertTrue(result.recovery_bundle.is_file())
+        self.assertEqual(layout.settings.read_bytes(), settings_before)
+        with Database.open(layout.database) as db:
+            self.assertEqual([row[0] for row in db.list_games()], [game_id])
 
 
 class PositionFileTests(TempDirTestCase):
