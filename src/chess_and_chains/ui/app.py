@@ -75,7 +75,7 @@ from .board import Orientation
 from .board_artwork import BoardArtwork, BoardArtworkError, BoardDesign
 from .branding import apply_window_icon, draw_signet_canvas, emblem_image
 from .captured_material import CapturedMaterialBar
-from .dialogs import PositionDialog, bind_button_enter as _bind_button_enter
+from .dialogs import PositionDialog, ask_time_control, bind_button_enter as _bind_button_enter
 from .marble_board import MarbleBoardCanvas
 from .pieces import OwnerSvgPieces, PieceRenderer, get_piece_set
 from .replay import ReplayDialog
@@ -2178,12 +2178,17 @@ class ChessApp:
 
     def _new_timed_game(self) -> None:
         controls = ((1, 0), (2, 1), (3, 0), (3, 2), (5, 0), (5, 3), (10, 0), (10, 5), (15, 10), (30, 0), (60, 0))
-        index = self._choose_item(
-            self.t("clock.new"), [f"{minutes}+{increment}" for minutes, increment in controls], self.t("button.new_game"),
-        )
-        if index is not None:
+        labels = [f"{minutes}+{increment}" for minutes, increment in controls]
+        index = self._choose_item(self.t("clock.new"), [*labels, self.t("clock.custom")], self.t("button.new_game"))
+        if index is None:
+            return
+        if index == len(controls):
+            time_control = ask_time_control(self.root, self.t, self.theme)
+        else:
             minutes, increment = controls[index]
-            self._new_game(TimeControl(minutes * 60_000, increment * 1000))
+            time_control = TimeControl(minutes * 60_000, increment * 1000)
+        if time_control is not None:
+            self._new_game(time_control)
 
     def _decide_timeout(self) -> None:
         view = self.controller.view()
@@ -2778,6 +2783,8 @@ class ChessApp:
                 headers.update(White=view.bot_name, Black="Human")
             else:
                 headers.update(White="Human", Black=view.bot_name)
+        if view.flagged is not None and view.outcome.status is GameStatus.RECORDED_RESULT:
+            headers["Termination"] = "time forfeit"
         return headers
 
     def _save_game(self) -> int | None:
@@ -3616,6 +3623,8 @@ class ChessApp:
                 reason = t("claim.by_move", rule=reason, move=to_san(view.state, view.outcome.declared_move))
             return t("status.claimed_reason", reason=reason)
         if status is GameStatus.RECORDED_RESULT:
+            if view.flagged is not None or self._game_headers.get("Termination") == "time forfeit":
+                return t("clock.timeout_win", side=self._side(winner)) if winner else t("clock.timeout_draw")
             return t("status.recorded_win", side=self._side(winner)) if winner else t("status.recorded_draw")
         return t({
             GameStatus.STALEMATE: "status.stalemate",

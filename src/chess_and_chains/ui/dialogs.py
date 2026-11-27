@@ -13,6 +13,7 @@ from typing import Callable
 from glide_shell import desktop_adapter, modal_session, text_fit
 
 from ..chess import ChessError, GameState, to_fen
+from ..game.clock import TimeControl
 from ..i18n import Translator
 from ..storage.exchange import parse_fen_text, read_fen_file, write_fen_file
 from .theme import LIGHT_THEME, RoundedButton, ThemePalette
@@ -25,6 +26,57 @@ def bind_button_enter(button: tk.Button | ttk.Button | ttk.Checkbutton | Rounded
 
     button.bind("<Return>", invoke)
     button.bind("<KP_Enter>", invoke)
+
+
+def ask_time_control(parent: tk.Tk, t: Translator, theme: ThemePalette) -> TimeControl | None:
+    """Collect a Fischer time control in whole seconds."""
+    dialog = modal_session.create_dialog(
+        parent, t("clock.custom"), background=theme.acetate, transient=bool(parent.winfo_viewable()),
+    )
+    focus = modal_session.remember_focus(parent, dialog, parent)
+    content = ttk.Frame(dialog, padding=16, style="Glide.TFrame")
+    content.pack(fill="both", expand=True)
+    content.columnconfigure(0, weight=1)
+    initial = tk.StringVar(dialog, "300")
+    increment = tk.StringVar(dialog, "0")
+    feedback = tk.StringVar(dialog)
+    fields = []
+    for row, (key, value) in enumerate((("clock.initial_seconds", initial), ("clock.increment_seconds", increment))):
+        ttk.Label(content, text=t(key), style="Glide.TLabel").grid(row=row * 2, column=0, sticky="w")
+        entry = ttk.Entry(content, textvariable=value, style="Glide.TEntry")
+        entry.grid(row=row * 2 + 1, column=0, columnspan=2, sticky="ew", pady=(0, 8))
+        fields.append(entry)
+    ttk.Label(content, textvariable=feedback, style="Glide.TLabel").grid(row=4, column=0, columnspan=2, sticky="w")
+    result = None
+
+    def accept(_event: tk.Event | None = None) -> str:
+        nonlocal result
+        try:
+            result = TimeControl(int(initial.get()) * 1000, int(increment.get()) * 1000)
+        except ValueError:
+            feedback.set(t("clock.invalid_input"))
+            return "break"
+        dialog.destroy()
+        return "break"
+
+    start = ttk.Button(content, text=t("button.new_game"), command=accept, style="Glide.New.TButton")
+    start.grid(row=5, column=0, sticky="e", padx=(0, 6), pady=(8, 0))
+    cancel = ttk.Button(content, text=t("button.cancel"), command=dialog.destroy, style="Glide.TButton")
+    cancel.grid(row=5, column=1, sticky="e", pady=(8, 0))
+    for entry in fields:
+        entry.bind("<Return>", accept)
+        entry.bind("<KP_Enter>", accept)
+    bind_button_enter(start)
+    bind_button_enter(cancel)
+    dialog.bind("<Escape>", lambda _event: dialog.destroy())
+    modal_session.ensure_min_width(dialog)
+    fields[0].focus_set()
+    fields[0].selection_range(0, "end")
+    try:
+        modal_session.wait_modal(parent, dialog)
+    finally:
+        modal_session.return_focus(parent, dialog, focus)
+    return result
 
 
 class PositionDialog(tk.Toplevel):

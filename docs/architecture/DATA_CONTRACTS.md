@@ -101,10 +101,12 @@ Anhalten, Neustart und Undo/Redo pausieren. Der nächste Spieler behält seine
 Restzeit aus dem passenden Zugcheckpoint. Beim ordentlichen Schließen
 speichert die App die aktuellen Zeiten. Bei einem Absturz gilt der letzte
 committete Checkpoint. Standby folgt dem Zeitverhalten der Host-Plattform.
-Der Zeitablauf gegen einen alleinstehenden König ergibt Remis. Andere Fälle
-mit unklarer Mattmöglichkeit bleiben für eine ausdrückliche Entscheidung
-angehalten. Die gespeicherte Bibliothek transportiert das Ergebnis im PGN,
-während Uhrstände an die automatische Kopie gebunden sind.
+Beim Zeitablauf prüft der Regelkern die Mattmöglichkeit der verbleibenden
+Seite mit einer begrenzten Suche nach legalen Folgen. Ein nachgewiesener
+Mattweg ergibt einen Sieg. Eindeutig ausgeschlossene Mattmöglichkeiten
+ergeben Remis. Bei offenem Ausgang pausiert die App zur Entscheidung.
+Die Bibliothek speichert Ergebnis und `Termination "time forfeit"` im PGN.
+Uhrstände sind an die automatische Kopie gebunden.
 [FIDE-Regeln ab 1. Januar 2023, Art. 5.2.2 und 6.9](https://handbook.fide.com/chapter/E012023)
 
 ## Puzzle

@@ -397,6 +397,49 @@ class SessionRecoveryUiTests(AppTestCase):
             app.close()
 
 
+    def test_custom_clock_rejects_invalid_input_then_starts_with_entered_values(self):
+        app = self.make_app()
+
+        def fill_dialog(_root, dialog):
+            frame, = dialog.winfo_children()
+            initial, increment = [widget for widget in frame.winfo_children() if isinstance(widget, ttk.Entry)]
+            start, _cancel = [widget for widget in frame.winfo_children() if isinstance(widget, ttk.Button)]
+            initial.delete(0, "end")
+            initial.insert(0, "0")
+            start.invoke()
+            self.assertTrue(dialog.winfo_exists())
+            self.assertIsNone(app.controller.setup.time_control)
+            initial.delete(0, "end")
+            initial.insert(0, "42")
+            increment.delete(0, "end")
+            increment.insert(0, "7")
+            start.invoke()
+
+        with patch.object(app, "_choose_item", side_effect=lambda _title, labels, _confirm: len(labels) - 1), patch(
+            "chess_and_chains.ui.dialogs.modal_session.wait_modal", side_effect=fill_dialog,
+        ):
+            app._new_timed_game()
+        self.assertEqual(app.controller.setup.time_control, TimeControl(42_000, 7000))
+        self.assertTrue(app.controller.view().clock_running)
+
+    def test_timeout_updates_native_status_and_archives_pgn_termination(self):
+        with tempfile.TemporaryDirectory() as folder:
+            app = self.make_app(data_layout=DataLayout(Path(folder)), locale="de")
+            now = 0
+            app.controller._now = lambda: now
+            app.controller.new_game(GameSetup(initial_fen="7k/8/5K2/6Q1/8/8/8/8 b - - 0 1",
+                                              time_control=TimeControl(1000)))
+            now = 1_000_000_000
+            app.controller.poll()
+            self.assertEqual(app.panel_text.get(), "Weiß gewinnt auf Zeit.")
+            row = app.db.load_game(app._save_game())
+            self.assertEqual(row.result, "1-0")
+            self.assertEqual(dict(row.pgn_tags)["Termination"], "time forfeit")
+            session, _ = app.db.load_session()
+            self.assertEqual(session.clock.current.remaining_ms(Color.BLACK), 0)
+            self.assertEqual(session.timeline.result, "1-0")
+            app.close()
+
     def test_timed_session_starts_paused_with_saved_times_after_reopen(self):
         with tempfile.TemporaryDirectory() as folder:
             layout = DataLayout(Path(folder))

@@ -36,7 +36,7 @@ from ..chess import (
     IllegalMoveError,
     Move,
     MoveOutcome,
-    PieceType,
+    MatePossibility,
     parse_fen,
     to_fen,
     to_san,
@@ -422,9 +422,11 @@ class GameController:
         self._clock.pause(at_ns)
         self._flagged = reading.turn
         self._invalidate()
-        if all(piece is None or piece.color is reading.turn or piece.kind is PieceType.KING
-               for piece in self._game.state.board):
+        possibility = self._game.mate_possibility(reading.turn.opposite)
+        if possibility is MatePossibility.IMPOSSIBLE:
             self._game.record_result("1/2-1/2")
+        elif possibility is MatePossibility.POSSIBLE:
+            self._game.record_result("0-1" if reading.turn is Color.WHITE else "1-0")
         return True
 
     def _play_move(self, move: Move) -> None:

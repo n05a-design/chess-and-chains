@@ -10,6 +10,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 
 from .dead_positions import closed_pawn_barrier
+from .mating import MatePossibility, prove_mate_possibility
 from .material import CapturedMaterial, calculate_captured_material
 from .model import (
     ChessError,
@@ -205,6 +206,10 @@ class ChessGame:
         if repetitions >= 3:
             claims.add(DrawClaim.THREEFOLD_REPETITION)
         return MoveOutcome(GameStatus.ACTIVE, in_check=in_check, claimable_draws=frozenset(claims))
+
+    def mate_possibility(self, side: Color) -> MatePossibility:
+        """Conservatively decide whether a side could mate from the current position."""
+        return prove_mate_possibility(self.state, side, self.rules, self._repetitions)
 
     def _dead_after_forced_play(self, state: GameState, legal: tuple[Move, ...], depth: int) -> bool:
         """Prove a draw in bounded forced lines or trees made only of mandatory captures."""

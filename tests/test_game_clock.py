@@ -4,7 +4,8 @@ SPDX-License-Identifier: MPL-2.0
 """
 import unittest
 
-from chess_and_chains.chess import ChessError, Color, GameStatus, IllegalMoveError, Move
+from chess_and_chains.chess import ChessError, ChessGame, Color, GameStatus, IllegalMoveError, MatePossibility, Move, parse_fen
+from chess_and_chains.chess.mating import prove_mate_possibility
 from chess_and_chains.game import GameController, GameSetup
 from chess_and_chains.game.clock import GameClock, TimeControl
 
@@ -80,6 +81,43 @@ class TimedGameControllerTests(unittest.TestCase):
         self.assertEqual(self.controller.view().flagged, Color.WHITE)
         self.assertIs(self.controller.game.outcome().status, GameStatus.RECORDED_RESULT)
         self.assertIsNone(self.controller.game.outcome().winner)
+
+    def test_flag_draw_when_only_reply_captures_the_other_sides_rook(self):
+        self.start("8/8/8/8/4R3/8/r1k5/K7 w - - 0 1")
+        self.assertEqual(self.controller.game.rules.legal_moves(self.controller.game.state),
+                         (Move.from_uci("a1a2"),))
+        self.now = 1_000_000_000
+        self.assertTrue(self.controller.poll())
+        self.assertIs(self.controller.game.outcome().status, GameStatus.RECORDED_RESULT)
+        self.assertIsNone(self.controller.game.outcome().winner)
+        self.assertEqual(self.controller.game.moves, [])
+
+    def test_flag_win_when_a_legal_mating_line_exists(self):
+        self.start("7k/8/5K2/6Q1/8/8/8/8 b - - 148 1")
+        self.now = 1_000_000_000
+        self.assertTrue(self.controller.poll())
+        self.assertEqual(self.controller.view().flagged, Color.BLACK)
+        self.assertEqual(self.controller.game.outcome().winner, Color.WHITE)
+        self.assertEqual(self.controller.game.moves, [])
+
+    def test_cooperative_mate_does_not_continue_past_an_automatic_draw(self):
+        game = ChessGame(parse_fen("7k/8/5K2/6Q1/8/8/8/8 b - - 149 1"))
+        self.assertIs(game.mate_possibility(Color.WHITE), MatePossibility.UNKNOWN)
+        game = ChessGame(parse_fen("7k/8/5K2/6Q1/8/8/8/8 b - - 0 1"))
+        child = game.rules.apply(game.state, Move.from_uci("h8h7"))
+        seen = {game.rules.position_key(child): 4}
+        self.assertIs(prove_mate_possibility(game.state, Color.WHITE, game.rules, seen), MatePossibility.UNKNOWN)
+        self.assertEqual(seen[game.rules.position_key(child)], 4)
+
+    def test_proof_leaves_history_intact_and_recognizes_two_knights(self):
+        game = ChessGame(parse_fen("k7/2K5/2N5/3N4/8/8/8/8 w - - 0 1"))
+        game.play_uci("d5b6")
+        game.undo()
+        timeline = game.timeline()
+        self.assertIs(game.mate_possibility(Color.WHITE), MatePossibility.POSSIBLE)
+        self.assertEqual(game.timeline(), timeline)
+        game.redo()
+        self.assertIs(game.outcome().status, GameStatus.CHECKMATE)
 
     def test_undo_redo_restore_position_times_and_pause_clock(self):
         self.start()

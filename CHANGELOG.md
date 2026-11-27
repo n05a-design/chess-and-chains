@@ -2,7 +2,7 @@
 
 ## Unveröffentlicht – Sitzung, Uhr, Analyse und Training (2026-11-27)
 
-- Lokale Partien samt Undo/Redo und optionaler Fischer-Uhr automatisch sichern und fortsetzen.
+- Lokale Partien samt Undo/Redo und konfigurierbarer Fischer-Uhr automatisch sichern und fortsetzen. Beweisbare Ergebnisse nach Zeitablauf automatisch werten.
 - Konfigurierte UCI-Engines prüfen und Stellungen oder Bibliothekspartien analysieren.
 - Validierte Trainingsstellungen aus der Analyse speichern und fällige Puzzle-Wiederholungen anzeigen.
 - SQLite-Schema v5 speichert vollständige Bibliotheksanalysen und die fortsetzbare Matt-Trainingskette. Die Rücksicherung prüft Berichte, Sitzungen und Fortschritt.
