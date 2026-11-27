@@ -28,10 +28,12 @@ jobs:
         run: python scripts/verify_starter.py
       - name: Documentation links
         run: python scripts/verify_document_links.py
-      - name: Translation catalog parity
-        run: python -m unittest tests.test_i18n -v
-      - name: Foundation tests
-        run: python -m unittest tests.test_foundation -v
+      - name: Install test runner
+        run: python -m pip install "pytest>=8.4,<10"
+      - name: Verify test inventory and runner assignments
+        run: python scripts/ci_tests.py inventory
+      - name: Pytest-only suites
+        run: python scripts/ci_tests.py pytest
       - name: Logo masters and derived brand assets (pixel check, no writes)
         run: python -B scripts/build_brand_assets.py --check
 
@@ -62,22 +64,8 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
           allow-prereleases: true
-      - name: Chess core
-        run: python -m unittest tests.test_chess_core tests.test_chess_golden -v
-      - name: UCI adapter, presets and game controller (mock engine)
-        run: python -m unittest tests.test_uci_engine tests.test_bot_presets tests.test_game_controller -v
-      - name: Puzzle pipeline
-        run: python -m unittest tests.test_puzzles -v
-      - name: Storage
-        run: python -m unittest tests.test_storage -v
-      - name: Captured material calculations
-        run: python -m unittest tests.test_captured_material -v
-      - name: Local 3D board bridge and art contract
-        run: python -m unittest tests.test_marble_3d -v
-      - name: Foundation checks on this platform (path handling, e.g. macOS /private symlinks)
-        run: python -m unittest tests.test_foundation -v
-      - name: Brand assets and stdlib logo renderer on this platform
-        run: python -m unittest tests.test_brand_assets -v
+      - name: Headless test suites
+        run: python scripts/ci_tests.py headless
 
   gui-linux:
     name: Tk GUI tests under Xvfb (py${{ matrix.python }})
@@ -97,18 +85,8 @@ jobs:
           allow-prereleases: true
       - name: Install Xvfb
         run: sudo apt-get update && sudo apt-get install -y xvfb
-      - name: GUI tests (skips are failures here)
-        # GUI tests are run serially to avoid Tk display conflicts; test_board_ui
-        # and test_app_integration must come first (they create the fewest Toplevel
-        # windows), then the deeper integration suites.
-        run: |
-          xvfb-run -a python -m unittest \
-            tests.test_board_ui \
-            tests.test_app_integration \
-            tests.test_final_audit \
-            tests.test_glide_shell_integration \
-            tests.test_regression_audit \
-            -v
+      - name: Serial GUI tests
+        run: xvfb-run -a python scripts/ci_tests.py gui
       - name: Glide Shell self-test (manifest + 13/13 checks)
         run: xvfb-run -a python -m glide_shell.selftest
 
@@ -128,19 +106,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-      - name: GUI tests
+      - name: Serial GUI tests
         timeout-minutes: 5
-        shell: bash
-        # Serial execution required: each suite must complete before the next
-        # starts to prevent concurrent Tk root creation on Windows/macOS.
-        run: |
-          python -c "import faulthandler, unittest; faulthandler.dump_traceback_later(270, exit=True); unittest.main(module=None)" \
-            tests.test_board_ui \
-            tests.test_app_integration \
-            tests.test_final_audit \
-            tests.test_glide_shell_integration \
-            tests.test_regression_audit \
-            -v
+        run: python scripts/ci_tests.py gui
       - name: Glide Shell self-test (manifest + 13/13 checks)
         run: python -m glide_shell.selftest
       - name: Native macOS FEN file panels

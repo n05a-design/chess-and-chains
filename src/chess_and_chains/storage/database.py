@@ -25,6 +25,14 @@ from pathlib import Path
 
 from ..chess import ChessError, ChessGame, Color, DrawClaim, Move, export_pgn, parse_fen, parse_pgn, to_fen
 from ..chess.notation import read_pgn_headers
+from ..engines.analysis import AnalysisProgress
+from ..engines.analysis_report import MAX_REPORT_BYTES, decode_report, encode_report
+from ..game.session import GameSessionSnapshot, MAX_SNAPSHOT_BYTES
+from ..puzzles import load_demo_pack
+from ..puzzles.training import (
+    DEMO_MATE_CHAIN, MAX_TRAINING_CHECKPOINT_BYTES, AttemptStatus, TrainingAttempt, TrainingCandidate,
+    TrainingCheckpoint, demo_chain_catalog, summarize_attempts,
+)
 from .exchange import write_atomic_export
 
 MAX_PGN_FILE_BYTES = 256 * 1024
@@ -73,6 +81,40 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         );
         ALTER TABLE games ADD COLUMN declared_move TEXT CHECK (declared_move IS NULL OR draw_claim IS NOT NULL);
     """),
+    (4, """
+        ALTER TABLE games ADD COLUMN engine_ref TEXT;
+        ALTER TABLE games ADD COLUMN profile_id TEXT NOT NULL DEFAULT 'local' CHECK (profile_id = 'local');
+        ALTER TABLE puzzle_attempts ADD COLUMN profile_id TEXT NOT NULL DEFAULT 'local' CHECK (profile_id = 'local');
+        CREATE TABLE training_candidates (
+            source_game_id INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+            ply INTEGER NOT NULL CHECK (ply >= 0),
+            fen TEXT NOT NULL,
+            PRIMARY KEY (source_game_id, ply)
+        );
+        CREATE TABLE active_session (
+            slot INTEGER PRIMARY KEY CHECK (slot = 1),
+            snapshot TEXT NOT NULL CHECK (length(CAST(snapshot AS BLOB)) <= 262144)
+        );
+    """),
+    (5, """
+        CREATE TABLE analysis_reports (
+            run_id TEXT PRIMARY KEY NOT NULL,
+            source_game_id INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+            created_utc TEXT NOT NULL,
+            engine_name TEXT NOT NULL,
+            position_count INTEGER NOT NULL CHECK (position_count BETWEEN 1 AND 513),
+            report TEXT NOT NULL CHECK (length(CAST(report AS BLOB)) <= 4194304)
+        );
+        CREATE INDEX analysis_reports_game ON analysis_reports(source_game_id);
+        ALTER TABLE puzzle_attempts ADD COLUMN attempt_uid TEXT;
+        CREATE UNIQUE INDEX puzzle_attempt_uid ON puzzle_attempts(attempt_uid);
+        CREATE TABLE training_checkpoints (
+            chain_id TEXT PRIMARY KEY NOT NULL,
+            revision INTEGER NOT NULL CHECK (revision > 0),
+            hint_stage INTEGER NOT NULL CHECK (hint_stage BETWEEN 0 AND 2),
+            payload TEXT NOT NULL CHECK (length(CAST(payload AS BLOB)) <= 65536)
+        );
+    """),
 )
 SCHEMA_VERSION = MIGRATIONS[-1][0]
 
@@ -94,6 +136,15 @@ def _stamp() -> str:
 
 
 @dataclass(frozen=True, slots=True)
+class AnalysisReportSummary:
+    run_id: str
+    source_game_id: int
+    created_utc: str
+    engine_name: str
+    position_count: int
+
+
+@dataclass(frozen=True, slots=True)
 class SavedGame:
     id: int
     created_utc: str
@@ -109,6 +160,7 @@ class SavedGame:
     resigned_by: Color | None = None
     draw_claim: DrawClaim | None = None
     declared_move: Move | None = None
+    engine_ref: str | None = None
 
     def to_game(self) -> ChessGame:
         game = ChessGame(parse_fen(self.initial_fen))
@@ -291,7 +343,7 @@ class Database:
                         candidate.backup(staged)
                         self._migrate(staged, version)
                         staged.execute("SELECT id, created_utc, initial_fen, moves_uci, pgn, result, mode, "
-                                       "bot_color, bot_name, bot_preset, resigned_by, draw_claim, declared_move FROM games LIMIT 0")
+                                       "bot_color, bot_name, bot_preset, resigned_by, draw_claim, declared_move, engine_ref, profile_id FROM games LIMIT 0")
                         staged.execute("SELECT id, pack_id, puzzle_id, attempted_utc, solved, mistakes, "
                                        "hints_used, duration_ms FROM puzzle_attempts LIMIT 0")
                         staged.execute("SELECT pack_id, puzzle_id, attempts, solved, clean_solves, "
@@ -299,12 +351,54 @@ class Database:
                         staged_db = Database(staged, staged_path, recovered_from=None, migration_backup=None)
                         for (game_id,) in staged.execute("SELECT id FROM games"):
                             staged_db.load_game(game_id)
+                        staged_db.load_session()
+                        if staged.execute("PRAGMA foreign_key_check").fetchone():
+                            raise StorageError("Backup contains invalid references.")
+                        for candidate in staged_db.training_candidates():
+                            staged_db._validate_training_candidate(candidate)
+                        for (chain_id,) in staged.execute("SELECT chain_id FROM training_checkpoints"):
+                            saved = staged_db.load_training_checkpoint(chain_id)
+                            if saved is None:
+                                raise StorageError("Missing training checkpoint.")
+                            checkpoint, _, _ = saved
+                            try:
+                                staged_db._validate_training_checkpoint(checkpoint)
+                                for attempt in checkpoint.attempts:
+                                    if attempt.counted:
+                                        staged_db._verify_chain_attempt(attempt)
+                            except ValueError as error:
+                                raise StorageError(f"Invalid saved training chain: {error}") from error
+                        for report in staged_db.analysis_reports():
+                            staged_db.load_analysis_report(report.run_id)
                         safety = self.path.with_name(f"{self.path.name}.pre-restore-{_stamp()}.bak")
                         self._copy(self._conn, safety)
                         staged.backup(self._conn)
         except (OSError, sqlite3.Error, StorageError) as error:
             raise StorageError(f"Cannot restore backup {source}: {error}") from error
         return safety
+
+    def save_session(self, snapshot: GameSessionSnapshot) -> None:
+        payload = snapshot.encode()
+        self._conn.execute(
+            "INSERT INTO active_session(slot, snapshot) VALUES (1, ?) "
+            "ON CONFLICT(slot) DO UPDATE SET snapshot = excluded.snapshot",
+            (payload,),
+        )
+
+    def load_session(self) -> tuple[GameSessionSnapshot, ChessGame] | None:
+        row = self._conn.execute(
+            "SELECT CASE WHEN length(CAST(snapshot AS BLOB)) <= ? THEN snapshot END "
+            "FROM active_session WHERE slot = 1", (MAX_SNAPSHOT_BYTES,),
+        ).fetchone()
+        if row is None:
+            return None
+        try:
+            if not isinstance(row[0], str):
+                raise ValueError("Invalid session snapshot size or storage type.")
+            snapshot = GameSessionSnapshot.decode(row[0])
+            return snapshot, snapshot.restore_game()
+        except (ValueError, RecursionError) as error:
+            raise StorageError(f"Cannot read game session: {error}") from error
 
     # ----- games -------------------------------------------------------
     def save_game(
@@ -315,6 +409,7 @@ class Database:
         bot_color: str | None = None,
         bot_name: str | None = None,
         bot_preset: str | None = None,
+        engine_ref: str | None = None,
         headers: dict[str, str] | None = None,
         result: str | None = None,
     ) -> int:
@@ -328,30 +423,31 @@ class Database:
         result = pgn.rsplit(maxsplit=1)[-1]
         cursor = self._conn.execute(
             "INSERT INTO games (created_utc, initial_fen, moves_uci, pgn, result, mode, bot_color, bot_name, bot_preset,"
-            " resigned_by, draw_claim, declared_move) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            " resigned_by, draw_claim, declared_move, engine_ref) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (_now(), to_fen(game.initial_state), " ".join(m.to_uci() for m in game.moves), pgn, result,
              mode, bot_color, bot_name, bot_preset, outcome.resigned_by.value if outcome.resigned_by else None,
              outcome.claimed_draw.name if outcome.claimed_draw else None,
-             outcome.declared_move.to_uci() if outcome.declared_move else None),
+             outcome.declared_move.to_uci() if outcome.declared_move else None, engine_ref),
         )
         return int(cursor.lastrowid)
 
     def load_game(self, game_id: int) -> SavedGame:
         row = self._conn.execute(
             "SELECT id, created_utc, initial_fen, moves_uci, pgn, result, mode, bot_color, bot_name, bot_preset,"
-            " resigned_by, draw_claim, declared_move FROM games WHERE id = ?", (game_id,)
+            " resigned_by, draw_claim, declared_move, engine_ref FROM games WHERE id = ?", (game_id,)
         ).fetchone()
         if row is None:
             raise StorageError(f"No saved game with id {game_id}.")
         try:
             moves = tuple(Move.from_uci(token) for token in row[3].split())
             pgn = parse_pgn(row[4])
-            resigned_by, draw_claim, declared_move = row[10:]
+            resigned_by, draw_claim, declared_move, engine_ref = row[10:]
             saved = SavedGame(
                 row[0], row[1], row[2], moves, *row[4:10], pgn_tags=pgn.tags,
                 resigned_by=Color(resigned_by) if resigned_by is not None else None,
                 draw_claim=DrawClaim[draw_claim] if draw_claim is not None else None,
                 declared_move=Move.from_uci(declared_move) if declared_move is not None else None,
+                engine_ref=engine_ref,
             )
             if (pgn.moves != saved.moves or pgn.initial_state != parse_fen(saved.initial_fen)
                     or pgn.result != saved.result):
@@ -418,6 +514,139 @@ class Database:
         ids = game_ids if game_ids is not None else [r[0] for r in reversed(self.list_games())]
         return "\n\n".join(self.load_game(i).pgn for i in ids) + ("\n" if ids else "")
 
+    def save_analysis_report(self, game_id: int, progress: AnalysisProgress) -> None:
+        source = self.load_game(game_id).to_game()
+        payload = encode_report(progress, source)
+        name = progress.results[0].configuration.engine_name
+        values = progress.job_id, game_id, _now(), name, progress.total, payload
+        cursor = self._conn.execute(
+            "INSERT INTO analysis_reports(run_id, source_game_id, created_utc, engine_name, position_count, report) "
+            "VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(run_id) DO NOTHING", values,
+        )
+        if not cursor.rowcount:
+            existing = self._conn.execute(
+                "SELECT source_game_id, report FROM analysis_reports WHERE run_id = ?", (progress.job_id,),
+            ).fetchone()
+            if existing != (game_id, payload):
+                raise StorageError("Analysis run identifier already refers to a different report.")
+
+    def analysis_reports(self) -> tuple[AnalysisReportSummary, ...]:
+        rows = self._conn.execute(
+            "SELECT run_id, source_game_id, created_utc, engine_name, position_count "
+            "FROM analysis_reports ORDER BY created_utc DESC, rowid DESC"
+        )
+        return tuple(AnalysisReportSummary(*row) for row in rows)
+
+    def load_analysis_report(self, run_id: str) -> tuple[int, AnalysisProgress]:
+        row = self._conn.execute(
+            "SELECT source_game_id, engine_name, position_count, "
+            "CASE WHEN length(CAST(report AS BLOB)) <= ? THEN report END "
+            "FROM analysis_reports WHERE run_id = ?", (MAX_REPORT_BYTES, run_id),
+        ).fetchone()
+        if row is None:
+            raise StorageError("Analysis report is no longer available.")
+        game_id, engine_name, count, payload = row
+        try:
+            report = decode_report(payload, self.load_game(game_id).to_game())
+            if (report.job_id, report.results[0].configuration.engine_name, report.total) != (run_id, engine_name, count):
+                raise ValueError("Analysis index differs from the saved report.")
+        except ValueError as error:
+            raise StorageError(f"Invalid saved analysis: {error}") from error
+        return game_id, report
+
+    def _validate_training_candidate(self, candidate: TrainingCandidate) -> None:
+        positions = self.load_game(candidate.source_game_id).to_game().played_positions()
+        if candidate.ply >= len(positions) or to_fen(positions[candidate.ply]) != candidate.fen:
+            raise StorageError("Training position does not match the saved game.")
+
+    def save_training_candidate(self, candidate: TrainingCandidate) -> None:
+        self._validate_training_candidate(candidate)
+        self._conn.execute(
+            "INSERT INTO training_candidates(source_game_id, ply, fen) VALUES (?, ?, ?) "
+            "ON CONFLICT(source_game_id, ply) DO NOTHING",
+            (candidate.source_game_id, candidate.ply, candidate.fen),
+        )
+
+    def training_candidates(self) -> tuple[TrainingCandidate, ...]:
+        rows = self._conn.execute(
+            "SELECT source_game_id, ply, fen FROM training_candidates ORDER BY source_game_id DESC, ply"
+        )
+        try:
+            return tuple(TrainingCandidate(*row) for row in rows)
+        except (ValueError, TypeError) as error:
+            raise StorageError(f"Invalid training candidate: {error}") from error
+
+    @staticmethod
+    def _validate_training_checkpoint(checkpoint: TrainingCheckpoint) -> None:
+        if checkpoint.chain_id != DEMO_MATE_CHAIN.chain_id:
+            raise ValueError("Unknown saved training chain.")
+        DEMO_MATE_CHAIN.resume(demo_chain_catalog(load_demo_pack()), checkpoint)
+
+    @staticmethod
+    def _chain_attempt_values(attempt: TrainingAttempt) -> tuple:
+        return (attempt.key.pack_id, attempt.key.puzzle_id, attempt.recorded_at.isoformat(),
+                int(attempt.status is AttemptStatus.SOLVED), attempt.mistakes, attempt.hints_used,
+                attempt.duration_ms)
+
+    def _verify_chain_attempt(self, attempt: TrainingAttempt) -> None:
+        row = self._conn.execute(
+            "SELECT pack_id, puzzle_id, attempted_utc, solved, mistakes, hints_used, duration_ms "
+            "FROM puzzle_attempts WHERE attempt_uid = ?", (attempt.attempt_id,),
+        ).fetchone()
+        if row != self._chain_attempt_values(attempt):
+            raise StorageError("Training attempt differs from its checkpoint.")
+
+    def save_training_checkpoint(
+        self, checkpoint: TrainingCheckpoint, *, expected_revision: int, hint_stage: int,
+    ) -> int:
+        """Save the session and grade each completed attempt exactly once."""
+        self._validate_training_checkpoint(checkpoint)
+        payload = checkpoint.encode()
+        revision = expected_revision + 1
+        self._conn.execute("BEGIN IMMEDIATE")
+        try:
+            previous = self.load_training_checkpoint(checkpoint.chain_id)
+            if (previous[1] if previous else 0) != expected_revision:
+                raise StorageError("The training chain was changed by another window.")
+            self._conn.execute(
+                "INSERT INTO training_checkpoints(chain_id, revision, hint_stage, payload) VALUES (?, ?, ?, ?) "
+                "ON CONFLICT(chain_id) DO UPDATE SET revision = excluded.revision, "
+                "hint_stage = excluded.hint_stage, payload = excluded.payload",
+                (checkpoint.chain_id, revision, hint_stage, payload),
+            )
+            for attempt in checkpoint.attempts:
+                if attempt.counted:
+                    result = self._conn.execute(
+                        "INSERT INTO puzzle_attempts(pack_id, puzzle_id, attempted_utc, solved, mistakes, hints_used, "
+                        "duration_ms, attempt_uid) VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
+                        "ON CONFLICT(attempt_uid) DO NOTHING",
+                        (*self._chain_attempt_values(attempt), attempt.attempt_id),
+                    )
+                    if not result.rowcount:
+                        self._verify_chain_attempt(attempt)
+            self._conn.execute("COMMIT")
+        except BaseException:
+            self._conn.execute("ROLLBACK")
+            raise
+        return revision
+
+    def load_training_checkpoint(self, chain_id: str) -> tuple[TrainingCheckpoint, int, int] | None:
+        row = self._conn.execute(
+            "SELECT revision, hint_stage, CASE WHEN length(CAST(payload AS BLOB)) <= ? THEN payload END "
+            "FROM training_checkpoints WHERE chain_id = ?", (MAX_TRAINING_CHECKPOINT_BYTES, chain_id),
+        ).fetchone()
+        if row is None:
+            return None
+        revision, hint_stage, payload = row
+        try:
+            checkpoint = TrainingCheckpoint.decode(payload)
+            if (checkpoint.chain_id != chain_id or type(revision) is not int or revision < 1
+                    or type(hint_stage) is not int or not 0 <= hint_stage <= 2):
+                raise ValueError("Invalid training checkpoint index.")
+        except (TypeError, ValueError) as error:
+            raise StorageError(f"Invalid saved training chain: {error}") from error
+        return checkpoint, revision, hint_stage
+
     # ----- puzzles -----------------------------------------------------
     def record_puzzle_attempt(
         self, pack_id: str, puzzle_id: str, *, solved: bool, mistakes: int, hints_used: int,
@@ -455,6 +684,20 @@ class Database:
             if not clean_solves:
                 review.add(puzzle_id)
         return solved, review
+
+    def due_puzzle_ids(self, pack_id: str, *, now: datetime) -> set[str]:
+        """Project due reviews from the attempts of the selected pack."""
+        if now.utcoffset() is None:
+            raise ValueError("Review time must include a timezone.")
+        rows = self._conn.execute(
+            "SELECT id, pack_id, puzzle_id, attempted_utc, solved, mistakes, hints_used, duration_ms "
+            "FROM puzzle_attempts WHERE pack_id = ? ORDER BY id", (pack_id,),
+        )
+        try:
+            progress = summarize_attempts(TrainingAttempt.from_legacy(*row) for row in rows)
+        except (ValueError, OverflowError, TypeError) as error:
+            raise StorageError(f"Invalid training history for {pack_id}: {error}") from error
+        return {key.puzzle_id for key, item in progress.items() if item.due_at <= now}
 
     def latest_puzzle_attempt(self, pack_id: str, puzzle_id: str) -> PuzzleAttempt | None:
         row = self._conn.execute(

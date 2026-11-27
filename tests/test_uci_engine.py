@@ -6,6 +6,7 @@ import threading
 import time
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
@@ -34,7 +35,11 @@ for raw in sys.stdin:
     elif command == "isready":
         print("readyok", flush=True)
     elif command.startswith("go "):
-        if mode == "stall":
+        if mode == "clock":
+            if command != "go wtime 1980 btime 2000 winc 100 binc 100":
+                sys.exit(9)
+            print("bestmove e2e4", flush=True)
+        elif mode == "stall":
             time.sleep(2)
         elif mode == "crash":
             sys.exit(7)
@@ -69,6 +74,14 @@ def create_engine(mode: str = "normal", **kwargs) -> UCIEngine:
 
 
 class UCIEngineTests(unittest.TestCase):
+    def test_clock_search_encodes_both_times_and_increments(self):
+        with create_engine("clock") as engine:
+            move = Move.from_uci("e2e4")
+            self.assertEqual(engine.go_clock(1980, 2000, 100, 100, (move,)), move)
+            for invalid in (-1, True, 1.5):
+                with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                    engine.go_clock(2000, invalid, 100, 100, (move,))
+
     def test_probe_uses_the_advertised_name_and_option_count(self):
         self.assertEqual(probe_engine(EngineConfig.mock()), (ENGINE_NAME, len(OPTIONS)))
 
@@ -197,6 +210,17 @@ class UCIEngineTests(unittest.TestCase):
                 self.assertEqual(second.result(timeout=1), expected)
         finally:
             engine.close()
+
+    def test_cancellation_shortens_search_to_the_stop_deadline(self):
+        engine = create_engine(shutdown_timeout=1.0)
+        cancelled = threading.Event()
+        cancelled.set()
+        with patch("chess_and_chains.engines.uci.time") as clock, patch.object(engine, "stop_search") as stop:
+            # The original search allows eight seconds. The stop deadline expires after one.
+            clock.monotonic.side_effect = (10.0, 10.1, 11.2)
+            with self.assertRaises(EngineTimeoutError):
+                engine._read_until_matching(lambda line: line.startswith("bestmove "), 8.0, cancelled=cancelled)
+        stop.assert_called_once_with()
 
     def test_search_timeout_is_reported_and_process_can_be_closed(self):
         engine = create_engine("stall", command_timeout=0.05)

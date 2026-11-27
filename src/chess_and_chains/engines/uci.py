@@ -243,13 +243,43 @@ class UCIEngine:
         timeout: float | None = None,
         *,
         cancelled: threading.Event | None = None,
+        on_info: Callable[[str], None] | None = None,
     ) -> Move | None:
+        """Search for one move; analysis callbacks also poll for cancellation.
+
+        The callback runs on the search owner thread. Without it, the move
+        provider can cancel an in-flight search with ``stop_search()`` as before.
+        """
         if (
             not isinstance(milliseconds, int)
             or isinstance(milliseconds, bool)
             or milliseconds <= 0
         ):
             raise ValueError("Move time must be a positive integer in milliseconds.")
+        return self._search(f"go movetime {milliseconds}", legal_moves, timeout, cancelled, on_info)
+
+    def go_clock(
+        self,
+        white_ms: int,
+        black_ms: int,
+        white_increment_ms: int,
+        black_increment_ms: int,
+        legal_moves: Sequence[Move],
+        *,
+        timeout: float | None = None,
+        cancelled: threading.Event | None = None,
+    ) -> Move | None:
+        """Search with Fischer time controls. Values are UCI milliseconds."""
+        times = (white_ms, black_ms, white_increment_ms, black_increment_ms)
+        if any(type(value) is not int or value < 0 for value in times):
+            raise ValueError("UCI clock values must be non-negative integers in milliseconds.")
+        command = f"go wtime {white_ms} btime {black_ms} winc {white_increment_ms} binc {black_increment_ms}"
+        return self._search(command, legal_moves, timeout, cancelled, None)
+
+    def _search(
+        self, command: str, legal_moves: Sequence[Move], timeout: float | None,
+        cancelled: threading.Event | None, on_info: Callable[[str], None] | None,
+    ) -> Move | None:
         response_timeout = self._effective_timeout(timeout)
         legal = tuple(legal_moves)
         if any(not isinstance(move, Move) for move in legal):
@@ -260,11 +290,14 @@ class UCIEngine:
                 with self._state_lock:
                     if cancelled is not None and cancelled.is_set():
                         return None
-                    self._send(f"go movetime {milliseconds}")
+                    self._send(command)
                     self._searching = True
-                response = self._read_until_prefix(
-                    "bestmove ", response_timeout
+                response = self._read_until_matching(
+                    lambda line: line.startswith("bestmove "), response_timeout,
+                    on_info=on_info, cancelled=cancelled if on_info is not None else None,
                 )
+                if on_info is not None and cancelled is not None and cancelled.is_set():
+                    return None
                 move = self._parse_bestmove(response)
                 if move is None:
                     if legal:
@@ -338,21 +371,25 @@ class UCIEngine:
     def _read_until(self, expected: str, timeout: float) -> str:
         return self._read_until_matching(lambda line: line == expected, timeout)
 
-    def _read_until_prefix(self, prefix: str, timeout: float) -> str:
-        return self._read_until_matching(lambda line: line.startswith(prefix), timeout)
-
     def _read_until_matching(
-        self, predicate: Callable[[str], bool], timeout: float
+        self, predicate: Callable[[str], bool], timeout: float, *,
+        on_info: Callable[[str], None] | None = None,
+        cancelled: threading.Event | None = None,
     ) -> str:
         deadline = time.monotonic() + timeout
+        stopping = False
         while True:
+            if cancelled is not None and cancelled.is_set() and not stopping:
+                self.stop_search()
+                stopping = True
+                deadline = min(deadline, time.monotonic() + self._shutdown_timeout)
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise EngineTimeoutError("Engine response timed out.")
             try:
-                output = self._output.get(timeout=remaining)
-            except queue.Empty as error:
-                raise EngineTimeoutError("Engine response timed out.") from error
+                output = self._output.get(timeout=min(remaining, 0.05) if cancelled is not None else remaining)
+            except queue.Empty:
+                continue
             if output is _EOF:
                 process = self._process
                 code = process.poll() if process is not None else None
@@ -362,7 +399,9 @@ class UCIEngine:
             assert isinstance(output, str)
             if predicate(output):
                 return output
-            if output.startswith("id name "):
+            if on_info is not None and not stopping and output.startswith("info "):
+                on_info(output)
+            elif output.startswith("id name "):
                 self._name = output.removeprefix("id name ").strip() or None
             elif output.startswith("option "):
                 self._record_option(output)

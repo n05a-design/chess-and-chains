@@ -1,5 +1,15 @@
 # Changelog
 
+## Unveröffentlicht – Sitzung, Uhr, Analyse und Training (2026-11-27)
+
+- Lokale Partien samt Undo/Redo und konfigurierbarer Fischer-Uhr automatisch sichern und fortsetzen. Beweisbare Ergebnisse nach Zeitablauf automatisch werten.
+- Konfigurierte UCI-Engines prüfen und Stellungen oder Bibliothekspartien analysieren.
+- Validierte Trainingsstellungen aus der Analyse speichern und fällige Puzzle-Wiederholungen anzeigen.
+- SQLite-Schema v5 speichert vollständige Bibliotheksanalysen und die fortsetzbare Matt-Trainingskette. Die Rücksicherung prüft Berichte, Sitzungen und Fortschritt.
+- Streaming für lokale Rätselpakete und automatische CI-Zuordnung einschließlich Figurensatztests ergänzen.
+
+[Funktionsumfang und Prüfnachweise](docs/roadmap/FUNCTIONAL_CORE.md)
+
 ## Unveröffentlicht – Logo-Integration der drei Inhaber-Master (2026-11-26)
 
 Aktiv sind die Master **V.2** des Inhabers (26.11.2026); V.1 (25.11.2026) liegt in `design/01_Logo/Archiv/Chess-&-Chains_V.1_2026-11-25/`. Keine Versionserhöhung. Vertrag: [`design/01_Logo/README.md`](design/01_Logo/README.md) · Bericht: [`docs/reports/2026-11-26_logo-integration.md`](docs/reports/2026-11-26_logo-integration.md).

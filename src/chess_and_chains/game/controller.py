@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import queue
 import threading
+from time import monotonic_ns
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Callable
@@ -35,11 +36,13 @@ from ..chess import (
     IllegalMoveError,
     Move,
     MoveOutcome,
+    MatePossibility,
     parse_fen,
     to_fen,
     to_san,
 )
-from ..engines.bot import BotRequest, MoveProvider
+from ..engines.bot import BotClock, BotRequest, MoveProvider
+from .clock import ClockReading, ClockTimeline, GameClock, TimeControl
 
 
 class PlayMode(str, Enum):
@@ -52,6 +55,7 @@ class GameSetup:
     mode: PlayMode = PlayMode.HUMAN_VS_HUMAN
     bot_color: Color | None = None
     initial_fen: str | None = None
+    time_control: TimeControl | None = None
 
     def __post_init__(self) -> None:
         if self.mode is PlayMode.HUMAN_VS_BOT and self.bot_color is None:
@@ -102,6 +106,9 @@ class GameView:
     human_to_move: bool
     generation: int
     captured_material: CapturedMaterial | None = None
+    clock: ClockReading | None = None
+    clock_running: bool = False
+    flagged: Color | None = None
 
 
 Listener = Callable[[GameView], None]
@@ -151,7 +158,11 @@ class BotWorker:
 
 
 class GameController:
-    def __init__(self, provider: MoveProvider | None = None) -> None:
+    def __init__(self, provider: MoveProvider | None = None, *, now: Callable[[], int] = monotonic_ns) -> None:
+        self._now = now
+        self._clock: GameClock | None = None
+        self._clock_positions: list[ClockReading] = []
+        self._flagged: Color | None = None
         self._provider = provider
         self._worker: BotWorker | None = None
         self._listeners: list[Listener] = []
@@ -208,6 +219,9 @@ class GameController:
             human_to_move=human,
             generation=self._generation,
             captured_material=self._game.captured_material(),
+            clock=self._clock.reading() if self._clock else None,
+            clock_running=bool(self._clock and self._clock.running),
+            flagged=self._flagged,
         )
 
     @property
@@ -232,11 +246,46 @@ class GameController:
         self._ensure_open()
         self._replace_game(game, GameSetup.two_players())
 
-    def _replace_game(self, game: ChessGame, setup: GameSetup) -> None:
+    def resume_game(
+        self, game: ChessGame, setup: GameSetup, *, provider: MoveProvider | None = None,
+        clock: ClockTimeline | None = None,
+    ) -> None:
+        """Resume a validated active game using its original setup."""
+        self._ensure_open()
+        if game.outcome().status is not GameStatus.ACTIVE:
+            raise ChessError("A finished game cannot be resumed.")
+        if setup.mode is PlayMode.HUMAN_VS_BOT and provider is None and self._provider is None:
+            raise ChessError("No bot provider is configured.")
+        if (setup.time_control is None) != (clock is None):
+            raise ChessError("A restored timed game requires its saved clock.")
+        self._replace_game(game, setup, provider=provider, clock=clock)
+
+    def _replace_game(
+        self, game: ChessGame, setup: GameSetup, *, provider: MoveProvider | None = None,
+        clock: ClockTimeline | None = None,
+    ) -> None:
         self._invalidate()
+        if provider is not None and provider is not self._provider:
+            if self._worker is None and self._provider is not None:
+                self._provider.close()
+            self._stop_worker()
+            self._provider = provider
         self._game_id += 1
         self._setup = setup
         self._game = game
+        self._clock = GameClock(setup.time_control, game.state.turn, now=self._now) if setup.time_control else None
+        self._clock_positions.clear()
+        self._flagged = None
+        if self._clock is not None:
+            if clock is None:
+                self._clock_positions.append(self._clock.reading())
+                if game.outcome().status is GameStatus.ACTIVE:
+                    self._clock.resume()
+            else:
+                self._clock_positions.extend(clock.positions)
+                self._clock.restore_paused(clock.current)
+                if clock.current.remaining_ns(clock.current.turn) == 0:
+                    self._flagged = clock.current.turn
         self._initial_fen = to_fen(self._game.initial_state)
         self._san.clear()
         self._san_moves.clear()
@@ -251,7 +300,7 @@ class GameController:
         self._provider = provider
         self._bot_error = None
         if provider is None and self._setup.mode is PlayMode.HUMAN_VS_BOT:
-            self._setup = GameSetup.two_players()
+            self._setup = GameSetup(time_control=self._setup.time_control)
         self._maybe_request_bot()
         self._notify()
 
@@ -260,52 +309,145 @@ class GameController:
         outcome = self._game.outcome()
         if not self._human_to_move(outcome):
             raise IllegalMoveError("It is not a human player's turn.")
-        self._game.play(move)
+        try:
+            self._play_move(move)
+        except ChessError:
+            if self._flagged is not None:
+                self._notify()
+            raise
         self._maybe_request_bot()
         self._notify()
 
     def undo(self) -> None:
         """Undo one ply (two players) or back to the human's last decision (bot)."""
         self._ensure_open()
+        if self._check_timeout():
+            self._notify()
         if not self._can_undo():
             raise ChessError("There is no move to undo.")
         self._invalidate()
         self._bot_error = None
         self._game.undo()
-        if self._setup.mode is PlayMode.HUMAN_VS_BOT:
+        if self._clock is None and self._setup.mode is PlayMode.HUMAN_VS_BOT:
             while self._game.state.turn is self._setup.bot_color and self._game.moves:
                 self._game.undo()
+        self._restore_clock_after_edit()
         self._maybe_request_bot()
         self._notify()
 
     def redo(self) -> None:
         self._ensure_open()
+        if self._check_timeout():
+            self._notify()
         if not self._can_redo():
             raise ChessError("There is no move to redo.")
         self._invalidate()
         self._game.redo()
-        if self._setup.mode is PlayMode.HUMAN_VS_BOT:
+        if self._clock is None and self._setup.mode is PlayMode.HUMAN_VS_BOT:
             while self._game.state.turn is self._setup.bot_color and self._redo_available():
                 self._game.redo()
+        self._restore_clock_after_edit()
         self._maybe_request_bot()
         self._notify()
 
     def claim_draw(self, reason: DrawClaim, move: Move | None = None) -> None:
         self._ensure_open()
+        if self._check_timeout():
+            self._notify()
         if not self._human_to_move(self._game.outcome()):
             raise ChessError("Only the player to move may claim a draw.")
         self._game.claim_draw(reason, move)
+        self._pause_clock()
         self._invalidate()
         self._notify()
 
     def resign(self) -> None:
         self._ensure_open()
+        if self._check_timeout():
+            self._notify()
         self._invalidate()
         color = self._game.state.turn
         if self._setup.mode is PlayMode.HUMAN_VS_BOT:
             color = self._setup.bot_color.opposite  # type: ignore[union-attr]
+        if self._flagged is not None:
+            raise ChessError("The game is awaiting a timeout result.")
         self._game.resign(color)
+        self._pause_clock()
         self._notify()
+
+    def clock_reading(self) -> ClockReading | None:
+        return self._clock.reading() if self._clock else None
+
+    def pause_for_close(self) -> None:
+        self._check_timeout()
+        self._pause_clock()
+
+    def clock_timeline(self) -> ClockTimeline | None:
+        if self._clock is None:
+            return None
+        return ClockTimeline(self._clock.reading(), tuple(self._clock_positions))
+
+    def toggle_clock(self) -> None:
+        self._ensure_open()
+        if self._clock is None or self._flagged is not None or self._game.outcome().status is not GameStatus.ACTIVE:
+            return
+        if not self._check_timeout():
+            if self._clock.running:
+                self._pause_clock()
+                self._invalidate()
+            else:
+                self._clock.resume()
+                self._maybe_request_bot()
+        self._notify()
+
+    def adjudicate_timeout(self, *, draw: bool) -> None:
+        self._ensure_open()
+        if self._flagged is None or self._game.outcome().status is not GameStatus.ACTIVE:
+            raise ChessError("No timeout awaits a result.")
+        result = "1/2-1/2" if draw else ("0-1" if self._flagged is Color.WHITE else "1-0")
+        self._game.record_result(result)
+        self._notify()
+
+    def _pause_clock(self) -> None:
+        if self._clock is not None:
+            self._clock.pause()
+
+    def _check_timeout(self, at_ns: int | None = None) -> bool:
+        if self._clock is None or not self._clock.running:
+            return False
+        at_ns = self._clock.sample_time() if at_ns is None else at_ns
+        reading = self._clock.reading(at_ns)
+        if reading.remaining_ns(reading.turn) > 0:
+            return False
+        self._clock.pause(at_ns)
+        self._flagged = reading.turn
+        self._invalidate()
+        possibility = self._game.mate_possibility(reading.turn.opposite)
+        if possibility is MatePossibility.IMPOSSIBLE:
+            self._game.record_result("1/2-1/2")
+        elif possibility is MatePossibility.POSSIBLE:
+            self._game.record_result("0-1" if reading.turn is Color.WHITE else "1-0")
+        return True
+
+    def _play_move(self, move: Move) -> None:
+        clock = self._clock
+        at_ns = clock.sample_time() if clock else None
+        if self._check_timeout(at_ns):
+            raise ChessError("The time expired before the move.")
+        self._game.play(move)
+        if clock is not None:
+            assert at_ns is not None
+            clock.complete_move(at_ns)
+            del self._clock_positions[len(self._game.moves):]
+            self._clock_positions.append(clock.reading(at_ns))
+            if self._game.outcome().status is not GameStatus.ACTIVE:
+                clock.pause(at_ns)
+
+    def _restore_clock_after_edit(self) -> None:
+        if self._clock is None:
+            return
+        self._flagged = None
+        self._clock.restore_paused(self._clock_positions[len(self._game.moves)])
 
     def retry_bot(self) -> None:
         """Clear a bot error and request a move again (engine restarts if needed)."""
@@ -316,6 +458,9 @@ class GameController:
 
     def poll(self) -> bool:
         """Apply finished worker results on the owner thread. Returns True if state changed."""
+        if self._check_timeout():
+            self._notify()
+            return True
         worker = self._worker
         if worker is None:
             return False
@@ -355,9 +500,10 @@ class GameController:
             self._bot_error = "Engine returned no move in an active position."
             return True
         try:
-            self._game.play(result.move)
+            self._play_move(result.move)
         except ChessError as error:
-            self._bot_error = f"Engine move rejected: {error}"
+            if self._flagged is None:
+                self._bot_error = f"Engine move rejected: {error}"
             return True
         self._maybe_request_bot()
         return True
@@ -365,7 +511,7 @@ class GameController:
     def _maybe_request_bot(self) -> None:
         if self._setup.mode is not PlayMode.HUMAN_VS_BOT or self._provider is None:
             return
-        if self._bot_error or self._pending is not None:
+        if self._bot_error or self._pending is not None or (self._clock and not self._clock.running):
             return
         if self._game.state.turn is not self._setup.bot_color:
             return
@@ -374,6 +520,14 @@ class GameController:
         if self._worker is None or not self._worker.alive:
             self._worker = BotWorker(self._provider)
         ply = len(self._game.moves)
+        timing = None
+        if self._clock is not None:
+            reading = self._clock.reading()
+            timing = BotClock(
+                reading.remaining_ms(Color.WHITE), reading.remaining_ms(Color.BLACK),
+                self._clock.control.increment_ms, self._clock.control.increment_ms,
+                reading.remaining_ms(reading.turn),
+            )
         request = BotRequest(
             generation=self._generation,
             ply=ply,
@@ -381,6 +535,7 @@ class GameController:
             moves=tuple(self._game.moves),
             legal_moves=self._game.rules.legal_moves(self._game.state),
             game_id=self._game_id,
+            clock=timing,
         )
         self._pending = request
         self._worker.submit(request)
@@ -400,20 +555,20 @@ class GameController:
         return worker.stop(timeout)
 
     def _human_to_move(self, outcome: MoveOutcome) -> bool:
-        if outcome.status is not GameStatus.ACTIVE:
+        if outcome.status is not GameStatus.ACTIVE or (self._clock and not self._clock.running):
             return False
         if self._setup.mode is PlayMode.HUMAN_VS_HUMAN:
             return True
         return self._pending is None and self._game.state.turn is not self._setup.bot_color
 
     def _can_undo(self) -> bool:
-        if not self._game.can_undo:
+        if not self._game.can_undo or self._flagged is not None:
             return False
-        if self._setup.mode is PlayMode.HUMAN_VS_BOT:
+        if self._clock is None and self._setup.mode is PlayMode.HUMAN_VS_BOT:
             # Bot opened the game: its first move alone is not undoable to a human turn.
             bot_first = self._game.initial_state.turn is self._setup.bot_color
             return len(self._game.moves) > (1 if bot_first else 0) or self._game.outcome().status in (
-                GameStatus.RESIGNED, GameStatus.DRAW_CLAIMED,
+                GameStatus.RESIGNED, GameStatus.DRAW_CLAIMED, GameStatus.RECORDED_RESULT,
             )
         return True
 
@@ -421,7 +576,7 @@ class GameController:
         return self._game.can_redo
 
     def _can_redo(self) -> bool:
-        return self._redo_available() and self._pending is None
+        return self._redo_available() and self._pending is None and self._flagged is None
 
     def _sync_san(self) -> list[str]:
         """Incrementally maintain SAN; avoids O(n) replay on every UI refresh."""

@@ -17,9 +17,11 @@ from functools import partial
 from queue import Empty, SimpleQueue
 from weakref import proxy
 from dataclasses import replace
+from datetime import datetime, timezone
 from pathlib import Path
 from tkinter import filedialog, font, messagebox, ttk
 from typing import Callable, Sequence
+from uuid import uuid4
 
 from glide_shell import (
     action_picker,
@@ -49,23 +51,31 @@ from ..chess import (
     GameStatus,
     Move,
     export_pgn,
+    parse_fen,
     square_name,
+    to_fen,
     to_san,
 )
-from ..engines.bot import EngineConfig, EngineConfigError, MoveProvider, UCIBot, probe_engine, resolve_engine_config
+from ..engines.analysis import AnalysisMode, AnalysisProgress, AnalysisRequest, AnalysisResult, AnalysisService
+from ..engines.bot import EngineConfig, EngineConfigError, MoveProvider, UCIBot, resolve_engine_config
+from ..engines.registry import EngineAvailability, EngineRegistry
 from ..engines.presets import BotPreset, load_presets
 from ..engines.uci import UCIEngineError
 from ..game import BotStatus, GameController, GameSetup, GameView, PlayMode
+from ..game.clock import TimeControl
+from ..game.session import GameSessionSnapshot, SessionLifecycle
 from ..i18n import Translator
 from ..puzzles import DEMO_PACK_ID, PackError, PackLibrary, Puzzle, PuzzlePack, PuzzleSession, Verdict, load_demo_pack
-from ..storage import Database, DataLayout, Settings, SettingsError, StorageError, load_settings, save_settings
+from ..puzzles.training import DEMO_MATE_CHAIN, TrainingCandidate, TrainingSession, demo_chain_catalog
+from ..storage import Database, DataLayout, SavedGame, Settings, SettingsError, StorageError, load_settings, save_settings
+from .analysis_dialog import AnalysisDialog
 from .appearance_dialog import AppearanceDialog
 from .atlas import PuzzleAtlas
 from .board import Orientation
 from .board_artwork import BoardArtwork, BoardArtworkError, BoardDesign
 from .branding import apply_window_icon, draw_signet_canvas, emblem_image
 from .captured_material import CapturedMaterialBar
-from .dialogs import PositionDialog, bind_button_enter as _bind_button_enter
+from .dialogs import PositionDialog, ask_time_control, bind_button_enter as _bind_button_enter
 from .marble_board import MarbleBoardCanvas
 from .pieces import OwnerSvgPieces, PieceRenderer, get_piece_set
 from .replay import ReplayDialog
@@ -305,8 +315,13 @@ class ChessApp:
         self.t = Translator(locale or self.settings.locale)
         self.presets = load_presets()
         self._provider_factory = provider_factory
+        self.engine_registry = EngineRegistry()
+        self._analysis: tuple[str, AnalysisService] | None = None
         self.controller = GameController()
         self._unsubscribe_view = self.controller.subscribe(self._on_view)
+        self._session_game = self.game
+        self._saved_session: GameSessionSnapshot | None = None
+        self._session_blocked = False
         self.orientation: Orientation = "white"
         self.active_panel = "play"
         self._pack_library = PackLibrary(data_layout.packs) if data_layout is not None else None
@@ -318,6 +333,8 @@ class ChessApp:
         self.puzzle_index = 0
         self.puzzle: PuzzleSession | None = None
         self._puzzle_recorded = False
+        self._chain: TrainingSession | None = None
+        self._chain_revision = 0
         self._puzzle_hint_stage = 0
         self._solved_puzzle_ids: set[str] = set()
         self._review_puzzle_ids: set[str] = set()
@@ -330,6 +347,7 @@ class ChessApp:
         self.panel_text = tk.StringVar(root)
         self.header_mode_text = tk.StringVar(root)
         self.action_state_text = tk.StringVar(root)
+        self.clock_text = tk.StringVar(root)
         self.bot_text = tk.StringVar(root)
         self.puzzle_title_text = tk.StringVar(root)
         self.puzzle_meta_text = tk.StringVar(root)
@@ -360,7 +378,8 @@ class ChessApp:
         self._poll_job = self.scope.after(POLL_MS, self._poll)
         if self.db is not None and self.db.recovered_from is not None:
             database_warning = self.t("library.recovered", file=self.db.recovered_from.name)
-        startup_messages = (database_warning, self.settings_warning)
+        session_message = self._restore_session()
+        startup_messages = (database_warning, self.settings_warning, session_message)
         self.interaction_text.set("\n".join(message for message in startup_messages if message))
         saved_pack = self.settings.last_pack_id
         if puzzle_pack is None and self._pack_library is not None and saved_pack not in (None, DEMO_PACK_ID):
@@ -626,9 +645,17 @@ class ChessApp:
         entries = [
             (t("menu.game"), [
                 (t("button.new_game"), self._new_game, desktop_adapter.format_accelerator("N"), "new_game"),
+                (t("clock.new"), self._new_timed_game, "", "new_timed_game"),
+                (t("clock.toggle"), self.controller.toggle_clock, "", "toggle_clock"),
+                (t("clock.decide"), self._decide_timeout, "", "decide_timeout"),
+                (t("session.resume"), self._resume_session, "", "resume_session"),
                 (t("button.save_game"), self._save_game, "", "save_game"),
                 (t("button.library"), self._open_library, "", "open_library"),
+                (t("analysis.training_positions"), self._open_training_positions, "", "open_training_positions"),
+                (t("training.chain.demo_mate.name"), self._open_mate_chain, "", "open_mate_chain"),
                 (t("position.button"), self._open_position, "", "open_position"),
+                (t("analysis.position"), self._analyse_position, "", "analyse_position"),
+                (t("analysis.archive"), self._open_analysis_reports, "", "analysis_reports"),
                 None,
                 (t("button.engine"), self._open_engine_dialog, "", "engine_settings"),
                 None,
@@ -1730,6 +1757,10 @@ class ChessApp:
         row += 1
         self._label(panel, var=self.action_state_text, role="caption", muted=True).grid(row=row, column=0, sticky="ew", pady=(6, 0))
         row += 1
+        self.clock_label = self._label(panel, var=self.clock_text, role="caption", bold=True)
+        self.clock_label.grid(row=row, column=0, sticky="ew", pady=(6, 0))
+        self.clock_label.grid_remove()
+        row += 1
         divider = tk.Frame(panel, height=1, background=theme.line)
         divider.grid(row=row, column=0, sticky="ew", pady=(12, 8))
         row += 1
@@ -1970,7 +2001,8 @@ class ChessApp:
         )
         self.puzzle_status_filter = ttk.Combobox(
             filters, state="readonly",
-            values=(t("puzzle.status_all"), t("puzzle.status_open"), t("puzzle.status_review")), width=12, style="Glide.TCombobox",
+            values=(t("puzzle.status_all"), t("puzzle.status_open"), t("puzzle.status_review"), t("puzzle.status_due")),
+            width=12, style="Glide.TCombobox",
         )
         dropdowns = (self.puzzle_theme_filter, self.puzzle_rating_filter)
         if self.db is not None:
@@ -2099,6 +2131,8 @@ class ChessApp:
             self._update_puzzle_progress()
             self._refresh()
         elif previous == "puzzles" and name != "puzzles":
+            if self._chain is not None and self._save_mate_chain():
+                self._leave_mate_chain()
             self.board.set_orientation(self.orientation)
             self._refresh()
 
@@ -2116,11 +2150,13 @@ class ChessApp:
         if isinstance(provider, UCIBot):
             provider.set_preset(preset)
         self._store_settings(bot_preset_id=preset.id)
+        self._autosave_session(self.controller.view())
 
     def _store_settings(self, **changes) -> None:
-        self.settings = replace(self.settings, **changes)
+        updated = replace(self.settings, **changes)
         if self.layout is not None:
-            save_settings(self.layout.settings, self.settings)
+            save_settings(self.layout.settings, updated)
+        self.settings = updated
 
     def _setup_for_mode(self, mode: str) -> GameSetup:
         if mode == "human-vs-bot-white":
@@ -2130,19 +2166,44 @@ class ChessApp:
         return GameSetup.two_players()
 
     # ----- game commands ------------------------------------------------
-    def _new_game(self) -> None:
+    def _new_game(self, time_control: TimeControl | None = None) -> None:
         if self.active_panel == "puzzles":
             self.tab_rail.set_active("play")
         view = self.controller.view()
-        if (self.game.moves or view.can_redo) and not messagebox.askyesno(
+        if (self.game.moves or view.can_redo or self._session_blocked) and not messagebox.askyesno(
             self.t("new_game.confirm_title"), self.t("new_game.confirm_body"), parent=self.root,
         ):
             return
-        self.start_game(self.mode_var.get())
+        self.start_game(self.mode_var.get(), time_control=time_control)
 
-    def start_game(self, mode: str) -> None:
+    def _new_timed_game(self) -> None:
+        controls = ((1, 0), (2, 1), (3, 0), (3, 2), (5, 0), (5, 3), (10, 0), (10, 5), (15, 10), (30, 0), (60, 0))
+        labels = [f"{minutes}+{increment}" for minutes, increment in controls]
+        index = self._choose_item(self.t("clock.new"), [*labels, self.t("clock.custom")], self.t("button.new_game"))
+        if index is None:
+            return
+        if index == len(controls):
+            time_control = ask_time_control(self.root, self.t, self.theme)
+        else:
+            minutes, increment = controls[index]
+            time_control = TimeControl(minutes * 60_000, increment * 1000)
+        if time_control is not None:
+            self._new_game(time_control)
+
+    def _decide_timeout(self) -> None:
+        view = self.controller.view()
+        if view.flagged is None or view.outcome.status is not GameStatus.ACTIVE:
+            return
+        choice = messagebox.askyesnocancel(
+            self.t("clock.decide"), self.t("clock.decide_prompt", side=self._side(view.flagged.opposite)),
+            parent=self.root, default=messagebox.CANCEL,
+        )
+        if choice is not None:
+            self.controller.adjudicate_timeout(draw=not choice)
+
+    def start_game(self, mode: str, *, time_control: TimeControl | None = None) -> None:
         """Start a game in ``mode`` without confirmation (used by tests and New game)."""
-        setup = self._setup_for_mode(mode)
+        setup = replace(self._setup_for_mode(mode), time_control=time_control)
         if setup.mode is PlayMode.HUMAN_VS_BOT:
             preset = self._selected_preset()
             provider = self.controller.provider
@@ -2157,7 +2218,100 @@ class ChessApp:
         self.mode_var.set(mode)
         self._store_settings(play_mode=mode)
         self._game_headers.clear()
+        self._session_blocked = False
         self.controller.new_game(setup)
+
+    def _resume_session(self) -> None:
+        if not self._session_blocked:
+            self.interaction_text.set(self.t("session.none"))
+            return
+        if (self.game.can_undo or self.game.can_redo) and not messagebox.askyesno(
+            self.t("session.resume"), self.t("library.replace"), parent=self.root,
+        ):
+            return
+        self.interaction_text.set(self._restore_session() or self.t("session.none"))
+
+    def _restore_session(self) -> str | None:
+        if self.db is None:
+            return None
+        try:
+            saved = self.db.load_session()
+            if saved is None or saved[0].lifecycle is SessionLifecycle.FINISHED:
+                self._session_blocked = False
+                return None
+            snapshot, game = saved
+            bot = snapshot.setup.bot_color
+            provider = None
+            if bot is not None:
+                preset = next((item for item in self.presets if item.id == snapshot.bot_preset), None)
+                if preset is None:
+                    self._session_blocked = True
+                    return self.t("session.engine")
+                provider = self._provider_factory(preset, self.settings)
+                if self._engine_reference(provider) != snapshot.engine_ref:
+                    provider.close()
+                    self._session_blocked = True
+                    return self.t("session.engine")
+                self.preset_var.set(self._preset_label(preset.id))
+                self.orientation = "black" if bot is Color.WHITE else "white"
+                self.board.set_orientation(self.orientation)
+            self.mode_var.set(
+                f"human-vs-bot-{bot.opposite.name.lower()}" if bot is not None else "human-vs-human"
+            )
+            self._game_headers = dict(snapshot.headers)
+            self._session_game = game
+            self._saved_session = snapshot
+            self._session_blocked = False
+            self.controller.resume_game(game, snapshot.setup, provider=provider, clock=snapshot.clock)
+            return self.t("session.restored")
+        except (StorageError, sqlite3.Error, OSError, ValueError) as error:
+            self._session_blocked = True
+            return self.t("session.error", error=error)
+
+    @staticmethod
+    def _engine_reference(provider: MoveProvider | None) -> str:
+        if provider is None:
+            raise ValueError("No session engine configured.")
+        if isinstance(provider, UCIBot):
+            return provider.config.session_reference()
+        if provider.is_mock:
+            return "mock"
+        raise ValueError("The session engine has no persistent reference.")
+
+    def _autosave_session(self, view: GameView) -> None:
+        if self.db is None or self._session_blocked:
+            return
+        previous = self._saved_session
+        if self.game is self._session_game and previous is None and not self.game.can_undo:
+            return  # The startup board alone is not a session.
+        lifecycle = (
+            SessionLifecycle.ACTIVE if view.outcome.status is GameStatus.ACTIVE else SessionLifecycle.FINISHED
+        )
+        now = datetime.now(timezone.utc).isoformat()
+        try:
+            timeline = self.game.timeline()
+            provider = self.controller.provider
+            current = previous if self._session_game is self.game else None
+            bot = view.setup.bot_color
+            reference = None
+            preset = None
+            if bot is not None:
+                reference = current.engine_ref if current is not None else self._engine_reference(provider)
+                preset = provider.preset.id if isinstance(provider, UCIBot) else self._selected_preset().id
+            snapshot = GameSessionSnapshot(
+                current.session_id if current else str(uuid4()),
+                current.created_utc if current else now,
+                max(now, current.updated_utc) if current else now,
+                replace(view.setup, initial_fen=None), to_fen(self.game.initial_state), timeline, lifecycle,
+                reference, preset, tuple(sorted(self._game_headers.items())), clock=self.controller.clock_timeline(),
+            )
+            if current is not None and snapshot == replace(current, updated_utc=snapshot.updated_utc):
+                return
+            self.db.save_session(snapshot)
+            self._session_game = self.game
+            self._saved_session = snapshot
+        except (sqlite3.Error, OSError, ValueError) as error:
+            self.interaction_text.set(self.t("session.error", error=error))
 
     def _on_move_requested(self, candidates: tuple[Move, ...]) -> None:
         if len(candidates) == 1:
@@ -2629,6 +2783,8 @@ class ChessApp:
                 headers.update(White=view.bot_name, Black="Human")
             else:
                 headers.update(White="Human", Black=view.bot_name)
+        if view.flagged is not None and view.outcome.status is GameStatus.RECORDED_RESULT:
+            headers["Termination"] = "time forfeit"
         return headers
 
     def _save_game(self) -> int | None:
@@ -2646,10 +2802,17 @@ class ChessApp:
                 mode=mode,
                 bot_color=view.setup.bot_color.value if view.setup.bot_color else None,
                 bot_name=view.bot_name if view.setup.mode is PlayMode.HUMAN_VS_BOT else None,
-                bot_preset=provider.preset.id if view.setup.bot_color and isinstance(provider, UCIBot) else None,
+                bot_preset=(
+                    (provider.preset.id if isinstance(provider, UCIBot) else self._selected_preset().id)
+                    if view.setup.bot_color is not None else None
+                ),
+                engine_ref=(
+                    self._saved_session.engine_ref if self._saved_session and self._session_game is self.game
+                    else self._engine_reference(provider)
+                ) if view.setup.bot_color is not None else None,
                 headers=self._pgn_headers(),
             )
-        except (StorageError, sqlite3.Error, ChessError) as error:
+        except (StorageError, sqlite3.Error, ValueError, OSError) as error:
             self.interaction_text.set(self.t("library.error", error=error))
             return None
         self.interaction_text.set(self.t("save.done", id=game_id))
@@ -2674,6 +2837,14 @@ class ChessApp:
                     (self.t("library.import"), lambda _index: self._import_pgn_file(), False),
                     (self.t("library.export"), lambda index: self._export_pgn_file(rows[index].id)
                      if index is not None else None, True),
+                    (self.t("library.continue"), lambda index: self._continue_saved_game(self.db.load_game(rows[index].id))
+                     if index is not None else None, True),
+                    (self.t("analysis.game"), lambda index: self._analyse_game(
+                        self.db.load_game(rows[index].id).to_game(), AnalysisMode.GAME, source_game_id=rows[index].id,
+                    ) if index is not None else None, True),
+                    (self.t("library.new_from_position"), lambda index: self._play_from_position(
+                        to_fen(self.db.load_game(rows[index].id).to_game().state),
+                    ) if index is not None else None, True),
                     (self.t("replay.title"), lambda index: self._open_replay(self.db.load_game(rows[index].id).to_game())
                      if index is not None else None, True),
                 ),
@@ -2690,8 +2861,42 @@ class ChessApp:
             self.mode_var.set("human-vs-human")
             self.controller.load_game(game)
             self.interaction_text.set(self.t("library.loaded", id=saved.id))
-        except (StorageError, sqlite3.Error, ChessError) as error:
+        except (StorageError, sqlite3.Error, ValueError, OSError) as error:
             self.interaction_text.set(self.t("library.error", error=error))
+
+    def _continue_saved_game(self, saved: SavedGame) -> None:
+        game = saved.to_game()
+        if game.outcome().status is not GameStatus.ACTIVE:
+            self.interaction_text.set(self.t("library.finished"))
+            return
+        if (self.game.can_undo or self.game.can_redo or self._session_blocked) and not messagebox.askyesno(
+            self.t("library.continue"), self.t("library.replace"), parent=self.root,
+        ):
+            return
+        mode = saved.mode
+        setup = self._setup_for_mode(mode)
+        bot = setup.bot_color
+        provider = None
+        if bot is not None:
+            preset = next((item for item in self.presets if item.id == saved.bot_preset), None)
+            if saved.bot_color != bot.value or not saved.engine_ref or preset is None:
+                self.interaction_text.set(self.t("library.engine"))
+                return
+            provider = self._provider_factory(preset, self.settings)
+            if self._engine_reference(provider) != saved.engine_ref:
+                provider.close()
+                self.interaction_text.set(self.t("library.engine"))
+                return
+            self.preset_var.set(self._preset_label(preset.id))
+            self.orientation = "black" if bot is Color.WHITE else "white"
+            self.board.set_orientation(self.orientation)
+        else:
+            mode = "human-vs-human"
+        self.mode_var.set(mode)
+        self._game_headers = dict(saved.pgn_tags)
+        self._session_blocked = False
+        self.controller.resume_game(game, setup, provider=provider)
+        self.interaction_text.set(self.t("library.continued", id=saved.id))
 
     def _import_pgn_file(self) -> None:
         if self.db is None:
@@ -2820,7 +3025,112 @@ class ChessApp:
         else:
             self._activate_pack(result)
 
-    def _activate_pack(self, pack: PuzzlePack) -> None:
+    def _open_mate_chain(self) -> None:
+        if self.db is None:
+            self.interaction_text.set(self.t("save.unavailable"))
+            return
+        if self._pack_loading or self._chain is not None:
+            return
+        try:
+            pack = self.pack if self.pack.manifest.pack_id == DEMO_PACK_ID else load_demo_pack()
+            catalog = demo_chain_catalog(pack)
+            saved = self.db.load_training_checkpoint(DEMO_MATE_CHAIN.chain_id)
+            revision = 0
+            hint_stage = 0
+            if saved is None:
+                chain = DEMO_MATE_CHAIN.open(catalog)
+            else:
+                checkpoint, revision, hint_stage = saved
+                chain = DEMO_MATE_CHAIN.resume(catalog, checkpoint)
+                if chain.exhausted:
+                    if not messagebox.askyesno(
+                        self.t("training.chain.demo_mate.name"), self.t("training.chain.restart"),
+                        parent=self.root, default=messagebox.NO,
+                    ):
+                        return
+                    chain = DEMO_MATE_CHAIN.open(catalog)
+            puzzle = chain.current
+            if puzzle is None:
+                puzzle, _ = chain.start_next(datetime.now(timezone.utc))
+                hint_stage = 0
+            revision = self.db.save_training_checkpoint(
+                chain.checkpoint(), expected_revision=revision, hint_stage=hint_stage,
+            )
+        except (StorageError, sqlite3.Error, ValueError) as error:
+            self.interaction_text.set(self.t("training.chain.error", error=error))
+            return
+        if self.pack is not pack:
+            self._activate_pack(pack, persist=False)
+        self._chain = chain
+        self._chain_revision = revision
+        self._puzzle_selection = tuple(task.puzzle for task in chain.tasks)
+        self.puzzle = puzzle
+        self.puzzle_index = len(chain.attempts)
+        self._puzzle_hint_stage = hint_stage
+        self._puzzle_recorded = False
+        self.puzzle_feedback_text.set(self.t("training.chain.demo_mate.goal"))
+        self.board.set_orientation("white" if puzzle.player_color is Color.WHITE else "black")
+        self.tab_rail.set_active("puzzles")
+        self._set_chain_filters()
+        self._update_puzzle_history()
+        self._refresh()
+
+    def _save_mate_chain(self) -> bool:
+        if self._chain is None or self.db is None:
+            return False
+        try:
+            self._chain_revision = self.db.save_training_checkpoint(
+                self._chain.checkpoint(), expected_revision=self._chain_revision, hint_stage=self._puzzle_hint_stage,
+            )
+        except (StorageError, sqlite3.Error, ValueError) as error:
+            message = self.t("training.chain.error", error=error)
+            self.interaction_text.set(message)
+            self.puzzle_feedback_text.set(message)
+            return False
+        return True
+
+    def _advance_mate_chain(self) -> None:
+        chain = self._chain
+        if chain is None or self.puzzle is None or not self.puzzle.finished:
+            return
+        if not self._puzzle_recorded:
+            self._record_puzzle()
+            if not self._puzzle_recorded:
+                return
+        if chain.exhausted:
+            message = self.t("training.chain.passed" if chain.passed else "training.chain.incomplete")
+            self._leave_mate_chain()
+            self._start_puzzle(0)
+            self.puzzle_feedback_text.set(message)
+            return
+        self.puzzle_index = len(chain.attempts)
+        self.puzzle, _ = chain.start_next(datetime.now(timezone.utc))
+        self._puzzle_recorded = False
+        self._puzzle_hint_stage = 0
+        self.puzzle_feedback_text.set("")
+        self.board.set_orientation("white" if self.puzzle.player_color is Color.WHITE else "black")
+        self._save_mate_chain()
+        self._update_puzzle_history()
+        self._refresh()
+
+    def _set_chain_filters(self) -> None:
+        state = "disabled" if self._chain is not None else "readonly"
+        self.puzzle_theme_filter.configure(state=state)
+        self.puzzle_rating_filter.configure(state=state)
+        self.puzzle_status_filter.configure(state=state)
+
+    def _leave_mate_chain(self) -> None:
+        self._chain = None
+        self._puzzle_selection = self.pack.puzzles
+        self.puzzle_index = 0
+        self.puzzle = None
+        self._set_chain_filters()
+
+    def _activate_pack(self, pack: PuzzlePack, *, persist: bool = True) -> None:
+        if self._chain is not None:
+            if not self._save_mate_chain():
+                return
+            self._leave_mate_chain()
         self.pack = pack
         self._puzzle_selection = pack.puzzles
         self._puzzle_themes = sorted({theme for puzzle in pack.puzzles for theme in puzzle.themes})
@@ -2839,7 +3149,7 @@ class ChessApp:
         self._update_puzzle_progress()
         if self.active_panel == "puzzles":
             self._start_puzzle(0)
-        if self.settings.last_pack_id != pack.manifest.pack_id:
+        if persist and self.settings.last_pack_id != pack.manifest.pack_id:
             try:
                 self._store_settings(last_pack_id=pack.manifest.pack_id)
             except (OSError, SettingsError):
@@ -2851,15 +3161,24 @@ class ChessApp:
         rating_choice = self.puzzle_rating_filter.current()
         lower, upper = PUZZLE_RATING_RANGES[rating_choice - 1] if rating_choice > 0 else (0, None)
         status_choice = self.puzzle_status_filter.current()
+        due: set[str] = set()
+        if status_choice == 3 and self.db is not None:
+            try:
+                due = self.db.due_puzzle_ids(self.pack.manifest.pack_id, now=datetime.now(timezone.utc))
+            except (sqlite3.Error, StorageError):
+                self.interaction_text.set(self.t("puzzle.progress_unavailable"))
         return tuple(
             puzzle for puzzle in self.pack.puzzles
             if (not theme or theme in puzzle.themes)
             and puzzle.rating >= lower and (upper is None or puzzle.rating <= upper)
             and (status_choice != 1 or puzzle.puzzle_id not in self._solved_puzzle_ids)
             and (status_choice != 2 or puzzle.puzzle_id in self._review_puzzle_ids)
+            and (status_choice != 3 or puzzle.puzzle_id in due)
         )
 
     def _apply_puzzle_filters(self, _event: tk.Event | None = None) -> None:
+        if self._chain is not None:
+            return
         self._puzzle_selection = self._matching_puzzles()
         self._update_puzzle_progress()
         if self.puzzle is not None and self.puzzle.puzzle in self._puzzle_selection:
@@ -2883,6 +3202,9 @@ class ChessApp:
         self._refresh()
 
     def _next_puzzle(self) -> None:
+        if self._chain is not None:
+            self._advance_mate_chain()
+            return
         following = self.puzzle_index + 1
         if self.puzzle_status_filter.current() > 0 and self.puzzle_status_filter.instate(("!disabled",)):
             previous = self._puzzle_selection
@@ -2894,6 +3216,8 @@ class ChessApp:
         self._start_puzzle(following)
 
     def _retry_puzzle(self) -> None:
+        if self._chain is not None:
+            return
         session = self.puzzle
         if session is None:
             return
@@ -2915,7 +3239,7 @@ class ChessApp:
             return
         self._solved_puzzle_ids = solved
         self._review_puzzle_ids = review
-        self.puzzle_status_filter.configure(state="readonly")
+        self.puzzle_status_filter.configure(state="disabled" if self._chain is not None else "readonly")
         count = sum(puzzle.puzzle_id in solved for puzzle in self._puzzle_selection)
         self.puzzle_progress_text.set(
             self.t("puzzle.progress", solved=count, count=len(self._puzzle_selection)) if self._puzzle_selection else ""
@@ -2968,6 +3292,8 @@ class ChessApp:
             self.puzzle_feedback_text.set(self.t("puzzle.wrong"))
         else:
             self.puzzle_feedback_text.set(self.t("puzzle.illegal"))
+        if self._chain is not None and feedback.verdict in {Verdict.CORRECT, Verdict.WRONG}:
+            self._save_mate_chain()
         self._refresh()
 
     def _puzzle_hint(self) -> None:
@@ -2987,6 +3313,8 @@ class ChessApp:
             self.puzzle_feedback_text.set(self.t(key, **detail))
         else:
             self.puzzle_feedback_text.set(self.t("puzzle.hint", square=square_name(move.from_square)))
+        if self._chain is not None:
+            self._save_mate_chain()
         self._refresh()
 
     def _puzzle_reveal(self) -> None:
@@ -3007,6 +3335,14 @@ class ChessApp:
         session = self.puzzle
         if session is None or self._puzzle_recorded or self.db is None:
             return
+        if self._chain is not None:
+            if self._chain.current is not None:
+                self._chain.finish_current(datetime.now(timezone.utc))
+            if self._save_mate_chain():
+                self._puzzle_recorded = True
+                self._update_puzzle_progress()
+                self._update_puzzle_history()
+            return
         try:
             self.db.record_puzzle_attempt(
                 self.pack.manifest.pack_id, session.puzzle.puzzle_id, solved=session.solved,
@@ -3021,6 +3357,101 @@ class ChessApp:
 
     def _open_engine_dialog(self) -> None:
         EngineDialog(self)
+
+    def _analyse_position(self) -> None:
+        self._analyse_game(self.game, AnalysisMode.POSITION)
+
+    def _analyse_game(
+        self, game: ChessGame, mode: AnalysisMode, *, source_game_id: int | None = None,
+    ) -> None:
+        try:
+            config, _warning = resolve_engine_config(self.settings.engine_path)
+            if config.is_mock:
+                self.interaction_text.set(self.t("analysis.engine_required"))
+                return
+            reference = config.session_reference()
+            if self._analysis is None or self._analysis[0] != reference:
+                self._analysis = (reference, AnalysisService(config, engine_id=reference))
+            job = self._analysis[1].start(AnalysisRequest(
+                str(uuid4()), to_fen(game.initial_state), tuple(game.moves), mode, multipv=3,
+            ))
+        except (OSError, RuntimeError, ValueError) as error:
+            self.interaction_text.set(self.t("analysis.failed", error=error))
+            return
+        save_position = partial(self._save_training_position, source_game_id) if source_game_id is not None else None
+        store_report = partial(self._store_analysis_report, source_game_id) if source_game_id is not None else None
+        dialog = AnalysisDialog(self.root, self.t, job, self.theme.acetate, save_position, store_report)
+        modal_session.wait_modal(self.root, dialog.window)
+
+    def _store_analysis_report(self, game_id: int, report: AnalysisProgress) -> str:
+        if self.db is None:
+            return self.t("save.unavailable")
+        try:
+            self.db.save_analysis_report(game_id, report)
+        except (StorageError, sqlite3.Error, ValueError) as error:
+            return self.t("analysis.archive_error", error=error)
+        return self.t("analysis.archive_saved")
+
+    def _open_analysis_reports(self) -> None:
+        if self.db is None:
+            return
+        try:
+            reports = self.db.analysis_reports()
+            if not reports:
+                self.interaction_text.set(self.t("analysis.archive_empty"))
+                return
+            selected = self._choose_item(
+                self.t("analysis.archive"),
+                [self.t("analysis.archive_entry", id=item.source_game_id, date=item.created_utc[:16].replace("T", " "),
+                        engine=item.engine_name, count=item.position_count) for item in reports],
+                self.t("analysis.archive_open"), searchable=True,
+            )
+            if selected is None:
+                return
+            game_id, report = self.db.load_analysis_report(reports[selected].run_id)
+        except (StorageError, sqlite3.Error) as error:
+            self.interaction_text.set(self.t("analysis.archive_error", error=error))
+            return
+        dialog = AnalysisDialog(self.root, self.t, report, self.theme.acetate,
+                                partial(self._save_training_position, game_id))
+        modal_session.wait_modal(self.root, dialog.window)
+
+    def _save_training_position(self, game_id: int, result: AnalysisResult) -> str:
+        if self.db is None:
+            return self.t("save.unavailable")
+        try:
+            self.db.save_training_candidate(TrainingCandidate(game_id, len(result.history), result.fen))
+        except (StorageError, sqlite3.Error, ValueError) as error:
+            return self.t("analysis.failed", error=error)
+        return self.t("analysis.position_saved")
+
+    def _open_training_positions(self) -> None:
+        if self.db is None:
+            return
+        try:
+            positions = self.db.training_candidates()
+        except (StorageError, sqlite3.Error) as error:
+            self.interaction_text.set(self.t("library.error", error=error))
+            return
+        selected = self._choose_item(
+            self.t("analysis.training_positions"),
+            [self.t("analysis.saved_position", game=item.source_game_id, ply=item.ply) for item in positions],
+            self.t("library.new_from_position"), empty=self.t("analysis.no_positions"), searchable=True,
+        )
+        if selected is not None:
+            self._play_from_position(positions[selected].fen)
+
+    def _play_from_position(self, fen: str) -> None:
+        if (self.game.can_undo or self.game.can_redo or self._session_blocked) and not messagebox.askyesno(
+            self.t("position.play"), self.t("position.replace"), parent=self.root, default=messagebox.NO,
+        ):
+            return
+        self._game_headers.clear()
+        self._session_blocked = False
+        self.mode_var.set("human-vs-human")
+        if self.active_panel == "puzzles":
+            self.tab_rail.set_active("play")
+        self.controller.load_game(ChessGame(parse_fen(fen)))
 
     def _open_replay(self, game: ChessGame) -> None:
         replay_artwork = self.board._artwork
@@ -3047,14 +3478,34 @@ class ChessApp:
     def _on_view(self, _view: GameView) -> None:
         if not self._closed:
             self._refresh()
+            self._autosave_session(_view)
 
     def _poll(self) -> None:
         if self._closed:
             return
         self.controller.poll()
+        self._update_clock_label()
         if self._pack_loading:
             self._poll_pack_task()
         self._poll_job = self.scope.after(POLL_MS, self._poll)
+
+    def _update_clock_label(self) -> None:
+        reading = self.controller.clock_reading()
+        if reading is None:
+            if self.clock_text.get():
+                self.clock_text.set("")
+                self.clock_label.grid_remove()
+            return
+
+        def format_time(color: Color) -> str:
+            seconds = (reading.remaining_ns(color) + 999_999_999) // 1_000_000_000
+            minutes, seconds = divmod(seconds, 60)
+            return f"{minutes}:{seconds:02d}"
+
+        display = self.t("clock.reading", white=format_time(Color.WHITE), black=format_time(Color.BLACK))
+        if self.clock_text.get() != display:
+            self.clock_text.set(display)
+            self.clock_label.grid()
 
     def _refresh(self) -> None:
         if self.active_panel == "puzzles":
@@ -3066,8 +3517,9 @@ class ChessApp:
     def _refresh_puzzle(self) -> None:
         session = self.puzzle
         self.header_mode_text.set(self.t("header.mode.puzzle", pack=self.pack.manifest.pack_id.upper()))
-        self.next_puzzle_button.configure(state=tk.NORMAL if session is not None else tk.DISABLED)
-        self.retry_puzzle_button.configure(state=tk.NORMAL if session is not None else tk.DISABLED)
+        next_allowed = session is not None and (self._chain is None or session.finished)
+        self.next_puzzle_button.configure(state=tk.NORMAL if next_allowed else tk.DISABLED)
+        self.retry_puzzle_button.configure(state=tk.NORMAL if session is not None and self._chain is None else tk.DISABLED)
         self.puzzle_atlas.update_route(self._puzzle_selection, self.puzzle_index, session, self._solved_puzzle_ids)
         if session is None:
             self.atlas_section.grid_remove()
@@ -3081,7 +3533,8 @@ class ChessApp:
             self.solution_button.configure(state=tk.DISABLED)
             return
         self.atlas_section.grid()
-        self.panel_text.set(self.t("puzzle.title", index=self.puzzle_index + 1, count=len(self._puzzle_selection)))
+        key = "training.chain.progress" if self._chain is not None else "puzzle.title"
+        self.panel_text.set(self.t(key, index=self.puzzle_index + 1, count=len(self._puzzle_selection)))
         self.puzzle_title_text.set(self.t("puzzle.prompt", side=self._side(session.player_color)))
         theme_labels = [self.t.puzzle_theme_label(theme) for theme in session.puzzle.themes[:3]]
         self.puzzle_meta_text.set(self.t("puzzle.meta", id=session.puzzle.puzzle_id, rating=session.puzzle.rating,
@@ -3137,6 +3590,7 @@ class ChessApp:
         else:
             action_state = ""
         self.action_state_text.set(action_state)
+        self._update_clock_label()
         self._update_move_list(view.san_moves)
         self.replay_button.configure(state=tk.NORMAL if view.san_moves else tk.DISABLED)
         self.undo_button.configure(state=tk.NORMAL if view.can_undo else tk.DISABLED)
@@ -3144,7 +3598,7 @@ class ChessApp:
         can_claim = view.human_to_move and bool(self.game.draw_claim_options())
         self.claim_button.configure(state=tk.NORMAL if can_claim else tk.DISABLED)
         active = view.outcome.status is GameStatus.ACTIVE
-        self.resign_button.configure(state=tk.NORMAL if active and self.game.moves else tk.DISABLED)
+        self.resign_button.configure(state=tk.NORMAL if active and view.flagged is None and self.game.moves else tk.DISABLED)
         can_save = self.db is not None and (self.game.moves or not active)
         self.save_button.configure(state=tk.NORMAL if can_save else tk.DISABLED)
         self.library_button.configure(state=tk.NORMAL if self.db is not None else tk.DISABLED)
@@ -3153,6 +3607,10 @@ class ChessApp:
         t = self.t
         status, winner = view.outcome.status, view.outcome.winner
         if status is GameStatus.ACTIVE:
+            if view.flagged is not None:
+                return t("clock.flagged", side=self._side(view.flagged))
+            if view.clock is not None and not view.clock_running:
+                return t("clock.paused")
             key = "status.check_to_move" if view.outcome.in_check else "status.to_move"
             return t(key, side=self._side(view.state.turn))
         if status is GameStatus.CHECKMATE and winner:
@@ -3165,6 +3623,8 @@ class ChessApp:
                 reason = t("claim.by_move", rule=reason, move=to_san(view.state, view.outcome.declared_move))
             return t("status.claimed_reason", reason=reason)
         if status is GameStatus.RECORDED_RESULT:
+            if view.flagged is not None or self._game_headers.get("Termination") == "time forfeit":
+                return t("clock.timeout_win", side=self._side(winner)) if winner else t("clock.timeout_draw")
             return t("status.recorded_win", side=self._side(winner)) if winner else t("status.recorded_draw")
         return t({
             GameStatus.STALEMATE: "status.stalemate",
@@ -3206,6 +3666,10 @@ class ChessApp:
     def close(self) -> None:
         if self._closed:
             return
+        if self._chain is not None:
+            self._save_mate_chain()
+        self.controller.pause_for_close()
+        self._autosave_session(self.controller.view())
         self._closed = True
         self._unsubscribe_view()
         del self._unsubscribe_view
@@ -3228,9 +3692,13 @@ def _read_local_pack(task: Callable[[], PuzzlePack], results: SimpleQueue[Puzzle
         results.put(str(error))
 
 
-def _probe_connection(config: EngineConfig, results: SimpleQueue[tuple[str, int] | str]) -> None:
+def _probe_connection(registry: EngineRegistry, engine_id: str, results: SimpleQueue[tuple[str, int] | str]) -> None:
     try:
-        results.put(probe_engine(config))
+        result = registry.probe(engine_id)
+        if result.status is EngineAvailability.READY:
+            results.put((result.advertised_name or "UCI", len(result.options)))
+        else:
+            results.put(result.error or result.status.value)
     except (UCIEngineError, ValueError) as error:
         results.put(str(error))
 
@@ -3266,6 +3734,15 @@ class EngineDialog:
             highlightbackground=theme.input_border, highlightcolor=theme.brand_blue,
         )
         self.entry.grid(row=2, column=0, columnspan=2, sticky="ew", padx=(0, 6))
+        if app.settings.registered_engine_paths:
+            saved = ttk.Combobox(
+                self.window, state="readonly", values=app.settings.registered_engine_paths, width=48,
+                style="Glide.TCombobox",
+            )
+            saved.grid(row=1, column=1, columnspan=2, sticky="ew", pady=(12, 2))
+            if app.settings.engine_path in app.settings.registered_engine_paths:
+                saved.set(app.settings.engine_path)
+            saved.bind("<<ComboboxSelected>>", lambda _event: self.path_var.set(saved.get()))
         app._button(self.window, t("button.browse"), self._browse, stretch=False).grid(row=2, column=2, padx=(6, 0))
         tk.Label(self.window, textvariable=self.status_var, background=theme.acetate, foreground=theme.muted_ink,
                  wraplength=420, justify="left", font=font_spec("caption", scale_choice=app.settings.font_scale_choice, weight_choice=app.settings.font_weight_choice)).grid(
@@ -3289,13 +3766,20 @@ class EngineDialog:
     def test(self) -> None:
         try:
             config = EngineConfig.from_path(self.path_var.get().strip())
-        except EngineConfigError as error:
+            path = Path(config.command[0]).absolute()
+            arguments = config.command[1:]
+            registry = self.app.engine_registry
+            profile = next((item for item in registry.profiles()
+                            if item.executable == path and item.arguments == arguments), None)
+            if profile is None:
+                profile = registry.register(path, arguments=arguments, display_name=config.display_name)
+        except (OSError, EngineConfigError) as error:
             self.status_var.set(self.app.t("engine.test_failed", error=error))
             return
         self.status_var.set(self.app.t("engine.testing"))
         self.test_button.configure(state=tk.DISABLED)
 
-        threading.Thread(target=_probe_connection, args=(config, self._results),
+        threading.Thread(target=_probe_connection, args=(registry, profile.engine_id, self._results),
                          name="engine-test", daemon=True).start()
         self._probe_job = self.scope.after(50, self._check)
 
@@ -3330,7 +3814,15 @@ class EngineDialog:
             except EngineConfigError as error:
                 self.status_var.set(self.app.t("engine.test_failed", error=error))
                 return
-        self.app._store_settings(engine_path=path)
+        paths = self.app.settings.registered_engine_paths
+        if path is not None:
+            path = str(Path(path).expanduser().absolute())
+            paths = (path, *(previous for previous in paths if previous != path))[:20]
+        try:
+            self.app._store_settings(engine_path=path, registered_engine_paths=paths)
+        except (OSError, SettingsError) as error:
+            self.status_var.set(self.app.t("engine.test_failed", error=error))
+            return
         self.app._provider_stale = True  # the next bot game builds a provider from the new setting
         self.app.interaction_text.set(self.app.t("engine.saved"))
         self.window.destroy()

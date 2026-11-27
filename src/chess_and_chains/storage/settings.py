@@ -66,6 +66,7 @@ class Settings:
     font_weight_choice: str = "standard"
     animations_enabled: bool = True
     hints_visible: bool = True
+    registered_engine_paths: tuple[str, ...] = ()
 
     def validate(self) -> Settings:
         if self.schema_version != SETTINGS_SCHEMA:
@@ -103,6 +104,13 @@ class Settings:
             raise SettingsError(f"Unsupported font weight {self.font_weight_choice!r}.")
         if self.engine_path is not None and (not isinstance(self.engine_path, str) or "\n" in self.engine_path):
             raise SettingsError("Invalid engine path.")
+        paths = self.registered_engine_paths
+        if not isinstance(paths, tuple) or len(paths) > 20 or any(
+            not isinstance(path, str) or not 0 < len(path) <= 4096
+            or "\n" in path or "\0" in path or not Path(path).is_absolute()
+            for path in paths
+        ):
+            raise SettingsError("Invalid registered engine paths.")
         if self.window_geometry is not None and window_geometry.parse(self.window_geometry) is None:
             raise SettingsError("Invalid window geometry.")
         if self.compact_window is not None and window_geometry.parse(self.compact_window) is None:
@@ -125,6 +133,8 @@ def load_settings(path: Path) -> tuple[Settings, str | None]:
             raw["piece_set"] = "original"
         # Keep piece_view in sync for backward compatibility
         raw["piece_view"] = "top" if raw["piece_set"] == "top" else "front"
+        if isinstance(raw.get("registered_engine_paths"), list):
+            raw["registered_engine_paths"] = tuple(raw["registered_engine_paths"])
         known = {f.name for f in fields(Settings)}
         settings = Settings(**{k: v for k, v in raw.items() if k in known}).validate()
         return settings, None

@@ -11,10 +11,11 @@ to solve. The player then plays every other move starting with ``Moves[1]``.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum
 
-from ..chess import ChessRules, Color, GameState, Move, parse_fen
+from ..chess import ChessGame, ChessRules, Color, GameState, Move, parse_fen
 
 MIN_PUBLISHED_RATING = 1000
 
@@ -85,3 +86,10 @@ class Puzzle:
             opening_tags=tuple(record.get("opening_tags", ())),
             validation=validation,
         )
+
+
+def validate_solution_line(state: GameState, moves: Iterable[Move], rules: ChessRules) -> None:
+    """Apply the same game-end checks used when a PuzzleSession plays its line."""
+    game = ChessGame(state, rules=rules, adjudicate_forced_capture_draws=False)
+    for move in moves:
+        game.play(move)

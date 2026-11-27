@@ -22,6 +22,7 @@ from chess_and_chains import DISPLAY_VERSION  # noqa: E402
 from chess_and_chains.chess import Color, DrawClaim, GameStatus, Move, Piece, PieceType, parse_square, to_fen  # noqa: E402
 from chess_and_chains.engines.bot import EngineConfig, UCIBot  # noqa: E402
 from chess_and_chains.engines.mock_engine import ENGINE_NAME  # noqa: E402
+from chess_and_chains.game.clock import TimeControl  # noqa: E402
 from chess_and_chains.game import BotStatus, GameSetup  # noqa: E402
 from chess_and_chains.puzzles import load_demo_pack, write_pack  # noqa: E402
 from chess_and_chains.storage import DataLayout, load_settings, update_settings  # noqa: E402
@@ -234,7 +235,9 @@ class BotVerticalSliceTests(AppTestCase):
         for mode, expected in (("normal", ENGINE_NAME), ("crash-on-ready", "Engine test failed")):
             with self.subTest(mode=mode):
                 dialog = EngineDialog(app)
-                with patch.object(EngineConfig, "from_path", return_value=EngineConfig.mock(mode)):
+                with patch("chess_and_chains.ui.app.EngineConfig") as dialog_config:
+                    # Replace the entry's executable choice without patching the registry worker.
+                    dialog_config.from_path.return_value = EngineConfig.mock(mode)
                     dialog.test()
                 self.assertEqual(dialog.test_button.cget("state"), tk.DISABLED)
                 self.pump_until(lambda: dialog.test_button.cget("state") == tk.NORMAL)
@@ -335,7 +338,332 @@ class BotVerticalSliceTests(AppTestCase):
         self.assertTrue(app._current_pgn().endswith("1/2-1/2"))
 
 
+class CapturedMaterialUiTests(AppTestCase):
+    def setUp(self) -> None:
+        self.make_app(locale="de")
+
+    def test_14_app_material_bars_initial_state(self) -> None:
+        """Beide Materialanzeigen sind im Brettbereich initial vorhanden und leer."""
+        self.assertTrue(hasattr(self.app, "top_material_bar"))
+        self.assertTrue(hasattr(self.app, "bottom_material_bar"))
+        self.assertEqual(self.app.top_material_bar.player_color, Color.BLACK)
+        self.assertEqual(self.app.bottom_material_bar.player_color, Color.WHITE)
+        top_mat = self.app.top_material_bar.material
+        bot_mat = self.app.bottom_material_bar.material
+        self.assertIsNotNone(top_mat)
+        self.assertIsNotNone(bot_mat)
+        assert top_mat is not None and bot_mat is not None
+        self.assertEqual(top_mat.captures, ())
+        self.assertEqual(bot_mat.captures, ())
+        self.assertIsNone(top_mat.advantage)
+        self.assertIsNone(bot_mat.advantage)
+
+    def test_15_app_material_bars_capture_and_orientation_flip(self) -> None:
+        """Schlagzug und Brettdrehung: Anzeigen tauschen ihre Positionen exakt."""
+        # 1. e4 d5 2. exd5
+        self.app.controller.play_human(Move.from_uci("e2e4"))
+        self.app.controller.play_human(Move.from_uci("d7d5"))
+        self.app.controller.play_human(Move.from_uci("e4d5"))
+        self.root.update_idletasks()
+
+        # Normal orientation ("white"):
+        # top = Black (0 captures, no advantage)
+        # bottom = White (captured black pawn, +1 advantage)
+        self.assertEqual(self.app.top_material_bar.player_color, Color.BLACK)
+        self.assertEqual(self.app.bottom_material_bar.player_color, Color.WHITE)
+        self.assertIsNone(self.app.top_material_bar.material.advantage)
+        self.assertEqual(self.app.bottom_material_bar.material.advantage, 1)
+        self.assertEqual(len(self.app.bottom_material_bar.material.captures), 1)
+
+        # Flip board
+        self.app._flip_board()
+        self.root.update_idletasks()
+        self.assertEqual(self.app.orientation, "black")
+        # In black orientation:
+        # top = White (captured black pawn, +1 advantage)
+        # bottom = Black (0 captures, no advantage)
+        self.assertEqual(self.app.top_material_bar.player_color, Color.WHITE)
+        self.assertEqual(self.app.bottom_material_bar.player_color, Color.BLACK)
+        self.assertEqual(self.app.top_material_bar.material.advantage, 1)
+        self.assertIsNone(self.app.bottom_material_bar.material.advantage)
+
+        # Flip back
+        self.app._flip_board()
+        self.root.update_idletasks()
+        self.assertEqual(self.app.top_material_bar.player_color, Color.BLACK)
+        self.assertEqual(self.app.bottom_material_bar.player_color, Color.WHITE)
+
+    def test_16_app_material_undo_and_redo(self) -> None:
+        """Undo und Redo im GUI aktualisieren die Materialanzeigen."""
+        self.app.controller.play_human(Move.from_uci("e2e4"))
+        self.app.controller.play_human(Move.from_uci("d7d5"))
+        self.app.controller.play_human(Move.from_uci("e4d5"))
+        self.root.update_idletasks()
+
+        self.assertEqual(self.app.bottom_material_bar.material.advantage, 1)
+
+        # Undo
+        self.app.controller.undo()
+        self.root.update_idletasks()
+        self.assertIsNone(self.app.bottom_material_bar.material.advantage)
+        self.assertEqual(self.app.bottom_material_bar.material.captures, ())
+
+        # Redo
+        self.app.controller.redo()
+        self.root.update_idletasks()
+        self.assertEqual(self.app.bottom_material_bar.material.advantage, 1)
+        self.assertEqual(len(self.app.bottom_material_bar.material.captures), 1)
+
+    def test_17_replay_dialog_material_tracking(self) -> None:
+        """ReplayDialog zeigt den Materialstand an jedem Zugschritt."""
+        self.app.controller.play_human(Move.from_uci("e2e4"))
+        self.app.controller.play_human(Move.from_uci("d7d5"))
+        self.app.controller.play_human(Move.from_uci("e4d5"))
+
+        dialog = ReplayDialog(
+            self.app.root,
+            self.app.game,
+            self.app.t,
+            self.app._board_artwork,
+            self.app.board.renderer,
+            self.app.orientation,
+            theme=self.app.theme,
+        )
+        try:
+            # At start (index 0)
+            dialog.show(0)
+            self.assertIsNone(dialog.bottom_material_bar.material.advantage)
+            self.assertEqual(dialog.bottom_material_bar.material.captures, ())
+
+            # At index 3 (after exd5)
+            dialog.show(3)
+            self.assertEqual(dialog.bottom_material_bar.material.advantage, 1)
+            self.assertEqual(len(dialog.bottom_material_bar.material.captures), 1)
+        finally:
+            dialog.destroy()
+
+
+class SessionRecoveryUiTests(AppTestCase):
+    def test_startup_resumes_autosave_with_redo_without_library_entry(self):
+        with tempfile.TemporaryDirectory() as folder:
+            layout = DataLayout(Path(folder))
+            app = self.make_app(data_layout=layout)
+            app.start_game("human-vs-human")
+            app._play_move(Move.from_uci("e2e4"))
+            app._play_move(Move.from_uci("e7e5"))
+            app._undo()
+            self.assertEqual(app.db.list_games(), [])
+            app.close()
+
+            resumed = self.make_app(data_layout=layout)
+            self.assertEqual(resumed.game.moves, [Move.from_uci("e2e4")])
+            self.assertTrue(resumed.controller.view().can_redo)
+            resumed._redo()
+            self.assertEqual(resumed.game.moves, [Move.from_uci("e2e4"), Move.from_uci("e7e5")])
+            resumed.close()
+
+
+    def test_bot_resume_preserves_color_and_does_not_fall_back_to_other_engine(self):
+        with tempfile.TemporaryDirectory() as folder:
+            layout = DataLayout(Path(folder))
+            factory = mock_factory()
+            app = self.make_app(data_layout=layout, provider_factory=factory)
+            app.start_game("human-vs-bot-black")
+            self.pump_until(lambda: len(app.game.moves) == 1)
+            saved, _ = app.db.load_session()
+            app.close()
+
+            # The app refuses the mismatched identity, then permits an explicit retry.
+            resumed = self.make_app(data_layout=layout, provider_factory=factory)
+            self.assertEqual(resumed.controller.setup.bot_color, Color.WHITE)
+            self.assertEqual(resumed.orientation, "black")
+            self.assertEqual(resumed.db.load_session()[0], saved)
+            self.assertEqual(resumed.game.timeline().moves, saved.timeline.moves)
+            resumed.close()
+            with patch.object(ChessApp, "_engine_reference", return_value="other engine"):
+                blocked = self.make_app(data_layout=layout, provider_factory=factory)
+            self.assertTrue(blocked._session_blocked)
+            self.assertEqual(blocked.game.moves, [])
+            self.assertEqual(blocked.db.load_session()[0], saved)
+            blocked._resume_session()
+            self.assertFalse(blocked._session_blocked)
+            self.assertEqual(blocked.controller.setup.bot_color, Color.WHITE)
+            blocked.close()
+
+    def test_library_continues_saved_bot_game_without_mutating_saved_record(self):
+        with tempfile.TemporaryDirectory() as folder:
+            layout = DataLayout(Path(folder))
+            factory = mock_factory()
+            app = self.make_app(data_layout=layout, provider_factory=factory)
+            app.start_game("human-vs-bot-white")
+            before = app.db.load_game(app._save_game())
+            app.start_game("human-vs-human")
+            app._continue_saved_game(before)
+            self.assertEqual(app.controller.setup.bot_color, Color.BLACK)
+            self.assertEqual(app.db.load_game(before.id), before)
+            app.close()
+
+
+    def test_custom_clock_rejects_invalid_input_then_starts_with_entered_values(self):
+        app = self.make_app()
+
+        def fill_dialog(_root, dialog):
+            frame, = dialog.winfo_children()
+            initial, increment = [widget for widget in frame.winfo_children() if isinstance(widget, ttk.Entry)]
+            start, _cancel = [widget for widget in frame.winfo_children() if isinstance(widget, ttk.Button)]
+            initial.delete(0, "end")
+            initial.insert(0, "0")
+            start.invoke()
+            self.assertTrue(dialog.winfo_exists())
+            self.assertIsNone(app.controller.setup.time_control)
+            initial.delete(0, "end")
+            initial.insert(0, "42")
+            increment.delete(0, "end")
+            increment.insert(0, "7")
+            start.invoke()
+
+        with patch.object(app, "_choose_item", side_effect=lambda _title, labels, _confirm: len(labels) - 1), patch(
+            "chess_and_chains.ui.dialogs.modal_session.wait_modal", side_effect=fill_dialog,
+        ):
+            app._new_timed_game()
+        self.assertEqual(app.controller.setup.time_control, TimeControl(42_000, 7000))
+        self.assertTrue(app.controller.view().clock_running)
+
+    def test_timeout_updates_native_status_and_archives_pgn_termination(self):
+        with tempfile.TemporaryDirectory() as folder:
+            app = self.make_app(data_layout=DataLayout(Path(folder)), locale="de")
+            now = 0
+            app.controller._now = lambda: now
+            app.controller.new_game(GameSetup(initial_fen="7k/8/5K2/6Q1/8/8/8/8 b - - 0 1",
+                                              time_control=TimeControl(1000)))
+            now = 1_000_000_000
+            app.controller.poll()
+            self.assertEqual(app.panel_text.get(), "Weiß gewinnt auf Zeit.")
+            row = app.db.load_game(app._save_game())
+            self.assertEqual(row.result, "1-0")
+            self.assertEqual(dict(row.pgn_tags)["Termination"], "time forfeit")
+            session, _ = app.db.load_session()
+            self.assertEqual(session.clock.current.remaining_ms(Color.BLACK), 0)
+            self.assertEqual(session.timeline.result, "1-0")
+            app.close()
+
+    def test_timed_session_starts_paused_with_saved_times_after_reopen(self):
+        with tempfile.TemporaryDirectory() as folder:
+            layout = DataLayout(Path(folder))
+            app = self.make_app(data_layout=layout)
+            now = 1_000_000_000
+            app.controller._now = lambda: now
+            app.start_game("human-vs-human", time_control=TimeControl(60_000, 2000))
+            now += 1_250_000_000
+            app._play_move(Move.from_uci("e2e4"))
+            now += 3_500_000_000
+            app.close()
+
+            resumed = self.make_app(data_layout=layout)
+            reading = resumed.controller.clock_reading()
+            self.assertEqual((reading.remaining_ms(Color.WHITE), reading.remaining_ms(Color.BLACK)), (60_750, 56_500))
+            self.assertFalse(resumed.controller.view().clock_running)
+            self.assertEqual(resumed.game.moves, [Move.from_uci("e2e4")])
+            self.assertIn("Black 0:57", resumed.clock_text.get())
+            resumed.controller.toggle_clock()
+            self.assertTrue(resumed.controller.view().clock_running)
+            resumed.close()
+
+
+class AnalysisArchiveUiTests(AppTestCase):
+    def test_library_analysis_is_reopened_without_starting_an_engine(self):
+        from chess_and_chains.engines.analysis import AnalysisMode
+        from tests.test_engine_analysis import FIXTURE
+
+        with tempfile.TemporaryDirectory() as folder:
+            layout = DataLayout(Path(folder))
+            app = self.make_app(data_layout=layout)
+            app._play_move(Move.from_uci("e2e4"))
+            game_id = app._save_game()
+            original = app.db.load_game(game_id)
+            config = EngineConfig(
+                (sys.executable, "-u", "-c", FIXTURE, str(Path(folder) / "uci.log"), "normal"),
+                "Protocol fixture", False, "fixture",
+            )
+
+            def wait_for_report(_root, window):
+                self.pump_until(lambda: bool(app.db.analysis_reports()))
+                window.destroy()
+
+            with patch("chess_and_chains.ui.app.resolve_engine_config", return_value=(config, None)), patch(
+                "chess_and_chains.ui.app.modal_session.wait_modal", side_effect=wait_for_report,
+            ):
+                app._analyse_game(original.to_game(), AnalysisMode.GAME, source_game_id=game_id)
+            self.assertEqual(app.db.load_game(game_id), original)
+            app.close()
+
+            reopened = self.make_app(data_layout=layout)
+            displayed = []
+
+            def capture_output(_root, window):
+                text, = [item for frame in window.winfo_children() for item in frame.winfo_children()
+                         if isinstance(item, tk.Text)]
+                displayed.append(text.get("1.0", "end"))
+                window.destroy()
+
+            with patch.object(reopened, "_choose_item", return_value=0), patch(
+                "chess_and_chains.ui.app.modal_session.wait_modal", side_effect=capture_output,
+            ):
+                reopened._open_analysis_reports()
+            self.assertIsNone(reopened._analysis)
+            self.assertIn("Critical moments", displayed[0])
+            self.assertIn("d2d4", displayed[0])
+            reopened.close()
+
+
 class PuzzleUiTests(AppTestCase):
+    def test_mate_chain_resumes_a_hint_and_grades_once_after_reopening(self):
+        with tempfile.TemporaryDirectory() as folder:
+            layout = DataLayout(Path(folder))
+            app = self.make_app(data_layout=layout)
+            app._open_mate_chain()
+            self.assertIn("1/3", app.panel_text.get())
+            first = app.puzzle.puzzle
+            app._puzzle_hint()
+            app.close()
+
+            resumed = self.make_app(data_layout=layout)
+            resumed._open_mate_chain()
+            self.assertEqual(resumed.puzzle.puzzle, first)
+            self.assertEqual(resumed.puzzle.hints_used, 1)
+            self.assertEqual(resumed._puzzle_hint_stage, 1)
+            while resumed.puzzle.expected_move is not None:
+                resumed._play_move(resumed.puzzle.expected_move)
+            self.assertEqual(resumed.db.puzzle_progress(resumed.pack.manifest.pack_id, first.puzzle_id).attempts, 1)
+            resumed.close()
+
+            following = self.make_app(data_layout=layout)
+            following._open_mate_chain()
+            self.assertEqual(following.puzzle_index, 1)
+            self.assertNotEqual(following.puzzle.puzzle, first)
+            self.assertEqual(following.db.puzzle_progress(following.pack.manifest.pack_id, first.puzzle_id).attempts, 1)
+            following.close()
+
+    def test_due_filter_reads_persisted_attempt_dates(self):
+        with tempfile.TemporaryDirectory() as folder:
+            layout = DataLayout(Path(folder))
+            app = self.make_app(data_layout=layout)
+            pack_id = app.pack.manifest.pack_id
+            due, future = app.pack.puzzles[:2]
+            for puzzle in (due, future):
+                app.db.record_puzzle_attempt(pack_id, puzzle.puzzle_id, solved=True, mistakes=0,
+                                             hints_used=0, duration_ms=1000)
+            app.db._conn.execute(
+                "UPDATE puzzle_attempts SET attempted_utc = ? WHERE pack_id = ? AND puzzle_id = ?",
+                ("2000-01-01", pack_id, due.puzzle_id),
+            )
+            app.tab_rail.set_active("puzzles")
+            app.puzzle_status_filter.current(3)
+            app._apply_puzzle_filters()
+            self.assertEqual(app._puzzle_selection, (due,))
+            self.assertEqual(app.puzzle.puzzle, due)
+            app.close()
+
     def test_staged_hints_and_retry_keep_completed_attempts_separate(self):
         with tempfile.TemporaryDirectory() as tmp:
             app = self.make_app(data_layout=DataLayout(Path(tmp) / "data"), locale="de")

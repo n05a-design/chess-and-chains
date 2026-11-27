@@ -1,4 +1,5 @@
 """Foundation and status-model consistency tests (not chess/GUI/engine acceptance)."""
+import ast
 import copy
 import json
 import os
@@ -30,6 +31,24 @@ def _with(work_id, **changes):
 class FoundationTests(unittest.TestCase):
     def test_manifest_and_expected_files(self):
         self.assertEqual(verify(), [])
+
+    def test_headless_application_packages_do_not_import_presentation(self):
+        package = ROOT / "src" / "chess_and_chains"
+        for folder in ("chess", "engines", "game", "puzzles"):
+            for path in (package / folder).rglob("*.py"):
+                with self.subTest(file=path.relative_to(ROOT)):
+                    for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+                        if isinstance(node, ast.Import):
+                            imports = [name.name for name in node.names]
+                        elif isinstance(node, ast.ImportFrom):
+                            imports = [node.module] if node.module else [name.name for name in node.names]
+                        else:
+                            continue
+                        for imported in imports:
+                            self.assertFalse(
+                                set(imported.split(".")) & {"tkinter", "glide_shell", "ui"},
+                                f"Headless package imports {imported}",
+                            )
 
     def test_asset_register_rejects_missing_paths_and_changed_bytes(self):
         with tempfile.TemporaryDirectory() as directory:

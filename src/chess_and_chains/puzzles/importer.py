@@ -16,15 +16,18 @@ import csv
 import hashlib
 import io
 import re
+import sqlite3
+import tempfile
 from collections import Counter
+from contextlib import closing
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from heapq import nsmallest
 from pathlib import Path
-from typing import BinaryIO, Iterator
+from typing import BinaryIO, Callable, Iterable, Iterator
 
 from ..chess import ChessError, ChessRules, Move, parse_fen
-from .model import MIN_PUBLISHED_RATING, Puzzle, ValidationStatus
+from .model import MIN_PUBLISHED_RATING, Puzzle, ValidationStatus, validate_solution_line
 
 LICHESS_COLUMNS = (
     "PuzzleId", "FEN", "Moves", "Rating", "RatingDeviation",
@@ -34,6 +37,25 @@ _ID = re.compile(r"^[A-Za-z0-9]{3,16}$")
 _THEME = re.compile(r"^[A-Za-z0-9]+$")
 _INVALID_UTF8 = re.compile(r"[\udc80-\udcff]")
 MAX_SOLUTION_PLIES = 40
+
+RATING_BANDS = (
+    (1199, "1000-1199"), (1399, "1200-1399"), (1599, "1400-1599"),
+    (1799, "1600-1799"), (1999, "1800-1999"), (2399, "2000-2399"),
+)
+
+
+@dataclass
+class PuzzleDistribution:
+    ratings: Counter[str] = field(default_factory=Counter)
+    themes: Counter[str] = field(default_factory=Counter)
+
+    def include(self, puzzle: Puzzle) -> None:
+        band = next((label for ceiling, label in RATING_BANDS if puzzle.rating <= ceiling), "2400+")
+        self.ratings[band] += 1
+        self.themes.update(set(puzzle.themes))
+
+    def to_dict(self) -> dict[str, dict[str, int]]:
+        return {"rating_bands": dict(sorted(self.ratings.items())), "themes": dict(sorted(self.themes.items()))}
 
 
 class PuzzleImportError(ValueError):
@@ -84,6 +106,14 @@ class ImportReport:
     min_plays: int | None = field(default=None, kw_only=True)
     selection_limit: int | None = field(default=None, init=False)
     selection_seed: int | None = field(default=None, init=False)
+    accepted_distribution: PuzzleDistribution = field(default_factory=PuzzleDistribution, init=False)
+    selected_distribution: PuzzleDistribution | None = field(default=None, init=False)
+
+    def record_selection(self, puzzles: Iterable[Puzzle]) -> None:
+        distribution = PuzzleDistribution()
+        for puzzle in puzzles:
+            distribution.include(puzzle)
+        self.selected_distribution = distribution
 
     def reject(self, reason: str, puzzle_id: str) -> None:
         self.rejected[reason] += 1
@@ -109,6 +139,10 @@ class ImportReport:
                 "seed": self.selection_seed,
                 "limit": self.selection_limit,
                 "selected": selected,
+            },
+            "distribution": {
+                "accepted": self.accepted_distribution.to_dict(),
+                "selected": (self.selected_distribution or self.accepted_distribution).to_dict(),
             },
             "rejected": dict(sorted(self.rejected.items())),
             "rejected_examples": dict(sorted(self.examples.items())),
@@ -149,10 +183,10 @@ def validate_row(row: dict[str, str], rules: ChessRules, source: str) -> Puzzle:
         state = parse_fen(fen)
     except ChessError as error:
         raise _RowError("bad_fen") from error
-    for move in moves:
-        if move not in rules.legal_moves(state):
-            raise _RowError("illegal_move")
-        state = rules.apply(state, move)
+    try:
+        validate_solution_line(state, moves, rules)
+    except ChessError as error:
+        raise _RowError("illegal_move") from error
     return Puzzle(
         puzzle_id=puzzle_id,
         fen=fen,
@@ -179,6 +213,26 @@ def iter_lichess_csv(
     limit: int | None = None,
 ) -> Iterator[Puzzle]:
     """Yield validated puzzles from a binary CSV stream, updating ``report``."""
+    seen: set[str] = set()
+
+    def register_id(puzzle_id: str) -> bool:
+        if puzzle_id in seen:
+            return False
+        seen.add(puzzle_id)
+        return True
+
+    yield from _iter_lichess_csv(stream, report, register_id, source=source, rules=rules, limit=limit)
+
+
+def _iter_lichess_csv(
+    stream: BinaryIO,
+    report: ImportReport,
+    register_id: Callable[[str], bool],
+    *,
+    source: str,
+    rules: ChessRules | None = None,
+    limit: int | None = None,
+) -> Iterator[Puzzle]:
     if report.min_rating < MIN_PUBLISHED_RATING:
         raise PuzzleImportError(f"Published packs require Rating >= {MIN_PUBLISHED_RATING}.")
     if report.max_rating is not None and report.max_rating < report.min_rating:
@@ -214,7 +268,6 @@ def iter_lichess_csv(
     if (tuple(header[: len(LICHESS_COLUMNS)]) != LICHESS_COLUMNS
             or len(set(header)) != len(header)):
         raise PuzzleImportError(f"Unexpected CSV header: {header}")
-    seen: set[str] = set()
     while True:
         if limit is not None and report.accepted >= limit:
             break
@@ -242,12 +295,13 @@ def iter_lichess_csv(
             continue
         row = dict(zip(header, values))
         puzzle_id = row["PuzzleId"].strip()
-        # Track every source id before filtering so duplicate handling does
-        # not depend on which rating filter is active.
-        if puzzle_id in seen:
+        if not _ID.fullmatch(puzzle_id):
+            report.reject("bad_id", f"row-{report.rows_read}")
+            continue
+        # Register the id before filtering so its ownership is filter-independent.
+        if not register_id(puzzle_id):
             report.reject("duplicate_id", puzzle_id)
             continue
-        seen.add(puzzle_id)
         try:
             rating = int(row.get("Rating", ""))
         except ValueError:
@@ -277,6 +331,7 @@ def iter_lichess_csv(
             report.reject("below_min_plays", puzzle_id)
             continue
         report.accepted += 1
+        report.accepted_distribution.include(puzzle)
         yield puzzle
     report.input_bytes = hashing.bytes_read
     report.input_sha256 = hashing.digest.hexdigest()
@@ -315,17 +370,28 @@ def import_lichess_file(
         path.name, min_rating, max_rating,
         max_rating_deviation=max_rating_deviation, min_popularity=min_popularity, min_plays=min_plays,
     )
-    with open_puzzle_source(path) as stream:
-        if seed is None:
-            return list(iter_lichess_csv(stream, report, source=source, limit=limit)), report
+    # A full export contains millions of distinct IDs. Store source IDs in a
+    # disposable database so the input-order and seeded paths retain exact duplicate checks.
+    with tempfile.TemporaryDirectory(prefix="chess-puzzle-import-") as directory:
+        index_path = Path(directory) / "seen.sqlite3"
+        with closing(sqlite3.connect(index_path)) as index, open_puzzle_source(path) as stream:
+            index.execute("CREATE TABLE seen (id TEXT PRIMARY KEY) WITHOUT ROWID")
 
-        def rank(puzzle: Puzzle) -> tuple[bytes, str]:
-            puzzle_id = puzzle.puzzle_id
-            digest = hashlib.sha256(f"{seed}:{puzzle_id}".encode("ascii")).digest()
-            return digest, puzzle_id
+            def register_id(puzzle_id: str) -> bool:
+                cursor = index.execute("INSERT OR IGNORE INTO seen (id) VALUES (?)", (puzzle_id,))
+                return cursor.rowcount == 1
 
-        # The selection heap is bounded by the pack limit. The reader still checks all rows.
-        puzzles = nsmallest(limit, iter_lichess_csv(stream, report, source=source), key=rank)
-        report.selection_seed = seed
-        report.selection_limit = limit
+            if seed is None:
+                return list(_iter_lichess_csv(stream, report, register_id, source=source, limit=limit)), report
+
+            def rank(puzzle: Puzzle) -> tuple[bytes, str]:
+                puzzle_id = puzzle.puzzle_id
+                digest = hashlib.sha256(f"{seed}:{puzzle_id}".encode("ascii")).digest()
+                return digest, puzzle_id
+
+            # The selection heap is bounded by the pack limit while the reader checks all rows.
+            puzzles = nsmallest(limit, _iter_lichess_csv(stream, report, register_id, source=source), key=rank)
+    report.selection_seed = seed
+    report.selection_limit = limit
+    report.record_selection(puzzles)
     return puzzles, report

@@ -12,6 +12,7 @@ engine is used and labelled as such.
 from __future__ import annotations
 
 import os
+import hashlib
 import shlex
 import sys
 import threading
@@ -27,6 +28,15 @@ ENGINE_ENV = "CHESS_AND_CHAINS_ENGINE"
 
 
 @dataclass(frozen=True, slots=True)
+class BotClock:
+    white_ms: int
+    black_ms: int
+    white_increment_ms: int
+    black_increment_ms: int
+    remaining_ms: int
+
+
+@dataclass(frozen=True, slots=True)
 class BotRequest:
     """Game data plus a thread-safe cancellation signal owned by the controller."""
 
@@ -37,6 +47,7 @@ class BotRequest:
     legal_moves: tuple[Move, ...]
     game_id: int = 0
     cancelled: threading.Event = field(default_factory=threading.Event, compare=False, repr=False)
+    clock: BotClock | None = None
 
 
 class MoveProvider(Protocol):
@@ -65,6 +76,15 @@ class EngineConfig:
     display_name: str
     is_mock: bool
     source: str  # "mock", "settings", "environment"
+
+    def session_reference(self) -> str:
+        """Identify a configuration without persisting executable commands."""
+        if self.is_mock:
+            return "mock"
+        path = Path(self.command[0]).resolve(strict=True)
+        stat = path.stat()
+        identity = (str(path), stat.st_size, stat.st_mtime_ns, *self.command[1:])
+        return hashlib.sha256(repr(identity).encode("utf-8")).hexdigest()
 
     @classmethod
     def mock(cls, mode: str = "normal", seed: int = 0, delay_ms: int | None = None) -> EngineConfig:
@@ -196,6 +216,13 @@ class UCIBot:
                 engine.new_game()
                 self._game_id = request.game_id
             engine.set_position(request.initial_fen, request.moves)
+            if request.clock is not None:
+                timing = request.clock
+                return engine.go_clock(
+                    timing.white_ms, timing.black_ms, timing.white_increment_ms, timing.black_increment_ms,
+                    request.legal_moves, timeout=timing.remaining_ms / 1000 + self.search_margin,
+                    cancelled=request.cancelled,
+                )
             timeout = preset.movetime_ms / 1000 + self.search_margin
             return engine.go_movetime(
                 preset.movetime_ms, request.legal_moves, timeout=timeout, cancelled=request.cancelled,

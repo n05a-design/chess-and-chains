@@ -10,6 +10,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 
 from .dead_positions import closed_pawn_barrier
+from .mating import MatePossibility, prove_mate_possibility
 from .material import CapturedMaterial, calculate_captured_material
 from .model import (
     ChessError,
@@ -44,6 +45,18 @@ class _HistoryEntry:
     move: Move | None = None
     position_key: tuple[object, ...] | None = None
     termination: _Termination | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class GameTimeline:
+    """Validated move line, optional final action, and current action index."""
+
+    moves: tuple[Move, ...]
+    cursor: int
+    result: str | None = None
+    resigned_by: Color | None = None
+    claim: DrawClaim | None = None
+    declared_move: Move | None = None
 
 
 class ChessGame:
@@ -178,7 +191,7 @@ class ChessGame:
         if self.rules.insufficient_material(self.state):
             return MoveOutcome(GameStatus.DRAW_INSUFFICIENT_MATERIAL, in_check=in_check)
         if self._adjudicate_forced_draws and (
-            self._dead_after_forced_play(legal) or closed_pawn_barrier(self.state)
+            self._dead_after_forced_play(self.state, legal, _FORCED_DRAW_MAX_PLIES) or closed_pawn_barrier(self.state)
         ):
             return MoveOutcome(GameStatus.DRAW_DEAD_POSITION, in_check=in_check)
         key = self.rules.position_key(self.state)
@@ -194,23 +207,26 @@ class ChessGame:
             claims.add(DrawClaim.THREEFOLD_REPETITION)
         return MoveOutcome(GameStatus.ACTIVE, in_check=in_check, claimable_draws=frozenset(claims))
 
-    def _dead_after_forced_play(self, legal: tuple[Move, ...]) -> bool:
-        """Prove a draw by following short forced lines without changing the timeline."""
-        state = self.state
-        for _ in range(_FORCED_DRAW_MAX_PLIES):
-            if len(legal) > 1:
-                # At a choice, only test whether every reply is an immediate material draw.
-                # Quiet moves cannot remove material, and en passant leaves a pawn.
-                return all(state.board[move.to_square] is not None for move in legal) and all(
-                    self.rules.insufficient_material(self.rules.apply(state, move)) for move in legal
-                )
-            state = self.rules.apply(state, legal[0])
-            if self.rules.insufficient_material(state):
-                return True
-            legal = self.rules.legal_moves(state)
-            if not legal:
-                return not self.rules.is_in_check(state)
-        return False
+    def mate_possibility(self, side: Color) -> MatePossibility:
+        """Conservatively decide whether a side could mate from the current position."""
+        return prove_mate_possibility(self.state, side, self.rules, self._repetitions)
+
+    def _dead_after_forced_play(self, state: GameState, legal: tuple[Move, ...], depth: int) -> bool:
+        """Prove a draw in bounded forced lines or trees made only of mandatory captures."""
+        if not legal:
+            return not self.rules.is_in_check(state)
+        if depth == 0:
+            return False
+        if len(legal) > 1 and any(state.board[move.to_square] is None for move in legal):
+            return False
+        for move in legal:
+            child = self.rules.apply(state, move)
+            if self.rules.insufficient_material(child):
+                continue
+            replies = self.rules.legal_moves(child)
+            if not self._dead_after_forced_play(child, replies, depth - 1):
+                return False
+        return True
 
     def undo(self) -> GameState:
         if not self._undo:
@@ -227,6 +243,36 @@ class ChessGame:
             else:
                 del self._repetitions[entry.position_key]
         return self.state
+
+    def timeline(self) -> GameTimeline:
+        history = (*self._undo, *reversed(self._redo))
+        moves = tuple(entry.move for entry in history if entry.move is not None)
+        end = history[-1].termination if history else None
+        if end is None:
+            return GameTimeline(moves, len(self._undo))
+        result = {Color.WHITE: "1-0", Color.BLACK: "0-1", None: "1/2-1/2"}[end.winner]
+        return GameTimeline(moves, len(self._undo), result, end.resigned_by, end.claim, end.declared_move)
+
+    @classmethod
+    def from_timeline(cls, initial_state: GameState, timeline: GameTimeline) -> ChessGame:
+        game = cls(initial_state)
+        with game.replay_record():
+            for move in timeline.moves:
+                game.play(move)
+            if timeline.resigned_by is not None:
+                game.resign(timeline.resigned_by)
+            elif timeline.claim is not None:
+                game.claim_draw(timeline.claim, timeline.declared_move)
+        if timeline.result is not None and timeline.resigned_by is None and timeline.claim is None:
+            game.record_result(timeline.result, historical=True)
+        action_count = len(game._undo)
+        if not 0 <= timeline.cursor <= action_count:
+            raise ChessError("Invalid game history cursor.")
+        for _ in range(action_count - timeline.cursor):
+            game.undo()
+        if game.timeline() != timeline:
+            raise ChessError("Game history does not match its recorded actions.")
+        return game
 
     def played_positions(self) -> tuple[GameState, ...]:
         """Return the starting board and one immutable position per played move."""

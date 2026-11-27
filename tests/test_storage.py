@@ -1,4 +1,5 @@
 """Storage tests. Every test writes only inside a temporary directory."""
+from datetime import datetime, timezone
 import json
 import sqlite3
 import sys
@@ -10,7 +11,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from chess_and_chains.chess import ChessGame, Color, DrawClaim, FenError, GameStatus, Move, PGNError, parse_fen  # noqa: E402
+from chess_and_chains.chess import ChessGame, Color, DrawClaim, FenError, GameStatus, Move, PGNError, parse_fen, to_fen  # noqa: E402
 from chess_and_chains.storage import (  # noqa: E402
     SCHEMA_VERSION,
     DataLayout,
@@ -160,9 +161,9 @@ class DatabaseTests(TempDirTestCase):
         with sqlite3.connect(untouched) as backup:
             self.assertEqual(backup.execute("PRAGMA user_version").fetchone()[0], 2)
         backup.close()
-        self.assertEqual(db.schema_version, 3)
+        self.assertEqual(db.schema_version, SCHEMA_VERSION)
         db.restore(untouched)
-        self.assertEqual(db.schema_version, 3)
+        self.assertEqual(db.schema_version, SCHEMA_VERSION)
         game = db.load_game(1).to_game()
         self.assertEqual(game.outcome().status, GameStatus.RECORDED_RESULT)
         self.assertEqual(game.outcome().winner, Color.BLACK)
@@ -171,7 +172,7 @@ class DatabaseTests(TempDirTestCase):
     def test_rechecking_schema_after_lock_skips_an_applied_migration(self):
         db = self.open_db()
         Database._migrate(db._conn, 2)
-        self.assertEqual(db.schema_version, 3)
+        self.assertEqual(db.schema_version, SCHEMA_VERSION)
 
     def test_newer_schema_is_refused_without_modification(self):
         path = self.tmp / "future.sqlite3"
@@ -456,6 +457,80 @@ class DatabaseTests(TempDirTestCase):
                 Database.open(path)
         self.assertEqual(path.read_bytes(), before)
         self.assertEqual(list(path.parent.glob("*.corrupt-*")), [])
+
+    def test_v4_migration_preserves_games_and_progress(self):
+        path = self.tmp / "v4.sqlite3"
+        conn = sqlite3.connect(path)
+        try:
+            for version, script in MIGRATIONS[:4]:
+                conn.executescript(script)
+                conn.execute(f"PRAGMA user_version = {version}")
+            db = Database(conn, path, None, None)
+            game = ChessGame()
+            game.play_uci("e2e4")
+            game_id = db.save_game(game, mode="human-vs-human")
+            db.record_puzzle_attempt("demo", "ccBR01", solved=True, mistakes=0, hints_used=0, duration_ms=123)
+            conn.commit()
+        finally:
+            conn.close()
+        upgraded = self.open_db(path.name)
+        self.assertEqual(upgraded.schema_version, 5)
+        self.assertEqual(upgraded.load_game(game_id).moves, (Move.from_uci("e2e4"),))
+        self.assertEqual(upgraded.puzzle_progress("demo", "ccBR01").best_duration_ms, 123)
+        self.assertEqual(upgraded.analysis_reports(), ())
+        self.assertIsNotNone(upgraded.migration_backup)
+
+    def test_chain_save_is_transactional_and_stale_writer_cannot_duplicate_attempts(self):
+        from chess_and_chains.puzzles import load_demo_pack
+        from chess_and_chains.puzzles.training import DEMO_MATE_CHAIN, demo_chain_catalog
+
+        pack = load_demo_pack()
+        chain = DEMO_MATE_CHAIN.open(demo_chain_catalog(pack))
+        at = datetime(2026, 11, 27, tzinfo=timezone.utc)
+        puzzle, _ = chain.start_next(at)
+        db = self.open_db()
+        active = chain.checkpoint()
+        revision = db.save_training_checkpoint(active, expected_revision=0, hint_stage=0)
+        self.assertIsNone(db.puzzle_progress(pack.manifest.pack_id, puzzle.puzzle.puzzle_id))
+        while puzzle.expected_move is not None:
+            puzzle.submit(puzzle.expected_move)
+        chain.finish_current(at)
+        finished = chain.checkpoint()
+        revision = db.save_training_checkpoint(finished, expected_revision=revision, hint_stage=0)
+        with self.assertRaises(StorageError):
+            db.save_training_checkpoint(active, expected_revision=revision - 1, hint_stage=0)
+        with self.assertRaises(sqlite3.IntegrityError):
+            db.save_training_checkpoint(finished, expected_revision=revision, hint_stage=3)
+        self.assertEqual(db.load_training_checkpoint(active.chain_id), (finished, revision, 0))
+        db.save_training_checkpoint(finished, expected_revision=revision, hint_stage=0)
+        self.assertEqual(db.puzzle_progress(pack.manifest.pack_id, puzzle.puzzle.puzzle_id).attempts, 1)
+        copied = self.tmp / "training-chain.sqlite3"
+        db.backup(copied)
+        db.restore(copied)
+        self.assertEqual(db.load_training_checkpoint(active.chain_id), (finished, revision + 1, 0))
+        self.assertEqual(db.puzzle_progress(pack.manifest.pack_id, puzzle.puzzle.puzzle_id).attempts, 1)
+
+    def test_training_candidate_is_validated_deduplicated_and_restored(self):
+        from chess_and_chains.puzzles.training import TrainingCandidate
+
+        db = self.open_db()
+        game = ChessGame()
+        game.play_uci("e2e4")
+        game_id = db.save_game(game, mode="human-vs-human")
+        original = db.load_game(game_id)
+        candidate = TrainingCandidate(game_id, 0, to_fen(game.initial_state))
+        db.save_training_candidate(candidate)
+        db.save_training_candidate(candidate)
+        with self.assertRaises(StorageError):
+            db.save_training_candidate(TrainingCandidate(game_id, 1, candidate.fen))
+        self.assertEqual(db.training_candidates(), (candidate,))
+        backup = self.tmp / "training-backup.sqlite3"
+        db.backup(backup)
+        db.delete_game(game_id)
+        self.assertEqual(db.training_candidates(), ())
+        db.restore(backup)
+        self.assertEqual(db.training_candidates(), (candidate,))
+        self.assertEqual(db.load_game(game_id), original)
 
     def test_puzzle_progress_and_statistics(self):
         db = self.open_db()

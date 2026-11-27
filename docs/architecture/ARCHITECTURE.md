@@ -1,6 +1,6 @@
 # Zielarchitektur – Chess & Chains
 
-**V.0.3.0 · Stand 24.11.2026 · Integrierte Laufzeitarchitektur auf Glide Shell 0.6.2 (Glide `v1.0.2`).**
+**V.0.3.0 · Stand 27.11.2026 · Integrierte Laufzeitarchitektur auf Glide Shell 0.6.2 (Glide `v1.0.2`).**
 
 ```text
 Chess & Chains Desktop Application (ui/app.py -> glide_shell.app_host.AppHost)
@@ -25,17 +25,17 @@ Chess & Chains Desktop Application (ui/app.py -> glide_shell.app_host.AppHost)
 | `glide_shell/` | Neutrales Tk-Fundament (Shell 0.6.2, Commit `7dcd8dc04366`) | stdlib, `tkinter` (nie `chess_and_chains` oder `glide`) |
 | `chess/` | Regeln, FEN/SAN/PGN, Historie | nur stdlib |
 | `engines/` | UCI-Prozess, Mock-Engine, Presets, MoveProvider | `chess` |
-| `game/` | GameController, Worker, Spielmodi | `chess`, `engines` |
+| `game/` | GameController, Worker, Spielmodi, Schachuhr, Sitzungsmodell | `chess`, `engines` |
 | `puzzles/` | Modell, Importer, Packs, Session | `chess` |
-| `storage/` | Pfade (`runtime_paths`), SQLite, Settings (`window_geometry`) | `chess`, `glide_shell.runtime_paths`, `glide_shell.window_geometry` |
+| `storage/` | Pfade (`runtime_paths`), SQLite, Settings (`window_geometry`) | `chess`, `game`, `puzzles`, `glide_shell.runtime_paths`, `glide_shell.window_geometry` |
 | `i18n/` | DE/EN-Kataloge | stdlib |
 | `ui/` | Tk-App auf `AppHost`, Brett, Renderer, `modal_session`-Dialoge, Themes | alle obigen |
 
 Im aktuellen Code trägt die Anwendungsschicht den Paketnamen `game/`. `storage/` bündelt Datenbank und Einstellungen. Die Partiebibliothek reicht eine validierte `ChessGame` an den Controller. Ein Partiewechsel invalidiert dort ausstehende Bot-Aufträge.
 
 `app/main.py` und das installierte Konsolenskript delegieren an
-`src/chess_and_chains/__main__.py`. Die Tk-Runtime verwendet V.02-Vorderansichten
-oder die per `--piece-view top` gewählte Draufsicht. Tk 9 liest Figuren und
+`src/chess_and_chains/__main__.py`. Die Tk-Runtime verwendet die Figurensets Original V.06, Draufsicht V.04.2
+und Klassisch V.05.1. `--piece-set` wählt das Set für den jeweiligen Aufruf. Tk 9 liest Figuren und
 optionale Brettvorschau direkt als SVG. Für die Figuren gibt es PNG-Atlanten
 für Tk ohne SVG-Leser; für das 2D-Marmorbrett existiert ein vollständiger
 Raster-Fallback (`_checkerboard_fallback`), der bei fehlender nativer
@@ -76,3 +76,5 @@ Engine-Bundles und -Downloads gesperrt; ADR-001 bleibt offen.
 ## Zu verifizierende Testfälle
 
 Königs- und Bauernzüge, Schachabdeckung, Umwandlung in alle Figuren, EP-Entzug der Deckung, beidseitige Rochaden, unzulässige Rochade durch Angriff, Zugwiederholung und 50/75-Züge-Regel, Patt, unzureichendes Material, FEN-Castling/EP, PGN-Roundtrip, Engine-Hänger, Engine-Absturz, Zug während Berechnung, Undo, Katalog-Integrität, native Skalierung.
+
+Die typisierten Befehle und Ansichten für eine spätere Oberfläche stehen im [Bento-Integrationsvertrag](BENTO_INTEGRATION_READINESS.md).

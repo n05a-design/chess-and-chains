@@ -110,6 +110,21 @@ class ImporterTests(unittest.TestCase):
                             "strategy": "sha256-top-k-v1", "seed": seed, "limit": 2, "selected": 2,
                         })
 
+    def test_distributions_distinguish_accepted_and_seeded_selection(self):
+        source = ROOT / "data" / "source" / "demo_puzzles.csv"
+        puzzles, report = import_lichess_file(source, limit=2, seed=0)
+        distribution = report.to_dict()["distribution"]
+        self.assertEqual(distribution["accepted"]["rating_bands"], {"1000-1199": 4, "1200-1399": 1})
+        self.assertEqual(distribution["accepted"]["themes"]["mate"], 5)
+        self.assertEqual(distribution["selected"]["rating_bands"], {"1000-1199": 1, "1200-1399": 1})
+        self.assertEqual(distribution["selected"]["themes"]["mate"], len(puzzles))
+
+    def test_export_row_cannot_package_a_line_from_an_already_ended_game(self):
+        row = "ended,6k1/p4ppp/8/8/8/8/5PPP/3R2K1 b - - 150 1,a7a6 d1d8,1000,80,90,100,mate,,"
+        puzzles, report = parse(HEADER + row + "\n")
+        self.assertEqual(puzzles, [])
+        self.assertEqual(report.rejected, {"illegal_move": 1})
+
     def test_seeded_selection_respects_filters_and_requires_positive_limit(self):
         for limit in (None, 0, -1):
             with self.subTest(limit=limit), self.assertRaises(PuzzleImportError):
@@ -365,6 +380,23 @@ class PackTests(unittest.TestCase):
             with self.assertRaises(PackError):
                 read_pack(Path(tmp) / "missing")
 
+    def test_failed_streaming_pack_build_preserves_installed_bytes(self):
+        pack = load_demo_pack()
+        first, second = pack.puzzles[:2]
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            arguments = {"pack_id": "test-pack", "source": "fixture", "license_note": "test"}
+            write_pack(directory, iter((first,)), version="1", **arguments)
+            old = {path.name: path.read_bytes() for path in directory.iterdir()}
+
+            def invalid_sequence():
+                yield second
+                yield second
+
+            with self.assertRaisesRegex(PackError, "Duplicate puzzle ids"):
+                write_pack(directory, invalid_sequence(), version="2", **arguments)
+            self.assertEqual({path.name: path.read_bytes() for path in directory.iterdir()}, old)
+
     def test_local_library_installs_verified_bytes_and_does_not_replace_existing_pack(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -386,6 +418,26 @@ class PackTests(unittest.TestCase):
                 library.install(source)
             self.assertEqual(library.load("local-study").manifest.version, "1")
             self.assertEqual(tuple(library.directory.iterdir()), (target,))
+
+    def test_revisions_protect_existing_progress_from_reused_or_removed_ids(self):
+        original = load_demo_pack()
+        first, second, added = original.puzzles[:3]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "source"
+            library = PackLibrary(root / "library")
+            args = {"pack_id": "local-study", "source": "fixture", "license_note": "test"}
+            write_pack(source, [first, second], version="1", **args)
+            installed = library.install(source)
+            write_pack(source, [replace(first, rating=1300), second, added], version="2", **args)
+            self.assertEqual(installed.incompatible_puzzle_ids(read_pack(source)), ())
+            replacement = replace(added, puzzle_id=first.puzzle_id)
+            write_pack(source, [replacement], version="3", **args)
+            self.assertEqual(installed.incompatible_puzzle_ids(read_pack(source)),
+                             tuple(sorted((first.puzzle_id, second.puzzle_id))))
+            with self.assertRaisesRegex(PackError, "already installed.*new pack id"):
+                library.install(source)
+            self.assertEqual(library.load("local-study"), installed)
 
     def test_local_library_rejects_reserved_id_empty_pack_and_unplayable_history(self):
         puzzle = load_demo_pack().puzzles[0]
