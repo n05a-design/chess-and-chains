@@ -1,17 +1,21 @@
 """Storage tests. Every test writes only inside a temporary directory."""
 from datetime import datetime, timezone
 import json
+import os
 import sqlite3
+import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+from zipfile import ZipFile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from chess_and_chains.chess import ChessGame, Color, DrawClaim, FenError, GameStatus, Move, PGNError, parse_fen, to_fen  # noqa: E402
+from chess_and_chains.chess import ChessGame, Color, DrawClaim, FenError, GameStatus, Move, PGNError, export_pgn, parse_fen, to_fen  # noqa: E402
+from chess_and_chains.game.clock import TimeControl  # noqa: E402
 from chess_and_chains.storage import (  # noqa: E402
     SCHEMA_VERSION,
     DataLayout,
@@ -25,6 +29,7 @@ from chess_and_chains.storage import (  # noqa: E402
     save_settings,
     update_settings,
 )
+from chess_and_chains.storage.backup_bundle import restore_backup, write_backup  # noqa: E402
 from chess_and_chains.storage.database import MAX_PGN_FILE_BYTES, MIGRATIONS  # noqa: E402
 from chess_and_chains.storage.exchange import (  # noqa: E402
     MAX_FEN_FILE_BYTES, parse_fen_text, read_fen_file, write_fen_file,
@@ -331,6 +336,31 @@ class DatabaseTests(TempDirTestCase):
         self.assertEqual(target.read_text(encoding="utf-8"), "Keep this")
         self.assertEqual(list(self.tmp.glob(".pgn-*")), [])
 
+    def test_archive_summaries_filter_by_recorded_time_control_and_result(self):
+        db = self.open_db()
+        timed = db.import_pgn('[TimeControl "60+2"]\n\n1. e4 *')
+        untimed = db.import_pgn("1. d4 1/2-1/2")
+        self.assertEqual([row.id for row in db.game_summaries(time_control=TimeControl(60_000, 2000))], [timed])
+        self.assertEqual([row.id for row in db.game_summaries(mode="imported", result="1/2-1/2")], [untimed])
+        self.assertEqual([row.id for row in db.game_summaries(has_analysis=True)], [])
+        self.assertEqual([row.id for row in db.game_summaries(has_training=True)], [])
+
+    def test_archive_tags_are_deduplicated_filtered_and_removed_with_the_game(self):
+        db = self.open_db()
+        game_id = db.import_pgn("1. d4 *")
+        db.set_archive_labels(game_id, favorite=True, tags=("Club", "Training", "Club"))
+        self.assertEqual(db.archive_labels(game_id).tags, ("Club", "Training"))
+        self.assertEqual([row.id for row in db.game_summaries(favorite=True, tag="Club")], [game_id])
+        self.assertEqual(db.game_summaries(favorite=False, tag="Club"), [])
+        with self.assertRaises(ValueError):
+            db.set_archive_labels(game_id, favorite=False, tags=(" invalid\t",))
+        self.assertTrue(db.archive_labels(game_id).favorite)
+        backup = db.backup(self.tmp / "archive-labels.sqlite3")
+        db.delete_game(game_id)
+        self.assertIsNone(db._conn.execute("SELECT 1 FROM game_tags").fetchone())
+        db.restore(backup)
+        self.assertTrue(db.archive_labels(game_id).favorite)
+
     def test_backup_and_restore_round_trip(self):
         db = self.open_db()
         game_id = db.import_pgn("1. e4 e5 *")
@@ -468,14 +498,19 @@ class DatabaseTests(TempDirTestCase):
             db = Database(conn, path, None, None)
             game = ChessGame()
             game.play_uci("e2e4")
-            game_id = db.save_game(game, mode="human-vs-human")
+            game_id = conn.execute(
+                "INSERT INTO games (created_utc, initial_fen, moves_uci, pgn, result, mode) VALUES (?, ?, ?, ?, ?, ?)",
+                ("2026-11-27T12:00:00+00:00", to_fen(game.initial_state), "e2e4", export_pgn(game), "*", "human-vs-human"),
+            ).lastrowid
             db.record_puzzle_attempt("demo", "ccBR01", solved=True, mistakes=0, hints_used=0, duration_ms=123)
             conn.commit()
         finally:
             conn.close()
         upgraded = self.open_db(path.name)
-        self.assertEqual(upgraded.schema_version, 5)
-        self.assertEqual(upgraded.load_game(game_id).moves, (Move.from_uci("e2e4"),))
+        self.assertEqual(upgraded.schema_version, SCHEMA_VERSION)
+        migrated = upgraded.load_game(game_id)
+        self.assertEqual(migrated.moves, (Move.from_uci("e2e4"),))
+        self.assertIsNone(migrated.session_snapshot)
         self.assertEqual(upgraded.puzzle_progress("demo", "ccBR01").best_duration_ms, 123)
         self.assertEqual(upgraded.analysis_reports(), ())
         self.assertIsNotNone(upgraded.migration_backup)
@@ -545,6 +580,140 @@ class DatabaseTests(TempDirTestCase):
         self.assertEqual((stats.puzzles_attempted, stats.puzzles_solved, stats.puzzles_clean), (2, 2, 1))
         with self.assertRaises(sqlite3.IntegrityError):
             db.record_puzzle_attempt("demo", "c", solved=True, mistakes=-1, hints_used=0, duration_ms=1)
+
+
+class BackupBundleTests(TempDirTestCase):
+    def test_portable_restore_keeps_local_engine_preferences_and_reports_missing_packs(self):
+        source = DataLayout(self.tmp / "source")
+        target = DataLayout(self.tmp / "target")
+        engine_import = str(self.tmp / "other" / "engine")
+        engine_local = str(self.tmp / "local" / "engine")
+        save_settings(source.settings, Settings(locale="de", last_pack_id="club-mate", engine_path=engine_import,
+                                                registered_engine_paths=(engine_import,)))
+        save_settings(target.settings, Settings(locale="en", engine_path=engine_local,
+                                                registered_engine_paths=(engine_local,)))
+        with Database.open(source.database) as db:
+            archived = db.import_pgn("1. e4 *")
+        with Database.open(target.database) as db:
+            db.import_pgn("1. d4 *")
+        archive = write_backup(source, self.tmp / "profile.zip")
+        result = restore_backup(target, archive)
+        self.assertEqual(result.missing_packs, ("club-mate",))
+        restored, _ = load_settings(target.settings)
+        self.assertEqual((restored.locale, restored.last_pack_id), ("de", "club-mate"))
+        self.assertEqual((restored.engine_path, restored.registered_engine_paths), (engine_local, (engine_local,)))
+        with Database.open(target.database) as db:
+            self.assertEqual(db.load_game(archived).moves, (Move.from_uci("e2e4"),))
+        restore_backup(target, result.recovery_bundle)
+        self.assertEqual(load_settings(target.settings)[0].locale, "en")
+        with Database.open(target.database) as db:
+            self.assertEqual(db.load_game(1).moves, (Move.from_uci("d2d4"),))
+
+    def test_settings_failure_rolls_back_database_and_preserves_settings(self):
+        source = DataLayout(self.tmp / "source")
+        target = DataLayout(self.tmp / "target")
+        save_settings(source.settings, Settings(locale="de"))
+        save_settings(target.settings, Settings(locale="en"))
+        with Database.open(source.database) as db:
+            db.import_pgn("1. e4 *")
+        with Database.open(target.database) as db:
+            saved = db.import_pgn("1. d4 *")
+        archive = write_backup(source, self.tmp / "profile.zip")
+
+        def save_except_live(path, settings):
+            if path == target.settings:
+                raise OSError("card full")
+            save_settings(path, settings)
+
+        with patch("chess_and_chains.storage.backup_bundle.save_settings", side_effect=save_except_live):
+            with self.assertRaisesRegex(StorageError, "database rolled back"):
+                restore_backup(target, archive)
+        self.assertEqual(load_settings(target.settings)[0].locale, "en")
+        with Database.open(target.database) as db:
+            self.assertEqual(db.load_game(saved).moves, (Move.from_uci("d2d4"),))
+        self.assertEqual(len(list(target.backups.glob("pre-profile-restore-*.zip"))), 1)
+
+    def test_process_abort_during_restore_leaves_a_complete_recovery_bundle(self):
+        incoming = DataLayout(self.tmp / "incoming")
+        target = DataLayout(self.tmp / "target")
+        save_settings(incoming.settings, Settings(locale="de"))
+        save_settings(target.settings, Settings(locale="en"))
+        with Database.open(incoming.database) as db:
+            db.import_pgn("1. e4 *")
+        with Database.open(target.database) as db:
+            db.import_pgn("1. d4 *")
+        archive = write_backup(incoming, self.tmp / "incoming.zip")
+        process = """
+import os
+import sys
+from pathlib import Path
+from unittest.mock import patch
+from chess_and_chains.storage import DataLayout, save_settings
+from chess_and_chains.storage.backup_bundle import restore_backup
+layout = DataLayout(Path(sys.argv[1]))
+
+def abort_before_settings_swap(path, settings):
+    if path == layout.settings:
+        os._exit(17)
+    save_settings(path, settings)
+
+with patch("chess_and_chains.storage.backup_bundle.save_settings", side_effect=abort_before_settings_swap):
+    restore_backup(layout, Path(sys.argv[2]))
+"""
+        interrupted = subprocess.run(
+            [sys.executable, "-c", process, str(target.root), str(archive)],
+            env={**os.environ, "PYTHONPATH": str(ROOT / "src")}, capture_output=True, timeout=15,
+        )
+        self.assertEqual(interrupted.returncode, 17, interrupted.stderr)
+        with Database.open(target.database) as db:
+            self.assertEqual(db.load_game(1).moves, (Move.from_uci("e2e4"),))
+        self.assertEqual(load_settings(target.settings)[0].locale, "en")
+        recovery, = target.backups.glob("pre-profile-restore-*.zip")
+        restore_backup(target, recovery)
+        with Database.open(target.database) as db:
+            self.assertEqual(db.load_game(1).moves, (Move.from_uci("d2d4"),))
+        self.assertEqual(load_settings(target.settings)[0].locale, "en")
+
+    def test_invalid_bundle_is_rejected_without_touching_current_profile(self):
+        layout = DataLayout(self.tmp / "profile")
+        save_settings(layout.settings, Settings(locale="de"))
+        with Database.open(layout.database) as db:
+            db.import_pgn("1. e4 *")
+        baseline_db = layout.database.read_bytes()
+        baseline_settings = layout.settings.read_bytes()
+        original = write_backup(layout, self.tmp / "valid.zip")
+        with ZipFile(original) as archive:
+            contents = {name: archive.read(name) for name in archive.namelist()}
+        for label, changes, message in (
+            ("traversal", {"../escaped.txt": b"bad"}, "unexpected or missing"),
+            ("checksum", {"settings.json": b"{}"}, "integrity"),
+            ("schema", {"manifest.json": b'{"schema": 999, "profile": "local"}'}, "schema"),
+            ("size", {"settings.json": b"x" * 131073}, "Invalid backup member"),
+        ):
+            with self.subTest(label=label):
+                candidate = self.tmp / f"{label}.zip"
+                with ZipFile(candidate, "w") as archive:
+                    for name, content in (contents | changes).items():
+                        archive.writestr(name, content)
+                with self.assertRaisesRegex(StorageError, message):
+                    restore_backup(layout, candidate)
+                self.assertEqual(layout.database.read_bytes(), baseline_db)
+                self.assertEqual(layout.settings.read_bytes(), baseline_settings)
+        self.assertFalse((layout.root / "escaped.txt").exists())
+
+    def test_legacy_database_backup_leaves_settings_untouched(self):
+        layout = DataLayout(self.tmp / "profile")
+        save_settings(layout.settings, Settings(locale="de"))
+        settings_before = layout.settings.read_bytes()
+        with Database.open(layout.database) as db:
+            game_id = db.import_pgn("1. e4 *")
+            backup = db.backup(self.tmp / "legacy.sqlite3")
+            db.import_pgn("1. d4 *")
+        result = restore_backup(layout, backup)
+        self.assertTrue(result.recovery_bundle.is_file())
+        self.assertEqual(layout.settings.read_bytes(), settings_before)
+        with Database.open(layout.database) as db:
+            self.assertEqual([row[0] for row in db.list_games()], [game_id])
 
 
 class PositionFileTests(TempDirTestCase):

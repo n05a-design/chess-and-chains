@@ -444,6 +444,15 @@ class CapturedMaterialUiTests(AppTestCase):
 
 
 class SessionRecoveryUiTests(AppTestCase):
+    def test_game_menu_draw_offer_requires_opponent_confirmation(self):
+        app = self.make_app(locale="de")
+        with patch("chess_and_chains.ui.app.messagebox.askyesno", side_effect=(False, True)) as ask:
+            app._offer_draw()
+            self.assertIs(app.game.outcome().status, GameStatus.ACTIVE)
+            self.assertIn("Schwarz", ask.call_args.args[1])
+            app._offer_draw()
+        self.assertEqual(app.panel_text.get(), "Remis durch Vereinbarung.")
+
     def test_startup_resumes_autosave_with_redo_without_library_entry(self):
         with tempfile.TemporaryDirectory() as folder:
             layout = DataLayout(Path(folder))
@@ -542,9 +551,47 @@ class SessionRecoveryUiTests(AppTestCase):
             row = app.db.load_game(app._save_game())
             self.assertEqual(row.result, "1-0")
             self.assertEqual(dict(row.pgn_tags)["Termination"], "time forfeit")
+            self.assertEqual(dict(row.pgn_tags)["TimeControl"], "1")
+            self.assertEqual(row.session_snapshot.clock.current.remaining_ms(Color.BLACK), 0)
             session, _ = app.db.load_session()
             self.assertEqual(session.clock.current.remaining_ms(Color.BLACK), 0)
             self.assertEqual(session.timeline.result, "1-0")
+            app.close()
+
+    def test_timed_archive_replays_frozen_clocks_and_continues_with_redo(self):
+        with tempfile.TemporaryDirectory() as folder:
+            app = self.make_app(data_layout=DataLayout(Path(folder)), locale="en")
+            now = 0
+            app.controller._now = lambda: now
+            app.start_game("human-vs-human", time_control=TimeControl(60_000, 2000))
+            now += 1_250_000_000
+            app._play_move(Move.from_uci("e2e4"))
+            now += 3_500_000_000
+            app._play_move(Move.from_uci("e7e5"))
+            app._undo()
+            archived = app.db.load_game(app._save_game())
+            self.assertEqual(dict(archived.pgn_tags)["TimeControl"], "60+2")
+            self.assertEqual(archived.session_snapshot.clock.positions[2].remaining_ms(Color.BLACK), 58_500)
+            with patch.object(app, "_open_replay") as replay:
+                app._open_saved_replay(archived)
+            (game,), kwargs = replay.call_args
+            dialog = ReplayDialog(self.root, game, app.t, app.board._artwork, app.board.renderer, "white", **kwargs)
+            try:
+                self.assertIn("White 1:00.000", dialog.status.cget("text"))
+                dialog.show(1)
+                now += 5_000_000_000
+                self.assertIn("White 1:00.750", dialog.status.cget("text"))
+                self.assertIn("Black 1:00.000", dialog.status.cget("text"))
+                dialog.show(0)
+                self.assertIn("White 1:00.000", dialog.status.cget("text"))
+            finally:
+                dialog.destroy()
+            app.start_game("human-vs-human")
+            app._continue_saved_game(archived)
+            self.assertFalse(app.controller.view().clock_running)
+            self.assertTrue(app.controller.view().can_redo)
+            self.assertEqual(app.db.load_session()[0], archived.session_snapshot)
+            self.assertEqual(app.db.load_game(archived.id), archived)
             app.close()
 
     def test_timed_session_starts_paused_with_saved_times_after_reopen(self):
@@ -803,6 +850,7 @@ class PuzzleUiTests(AppTestCase):
         self.assertEqual(reopened.active_panel, "play")
         reopened.tab_rail.set_active("puzzles")
         self.assertEqual(reopened.pack.manifest.pack_id, "local-study")
+        self.assertEqual(reopened.pack.catalog.get(puzzle.puzzle_id), reopened.puzzle.puzzle)
         self.assertEqual(reopened.puzzle_progress_text.get(), "1 von 1 Rätseln dieser Auswahl gelöst.")
 
     def test_invalid_pack_validation_keeps_the_current_session_responsive(self):
@@ -1358,7 +1406,9 @@ class StorageAndLocaleUiTests(AppTestCase):
             game_id = app.db.import_pgn(f'[SetUp "1"]\n[FEN "{fen}"]\n\n17... dxe3 1/2-1/2')
             app._play_move(Move.from_uci("d2d4"))
             live = app.game
-            original_pgn = app.db.load_game(game_id).pgn
+            imported = app.db.load_game(game_id)
+            self.assertIsNone(imported.session_snapshot)
+            original_pgn = imported.pgn
             errors = []
 
             def inspect():

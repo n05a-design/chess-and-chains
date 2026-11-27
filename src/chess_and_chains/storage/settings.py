@@ -118,26 +118,28 @@ class Settings:
         return self
 
 
+def decode_settings(text: str) -> Settings:
+    raw = json.loads(text)
+    if not isinstance(raw, dict):
+        raise SettingsError("Settings root must be an object.")
+    # Migration: populate piece_set from legacy piece_view if missing or invalid.
+    if "piece_set" not in raw:
+        raw["piece_set"] = "top" if raw.get("piece_view") == "top" else "original"
+    elif raw["piece_set"] not in PIECE_SET_CHOICES:
+        raw["piece_set"] = "original"
+    raw["piece_view"] = "top" if raw["piece_set"] == "top" else "front"
+    if isinstance(raw.get("registered_engine_paths"), list):
+        raw["registered_engine_paths"] = tuple(raw["registered_engine_paths"])
+    known = {f.name for f in fields(Settings)}
+    return Settings(**{key: value for key, value in raw.items() if key in known}).validate()
+
+
 def load_settings(path: Path) -> tuple[Settings, str | None]:
     """Return settings plus an optional warning. A broken file is quarantined, never deleted."""
     if not path.exists():
         return Settings(), None
     try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
-        if not isinstance(raw, dict):
-            raise SettingsError("Settings root must be an object.")
-        # Migration: populate piece_set from legacy piece_view if missing or invalid
-        if "piece_set" not in raw:
-            raw["piece_set"] = "top" if raw.get("piece_view") == "top" else "original"
-        elif raw["piece_set"] not in PIECE_SET_CHOICES:
-            raw["piece_set"] = "original"
-        # Keep piece_view in sync for backward compatibility
-        raw["piece_view"] = "top" if raw["piece_set"] == "top" else "front"
-        if isinstance(raw.get("registered_engine_paths"), list):
-            raw["registered_engine_paths"] = tuple(raw["registered_engine_paths"])
-        known = {f.name for f in fields(Settings)}
-        settings = Settings(**{k: v for k, v in raw.items() if k in known}).validate()
-        return settings, None
+        return decode_settings(path.read_text(encoding="utf-8")), None
     except (OSError, ValueError, TypeError) as error:
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
         quarantine = path.with_name(f"{path.name}.invalid-{stamp}")

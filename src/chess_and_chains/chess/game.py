@@ -57,6 +57,7 @@ class GameTimeline:
     resigned_by: Color | None = None
     claim: DrawClaim | None = None
     declared_move: Move | None = None
+    agreed_draw: bool = False
 
 
 class ChessGame:
@@ -122,6 +123,12 @@ class ChessGame:
         if not valid:
             raise ChessError(f"The {reason.name.lower().replace('_', ' ')} is not claimable.")
         self._finish(_Termination(GameStatus.DRAW_CLAIMED, claim=reason, declared_move=move))
+        return self.outcome()
+
+    def agree_draw(self) -> MoveOutcome:
+        if self.outcome().status is not GameStatus.ACTIVE:
+            raise ChessError("A draw cannot be agreed after the game has ended.")
+        self._finish(_Termination(GameStatus.DRAW_AGREED))
         return self.outcome()
 
     def draw_claim_options(self) -> tuple[tuple[DrawClaim, Move | None], ...]:
@@ -251,7 +258,10 @@ class ChessGame:
         if end is None:
             return GameTimeline(moves, len(self._undo))
         result = {Color.WHITE: "1-0", Color.BLACK: "0-1", None: "1/2-1/2"}[end.winner]
-        return GameTimeline(moves, len(self._undo), result, end.resigned_by, end.claim, end.declared_move)
+        return GameTimeline(
+            moves, len(self._undo), result, end.resigned_by, end.claim, end.declared_move,
+            agreed_draw=end.status is GameStatus.DRAW_AGREED,
+        )
 
     @classmethod
     def from_timeline(cls, initial_state: GameState, timeline: GameTimeline) -> ChessGame:
@@ -263,7 +273,9 @@ class ChessGame:
                 game.resign(timeline.resigned_by)
             elif timeline.claim is not None:
                 game.claim_draw(timeline.claim, timeline.declared_move)
-        if timeline.result is not None and timeline.resigned_by is None and timeline.claim is None:
+            elif timeline.agreed_draw:
+                game.agree_draw()
+        if timeline.result is not None and game._termination is None:
             game.record_result(timeline.result, historical=True)
         action_count = len(game._undo)
         if not 0 <= timeline.cursor <= action_count:

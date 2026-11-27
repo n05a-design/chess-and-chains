@@ -20,14 +20,15 @@ import sqlite3
 import tempfile
 from contextlib import closing
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from ..chess import ChessError, ChessGame, Color, DrawClaim, Move, export_pgn, parse_fen, parse_pgn, to_fen
 from ..chess.notation import read_pgn_headers
 from ..engines.analysis import AnalysisProgress
 from ..engines.analysis_report import MAX_REPORT_BYTES, decode_report, encode_report
-from ..game.session import GameSessionSnapshot, MAX_SNAPSHOT_BYTES
+from ..game.clock import TimeControl
+from ..game.session import GameSessionSnapshot, MAX_SNAPSHOT_BYTES, SessionLifecycle
 from ..puzzles import load_demo_pack
 from ..puzzles.training import (
     DEMO_MATE_CHAIN, MAX_TRAINING_CHECKPOINT_BYTES, AttemptStatus, TrainingAttempt, TrainingCandidate,
@@ -115,12 +116,29 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
             payload TEXT NOT NULL CHECK (length(CAST(payload AS BLOB)) <= 65536)
         );
     """),
+    (6, """
+        ALTER TABLE games ADD COLUMN session_snapshot TEXT
+            CHECK (session_snapshot IS NULL OR length(CAST(session_snapshot AS BLOB)) <= 262144);
+    """),
+    (7, """
+        ALTER TABLE games ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0 CHECK (favorite IN (0, 1));
+        CREATE TABLE game_tags (
+            game_id INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+            tag TEXT NOT NULL CHECK (length(tag) BETWEEN 1 AND 64),
+            PRIMARY KEY (game_id, tag)
+        ) WITHOUT ROWID;
+        CREATE INDEX game_tags_tag ON game_tags(tag, game_id);
+    """),
 )
 SCHEMA_VERSION = MIGRATIONS[-1][0]
 
 
 class StorageError(RuntimeError):
     """The database cannot be used safely."""
+
+
+class SessionConflict(StorageError):
+    """The active checkpoint changed since this instance last read it."""
 
 
 class _CorruptDatabase(sqlite3.DatabaseError):
@@ -161,6 +179,23 @@ class SavedGame:
     draw_claim: DrawClaim | None = None
     declared_move: Move | None = None
     engine_ref: str | None = None
+    session_snapshot: GameSessionSnapshot | None = None
+
+    @property
+    def started_utc(self) -> datetime | None:
+        return datetime.fromisoformat(self.session_snapshot.created_utc) if self.session_snapshot else None
+
+    @property
+    def ended_utc(self) -> datetime | None:
+        snapshot = self.session_snapshot
+        if snapshot is None or snapshot.lifecycle is not SessionLifecycle.FINISHED:
+            return None
+        return datetime.fromisoformat(snapshot.updated_utc)
+
+    @property
+    def wall_duration(self) -> timedelta | None:
+        start, end = self.started_utc, self.ended_utc
+        return end - start if start is not None and end is not None else None
 
     def to_game(self) -> ChessGame:
         game = ChessGame(parse_fen(self.initial_fen))
@@ -171,6 +206,10 @@ class SavedGame:
                 game.resign(self.resigned_by)
             elif self.draw_claim is not None:
                 game.claim_draw(self.draw_claim, self.declared_move)
+        if self.session_snapshot is not None and self.result == "1/2-1/2":
+            timeline = self.session_snapshot.timeline
+            if timeline.agreed_draw and timeline.cursor > len(timeline.moves):
+                game.agree_draw()
         game.record_result(self.result, historical=True)
         return game
 
@@ -183,6 +222,12 @@ class GameSummary:
     white: str
     black: str
     event: str
+
+
+@dataclass(frozen=True, slots=True)
+class ArchiveLabels:
+    favorite: bool
+    tags: tuple[str, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -343,7 +388,7 @@ class Database:
                         candidate.backup(staged)
                         self._migrate(staged, version)
                         staged.execute("SELECT id, created_utc, initial_fen, moves_uci, pgn, result, mode, "
-                                       "bot_color, bot_name, bot_preset, resigned_by, draw_claim, declared_move, engine_ref, profile_id FROM games LIMIT 0")
+                                       "bot_color, bot_name, bot_preset, resigned_by, draw_claim, declared_move, engine_ref, profile_id, session_snapshot, favorite FROM games LIMIT 0")
                         staged.execute("SELECT id, pack_id, puzzle_id, attempted_utc, solved, mistakes, "
                                        "hints_used, duration_ms FROM puzzle_attempts LIMIT 0")
                         staged.execute("SELECT pack_id, puzzle_id, attempts, solved, clean_solves, "
@@ -352,6 +397,8 @@ class Database:
                         for (game_id,) in staged.execute("SELECT id FROM games"):
                             staged_db.load_game(game_id)
                         staged_db.load_session()
+                        staged.execute("SELECT game_id, tag FROM game_tags LIMIT 0")
+                        staged_db._validate_archive_labels()
                         if staged.execute("PRAGMA foreign_key_check").fetchone():
                             raise StorageError("Backup contains invalid references.")
                         for candidate in staged_db.training_candidates():
@@ -385,22 +432,63 @@ class Database:
             (payload,),
         )
 
-    def load_session(self) -> tuple[GameSessionSnapshot, ChessGame] | None:
+    def compare_and_save_session(self, snapshot: GameSessionSnapshot, expected: str | None) -> str:
+        """Replace only the exact checkpoint this instance last observed."""
+        payload = snapshot.encode()
+        if expected is None:
+            changed = self._conn.execute(
+                "INSERT INTO active_session(slot, snapshot) VALUES (1, ?) ON CONFLICT(slot) DO NOTHING",
+                (payload,),
+            )
+        else:
+            changed = self._conn.execute(
+                "UPDATE active_session SET snapshot = ? WHERE slot = 1 AND snapshot = ?", (payload, expected),
+            )
+        if changed.rowcount != 1:
+            raise SessionConflict("The active game was changed by another window.")
+        return payload
+
+    def session_payload(self) -> str | None:
         row = self._conn.execute(
             "SELECT CASE WHEN length(CAST(snapshot AS BLOB)) <= ? THEN snapshot END "
             "FROM active_session WHERE slot = 1", (MAX_SNAPSHOT_BYTES,),
         ).fetchone()
         if row is None:
             return None
+        if not isinstance(row[0], str):
+            raise StorageError("Invalid session snapshot size or storage type.")
+        return row[0]
+
+    def load_session(self) -> tuple[GameSessionSnapshot, ChessGame] | None:
+        payload = self.session_payload()
+        return self.decode_session(payload) if payload is not None else None
+
+    @staticmethod
+    def decode_session(payload: str) -> tuple[GameSessionSnapshot, ChessGame]:
         try:
-            if not isinstance(row[0], str):
-                raise ValueError("Invalid session snapshot size or storage type.")
-            snapshot = GameSessionSnapshot.decode(row[0])
+            snapshot = GameSessionSnapshot.decode(payload)
             return snapshot, snapshot.restore_game()
         except (ValueError, RecursionError) as error:
             raise StorageError(f"Cannot read game session: {error}") from error
 
     # ----- games -------------------------------------------------------
+    @staticmethod
+    def _validate_archive_snapshot(
+        snapshot: GameSessionSnapshot, game: ChessGame, result: str, *,
+        mode: str, bot_color: str | None, bot_preset: str | None, engine_ref: str | None,
+    ) -> None:
+        restored = snapshot.restore_game()
+        bot = snapshot.setup.bot_color
+        archive_mode = snapshot.setup.mode.value if bot is None else f"{snapshot.setup.mode.value}-{bot.opposite.name.lower()}"
+        if (mode, bot_color, bot_preset, engine_ref) != (
+            archive_mode, bot.value if bot else None, snapshot.bot_preset, snapshot.engine_ref,
+        ):
+            raise ValueError("Archive session differs from the recorded game setup.")
+        if (restored.initial_state != game.initial_state or restored.state != game.state
+                or restored.moves != game.moves or restored.outcome() != game.outcome()
+                or export_pgn(restored).rsplit(maxsplit=1)[-1] != result):
+            raise ValueError("Archive session differs from the recorded game.")
+
     def save_game(
         self,
         game: ChessGame,
@@ -412,6 +500,7 @@ class Database:
         engine_ref: str | None = None,
         headers: dict[str, str] | None = None,
         result: str | None = None,
+        session_snapshot: GameSessionSnapshot | None = None,
     ) -> int:
         outcome = game.outcome()
         has_termination = outcome.resigned_by is not None or outcome.claimed_draw is not None
@@ -421,33 +510,55 @@ class Database:
             game.record_result(result)
         pgn = export_pgn(game, headers, result)
         result = pgn.rsplit(maxsplit=1)[-1]
-        cursor = self._conn.execute(
+        payload = None
+        if session_snapshot is not None:
+            payload = session_snapshot.encode()
+            self._validate_archive_snapshot(
+                GameSessionSnapshot.decode(payload), game, result,
+                mode=mode, bot_color=bot_color, bot_preset=bot_preset, engine_ref=engine_ref,
+            )
+        statement = (
             "INSERT INTO games (created_utc, initial_fen, moves_uci, pgn, result, mode, bot_color, bot_name, bot_preset,"
-            " resigned_by, draw_claim, declared_move, engine_ref) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (_now(), to_fen(game.initial_state), " ".join(m.to_uci() for m in game.moves), pgn, result,
-             mode, bot_color, bot_name, bot_preset, outcome.resigned_by.value if outcome.resigned_by else None,
-             outcome.claimed_draw.name if outcome.claimed_draw else None,
-             outcome.declared_move.to_uci() if outcome.declared_move else None, engine_ref),
+            " resigned_by, draw_claim, declared_move, engine_ref, session_snapshot) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )
-        return int(cursor.lastrowid)
+        fields = (
+            _now(), to_fen(game.initial_state), " ".join(m.to_uci() for m in game.moves), pgn, result,
+            mode, bot_color, bot_name, bot_preset, outcome.resigned_by.value if outcome.resigned_by else None,
+            outcome.claimed_draw.name if outcome.claimed_draw else None,
+            outcome.declared_move.to_uci() if outcome.declared_move else None, engine_ref, payload,
+        )
+        if session_snapshot is None or session_snapshot.lifecycle is not SessionLifecycle.FINISHED:
+            return int(self._conn.execute(statement, fields).lastrowid)
+
+        # One writer at a time checks for and archives this exact finished session.
+        with self._conn:
+            self._conn.execute("BEGIN IMMEDIATE")
+            prior = self._conn.execute(
+                "SELECT id FROM games WHERE session_snapshot = ? AND pgn = ? ORDER BY id LIMIT 1",
+                (payload, pgn),
+            ).fetchone()
+            if prior is not None:
+                return int(prior[0])
+            return int(self._conn.execute(statement, fields).lastrowid)
 
     def load_game(self, game_id: int) -> SavedGame:
         row = self._conn.execute(
             "SELECT id, created_utc, initial_fen, moves_uci, pgn, result, mode, bot_color, bot_name, bot_preset,"
-            " resigned_by, draw_claim, declared_move, engine_ref FROM games WHERE id = ?", (game_id,)
+            " resigned_by, draw_claim, declared_move, engine_ref, session_snapshot FROM games WHERE id = ?", (game_id,)
         ).fetchone()
         if row is None:
             raise StorageError(f"No saved game with id {game_id}.")
         try:
             moves = tuple(Move.from_uci(token) for token in row[3].split())
             pgn = parse_pgn(row[4])
-            resigned_by, draw_claim, declared_move, engine_ref = row[10:]
+            resigned_by, draw_claim, declared_move, engine_ref, payload = row[10:]
             saved = SavedGame(
                 row[0], row[1], row[2], moves, *row[4:10], pgn_tags=pgn.tags,
                 resigned_by=Color(resigned_by) if resigned_by is not None else None,
                 draw_claim=DrawClaim[draw_claim] if draw_claim is not None else None,
                 declared_move=Move.from_uci(declared_move) if declared_move is not None else None,
                 engine_ref=engine_ref,
+                session_snapshot=GameSessionSnapshot.decode(payload) if payload is not None else None,
             )
             if (pgn.moves != saved.moves or pgn.initial_state != parse_fen(saved.initial_fen)
                     or pgn.result != saved.result):
@@ -458,7 +569,12 @@ class Database:
                 if saved.result == "*":
                     raise StorageError(f"Saved game {game_id}: termination requires a final result.")
                 saved.to_game()
-        except (ValueError, KeyError, AttributeError, TypeError) as error:
+            if saved.session_snapshot is not None:
+                self._validate_archive_snapshot(
+                    saved.session_snapshot, saved.to_game(), saved.result, mode=saved.mode,
+                    bot_color=saved.bot_color, bot_preset=saved.bot_preset, engine_ref=saved.engine_ref,
+                )
+        except (ValueError, KeyError, AttributeError, TypeError, RecursionError) as error:
             raise StorageError(f"Saved game {game_id} failed validation: {error}") from error
         return saved
 
@@ -467,19 +583,96 @@ class Database:
             "SELECT id, created_utc, result, mode FROM games ORDER BY id DESC"
         )]
 
-    def game_summaries(self) -> list[GameSummary]:
-        summaries = []
-        for game_id, created, result, pgn in self._conn.execute(
-            "SELECT id, created_utc, result, pgn FROM games ORDER BY id DESC"
+    def game_summaries(
+        self, *, archived_from: str | None = None, archived_before: str | None = None,
+        mode: str | None = None, result: str | None = None, engine_ref: str | None = None,
+        bot_preset: str | None = None, time_control: TimeControl | None = None,
+        has_analysis: bool | None = None, has_training: bool | None = None,
+        favorite: bool | None = None, tag: str | None = None,
+    ) -> list[GameSummary]:
+        query = "SELECT id, created_utc, result, pgn"
+        if time_control is not None:
+            query += ", session_snapshot"
+        clauses = []
+        parameters = []
+        for field, operator, value in (
+            ("created_utc", ">=", archived_from), ("created_utc", "<", archived_before),
+            ("mode", "=", mode), ("result", "=", result), ("engine_ref", "=", engine_ref),
+            ("bot_preset", "=", bot_preset), ("favorite", "=", favorite),
         ):
+            if value is not None:
+                clauses.append(f"g.{field} {operator} ?")
+                parameters.append(value)
+        for table, required in (("analysis_reports", has_analysis), ("training_candidates", has_training)):
+            if required is not None:
+                condition = f"EXISTS (SELECT 1 FROM {table} WHERE source_game_id = g.id)"
+                clauses.append(condition if required else f"NOT {condition}")
+        if tag is not None:
+            clauses.append("EXISTS (SELECT 1 FROM game_tags WHERE game_id = g.id AND tag = ?)")
+            parameters.append(tag)
+        where = " WHERE " + " AND ".join(clauses) if clauses else ""
+        query += f" FROM games AS g{where} ORDER BY id DESC"
+        summaries = []
+        for game_id, created, game_result, pgn, *snapshot in self._conn.execute(query, parameters):
             try:
                 tags = read_pgn_headers(pgn)
             except (ChessError, AttributeError, TypeError):
                 tags = {}
+            if time_control is not None:
+                if snapshot[0] is None:
+                    base, initial_ms = divmod(time_control.initial_ms, 1000)
+                    increment, increment_ms = divmod(time_control.increment_ms, 1000)
+                    tags_matching = {f"{base}+{increment}"}
+                    if increment == 0:
+                        tags_matching.add(str(base))
+                    if initial_ms or increment_ms or tags.get("TimeControl") not in tags_matching:
+                        continue
+                else:
+                    try:
+                        if GameSessionSnapshot.decode(snapshot[0]).setup.time_control != time_control:
+                            continue
+                    except (TypeError, ValueError, RecursionError):
+                        continue
             summaries.append(GameSummary(
-                game_id, created, result, tags.get("White", ""), tags.get("Black", ""), tags.get("Event", ""),
+                game_id, created, game_result, tags.get("White", ""), tags.get("Black", ""), tags.get("Event", ""),
             ))
         return summaries
+
+    def archive_labels(self, game_id: int) -> ArchiveLabels:
+        fields = self._conn.execute(
+            "SELECT g.favorite, t.tag FROM games g LEFT JOIN game_tags t ON t.game_id = g.id "
+            "WHERE g.id = ? ORDER BY t.tag", (game_id,),
+        ).fetchall()
+        if not fields:
+            raise StorageError(f"No saved game with id {game_id}.")
+        return ArchiveLabels(bool(fields[0][0]), tuple(tag for _, tag in fields if tag is not None))
+
+    @staticmethod
+    def _check_archive_labels(favorite: bool, tags: tuple[str, ...]) -> None:
+        if (type(favorite) is not bool or len(tags) > 20
+                or any(not isinstance(tag, str) or not 1 <= len(tag) <= 64 or tag != tag.strip()
+                       or any(ord(char) < 32 for char in tag) for tag in tags)):
+            raise ValueError("Invalid archive favorite or tags.")
+
+    def _validate_archive_labels(self) -> None:
+        for (game_id,) in self._conn.execute("SELECT DISTINCT game_id FROM game_tags"):
+            labels = self.archive_labels(game_id)
+            try:
+                self._check_archive_labels(labels.favorite, labels.tags)
+            except ValueError as error:
+                raise StorageError(f"Invalid archive labels for game {game_id}.") from error
+
+    def set_archive_labels(self, game_id: int, *, favorite: bool, tags: tuple[str, ...] = ()) -> None:
+        self._check_archive_labels(favorite, tags)
+        tags = tuple(sorted(set(tags)))
+        with self._conn:
+            self._conn.execute("BEGIN IMMEDIATE")
+            cursor = self._conn.execute("UPDATE games SET favorite = ? WHERE id = ?", (favorite, game_id))
+            if cursor.rowcount != 1:
+                raise StorageError(f"No saved game with id {game_id}.")
+            self._conn.execute("DELETE FROM game_tags WHERE game_id = ?", (game_id,))
+            self._conn.executemany("INSERT INTO game_tags (game_id, tag) VALUES (?, ?)",
+                                   ((game_id, tag) for tag in tags))
 
     def delete_game(self, game_id: int) -> None:
         self._conn.execute("DELETE FROM games WHERE id = ?", (game_id,))

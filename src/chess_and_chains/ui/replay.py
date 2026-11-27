@@ -16,6 +16,7 @@ from ..chess import (
     calculate_captured_material,
     to_san,
 )
+from ..game.clock import ClockReading, ClockTimeline
 from ..i18n import Translator
 from .board import BoardCanvas
 from .captured_material import CapturedMaterialBar
@@ -53,7 +54,7 @@ def _style_listbox_from_ttk(lb: tk.Listbox, theme: ThemePalette | None = None) -
 class ReplayDialog(tk.Toplevel):
     def __init__(
         self, parent: tk.Tk, game: ChessGame, t: Translator, artwork, renderer, orientation,
-        *, theme: ThemePalette | None = None,
+        *, theme: ThemePalette | None = None, clock: ClockTimeline | None = None,
     ) -> None:
         super().__init__(parent)
         self.withdraw()
@@ -68,6 +69,7 @@ class ReplayDialog(tk.Toplevel):
         self._moves = tuple(game.moves)
         self._rules = game.rules
         self._end = game.outcome()
+        self._clock = clock
         self.index = 0
 
         panel = ttk.Frame(self, padding=12, style="Glide.TFrame")
@@ -183,10 +185,25 @@ class ReplayDialog(tk.Toplevel):
         if self.index == len(self._moves) and self._end.status is not GameStatus.ACTIVE:
             final = "½–½" if self._end.winner is None else ("1–0" if self._end.winner is Color.WHITE else "0–1")
             self.status.configure(text=self.t("replay.result", position=self.status.cget("text"), result=final))
+        if self._clock is not None:
+            reading = self._clock.positions[self.index]
+            text = f"{self.status.cget('text')} · {self._format_reading(reading)}"
+            if self.index == len(self._moves) and self._clock.current != reading:
+                saved = self.t("replay.saved_clock", clock=self._format_reading(self._clock.current))
+                text += f" · {saved}"
+            self.status.configure(text=text)
         for button in (self._first, self._previous):
             button.configure(state="normal" if self.index else "disabled")
         for button in (self._last, self._next):
             button.configure(state="normal" if self.index < len(self._moves) else "disabled")
+
+    def _format_reading(self, reading: ClockReading) -> str:
+        def format_time(color: Color) -> str:
+            seconds, milliseconds = divmod(reading.remaining_ms(color), 1000)
+            minutes, seconds = divmod(seconds, 60)
+            return f"{minutes}:{seconds:02d}.{milliseconds:03d}"
+
+        return self.t("clock.reading", white=format_time(Color.WHITE), black=format_time(Color.BLACK))
 
     def _close(self, _event: tk.Event | None = None) -> str:
         if not getattr(self, modal_session.ACTIVE_ATTRIBUTE, False):

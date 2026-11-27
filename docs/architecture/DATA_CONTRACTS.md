@@ -143,6 +143,21 @@ bleibt in SQLite. Die Paketprüfung nutzt dieselben Abbruchregeln wie
 eine Trainingseinheit, einschließlich der Anwendung des Aufbauzugs.
 [Lokale Rätselpakete](../../data/puzzle_packs/README.md#in-der-app-verwenden)
 
+Installierte Pakete werden im Puzzle Lab über einen separaten SQLite-Katalog
+geöffnet. Im Nutzerdatenordner `puzzle_packs-catalogs/<pack_id>` bindet ein
+lokal geschriebener Validierungsbeleg den SHA-256-Fingerabdruck von Manifest,
+JSONL und Index an Katalogschema 1. Der erste Zugriff auf ein altes JSONL-Paket
+prüft dessen Stellungen und Zugfolgen vollständig. Spätere Zugriffe prüfen
+Dateiintegrität und Schema und lesen über den Index. Ein extern mitgelieferter
+Index ist damit keine Quelle für die fachliche Freigabe. Pro Auswahl werden IDs
+und ein Fenster von bis zu 48 Rätseldatensätzen geladen.
+
+Kompatible Paketrevisionen dürfen Metadaten ändern und Aufgaben ergänzen.
+Für bestehende IDs bleiben normalisierte FEN und gesamte UCI-Zugfolge
+einschließlich Aufbauzug gleich, damit die Fortschrittszuordnung stabil
+bleibt. Die vorherigen Paketgenerationen bleiben lokal verfügbar. Ein aktiver
+Verweis wird erst nach erfolgreicher Validierung der neuen Generation ersetzt.
+
 ## Einstellungen
 
 Die aktuelle Settings-Datei enthält `schema_version`, `locale`, `theme_id`,
@@ -155,8 +170,8 @@ ist es ungültig, zeigt die App die Demo und meldet den Grund.
 Formats. Der Brett- und Figurenwechsel wird im aktuellen CLI-Aufruf
 gewählt. Der Datenpfad folgt der Plattform oder `CHESS_AND_CHAINS_DATA_DIR`.
 
-**Implementierungsstand im Functional-Core-Branch (ADR-004 weiterhin PROPOSED)**. SQLite
-`PRAGMA user_version` = 5. Altdaten in `games` und `puzzle_attempts`
+**Implementierungsstand im Functional-Completion-Branch (ADR-004 weiterhin PROPOSED).** SQLite
+`PRAGMA user_version` = 7. Altdaten in `games` und `puzzle_attempts`
 erhalten die feste Kennung `local`. `training_candidates` speichert
 Stellungen mit Partiereferenz und Halbzug. Der Wiederholungsplan beruht
 auf den vorhandenen Versuchen. Einstellungen bleiben bei JSON `schema_version` 1
@@ -176,6 +191,57 @@ Kopie, die referenzierten Trainingsstellungen, Analyseberichte und die Mattkette
 App den aktiven Stand unter `*.pre-restore-*.bak` und ersetzt ihn in
 einer SQLite-Backup-Transaktion.
 [W09-Prüfnachweis](../reports/2026-11-21_W09-sichere-wiederherstellung.md)
+
+## Partiearchiv und Profilbackup
+
+SQLite v6 ergänzt `games.session_snapshot` als optionales, auf 256 KiB
+begrenztes Sitzungs-JSON. Lokale Archive halten darüber die Zeitkontrolle,
+den Uhrverlauf, den letzten eingefrorenen Stand und die Redo-Historie fest.
+Beim Lesen werden Spielmodus, Engine-Referenz, Ergebnis, Stellung und
+Zugfolge gegen den Partiedatensatz geprüft. Alte Archive und PGN-Importe
+haben keinen Sitzungssnapshot. Ganzzahlige Zeitkontrollen in Sekunden
+werden auch als PGN-`TimeControl` exportiert. Beginn und Ende sind bei neuen
+fertigen lokalen Partien aus dem Sitzungssnapshot ablesbar. Die Zeitspanne
+zwischen diesen Zeitpunkten enthält auch Pausen.
+
+SQLite v7 ergänzt ein Favoritenfeld sowie normalisierte Tags mit Fremdschlüssel
+zur Partie. Die Bibliotheksabfrage kann diese Merkmale mit Archivzeitraum (UTC),
+Modus, Ergebnis, Engine-Referenz, Preset, Zeitkontrolle und vorhandenen Analysen
+oder Trainingsstellungen kombinieren. Lese- und Schreibzugriff auf Labels
+sind als Datenbank-API verfügbar.
+
+Die automatische Sicherung ersetzt den Einzel-Slot nur, wenn sein Inhalt
+noch dem zuletzt von der jeweiligen App-Instanz gelesenen Stand entspricht.
+Bei einem Konflikt kann die neuere Partie über „Sitzung fortsetzen“ geladen
+werden. Remisvereinbarungen erhalten im Sitzungsformat einen optionalen
+Endgrund. Ein offenes Remisangebot ist an die laufende Bestätigung gebunden.
+
+Das Profilbackup ist ein ZIP der Version 1 mit `manifest.json`, `games.sqlite3`
+und `settings.json`. Das Manifest enthält Dateiprüfsummen und die referenzierten
+Paket-IDs. Enthalten sind die SQLite-Nutzerdaten einschließlich des Profils
+`local`, aktiver Sitzungen, Partien, Analysen, Trainingskandidaten und
+Trainingsfortschritt sowie die Einstellungen. Paketdateien, deren Index,
+Programmdateien und Engine-Binaries werden separat verwaltet. Engine-Pfade
+im Backup bleiben beim Import inaktiv. Die lokalen Engine-Einstellungen des
+Zielrechners werden übernommen. Fehlende Rätselpakete werden gemeldet.
+
+Archivnamen und Größen werden vor dem Entpacken geprüft. SQLite und
+Settings werden vor der Übernahme validiert. Bei einem Fehler während des
+Settings-Austauschs wird die Datenbank zurückgesetzt. Für einen
+Prozessabbruch zwischen den Schreibvorgängen liegt ein gemeinsames
+`pre-profile-restore-*.zip` im Backup-Ordner. Es lässt sich mit demselben
+Wiederherstellungsbefehl einspielen. Dazu die App schließen.
+
+```bash
+PYTHONPATH=src python3 -m chess_and_chains --create-backup /absoluter/pfad/profil.zip
+PYTHONPATH=src python3 -m chess_and_chains --restore-backup /absoluter/pfad/profil.zip
+```
+
+Die zweite Option unterstützt auch ältere SQLite-Sicherungen. Einstellungen
+werden beim Laden eines alten SQLite-Backups beibehalten.
+Beim Löschen einer Partie löscht die aktuelle Datenbank die abhängigen
+Analyseberichte, Tags und stellungsbezogenen Trainingskandidaten per Fremdschlüssel.
+Paketfortschritt und eigenständige Trainingsversuche bleiben erhalten.
 
 ## Analyseberichte und Mattkette
 

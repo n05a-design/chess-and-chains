@@ -77,6 +77,34 @@ class ScriptedProvider:
 
 
 class ControllerUnitTests(unittest.TestCase):
+    def test_draw_offer_requires_acceptance_and_expires_on_move(self):
+        controller = GameController()
+        self.addCleanup(controller.shutdown)
+        self.assertIs(controller.offer_draw(), Color.WHITE)
+        self.assertIs(controller.view().outcome.status, GameStatus.ACTIVE)
+        with self.assertRaises(ChessError):
+            controller.respond_to_draw(Color.WHITE, accept=True)
+        controller.respond_to_draw(Color.BLACK, accept=False)
+        self.assertIs(controller.view().outcome.status, GameStatus.ACTIVE)
+        controller.offer_draw()
+        controller.play_human(Move.from_uci("e2e4"))
+        with self.assertRaises(ChessError):
+            controller.respond_to_draw(Color.BLACK, accept=True)
+        self.assertIs(controller.offer_draw(), Color.BLACK)
+        controller.respond_to_draw(Color.WHITE, accept=True)
+        self.assertIs(controller.view().outcome.status, GameStatus.DRAW_AGREED)
+        with self.assertRaises(ChessError):
+            controller.play_human(Move.from_uci("e7e5"))
+        with self.assertRaises(ChessError):
+            controller.respond_to_draw(Color.WHITE, accept=True)
+
+    def test_bot_games_reject_draw_offers(self):
+        controller = GameController(ScriptedProvider())
+        self.addCleanup(controller.shutdown)
+        controller.new_game(GameSetup.against_bot(Color.WHITE))
+        with self.assertRaises(ChessError):
+            controller.offer_draw()
+
     def test_two_player_mode_has_no_bot(self):
         c = GameController()
         c.new_game(GameSetup.two_players())

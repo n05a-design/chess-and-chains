@@ -68,6 +68,8 @@ class GameSessionSnapshot:
             "claim": self.timeline.claim.name if self.timeline.claim else None,
             "declared": self.timeline.declared_move.to_uci() if self.timeline.declared_move else None,
         }
+        if self.timeline.agreed_draw:
+            data["agreed_draw"] = True
         if self.clock is not None and self.setup.time_control is not None:
             control = self.setup.time_control
             data["time_control"] = [control.initial_ms, control.increment_ms]
@@ -110,11 +112,15 @@ class GameSessionSnapshot:
                 raise ValueError("Invalid session FEN.")
             if data["result"] not in (None, "1-0", "0-1", "1/2-1/2"):
                 raise ValueError("Invalid session result.")
+            agreed_draw = data.get("agreed_draw", False)
+            if type(agreed_draw) is not bool or (agreed_draw and setup.mode is not PlayMode.HUMAN_VS_HUMAN):
+                raise ValueError("Invalid session draw agreement.")
             timeline = GameTimeline(
                 tuple(Move.from_uci(text) for text in moves), data["cursor"], data["result"],
                 Color(data["resigned"]) if data["resigned"] is not None else None,
                 DrawClaim[data["claim"]] if data["claim"] is not None else None,
                 Move.from_uci(data["declared"]) if data["declared"] is not None else None,
+                agreed_draw=agreed_draw,
             )
             clock = None
             if data.get("clock") is not None:

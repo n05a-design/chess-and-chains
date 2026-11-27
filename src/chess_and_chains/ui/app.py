@@ -62,12 +62,13 @@ from ..engines.registry import EngineAvailability, EngineRegistry
 from ..engines.presets import BotPreset, load_presets
 from ..engines.uci import UCIEngineError
 from ..game import BotStatus, GameController, GameSetup, GameView, PlayMode
-from ..game.clock import TimeControl
+from ..game.clock import ClockTimeline, TimeControl
 from ..game.session import GameSessionSnapshot, SessionLifecycle
 from ..i18n import Translator
 from ..puzzles import DEMO_PACK_ID, PackError, PackLibrary, Puzzle, PuzzlePack, PuzzleSession, Verdict, load_demo_pack
+from ..puzzles.catalog import IndexedPuzzlePack, PuzzleSelection
 from ..puzzles.training import DEMO_MATE_CHAIN, TrainingCandidate, TrainingSession, demo_chain_catalog
-from ..storage import Database, DataLayout, SavedGame, Settings, SettingsError, StorageError, load_settings, save_settings
+from ..storage import Database, DataLayout, SavedGame, SessionConflict, Settings, SettingsError, StorageError, load_settings, save_settings
 from .analysis_dialog import AnalysisDialog
 from .appearance_dialog import AppearanceDialog
 from .atlas import PuzzleAtlas
@@ -321,11 +322,12 @@ class ChessApp:
         self._unsubscribe_view = self.controller.subscribe(self._on_view)
         self._session_game = self.game
         self._saved_session: GameSessionSnapshot | None = None
+        self._session_payload: str | None = None
         self._session_blocked = False
         self.orientation: Orientation = "white"
         self.active_panel = "play"
         self._pack_library = PackLibrary(data_layout.packs) if data_layout is not None else None
-        self._pack_results: SimpleQueue[PuzzlePack | str] = SimpleQueue()
+        self._pack_results: SimpleQueue[PuzzlePack | IndexedPuzzlePack | str] = SimpleQueue()
         self._pack_loading = False
         self.pack = puzzle_pack or load_demo_pack()
         self._puzzle_selection = self.pack.puzzles
@@ -383,7 +385,7 @@ class ChessApp:
         self.interaction_text.set("\n".join(message for message in startup_messages if message))
         saved_pack = self.settings.last_pack_id
         if puzzle_pack is None and self._pack_library is not None and saved_pack not in (None, DEMO_PACK_ID):
-            self._start_pack_task(partial(self._pack_library.load, saved_pack))
+            self._start_pack_task(partial(self._pack_library.open_catalog, saved_pack))
 
     # ----- compatibility with W06 API ---------------------------------
     @property
@@ -648,6 +650,7 @@ class ChessApp:
                 (t("clock.new"), self._new_timed_game, "", "new_timed_game"),
                 (t("clock.toggle"), self.controller.toggle_clock, "", "toggle_clock"),
                 (t("clock.decide"), self._decide_timeout, "", "decide_timeout"),
+                (t("draw.offer"), self._offer_draw, "", "offer_draw"),
                 (t("session.resume"), self._resume_session, "", "resume_session"),
                 (t("button.save_game"), self._save_game, "", "save_game"),
                 (t("button.library"), self._open_library, "", "open_library"),
@@ -2166,11 +2169,14 @@ class ChessApp:
         return GameSetup.two_players()
 
     # ----- game commands ------------------------------------------------
+    def _has_game_to_replace(self) -> bool:
+        return (self.game.can_undo or self.game.can_redo or self.controller.clock_reading() is not None
+                or self._session_blocked)
+
     def _new_game(self, time_control: TimeControl | None = None) -> None:
         if self.active_panel == "puzzles":
             self.tab_rail.set_active("play")
-        view = self.controller.view()
-        if (self.game.moves or view.can_redo or self._session_blocked) and not messagebox.askyesno(
+        if self._has_game_to_replace() and not messagebox.askyesno(
             self.t("new_game.confirm_title"), self.t("new_game.confirm_body"), parent=self.root,
         ):
             return
@@ -2225,7 +2231,7 @@ class ChessApp:
         if not self._session_blocked:
             self.interaction_text.set(self.t("session.none"))
             return
-        if (self.game.can_undo or self.game.can_redo) and not messagebox.askyesno(
+        if (self.game.can_undo or self.game.can_redo or self.controller.clock_reading() is not None) and not messagebox.askyesno(
             self.t("session.resume"), self.t("library.replace"), parent=self.root,
         ):
             return
@@ -2235,7 +2241,8 @@ class ChessApp:
         if self.db is None:
             return None
         try:
-            saved = self.db.load_session()
+            self._session_payload = self.db.session_payload()
+            saved = self.db.decode_session(self._session_payload) if self._session_payload is not None else None
             if saved is None or saved[0].lifecycle is SessionLifecycle.FINISHED:
                 self._session_blocked = False
                 return None
@@ -2278,39 +2285,42 @@ class ChessApp:
             return "mock"
         raise ValueError("The session engine has no persistent reference.")
 
-    def _autosave_session(self, view: GameView) -> None:
+    def _session_snapshot(self, view: GameView) -> GameSessionSnapshot:
+        current = self._saved_session if self._session_game is self.game else None
+        lifecycle = SessionLifecycle.ACTIVE if view.outcome.status is GameStatus.ACTIVE else SessionLifecycle.FINISHED
+        now = datetime.now(timezone.utc).isoformat()
+        provider = self.controller.provider
+        bot = view.setup.bot_color
+        reference = None
+        preset = None
+        if bot is not None:
+            reference = current.engine_ref if current is not None else self._engine_reference(provider)
+            preset = provider.preset.id if isinstance(provider, UCIBot) else self._selected_preset().id
+        snapshot = GameSessionSnapshot(
+            current.session_id if current else str(uuid4()),
+            current.created_utc if current else now,
+            max(now, current.updated_utc) if current else now,
+            replace(view.setup, initial_fen=None), to_fen(self.game.initial_state), self.game.timeline(), lifecycle,
+            reference, preset, tuple(sorted(self._game_headers.items())), clock=self.controller.clock_timeline(),
+        )
+        return current if current is not None and snapshot == replace(current, updated_utc=snapshot.updated_utc) else snapshot
+
+    def _autosave_session(self, view: GameView, *, force: bool = False) -> None:
         if self.db is None or self._session_blocked:
             return
-        previous = self._saved_session
-        if self.game is self._session_game and previous is None and not self.game.can_undo:
+        if not force and self.game is self._session_game and self._saved_session is None and not self.game.can_undo:
             return  # The startup board alone is not a session.
-        lifecycle = (
-            SessionLifecycle.ACTIVE if view.outcome.status is GameStatus.ACTIVE else SessionLifecycle.FINISHED
-        )
-        now = datetime.now(timezone.utc).isoformat()
         try:
-            timeline = self.game.timeline()
-            provider = self.controller.provider
-            current = previous if self._session_game is self.game else None
-            bot = view.setup.bot_color
-            reference = None
-            preset = None
-            if bot is not None:
-                reference = current.engine_ref if current is not None else self._engine_reference(provider)
-                preset = provider.preset.id if isinstance(provider, UCIBot) else self._selected_preset().id
-            snapshot = GameSessionSnapshot(
-                current.session_id if current else str(uuid4()),
-                current.created_utc if current else now,
-                max(now, current.updated_utc) if current else now,
-                replace(view.setup, initial_fen=None), to_fen(self.game.initial_state), timeline, lifecycle,
-                reference, preset, tuple(sorted(self._game_headers.items())), clock=self.controller.clock_timeline(),
-            )
-            if current is not None and snapshot == replace(current, updated_utc=snapshot.updated_utc):
+            snapshot = self._session_snapshot(view)
+            if snapshot is self._saved_session and not force:
                 return
-            self.db.save_session(snapshot)
+            self._session_payload = self.db.compare_and_save_session(snapshot, self._session_payload)
             self._session_game = self.game
             self._saved_session = snapshot
-        except (sqlite3.Error, OSError, ValueError) as error:
+        except SessionConflict:
+            self._session_blocked = True
+            self.interaction_text.set(self.t("session.conflict"))
+        except (StorageError, sqlite3.Error, OSError, ValueError) as error:
             self.interaction_text.set(self.t("session.error", error=error))
 
     def _on_move_requested(self, candidates: tuple[Move, ...]) -> None:
@@ -2576,6 +2586,21 @@ class ChessApp:
             return None
         return chosen
 
+    def _offer_draw(self) -> None:
+        try:
+            offering = self.controller.offer_draw()
+            accepting = offering.opposite
+            accepted = messagebox.askyesno(
+                self.t("draw.offer"), self.t("draw.respond", offerer=self._side(offering), player=self._side(accepting)),
+                parent=self.root, default=messagebox.NO,
+            )
+            if self._closed:
+                return
+            self.controller.respond_to_draw(accepting, accept=accepted)
+            self.interaction_text.set("" if accepted else self.t("draw.declined"))
+        except ChessError:
+            self.interaction_text.set(self.t("draw.unavailable"))
+
     def _claim_draw(self) -> None:
         view = self.controller.view()
         if not view.human_to_move:
@@ -2783,6 +2808,11 @@ class ChessApp:
                 headers.update(White=view.bot_name, Black="Human")
             else:
                 headers.update(White="Human", Black=view.bot_name)
+        control = view.setup.time_control
+        if control is not None and control.initial_ms % 1000 == control.increment_ms % 1000 == 0:
+            headers["TimeControl"] = str(control.initial_ms // 1000)
+            if control.increment_ms:
+                headers["TimeControl"] += f"+{control.increment_ms // 1000}"
         if view.flagged is not None and view.outcome.status is GameStatus.RECORDED_RESULT:
             headers["Termination"] = "time forfeit"
         return headers
@@ -2792,24 +2822,19 @@ class ChessApp:
             self.interaction_text.set(self.t("save.unavailable"))
             return None
         view = self.controller.view()
-        provider = self.controller.provider
         mode = view.setup.mode.value
         if view.setup.bot_color is not None:
             mode += f"-{view.setup.bot_color.opposite.name.lower()}"
         try:
+            snapshot = self._session_snapshot(view)
             game_id = self.db.save_game(
                 self.game,
                 mode=mode,
                 bot_color=view.setup.bot_color.value if view.setup.bot_color else None,
                 bot_name=view.bot_name if view.setup.mode is PlayMode.HUMAN_VS_BOT else None,
-                bot_preset=(
-                    (provider.preset.id if isinstance(provider, UCIBot) else self._selected_preset().id)
-                    if view.setup.bot_color is not None else None
-                ),
-                engine_ref=(
-                    self._saved_session.engine_ref if self._saved_session and self._session_game is self.game
-                    else self._engine_reference(provider)
-                ) if view.setup.bot_color is not None else None,
+                bot_preset=snapshot.bot_preset,
+                engine_ref=snapshot.engine_ref,
+                session_snapshot=snapshot,
                 headers=self._pgn_headers(),
             )
         except (StorageError, sqlite3.Error, ValueError, OSError) as error:
@@ -2845,7 +2870,7 @@ class ChessApp:
                     (self.t("library.new_from_position"), lambda index: self._play_from_position(
                         to_fen(self.db.load_game(rows[index].id).to_game().state),
                     ) if index is not None else None, True),
-                    (self.t("replay.title"), lambda index: self._open_replay(self.db.load_game(rows[index].id).to_game())
+                    (self.t("replay.title"), lambda index: self._open_saved_replay(self.db.load_game(rows[index].id))
                      if index is not None else None, True),
                 ),
             )
@@ -2853,7 +2878,7 @@ class ChessApp:
                 return
             saved = self.db.load_game(rows[chosen].id)
             game = saved.to_game()
-            if (self.game.can_undo or self.game.can_redo) and not messagebox.askyesno(
+            if self._has_game_to_replace() and not messagebox.askyesno(
                 self.t("library.open"), self.t("library.replace"), parent=self.root,
             ):
                 return
@@ -2865,16 +2890,17 @@ class ChessApp:
             self.interaction_text.set(self.t("library.error", error=error))
 
     def _continue_saved_game(self, saved: SavedGame) -> None:
-        game = saved.to_game()
+        snapshot = saved.session_snapshot
+        game = snapshot.restore_game() if snapshot else saved.to_game()
         if game.outcome().status is not GameStatus.ACTIVE:
             self.interaction_text.set(self.t("library.finished"))
             return
-        if (self.game.can_undo or self.game.can_redo or self._session_blocked) and not messagebox.askyesno(
+        if self._has_game_to_replace() and not messagebox.askyesno(
             self.t("library.continue"), self.t("library.replace"), parent=self.root,
         ):
             return
         mode = saved.mode
-        setup = self._setup_for_mode(mode)
+        setup = snapshot.setup if snapshot else self._setup_for_mode(mode)
         bot = setup.bot_color
         provider = None
         if bot is not None:
@@ -2893,9 +2919,13 @@ class ChessApp:
         else:
             mode = "human-vs-human"
         self.mode_var.set(mode)
-        self._game_headers = dict(saved.pgn_tags)
+        self._game_headers = dict(snapshot.headers if snapshot else saved.pgn_tags)
         self._session_blocked = False
-        self.controller.resume_game(game, setup, provider=provider)
+        self._session_game = game
+        self._saved_session = snapshot
+        self.controller.resume_game(game, setup, provider=provider, clock=snapshot.clock if snapshot else None)
+        if snapshot is not None and self._saved_session is snapshot:
+            self._autosave_session(self.controller.view(), force=True)
         self.interaction_text.set(self.t("library.continued", id=saved.id))
 
     def _import_pgn_file(self) -> None:
@@ -2940,7 +2970,7 @@ class ChessApp:
 
     def _open_position(self) -> None:
         def confirm_replacement(parent: tk.Misc) -> bool:
-            if not (self.game.can_undo or self.game.can_redo):
+            if not self._has_game_to_replace():
                 return True
             return messagebox.askyesno(
                 self.t("position.play"), self.t("position.replace"), parent=parent, default=messagebox.NO,
@@ -2984,24 +3014,34 @@ class ChessApp:
             (self.t("puzzle.demo_name"), *pack_ids[1:]),
             self.t("puzzle.pack_open"),
             initial_index=pack_ids.index(current) if current in pack_ids else 0,
-            actions=((self.t("puzzle.pack_install"), lambda _index: self._pick_pack_folder(), False),),
+            actions=(
+                (self.t("puzzle.pack_install"), lambda _index: self._pick_pack_folder(), False),
+                (self.t("puzzle.pack_update"),
+                 lambda index: self._pick_pack_folder(pack_ids[index]) if index is not None else None, True),
+            ),
         )
         if chosen is None or pack_ids[chosen] == current:
             return
         if pack_ids[chosen] == DEMO_PACK_ID:
             self._activate_pack(load_demo_pack())
         else:
-            self._start_pack_task(partial(library.load, pack_ids[chosen]))
+            self._start_pack_task(partial(library.open_catalog, pack_ids[chosen]))
 
-    def _pick_pack_folder(self) -> None:
+    def _pick_pack_folder(self, revision_of: str | None = None) -> None:
         library = self._pack_library
         if library is None:
             return
-        folder = filedialog.askdirectory(parent=self.root, title=self.t("puzzle.pack_install"), mustexist=True)
+        if revision_of == DEMO_PACK_ID:
+            self._set_pack_feedback(self.t("puzzle.pack_update_demo"))
+            return
+        key = "puzzle.pack_update" if revision_of is not None else "puzzle.pack_install"
+        folder = filedialog.askdirectory(parent=self.root, title=self.t(key), mustexist=True)
         if folder:
-            self._start_pack_task(partial(library.install, Path(folder)))
+            task = (partial(library.install_revision, revision_of, Path(folder)) if revision_of is not None
+                    else partial(library.install_catalog, Path(folder)))
+            self._start_pack_task(task)
 
-    def _start_pack_task(self, task: Callable[[], PuzzlePack]) -> None:
+    def _start_pack_task(self, task: Callable[[], PuzzlePack | IndexedPuzzlePack]) -> None:
         worker = threading.Thread(target=_read_local_pack, args=(task, self._pack_results),
                                   name="puzzle-pack", daemon=True)
         try:
@@ -3126,14 +3166,17 @@ class ChessApp:
         self.puzzle = None
         self._set_chain_filters()
 
-    def _activate_pack(self, pack: PuzzlePack, *, persist: bool = True) -> None:
+    def _activate_pack(self, pack: PuzzlePack | IndexedPuzzlePack, *, persist: bool = True) -> None:
         if self._chain is not None:
             if not self._save_mate_chain():
                 return
             self._leave_mate_chain()
         self.pack = pack
         self._puzzle_selection = pack.puzzles
-        self._puzzle_themes = sorted({theme for puzzle in pack.puzzles for theme in puzzle.themes})
+        self._puzzle_themes = (
+            pack.catalog.themes if isinstance(pack, IndexedPuzzlePack)
+            else sorted({theme for puzzle in pack.puzzles for theme in puzzle.themes})
+        )
         labels = [self.t.puzzle_theme_label(theme) for theme in self._puzzle_themes]
         self.puzzle_theme_filter.configure(values=(self.t("puzzle.all_themes"), *labels))
         self.puzzle_theme_filter.current(0)
@@ -3155,7 +3198,7 @@ class ChessApp:
             except (OSError, SettingsError):
                 self._set_pack_feedback(self.t("puzzle.pack_preference_error"))
 
-    def _matching_puzzles(self) -> tuple[Puzzle, ...]:
+    def _matching_puzzles(self) -> tuple[Puzzle, ...] | PuzzleSelection:
         theme_choice = self.puzzle_theme_filter.current()
         theme = self._puzzle_themes[theme_choice - 1] if theme_choice > 0 else None
         rating_choice = self.puzzle_rating_filter.current()
@@ -3167,6 +3210,12 @@ class ChessApp:
                 due = self.db.due_puzzle_ids(self.pack.manifest.pack_id, now=datetime.now(timezone.utc))
             except (sqlite3.Error, StorageError):
                 self.interaction_text.set(self.t("puzzle.progress_unavailable"))
+        if isinstance(self.pack, IndexedPuzzlePack):
+            included = self._review_puzzle_ids if status_choice == 2 else due if status_choice == 3 else None
+            excluded = self._solved_puzzle_ids if status_choice == 1 else frozenset()
+            return self.pack.catalog.select(
+                minimum=lower, maximum=upper, theme=theme, included=included, excluded=excluded,
+            )
         return tuple(
             puzzle for puzzle in self.pack.puzzles
             if (not theme or theme in puzzle.themes)
@@ -3181,11 +3230,18 @@ class ChessApp:
             return
         self._puzzle_selection = self._matching_puzzles()
         self._update_puzzle_progress()
-        if self.puzzle is not None and self.puzzle.puzzle in self._puzzle_selection:
-            self.puzzle_index = self._puzzle_selection.index(self.puzzle.puzzle)
-            self._refresh()
-        else:
-            self._start_puzzle(0)
+        if self.puzzle is not None:
+            try:
+                if isinstance(self._puzzle_selection, PuzzleSelection):
+                    self.puzzle_index = self._puzzle_selection.ids.index(self.puzzle.puzzle.puzzle_id)
+                else:
+                    self.puzzle_index = self._puzzle_selection.index(self.puzzle.puzzle)
+            except ValueError:
+                pass
+            else:
+                self._refresh()
+                return
+        self._start_puzzle(0)
 
     def _start_puzzle(self, index: int) -> None:
         self._puzzle_recorded = False
@@ -3209,9 +3265,15 @@ class ChessApp:
         if self.puzzle_status_filter.current() > 0 and self.puzzle_status_filter.instate(("!disabled",)):
             previous = self._puzzle_selection
             self._puzzle_selection = self._matching_puzzles()
-            indexes = {puzzle.puzzle_id: index for index, puzzle in enumerate(self._puzzle_selection)}
-            following = next((indexes[puzzle.puzzle_id] for puzzle in previous[following:] + previous[:following]
-                              if puzzle.puzzle_id in indexes), 0)
+            if isinstance(previous, PuzzleSelection) and isinstance(self._puzzle_selection, PuzzleSelection):
+                ids = previous.ids
+                indexes = {puzzle_id: index for index, puzzle_id in enumerate(self._puzzle_selection.ids)}
+                following = next((indexes[puzzle_id] for puzzle_id in ids[following:] + ids[:following]
+                                  if puzzle_id in indexes), 0)
+            else:
+                indexes = {puzzle.puzzle_id: index for index, puzzle in enumerate(self._puzzle_selection)}
+                following = next((indexes[puzzle.puzzle_id] for puzzle in previous[following:] + previous[:following]
+                                  if puzzle.puzzle_id in indexes), 0)
             self._update_puzzle_progress()
         self._start_puzzle(following)
 
@@ -3240,7 +3302,11 @@ class ChessApp:
         self._solved_puzzle_ids = solved
         self._review_puzzle_ids = review
         self.puzzle_status_filter.configure(state="disabled" if self._chain is not None else "readonly")
-        count = sum(puzzle.puzzle_id in solved for puzzle in self._puzzle_selection)
+        count = (
+            len(solved.intersection(self._puzzle_selection.ids))
+            if isinstance(self._puzzle_selection, PuzzleSelection)
+            else sum(puzzle.puzzle_id in solved for puzzle in self._puzzle_selection)
+        )
         self.puzzle_progress_text.set(
             self.t("puzzle.progress", solved=count, count=len(self._puzzle_selection)) if self._puzzle_selection else ""
         )
@@ -3442,7 +3508,7 @@ class ChessApp:
             self._play_from_position(positions[selected].fen)
 
     def _play_from_position(self, fen: str) -> None:
-        if (self.game.can_undo or self.game.can_redo or self._session_blocked) and not messagebox.askyesno(
+        if self._has_game_to_replace() and not messagebox.askyesno(
             self.t("position.play"), self.t("position.replace"), parent=self.root, default=messagebox.NO,
         ):
             return
@@ -3453,12 +3519,15 @@ class ChessApp:
             self.tab_rail.set_active("play")
         self.controller.load_game(ChessGame(parse_fen(fen)))
 
-    def _open_replay(self, game: ChessGame) -> None:
+    def _open_saved_replay(self, saved: SavedGame) -> None:
+        self._open_replay(saved.to_game(), clock=saved.session_snapshot.clock if saved.session_snapshot else None)
+
+    def _open_replay(self, game: ChessGame, *, clock: ClockTimeline | None = None) -> None:
         replay_artwork = self.board._artwork
         if replay_artwork is None and self.board.board_design == "marble":
             replay_artwork = self.board._ensure_marble_2d_artwork()
         dialog = ReplayDialog(
-            self.root, game, self.t, replay_artwork, self.board.renderer, self.orientation, theme=self.theme,
+            self.root, game, self.t, replay_artwork, self.board.renderer, self.orientation, theme=self.theme, clock=clock,
         )
         modal_session.wait_modal(self.root, dialog)
 
@@ -3633,6 +3702,7 @@ class ChessApp:
             GameStatus.DRAW_FIVEFOLD_REPETITION: "status.fivefold",
             GameStatus.DRAW_SEVENTY_FIVE_MOVE: "status.seventyfive",
             GameStatus.DRAW_CLAIMED: "status.claimed",
+            GameStatus.DRAW_AGREED: "draw.agreed",
         }.get(status, "status.finished"))
 
     def _update_move_list(self, san_moves: Sequence[str]) -> None:
@@ -3685,7 +3755,7 @@ class ChessApp:
             pass
 
 
-def _read_local_pack(task: Callable[[], PuzzlePack], results: SimpleQueue[PuzzlePack | str]) -> None:
+def _read_local_pack(task: Callable[[], PuzzlePack | IndexedPuzzlePack], results: SimpleQueue[PuzzlePack | IndexedPuzzlePack | str]) -> None:
     try:
         results.put(task())
     except (PackError, OSError) as error:
