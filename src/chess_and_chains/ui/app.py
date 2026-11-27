@@ -2169,11 +2169,14 @@ class ChessApp:
         return GameSetup.two_players()
 
     # ----- game commands ------------------------------------------------
+    def _has_game_to_replace(self) -> bool:
+        return (self.game.can_undo or self.game.can_redo or self.controller.clock_reading() is not None
+                or self._session_blocked)
+
     def _new_game(self, time_control: TimeControl | None = None) -> None:
         if self.active_panel == "puzzles":
             self.tab_rail.set_active("play")
-        view = self.controller.view()
-        if (self.game.moves or view.can_redo or view.clock is not None or self._session_blocked) and not messagebox.askyesno(
+        if self._has_game_to_replace() and not messagebox.askyesno(
             self.t("new_game.confirm_title"), self.t("new_game.confirm_body"), parent=self.root,
         ):
             return
@@ -2875,7 +2878,7 @@ class ChessApp:
                 return
             saved = self.db.load_game(rows[chosen].id)
             game = saved.to_game()
-            if (self.game.can_undo or self.game.can_redo) and not messagebox.askyesno(
+            if self._has_game_to_replace() and not messagebox.askyesno(
                 self.t("library.open"), self.t("library.replace"), parent=self.root,
             ):
                 return
@@ -2892,7 +2895,7 @@ class ChessApp:
         if game.outcome().status is not GameStatus.ACTIVE:
             self.interaction_text.set(self.t("library.finished"))
             return
-        if (self.game.can_undo or self.game.can_redo or self._session_blocked) and not messagebox.askyesno(
+        if self._has_game_to_replace() and not messagebox.askyesno(
             self.t("library.continue"), self.t("library.replace"), parent=self.root,
         ):
             return
@@ -2967,7 +2970,7 @@ class ChessApp:
 
     def _open_position(self) -> None:
         def confirm_replacement(parent: tk.Misc) -> bool:
-            if not (self.game.can_undo or self.game.can_redo):
+            if not self._has_game_to_replace():
                 return True
             return messagebox.askyesno(
                 self.t("position.play"), self.t("position.replace"), parent=parent, default=messagebox.NO,
@@ -3505,7 +3508,7 @@ class ChessApp:
             self._play_from_position(positions[selected].fen)
 
     def _play_from_position(self, fen: str) -> None:
-        if (self.game.can_undo or self.game.can_redo or self._session_blocked) and not messagebox.askyesno(
+        if self._has_game_to_replace() and not messagebox.askyesno(
             self.t("position.play"), self.t("position.replace"), parent=self.root, default=messagebox.NO,
         ):
             return

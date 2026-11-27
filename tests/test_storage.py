@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from chess_and_chains.chess import ChessGame, Color, DrawClaim, FenError, GameStatus, Move, PGNError, export_pgn, parse_fen, to_fen  # noqa: E402
+from chess_and_chains.game.clock import TimeControl  # noqa: E402
 from chess_and_chains.storage import (  # noqa: E402
     SCHEMA_VERSION,
     DataLayout,
@@ -332,6 +333,31 @@ class DatabaseTests(TempDirTestCase):
                 db.export_pgn_file(game_id, target)
         self.assertEqual(target.read_text(encoding="utf-8"), "Keep this")
         self.assertEqual(list(self.tmp.glob(".pgn-*")), [])
+
+    def test_archive_summaries_filter_by_recorded_time_control_and_result(self):
+        db = self.open_db()
+        timed = db.import_pgn('[TimeControl "60+2"]\n\n1. e4 *')
+        untimed = db.import_pgn("1. d4 1/2-1/2")
+        self.assertEqual([row.id for row in db.game_summaries(time_control=TimeControl(60_000, 2000))], [timed])
+        self.assertEqual([row.id for row in db.game_summaries(mode="imported", result="1/2-1/2")], [untimed])
+        self.assertEqual([row.id for row in db.game_summaries(has_analysis=True)], [])
+        self.assertEqual([row.id for row in db.game_summaries(has_training=True)], [])
+
+    def test_archive_tags_are_deduplicated_filtered_and_removed_with_the_game(self):
+        db = self.open_db()
+        game_id = db.import_pgn("1. d4 *")
+        db.set_archive_labels(game_id, favorite=True, tags=("Club", "Training", "Club"))
+        self.assertEqual(db.archive_labels(game_id).tags, ("Club", "Training"))
+        self.assertEqual([row.id for row in db.game_summaries(favorite=True, tag="Club")], [game_id])
+        self.assertEqual(db.game_summaries(favorite=False, tag="Club"), [])
+        with self.assertRaises(ValueError):
+            db.set_archive_labels(game_id, favorite=False, tags=(" invalid\t",))
+        self.assertTrue(db.archive_labels(game_id).favorite)
+        backup = db.backup(self.tmp / "archive-labels.sqlite3")
+        db.delete_game(game_id)
+        self.assertIsNone(db._conn.execute("SELECT 1 FROM game_tags").fetchone())
+        db.restore(backup)
+        self.assertTrue(db.archive_labels(game_id).favorite)
 
     def test_backup_and_restore_round_trip(self):
         db = self.open_db()

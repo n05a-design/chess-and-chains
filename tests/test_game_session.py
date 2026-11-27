@@ -3,6 +3,7 @@
 SPDX-License-Identifier: MPL-2.0
 """
 from dataclasses import replace
+from datetime import timedelta
 import json
 from pathlib import Path
 import sqlite3
@@ -77,6 +78,18 @@ class GameSessionTests(unittest.TestCase):
             self.assertIs(reopened.outcome().status, GameStatus.ACTIVE)
             reopened.redo()
             self.assertIs(reopened.outcome().status, GameStatus.DRAW_AGREED)
+
+    def test_finished_archive_is_idempotent_for_the_same_session(self):
+        game = ChessGame()
+        game.play_uci("e2e4")
+        game.resign(Color.BLACK)
+        snapshot = snapshot_of(game, updated_utc="2026-11-27T12:23:00+00:00")
+        with Database.open(self.path) as first, Database.open(self.path) as other:
+            row = first.save_game(game, mode="human-vs-human", session_snapshot=snapshot)
+            self.assertEqual(other.save_game(game, mode="human-vs-human", session_snapshot=snapshot), row)
+            self.assertNotEqual(first.save_game(game, mode="human-vs-human", session_snapshot=snapshot_of(game)), row)
+            self.assertEqual(first.statistics().games_saved, 2)
+            self.assertEqual(first.load_game(row).wall_duration, timedelta(minutes=23))
 
     def test_failed_overwrite_keeps_previous_snapshot(self):
         game = ChessGame()
