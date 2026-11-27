@@ -6,6 +6,7 @@ import threading
 import time
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
@@ -209,6 +210,17 @@ class UCIEngineTests(unittest.TestCase):
                 self.assertEqual(second.result(timeout=1), expected)
         finally:
             engine.close()
+
+    def test_cancellation_shortens_search_to_the_stop_deadline(self):
+        engine = create_engine(shutdown_timeout=1.0)
+        cancelled = threading.Event()
+        cancelled.set()
+        with patch("chess_and_chains.engines.uci.time") as clock, patch.object(engine, "stop_search") as stop:
+            # The original search allows eight seconds. The stop deadline expires after one.
+            clock.monotonic.side_effect = (10.0, 10.1, 11.2)
+            with self.assertRaises(EngineTimeoutError):
+                engine._read_until_matching(lambda line: line.startswith("bestmove "), 8.0, cancelled=cancelled)
+        stop.assert_called_once_with()
 
     def test_search_timeout_is_reported_and_process_can_be_closed(self):
         engine = create_engine("stall", command_timeout=0.05)

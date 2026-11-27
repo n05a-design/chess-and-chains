@@ -25,3 +25,9 @@ KI-unterstützte Korrektur. Der Patch betrifft ausschließlich Testzuordnung, Te
 Der Push-Lauf für `fce085a` meldete unter macOS und Python 3.14 einen falschen Änderungsalarm beim UCI-Bereitschaftstest. Das GUI-Test-Fixture ersetzte vorübergehend die Klassenmethode `EngineConfig.from_path`. Der Hintergrundthread konnte dieselbe ersetzte Methode aufrufen und statt des aufgelösten Executable-Pfads den Python-Symlink aus dem Fixture erhalten. Die Korrektur ersetzt ausschließlich die Auswahl im Dialog. Der Worker verwendet die reguläre Auflösung und Fingerabdruckprüfung. [Fehlgeschlagener macOS-Job](https://github.com/n05a-design/chess-and-chains/actions/runs/46073138709/job/140754569607)
 
 Elf gezielte Tk- und Registry-Tests sowie eine separate Wiederholung des Dialogtests mit einem temporären Python-Symlink bestanden lokal unter macOS mit Python 3.14.5.
+
+## Abbruchprüfung unter Windows
+
+Im PR-Lauf für `5ed1c04` bestanden 13 von 14 Jobs. Windows mit Python 3.11 überschritt im Integrationstest der unkooperativen UCI-Engine die fünf Sekunden Wartezeit auf die Worker- und Prozessbereinigung. Der separat geprüfte UCI-Stop-Timeout bleibt bei einer Sekunde. Eine kontrollierte Uhr prüft diese Frist unabhängig vom Runner. Der Subprozesstest behält die Prüfung des Stop-Kommandos und des erzwungenen Endes bei und erlaubt 15 Sekunden für die Bereinigung. [Windows-Job](https://github.com/n05a-design/chess-and-chains/actions/runs/46073389006/job/140755470333)
+
+Die 31 UCI- und Analysetests liefen lokal mit Exitcode 0. Das CI-Inventar erkannte 448 Tests.

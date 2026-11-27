@@ -274,7 +274,9 @@ class AnalysisServiceTests(unittest.TestCase):
                 self.assertLess(time.monotonic(), deadline, job.progress())
                 time.sleep(0.01)
             job.cancel()
-            self.assertTrue(job.wait(5))
+            # The adapter's stop deadline is tested with a controlled clock.
+            # Allow host process and pipe cleanup to finish on loaded runners.
+            self.assertTrue(job.wait(15), job.progress())
             self.assertIs(job.progress().status, JobStatus.CANCELLED)
             self.assertIn("stop", self.commands())
             self.assertNotIn("quit", self.commands())
