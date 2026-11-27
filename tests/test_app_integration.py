@@ -803,6 +803,7 @@ class PuzzleUiTests(AppTestCase):
         self.assertEqual(reopened.active_panel, "play")
         reopened.tab_rail.set_active("puzzles")
         self.assertEqual(reopened.pack.manifest.pack_id, "local-study")
+        self.assertEqual(reopened.pack.catalog.get(puzzle.puzzle_id), reopened.puzzle.puzzle)
         self.assertEqual(reopened.puzzle_progress_text.get(), "1 von 1 Rätseln dieser Auswahl gelöst.")
 
     def test_invalid_pack_validation_keeps_the_current_session_responsive(self):

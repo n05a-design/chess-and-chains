@@ -14,16 +14,21 @@ import io
 import json
 import os
 import re
+import sqlite3
 import tempfile
+from contextlib import closing
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from importlib import resources
 from pathlib import Path
-from typing import BinaryIO, Iterable
+from typing import TYPE_CHECKING, BinaryIO, Iterable
 
 from ..chess import ChessRules, to_fen
 from .importer import MAX_SOLUTION_PLIES, ImportReport
 from .model import MIN_PUBLISHED_RATING, Puzzle, ValidationStatus, validate_solution_line
+
+if TYPE_CHECKING:
+    from .catalog import IndexedPuzzlePack
 
 PACK_SCHEMA = 1
 DEMO_PACK_ID = "demo"
@@ -313,12 +318,109 @@ class PackLibrary:
             raise PackError(f"Cannot list local puzzle packs: {error}") from error
 
     def load(self, pack_id: str) -> PuzzlePack:
-        pack = read_pack(self._location(pack_id))
+        pack = read_pack(self._catalog_paths(pack_id)[0])
         if pack.manifest.pack_id != pack_id:
             raise PackError("Pack id does not match its local folder.")
         if not pack.puzzles:
             raise PackError("A local puzzle pack must contain at least one puzzle.")
         return pack
+
+    def open_catalog(self, pack_id: str) -> IndexedPuzzlePack:
+        return self._open_catalog(pack_id)
+
+    def install_catalog(self, source: Path) -> IndexedPuzzlePack:
+        pack = self.install(source)
+        return self._open_catalog(pack.manifest.pack_id, validated=pack)
+
+    def _open_catalog(self, pack_id: str, *, validated: PuzzlePack | None = None) -> IndexedPuzzlePack:
+        from .catalog import PuzzleCatalog
+
+        source, cache = self._catalog_paths(pack_id)
+        return PuzzleCatalog.open(source, cache, pack_id, validated=validated)
+
+    def _catalog_root(self, pack_id: str) -> Path:
+        source = self._location(pack_id)
+        cache = source.parent.with_name(f"{source.parent.name}-catalogs") / pack_id
+        try:
+            resolved = cache.resolve()
+        except (OSError, RuntimeError) as error:
+            raise PackError(f"Cannot resolve the puzzle catalogue: {error}") from error
+        if resolved != cache:
+            raise PackError("Local puzzle catalogue paths must not be redirected.")
+        return cache
+
+    def _catalog_paths(self, pack_id: str) -> tuple[Path, Path]:
+        source = self._location(pack_id)
+        cache = self._catalog_root(pack_id)
+        active = cache / "active.json"
+        try:
+            if active.is_symlink():
+                raise PackError("Active puzzle revision must not be redirected.")
+            with active.open("rb") as handle:
+                generation = json.loads(handle.read(256))["generation"]
+            if not isinstance(generation, str) or not re.fullmatch(r"[0-9a-f]{64}", generation):
+                raise PackError("Invalid active puzzle revision.")
+            directory = cache / "versions" / generation
+            if directory.resolve() != directory or (directory / "source").resolve() != directory / "source":
+                raise PackError("Puzzle revision paths must not be redirected.")
+            return directory / "source", directory / "index"
+        except FileNotFoundError:
+            return source, cache
+        except (OSError, TypeError, ValueError, KeyError, RuntimeError) as error:
+            if isinstance(error, PackError):
+                raise
+            raise PackError(f"Cannot read active puzzle revision: {error}") from error
+
+    def install_revision(self, pack_id: str, source: Path) -> IndexedPuzzlePack:
+        """Publish a compatible replacement while keeping earlier generations intact."""
+        from .catalog import PuzzleCatalog
+
+        original = self._location(pack_id)
+        if not original.is_dir():
+            raise PackError(f"Puzzle pack '{pack_id}' is not installed.")
+        manifest_data, body = _read_pack_data(source)
+        proposed = _parse_pack(_decode_manifest(manifest_data), io.BytesIO(body), revalidate=True)
+        if proposed.manifest.pack_id != pack_id or not proposed.puzzles:
+            raise PackError("The revision must belong to the selected non-empty pack.")
+        cache = self._catalog_root(pack_id)
+        versions = cache / "versions"
+        try:
+            resolved = versions.resolve()
+        except (OSError, RuntimeError) as error:
+            raise PackError(f"Cannot resolve puzzle revisions: {error}") from error
+        if resolved != versions:
+            raise PackError("Puzzle revision paths must not be redirected.")
+        generation = hashlib.sha256(manifest_data).hexdigest()
+        destination = versions / generation
+        try:
+            versions.mkdir(parents=True, exist_ok=True)
+            lock = cache / "updates.sqlite3"
+            if lock.is_symlink():
+                raise PackError("Puzzle catalogue update lock must not be redirected.")
+            with closing(sqlite3.connect(lock, timeout=30)) as conn:
+                conn.execute("BEGIN IMMEDIATE")
+                current = self.open_catalog(pack_id)
+                if current.manifest.version == proposed.manifest.version:
+                    raise PackError("The new puzzle pack revision must have a different version.")
+                with tempfile.TemporaryDirectory(prefix=".revision-", dir=versions) as temporary:
+                    staged = Path(temporary)
+                    _atomic_write(staged / "source" / "manifest.json", manifest_data)
+                    _atomic_write(staged / "source" / "puzzles.jsonl", body)
+                    indexed = PuzzleCatalog.open(staged / "source", staged / "index", pack_id, validated=proposed)
+                    incompatible = current.catalog.incompatible_ids(indexed.catalog)
+                    if incompatible:
+                        raise PackError(f"Use a new pack id because {len(incompatible)} puzzle IDs changed or disappeared.")
+                    if destination.exists():
+                        existing = PuzzleCatalog.open(destination / "source", destination / "index", pack_id)
+                        if existing.manifest != proposed.manifest:
+                            raise PackError("Installed revision differs from the validated replacement.")
+                    else:
+                        staged.rename(destination)
+                    _atomic_write(cache / "active.json", json.dumps({"generation": generation}).encode())
+                conn.commit()
+            return self.open_catalog(pack_id)
+        except (OSError, sqlite3.Error) as error:
+            raise PackError(f"Cannot publish puzzle revision '{pack_id}': {error}") from error
 
     def install(self, source: Path) -> PuzzlePack:
         manifest, body = _read_pack_data(source)

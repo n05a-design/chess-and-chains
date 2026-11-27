@@ -66,6 +66,7 @@ from ..game.clock import TimeControl
 from ..game.session import GameSessionSnapshot, SessionLifecycle
 from ..i18n import Translator
 from ..puzzles import DEMO_PACK_ID, PackError, PackLibrary, Puzzle, PuzzlePack, PuzzleSession, Verdict, load_demo_pack
+from ..puzzles.catalog import IndexedPuzzlePack, PuzzleSelection
 from ..puzzles.training import DEMO_MATE_CHAIN, TrainingCandidate, TrainingSession, demo_chain_catalog
 from ..storage import Database, DataLayout, SavedGame, Settings, SettingsError, StorageError, load_settings, save_settings
 from .analysis_dialog import AnalysisDialog
@@ -325,7 +326,7 @@ class ChessApp:
         self.orientation: Orientation = "white"
         self.active_panel = "play"
         self._pack_library = PackLibrary(data_layout.packs) if data_layout is not None else None
-        self._pack_results: SimpleQueue[PuzzlePack | str] = SimpleQueue()
+        self._pack_results: SimpleQueue[PuzzlePack | IndexedPuzzlePack | str] = SimpleQueue()
         self._pack_loading = False
         self.pack = puzzle_pack or load_demo_pack()
         self._puzzle_selection = self.pack.puzzles
@@ -383,7 +384,7 @@ class ChessApp:
         self.interaction_text.set("\n".join(message for message in startup_messages if message))
         saved_pack = self.settings.last_pack_id
         if puzzle_pack is None and self._pack_library is not None and saved_pack not in (None, DEMO_PACK_ID):
-            self._start_pack_task(partial(self._pack_library.load, saved_pack))
+            self._start_pack_task(partial(self._pack_library.open_catalog, saved_pack))
 
     # ----- compatibility with W06 API ---------------------------------
     @property
@@ -2984,24 +2985,34 @@ class ChessApp:
             (self.t("puzzle.demo_name"), *pack_ids[1:]),
             self.t("puzzle.pack_open"),
             initial_index=pack_ids.index(current) if current in pack_ids else 0,
-            actions=((self.t("puzzle.pack_install"), lambda _index: self._pick_pack_folder(), False),),
+            actions=(
+                (self.t("puzzle.pack_install"), lambda _index: self._pick_pack_folder(), False),
+                (self.t("puzzle.pack_update"),
+                 lambda index: self._pick_pack_folder(pack_ids[index]) if index is not None else None, True),
+            ),
         )
         if chosen is None or pack_ids[chosen] == current:
             return
         if pack_ids[chosen] == DEMO_PACK_ID:
             self._activate_pack(load_demo_pack())
         else:
-            self._start_pack_task(partial(library.load, pack_ids[chosen]))
+            self._start_pack_task(partial(library.open_catalog, pack_ids[chosen]))
 
-    def _pick_pack_folder(self) -> None:
+    def _pick_pack_folder(self, revision_of: str | None = None) -> None:
         library = self._pack_library
         if library is None:
             return
-        folder = filedialog.askdirectory(parent=self.root, title=self.t("puzzle.pack_install"), mustexist=True)
+        if revision_of == DEMO_PACK_ID:
+            self._set_pack_feedback(self.t("puzzle.pack_update_demo"))
+            return
+        key = "puzzle.pack_update" if revision_of is not None else "puzzle.pack_install"
+        folder = filedialog.askdirectory(parent=self.root, title=self.t(key), mustexist=True)
         if folder:
-            self._start_pack_task(partial(library.install, Path(folder)))
+            task = (partial(library.install_revision, revision_of, Path(folder)) if revision_of is not None
+                    else partial(library.install_catalog, Path(folder)))
+            self._start_pack_task(task)
 
-    def _start_pack_task(self, task: Callable[[], PuzzlePack]) -> None:
+    def _start_pack_task(self, task: Callable[[], PuzzlePack | IndexedPuzzlePack]) -> None:
         worker = threading.Thread(target=_read_local_pack, args=(task, self._pack_results),
                                   name="puzzle-pack", daemon=True)
         try:
@@ -3126,14 +3137,17 @@ class ChessApp:
         self.puzzle = None
         self._set_chain_filters()
 
-    def _activate_pack(self, pack: PuzzlePack, *, persist: bool = True) -> None:
+    def _activate_pack(self, pack: PuzzlePack | IndexedPuzzlePack, *, persist: bool = True) -> None:
         if self._chain is not None:
             if not self._save_mate_chain():
                 return
             self._leave_mate_chain()
         self.pack = pack
         self._puzzle_selection = pack.puzzles
-        self._puzzle_themes = sorted({theme for puzzle in pack.puzzles for theme in puzzle.themes})
+        self._puzzle_themes = (
+            pack.catalog.themes if isinstance(pack, IndexedPuzzlePack)
+            else sorted({theme for puzzle in pack.puzzles for theme in puzzle.themes})
+        )
         labels = [self.t.puzzle_theme_label(theme) for theme in self._puzzle_themes]
         self.puzzle_theme_filter.configure(values=(self.t("puzzle.all_themes"), *labels))
         self.puzzle_theme_filter.current(0)
@@ -3155,7 +3169,7 @@ class ChessApp:
             except (OSError, SettingsError):
                 self._set_pack_feedback(self.t("puzzle.pack_preference_error"))
 
-    def _matching_puzzles(self) -> tuple[Puzzle, ...]:
+    def _matching_puzzles(self) -> tuple[Puzzle, ...] | PuzzleSelection:
         theme_choice = self.puzzle_theme_filter.current()
         theme = self._puzzle_themes[theme_choice - 1] if theme_choice > 0 else None
         rating_choice = self.puzzle_rating_filter.current()
@@ -3167,6 +3181,12 @@ class ChessApp:
                 due = self.db.due_puzzle_ids(self.pack.manifest.pack_id, now=datetime.now(timezone.utc))
             except (sqlite3.Error, StorageError):
                 self.interaction_text.set(self.t("puzzle.progress_unavailable"))
+        if isinstance(self.pack, IndexedPuzzlePack):
+            included = self._review_puzzle_ids if status_choice == 2 else due if status_choice == 3 else None
+            excluded = self._solved_puzzle_ids if status_choice == 1 else frozenset()
+            return self.pack.catalog.select(
+                minimum=lower, maximum=upper, theme=theme, included=included, excluded=excluded,
+            )
         return tuple(
             puzzle for puzzle in self.pack.puzzles
             if (not theme or theme in puzzle.themes)
@@ -3181,11 +3201,18 @@ class ChessApp:
             return
         self._puzzle_selection = self._matching_puzzles()
         self._update_puzzle_progress()
-        if self.puzzle is not None and self.puzzle.puzzle in self._puzzle_selection:
-            self.puzzle_index = self._puzzle_selection.index(self.puzzle.puzzle)
-            self._refresh()
-        else:
-            self._start_puzzle(0)
+        if self.puzzle is not None:
+            try:
+                if isinstance(self._puzzle_selection, PuzzleSelection):
+                    self.puzzle_index = self._puzzle_selection.ids.index(self.puzzle.puzzle.puzzle_id)
+                else:
+                    self.puzzle_index = self._puzzle_selection.index(self.puzzle.puzzle)
+            except ValueError:
+                pass
+            else:
+                self._refresh()
+                return
+        self._start_puzzle(0)
 
     def _start_puzzle(self, index: int) -> None:
         self._puzzle_recorded = False
@@ -3209,9 +3236,15 @@ class ChessApp:
         if self.puzzle_status_filter.current() > 0 and self.puzzle_status_filter.instate(("!disabled",)):
             previous = self._puzzle_selection
             self._puzzle_selection = self._matching_puzzles()
-            indexes = {puzzle.puzzle_id: index for index, puzzle in enumerate(self._puzzle_selection)}
-            following = next((indexes[puzzle.puzzle_id] for puzzle in previous[following:] + previous[:following]
-                              if puzzle.puzzle_id in indexes), 0)
+            if isinstance(previous, PuzzleSelection) and isinstance(self._puzzle_selection, PuzzleSelection):
+                ids = previous.ids
+                indexes = {puzzle_id: index for index, puzzle_id in enumerate(self._puzzle_selection.ids)}
+                following = next((indexes[puzzle_id] for puzzle_id in ids[following:] + ids[:following]
+                                  if puzzle_id in indexes), 0)
+            else:
+                indexes = {puzzle.puzzle_id: index for index, puzzle in enumerate(self._puzzle_selection)}
+                following = next((indexes[puzzle.puzzle_id] for puzzle in previous[following:] + previous[:following]
+                                  if puzzle.puzzle_id in indexes), 0)
             self._update_puzzle_progress()
         self._start_puzzle(following)
 
@@ -3240,7 +3273,11 @@ class ChessApp:
         self._solved_puzzle_ids = solved
         self._review_puzzle_ids = review
         self.puzzle_status_filter.configure(state="disabled" if self._chain is not None else "readonly")
-        count = sum(puzzle.puzzle_id in solved for puzzle in self._puzzle_selection)
+        count = (
+            len(solved.intersection(self._puzzle_selection.ids))
+            if isinstance(self._puzzle_selection, PuzzleSelection)
+            else sum(puzzle.puzzle_id in solved for puzzle in self._puzzle_selection)
+        )
         self.puzzle_progress_text.set(
             self.t("puzzle.progress", solved=count, count=len(self._puzzle_selection)) if self._puzzle_selection else ""
         )
@@ -3685,7 +3722,7 @@ class ChessApp:
             pass
 
 
-def _read_local_pack(task: Callable[[], PuzzlePack], results: SimpleQueue[PuzzlePack | str]) -> None:
+def _read_local_pack(task: Callable[[], PuzzlePack | IndexedPuzzlePack], results: SimpleQueue[PuzzlePack | IndexedPuzzlePack | str]) -> None:
     try:
         results.put(task())
     except (PackError, OSError) as error:

@@ -12,6 +12,7 @@ import unittest
 from dataclasses import replace
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -516,6 +517,78 @@ class PackTests(unittest.TestCase):
             self.assertEqual(library.load("local-study"), results[0])
             self.assertEqual(results[0].puzzles[0].source, puzzle.source)
             self.assertEqual(tuple(library.directory.iterdir()), (library.directory / "local-study",))
+
+
+class IndexedCatalogTests(unittest.TestCase):
+    def setUp(self):
+        self.root = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.library = PackLibrary(self.root / "packs")
+        self.source = self.root / "source"
+        first, second = load_demo_pack().puzzles[:2]
+        self.rows = (replace(first, rating=1200, themes=("mate", "short")),
+                     replace(second, rating=1700, themes=("mate",)))
+        self.pack_id = "catalog-fixture"
+        self.write(self.rows, "1")
+
+    def write(self, rows, version):
+        return write_pack(self.source, rows, pack_id=self.pack_id, version=version,
+                          source="local fixture", license_note="MPL-2.0")
+
+    def test_warm_open_filters_samples_and_reads_only_the_selected_page(self):
+        self.library.install(self.source)  # A legacy JSONL-only installation.
+        indexed = self.library.open_catalog(self.pack_id)
+        with patch("chess_and_chains.puzzles.catalog.read_pack", side_effect=AssertionError("revalidated")):
+            reopened = self.library.open_catalog(self.pack_id)
+        self.assertEqual(reopened.manifest, indexed.manifest)
+        self.assertEqual(reopened.catalog.themes, ("mate", "short"))
+        with patch.object(reopened.catalog, "_get_rows", wraps=reopened.catalog._get_rows) as reads:
+            selection = reopened.catalog.select(minimum=1300, maximum=1900, theme="mate")
+            self.assertEqual(selection.ids, (self.rows[1].puzzle_id,))
+            self.assertEqual(selection.sample_ids(1, seed=17), selection.ids)
+            reads.assert_not_called()
+            self.assertEqual(PuzzleSession(selection[0]).puzzle, self.rows[1])
+            self.assertEqual(selection[-1], self.rows[1])
+            reads.assert_called_once_with(selection.ids)
+        self.assertEqual(reopened.catalog.get(self.rows[0].puzzle_id), self.rows[0])
+        self.assertIsNone(reopened.catalog.get("missing"))
+        self.assertEqual(reopened.catalog.select(included=frozenset(selection.ids),
+                                                 excluded=frozenset(selection.ids)).ids, ())
+
+    def test_rejects_untrusted_sidecar_and_tampered_local_index(self):
+        (self.source / "validated.json").write_text('{"schema":1}')
+        indexed = self.library.install_catalog(self.source)
+        cache = self.library.directory.with_name("packs-catalogs") / self.pack_id
+        index, = cache.glob("*.sqlite3")
+        with index.open("ab") as data:
+            data.write(b"modified")
+        with self.assertRaisesRegex(PackError, "integrity"):
+            self.library.open_catalog(self.pack_id)
+        self.assertEqual(indexed.manifest.count, 2)
+
+    def test_compatible_revision_is_atomic_and_keeps_the_original_readable(self):
+        original = self.library.install_catalog(self.source)
+        first, second = self.rows
+        identity = original.catalog.content_identity(first.puzzle_id)
+        self.write((replace(first, rating=1400), second), "2")
+        revised = self.library.install_revision(self.pack_id, self.source)
+        self.assertEqual(revised.manifest.version, "2")
+        self.assertEqual(self.library.load(self.pack_id).manifest.version, "2")
+        self.assertEqual(revised.catalog.content_identity(first.puzzle_id), identity)
+        self.assertEqual(original.catalog.get(first.puzzle_id).rating, 1200)
+        self.assertEqual(revised.catalog.get(first.puzzle_id).rating, 1400)
+        self.write((second,), "3")
+        with self.assertRaisesRegex(PackError, "new pack id"):
+            self.library.install_revision(self.pack_id, self.source)
+        self.assertEqual(self.library.open_catalog(self.pack_id).manifest.version, "2")
+
+    def test_rewriting_installed_jsonl_and_its_manifest_cannot_skip_validation(self):
+        self.library.install_catalog(self.source)
+        target = self.library.directory / self.pack_id
+        self.write((self.rows[1],), "2")
+        for name in ("manifest.json", "puzzles.jsonl"):
+            (target / name).write_bytes((self.source / name).read_bytes())
+        with self.assertRaisesRegex(PackError, "changed since validation"):
+            self.library.open_catalog(self.pack_id)
 
 
 if __name__ == "__main__":
