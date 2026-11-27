@@ -1,6 +1,6 @@
 # Functional Completion und Product Readiness
 
-**27.11.2026 · V.0.3.0 · Zwischenstand der Phase A**
+**27.–28.11.2026 · V.0.3.0 · Zwischenstand der Phase A**
 
 ## Ausgangsstand und Arbeitsbranch
 
@@ -14,6 +14,7 @@ auf `codex/functional-completion-product-readiness`.
 
 Geprüfter Code-Commit der Phase A ist `1f60696669395410e65281fba37d2451f0cf90bf`.
 Der Branch enthält KI-unterstützte Implementierung und Dokumentation.
+Der zusätzliche Rücksicherungstest nach Prozessabbruch steht in `25276cf`.
 GitHub-Schreibaktionen und Release-Freigaben sind in diesem Auftrag separat zu erteilen.
 
 ## Umsetzung
@@ -56,7 +57,7 @@ GitHub-Schreibaktionen und Release-Freigaben sind in diesem Auftrag separat zu e
 | F14 Lebenszyklus | Teilweise implementiert | Remis, wiederholte Archivierung, zwei Datenbankverbindungen | Lokale Partien und projektinterner Mock | macOS/Tk | Eigenständige persistierte Lebenszyklusphasen, ausdrücklich protokollierter Engine-Wechsel und unabhängige zusätzliche Regelreferenzen offen |
 | F15 Partiearchiv | Teilweise implementiert | Uhr, Timeout, Replay, Migration, Filter und Tags | Lokale Partien, PGN-Fixtures | macOS/Tk | Engine-Version und stabile Engine-ID aus F16, PGN-Uhrannotationen und UI für Archivlabels offen |
 | F16 Engine-Verwaltung | Offen | Altstand und Mock | Ausstehend | Ausstehend | Persistenz und Runner technisch offen. Reale Kalibrierung und Vertrieb folgen Q-001/Q-023 |
-| F17 Datenintegrität | Teilweise implementiert | ZIP, Prüfsummen, Pfade, Schema, ältere Sicherung und Rücksetzung | Temporäre lokale Profile | CLI auf macOS | Abbruch während des Austauschs ist über das vorherige ZIP manuell rückrollbar. Mehrprofilverwaltung wartet auf Q-012. Weitere Datentypen folgen F16/F18/F19 |
+| F17 Datenintegrität | Teilweise implementiert | ZIP, Prüfsummen, Pfade, Schema, ältere Sicherung, Rücksetzung und Prozessabbruch | Temporäre lokale Profile | CLI auf macOS | Abbruch während des Austauschs ist über das vorherige ZIP manuell rückrollbar. Mehrprofilverwaltung wartet auf Q-012. Weitere Datentypen folgen F16/F18/F19 |
 | F18 Analysis Lab | Offen | Altstand | Ausstehend | Ausstehend | Persistenter Cache und Analyseausbau |
 | F19 Persönliche Rätsel | Offen | Altstand | Ausstehend | Ausstehend | Generator, Validierung und Lebenszyklus |
 | F20 Kettentraining | Offen | Altstand | Ausstehend | Ausstehend | Mehrere fortsetzbare Ketten |
@@ -113,8 +114,8 @@ Datenbank-, Profil- und Katalogtests schreiben in temporäre Testverzeichnisse.
 
 | Befehl | Ergebnis |
 | --- | --- |
-| `PYTHONPATH=src python3 scripts/ci_tests.py inventory` | 466 Tests erfasst, Exit 0 |
-| `PYTHONPATH=src python3 scripts/ci_tests.py headless` | 302 Tests, Exit 0 |
+| `PYTHONPATH=src python3 scripts/ci_tests.py inventory` | 467 Tests erfasst, Exit 0 |
+| `PYTHONPATH=src python3 scripts/ci_tests.py headless` | 303 Tests, Exit 0 |
 | `PYTHONPATH=src python3 scripts/ci_tests.py pytest` | 11 Figurensatztests, Exit 0 |
 | `PYTHONPATH=src python3 scripts/ci_tests.py gui` | 153 native Tests auf macOS, Exit 0 |
 | `python3 scripts/verify_starter.py` | Exit 0 |
@@ -123,8 +124,14 @@ Datenbank-, Profil- und Katalogtests schreiben in temporäre Testverzeichnisse.
 | `python3 -B scripts/build_brand_assets.py --check` | 41 Ausgaben stimmen mit den Logo-Mastern überein, Exit 0 |
 | `PYTHONPATH=src python3 -m glide_shell.selftest` | 13/13, Exit 0 |
 | `PYTHONPATH=src python3 -O -m glide_shell.selftest` | 13/13, Exit 0 |
+| `PYTHONPATH=src python3 -m compileall -q src/chess_and_chains` | Exit 0 |
 | `PYTHONPATH=src python3 -m chess_and_chains --headless-check` | V.0.3.0, Exit 0 |
 | `PYTHONPATH=src python3 -m chess_and_chains --create-backup …` und `--restore-backup …` | CLI-Rundlauf mit temporärem Datenordner, je Exit 0 |
+
+Ein separater macOS-Lauf mit vom Betriebssystem blockiertem Netzwerk
+(`sandbox-exec` mit `(deny network*)`) prüfte Sitzungswiederherstellung,
+Puzzle Lab, Analysearchiv und Backup. 25 Tests, Exit 0. Der Prozessabbruchtest
+prüfte die manuelle Wiederherstellung aus dem vor dem Datentausch gesicherten ZIP.
 
 Die GitHub-Matrix gehört für diesen Branch zur ausstehenden Abnahme.
 Der zitierte GitHub-Lauf prüfte den Ausgangscommit aus PR #25.
@@ -135,9 +142,9 @@ Der zitierte GitHub-Lauf prüfte den Ausgangscommit aus PR #25.
    Fingerabdruck und validierte UCI-Metadaten koppeln. Ausstehende
    Lebenszyklusübergänge und unabhängige Schach-Referenztests ergänzen.
 2. F15 mit PGN-Uhrannotationen und Bedienung der Archivlabels fortsetzen.
-   Für F17 eine unterbrochene Profilwiederherstellung mit einem Prozessabbruch
-   prüfen und die künftigen persönlichen Übungen von der Löschung der
-   Ursprungspartie entkoppeln.
+   Für F17 die künftigen persönlichen Übungen von der Löschung der Ursprungspartie
+   entkoppeln. Die Wiederaufnahme nach einem Prozessabbruch kann weiter automatisiert
+   werden.
 3. Nach Gate A die Engine-Profile und den Benchmark-Runner (F16) sowie den
    persistenten Analyse-Cache (F18) umsetzen. Q-022 erst nach ausdrücklicher
    Freigabe für Tests am offiziellen Puzzle-Export verwenden.
