@@ -19,16 +19,17 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from importlib import resources
 from pathlib import Path
-from typing import Iterable
+from typing import BinaryIO, Iterable
 
-from ..chess import ChessGame, ChessRules
-from .importer import ImportReport
-from .model import MIN_PUBLISHED_RATING, Puzzle, ValidationStatus
+from ..chess import ChessRules, to_fen
+from .importer import MAX_SOLUTION_PLIES, ImportReport
+from .model import MIN_PUBLISHED_RATING, Puzzle, ValidationStatus, validate_solution_line
 
 PACK_SCHEMA = 1
 DEMO_PACK_ID = "demo"
 _MANIFEST_LIMIT = 64 * 1024
 _PACK_LIMIT = 64 * 1024 * 1024
+_RECORD_LIMIT = 64 * 1024
 _PACK_ID = re.compile(r"^[a-z0-9][a-z0-9-]{1,63}$")
 _SURROGATE = re.compile(r"[\ud800-\udfff]")
 
@@ -57,6 +58,27 @@ class PackManifest:
 class PuzzlePack:
     manifest: PackManifest
     puzzles: tuple[Puzzle, ...]
+
+
+    def incompatible_puzzle_ids(self, newer: PuzzlePack) -> tuple[str, ...]:
+        """Identify puzzle IDs whose saved progress cannot be carried forward."""
+        if newer.manifest.pack_id != self.manifest.pack_id:
+            raise PackError("Pack revisions must share the same pack id.")
+        next_by_id = {puzzle.puzzle_id: puzzle for puzzle in newer.puzzles}
+        incompatible = []
+        for previous in self.puzzles:
+            replacement = next_by_id.get(previous.puzzle_id)
+            if replacement is None:
+                # A removed ID could later be reused while its attempts still exist.
+                incompatible.append(previous.puzzle_id)
+            elif (
+                previous.setup_move != replacement.setup_move
+                or previous.solution != replacement.solution
+                or (previous.fen != replacement.fen
+                    and to_fen(previous.initial_state()) != to_fen(replacement.initial_state()))
+            ):
+                incompatible.append(previous.puzzle_id)
+        return tuple(sorted(incompatible))
 
 
 def _valid_text(value: object) -> bool:
@@ -90,34 +112,57 @@ def write_pack(
 ) -> PackManifest:
     if not _PACK_ID.fullmatch(pack_id):
         raise PackError(f"Invalid pack id {pack_id!r}.")
-    items = list(puzzles)
-    if any(p.rating < MIN_PUBLISHED_RATING for p in items):
-        raise PackError(f"Packs may only contain puzzles with Rating >= {MIN_PUBLISHED_RATING}.")
-    if any(p.validation is not ValidationStatus.VALID for p in items):
-        raise PackError("Packs may only contain validated puzzles.")
-    ids = [p.puzzle_id for p in items]
-    if len(set(ids)) != len(ids):
-        raise PackError("Duplicate puzzle ids in pack.")
-    body = "".join(json.dumps(p.to_record(), sort_keys=True, ensure_ascii=False) + "\n" for p in items).encode()
-    manifest = PackManifest(
-        pack_id=pack_id,
-        version=version,
-        count=len(items),
-        sha256=hashlib.sha256(body).hexdigest(),
-        min_rating=min((p.rating for p in items), default=MIN_PUBLISHED_RATING),
-        source=source,
-        license_note=license_note,
-        created_utc=datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        demo=demo,
-    )
-    _atomic_write(directory / "puzzles.jsonl", body)
-    if report is not None:
-        _atomic_write(directory / "import_report.json", json.dumps(report.to_dict(), indent=2).encode())
-    _atomic_write(directory / "manifest.json", json.dumps(manifest.to_dict(), indent=2).encode())
+    if not all(map(_valid_text, (version, source, license_note))):
+        raise PackError("Invalid text metadata in the pack manifest.")
+    directory.mkdir(parents=True, exist_ok=True)
+    digest = hashlib.sha256()
+    count = size = 0
+    min_rating = None
+    ids: set[str] = set()
+    with tempfile.TemporaryDirectory(prefix=".build-", dir=directory) as staging:
+        payload = Path(staging) / "puzzles.jsonl"
+        with payload.open("wb") as handle:
+            for puzzle in puzzles:
+                if puzzle.rating < MIN_PUBLISHED_RATING:
+                    raise PackError(f"Packs may only contain puzzles with Rating >= {MIN_PUBLISHED_RATING}.")
+                if puzzle.validation is not ValidationStatus.VALID:
+                    raise PackError("Packs may only contain validated puzzles.")
+                if puzzle.puzzle_id in ids:
+                    raise PackError("Duplicate puzzle ids in pack.")
+                ids.add(puzzle.puzzle_id)
+                record = (json.dumps(puzzle.to_record(), sort_keys=True, ensure_ascii=False) + "\n").encode()
+                size += len(record)
+                if len(record) > _RECORD_LIMIT or size > _PACK_LIMIT:
+                    raise PackError("Puzzle pack exceeds the file size limit.")
+                handle.write(record)
+                digest.update(record)
+                count += 1
+                min_rating = puzzle.rating if min_rating is None else min(min_rating, puzzle.rating)
+            handle.flush()
+            os.fsync(handle.fileno())
+        manifest = PackManifest(
+            pack_id=pack_id,
+            version=version,
+            count=count,
+            sha256=digest.hexdigest(),
+            min_rating=min_rating if min_rating is not None else MIN_PUBLISHED_RATING,
+            source=source,
+            license_note=license_note,
+            created_utc=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            demo=demo,
+        )
+        manifest_data = json.dumps(manifest.to_dict(), indent=2).encode()
+        report_data = json.dumps(report.to_dict(), indent=2).encode() if report is not None else None
+        if len(manifest_data) > _MANIFEST_LIMIT:
+            raise PackError("Puzzle pack exceeds the manifest size limit.")
+        payload.replace(directory / payload.name)
+        if report_data is not None:
+            _atomic_write(directory / "import_report.json", report_data)
+        _atomic_write(directory / "manifest.json", manifest_data)
     return manifest
 
 
-def _parse_pack(manifest_text: str, body: bytes, revalidate: bool) -> PuzzlePack:
+def _parse_pack(manifest_text: str, body: BinaryIO, revalidate: bool) -> PuzzlePack:
     try:
         raw = json.loads(manifest_text)
     except (json.JSONDecodeError, RecursionError) as error:
@@ -132,33 +177,53 @@ def _parse_pack(manifest_text: str, body: bytes, revalidate: bool) -> PuzzlePack
         raise PackError("Invalid pack id in the manifest.")
     if not all(map(_valid_text, (manifest.version, manifest.source, manifest.license_note, manifest.created_utc))):
         raise PackError("Invalid text metadata in the pack manifest.")
-    if type(manifest.count) is not int or type(manifest.min_rating) is not int or type(manifest.demo) is not bool:
+    if (
+        type(manifest.count) is not int or manifest.count < 0
+        or type(manifest.min_rating) is not int or manifest.min_rating < MIN_PUBLISHED_RATING
+        or type(manifest.demo) is not bool
+    ):
         raise PackError("Invalid count, minimum rating or demo flag in the pack manifest.")
-    if hashlib.sha256(body).hexdigest() != manifest.sha256:
-        raise PackError("Pack checksum mismatch; the pack is corrupt or modified.")
+    digest = hashlib.sha256()
+    size = 0
     rules = ChessRules()
     puzzles = []
     seen: set[str] = set()
     validation = ValidationStatus.VALID if revalidate else ValidationStatus.UNVALIDATED
-    for line_no, line in enumerate(io.BytesIO(body), 1):
+    for line_no, line in enumerate(iter(lambda: body.readline(_RECORD_LIMIT + 1), b""), 1):
+        size += len(line)
+        if size > _PACK_LIMIT or len(line) > _RECORD_LIMIT:
+            raise PackError("Puzzle pack exceeds the file size limit.")
+        digest.update(line)
         try:
             record = json.loads(line.decode("utf-8"))
             if not isinstance(record, dict) or not _valid_text(record.get("id")) or not record["id"].strip():
                 raise PackError("Expected a puzzle with a non-empty text id.")
             moves, themes = record.get("moves"), record.get("themes", [])
-            if not isinstance(moves, list) or any(not isinstance(move, str) for move in moves):
+            if not isinstance(moves, list) or not 2 <= len(moves) <= MAX_SOLUTION_PLIES:
+                raise PackError("Unexpected number of moves in the solution.")
+            if not all(map(_valid_text, moves)):
                 raise PackError("Expected a list of UCI moves.")
             if not isinstance(themes, list) or not all(map(_valid_text, themes)):
                 raise PackError("Expected a list of theme identifiers.")
+            opening_tags = record.get("opening_tags", [])
+            if not isinstance(opening_tags, list) or not all(map(_valid_text, opening_tags)):
+                raise PackError("Expected a list of opening tags.")
+            for name in ("fen", "source", "game_url"):
+                if not _valid_text(record.get(name, "")) or (name == "fen" and not record.get(name)):
+                    raise PackError(f"Expected text for {name}.")
             if type(record.get("rating")) is not int:
                 raise PackError("Expected an integer puzzle rating.")
+            for name, minimum, maximum in (
+                ("rating_deviation", 0, None), ("plays", 0, None), ("popularity", -100, 100),
+            ):
+                value = record.get(name, 0)
+                if type(value) is not int or value < minimum or (maximum is not None and value > maximum):
+                    raise PackError(f"Invalid value for {name}.")
             puzzle = Puzzle.from_record(record, validation)
             if not puzzle.solution or len(puzzle.solution) % 2 == 0:
                 raise PackError("The solution must end with a player move.")
             if revalidate:
-                game = ChessGame(puzzle.initial_state(), rules=rules, adjudicate_forced_capture_draws=False)
-                for move in (puzzle.setup_move, *puzzle.solution):
-                    game.play(move)
+                validate_solution_line(puzzle.initial_state(), (puzzle.setup_move, *puzzle.solution), rules)
         except (IndexError, KeyError, TypeError, ValueError, RecursionError) as error:
             raise PackError(f"Pack line {line_no} is invalid: {error}") from error
         if puzzle.rating < MIN_PUBLISHED_RATING:
@@ -167,6 +232,8 @@ def _parse_pack(manifest_text: str, body: bytes, revalidate: bool) -> PuzzlePack
             raise PackError(f"Duplicate puzzle id {puzzle.puzzle_id}.")
         seen.add(puzzle.puzzle_id)
         puzzles.append(puzzle)
+    if digest.hexdigest() != manifest.sha256:
+        raise PackError("Pack checksum mismatch; the pack is corrupt or modified.")
     if len(puzzles) != manifest.count:
         raise PackError("Pack count does not match its manifest.")
     if min((puzzle.rating for puzzle in puzzles), default=MIN_PUBLISHED_RATING) != manifest.min_rating:
@@ -195,8 +262,15 @@ def _decode_manifest(manifest: bytes) -> str:
 
 
 def read_pack(directory: Path, *, revalidate: bool = True) -> PuzzlePack:
-    manifest, body = _read_pack_data(directory)
-    return _parse_pack(_decode_manifest(manifest), body, revalidate)
+    try:
+        with (directory / "manifest.json").open("rb") as file:
+            manifest = file.read(_MANIFEST_LIMIT + 1)
+        if len(manifest) > _MANIFEST_LIMIT:
+            raise PackError("Puzzle pack exceeds the manifest size limit.")
+        with (directory / "puzzles.jsonl").open("rb") as body:
+            return _parse_pack(_decode_manifest(manifest), body, revalidate)
+    except OSError as error:
+        raise PackError(f"Cannot read pack in {directory}: {error}") from error
 
 
 def load_demo_pack() -> PuzzlePack:
@@ -204,7 +278,7 @@ def load_demo_pack() -> PuzzlePack:
     data = resources.files(__package__).joinpath("data", DEMO_PACK_ID)
     return _parse_pack(
         data.joinpath("manifest.json").read_text(encoding="utf-8"),
-        data.joinpath("puzzles.jsonl").read_bytes(),
+        io.BytesIO(data.joinpath("puzzles.jsonl").read_bytes()),
         revalidate=True,
     )
 
@@ -248,11 +322,19 @@ class PackLibrary:
 
     def install(self, source: Path) -> PuzzlePack:
         manifest, body = _read_pack_data(source)
-        pack = _parse_pack(_decode_manifest(manifest), body, revalidate=True)
+        pack = _parse_pack(_decode_manifest(manifest), io.BytesIO(body), revalidate=True)
         target = self._location(pack.manifest.pack_id)
         if not pack.puzzles:
             raise PackError("A local puzzle pack must contain at least one puzzle.")
         if target.exists():
+            current = self.load(pack.manifest.pack_id)
+            incompatible = current.incompatible_puzzle_ids(pack)
+            if incompatible:
+                sample = ", ".join(incompatible[:3])
+                raise PackError(
+                    f"Puzzle pack '{pack.manifest.pack_id}' is already installed. "
+                    f"Use a new pack id because {len(incompatible)} puzzle IDs changed or disappeared ({sample})."
+                )
             raise PackError(f"Puzzle pack '{pack.manifest.pack_id}' is already installed.")
         try:
             self.directory.mkdir(parents=True, exist_ok=True)
