@@ -180,6 +180,10 @@ class SavedGame:
                 game.resign(self.resigned_by)
             elif self.draw_claim is not None:
                 game.claim_draw(self.draw_claim, self.declared_move)
+        if self.session_snapshot is not None and self.result == "1/2-1/2":
+            timeline = self.session_snapshot.timeline
+            if timeline.agreed_draw and timeline.cursor > len(timeline.moves):
+                game.agree_draw()
         game.record_result(self.result, historical=True)
         return game
 

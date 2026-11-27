@@ -650,6 +650,7 @@ class ChessApp:
                 (t("clock.new"), self._new_timed_game, "", "new_timed_game"),
                 (t("clock.toggle"), self.controller.toggle_clock, "", "toggle_clock"),
                 (t("clock.decide"), self._decide_timeout, "", "decide_timeout"),
+                (t("draw.offer"), self._offer_draw, "", "offer_draw"),
                 (t("session.resume"), self._resume_session, "", "resume_session"),
                 (t("button.save_game"), self._save_game, "", "save_game"),
                 (t("button.library"), self._open_library, "", "open_library"),
@@ -2582,6 +2583,21 @@ class ChessApp:
             return None
         return chosen
 
+    def _offer_draw(self) -> None:
+        try:
+            offering = self.controller.offer_draw()
+            accepting = offering.opposite
+            accepted = messagebox.askyesno(
+                self.t("draw.offer"), self.t("draw.respond", offerer=self._side(offering), player=self._side(accepting)),
+                parent=self.root, default=messagebox.NO,
+            )
+            if self._closed:
+                return
+            self.controller.respond_to_draw(accepting, accept=accepted)
+            self.interaction_text.set("" if accepted else self.t("draw.declined"))
+        except ChessError:
+            self.interaction_text.set(self.t("draw.unavailable"))
+
     def _claim_draw(self) -> None:
         view = self.controller.view()
         if not view.human_to_move:
@@ -3683,6 +3699,7 @@ class ChessApp:
             GameStatus.DRAW_FIVEFOLD_REPETITION: "status.fivefold",
             GameStatus.DRAW_SEVENTY_FIVE_MOVE: "status.seventyfive",
             GameStatus.DRAW_CLAIMED: "status.claimed",
+            GameStatus.DRAW_AGREED: "draw.agreed",
         }.get(status, "status.finished"))
 
     def _update_move_list(self, san_moves: Sequence[str]) -> None:

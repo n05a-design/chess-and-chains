@@ -63,6 +63,21 @@ class GameSessionTests(unittest.TestCase):
         self.assertIs(restored.outcome().status, GameStatus.RESIGNED)
         self.assertEqual(restored.outcome().resigned_by, Color.WHITE)
 
+    def test_draw_agreement_remains_distinct_in_archive_and_session_history(self):
+        game = ChessGame()
+        game.play_uci("e2e4")
+        game.agree_draw()
+        with Database.open(self.path) as db:
+            snapshot = snapshot_of(game)
+            row = db.save_game(game, mode="human-vs-human", session_snapshot=snapshot)
+            self.assertIs(db.load_game(row).to_game().outcome().status, GameStatus.DRAW_AGREED)
+            game.undo()
+            db.save_session(snapshot_of(game))
+            _, reopened = db.load_session()
+            self.assertIs(reopened.outcome().status, GameStatus.ACTIVE)
+            reopened.redo()
+            self.assertIs(reopened.outcome().status, GameStatus.DRAW_AGREED)
+
     def test_failed_overwrite_keeps_previous_snapshot(self):
         game = ChessGame()
         snapshot = snapshot_of(game)

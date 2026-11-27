@@ -444,6 +444,15 @@ class CapturedMaterialUiTests(AppTestCase):
 
 
 class SessionRecoveryUiTests(AppTestCase):
+    def test_game_menu_draw_offer_requires_opponent_confirmation(self):
+        app = self.make_app(locale="de")
+        with patch("chess_and_chains.ui.app.messagebox.askyesno", side_effect=(False, True)) as ask:
+            app._offer_draw()
+            self.assertIs(app.game.outcome().status, GameStatus.ACTIVE)
+            self.assertIn("Schwarz", ask.call_args.args[1])
+            app._offer_draw()
+        self.assertEqual(app.panel_text.get(), "Remis durch Vereinbarung.")
+
     def test_startup_resumes_autosave_with_redo_without_library_entry(self):
         with tempfile.TemporaryDirectory() as folder:
             layout = DataLayout(Path(folder))

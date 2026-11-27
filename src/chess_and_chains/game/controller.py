@@ -163,6 +163,7 @@ class GameController:
         self._clock: GameClock | None = None
         self._clock_positions: list[ClockReading] = []
         self._flagged: Color | None = None
+        self._draw_offer: Color | None = None
         self._provider = provider
         self._worker: BotWorker | None = None
         self._listeners: list[Listener] = []
@@ -361,6 +362,30 @@ class GameController:
         self._invalidate()
         self._notify()
 
+    def offer_draw(self) -> Color:
+        self._ensure_open()
+        if self._check_timeout():
+            self._notify()
+        if self._setup.mode is not PlayMode.HUMAN_VS_HUMAN or not self._human_to_move(self._game.outcome()):
+            raise ChessError("A draw can only be offered during an active two-player game.")
+        if self._draw_offer is not None:
+            raise ChessError("A draw offer already awaits a response.")
+        self._draw_offer = self._game.state.turn
+        return self._draw_offer
+
+    def respond_to_draw(self, player: Color, *, accept: bool) -> None:
+        self._ensure_open()
+        if self._check_timeout():
+            self._notify()
+        if self._draw_offer is None or player is not self._draw_offer.opposite:
+            raise ChessError("Only the other player may respond to a pending draw offer.")
+        self._draw_offer = None
+        if accept:
+            self._game.agree_draw()
+            self._pause_clock()
+            self._invalidate()
+            self._notify()
+
     def resign(self) -> None:
         self._ensure_open()
         if self._check_timeout():
@@ -435,6 +460,7 @@ class GameController:
         if self._check_timeout(at_ns):
             raise ChessError("The time expired before the move.")
         self._game.play(move)
+        self._draw_offer = None
         if clock is not None:
             assert at_ns is not None
             clock.complete_move(at_ns)
@@ -541,6 +567,7 @@ class GameController:
         self._worker.submit(request)
 
     def _invalidate(self) -> None:
+        self._draw_offer = None
         self._generation += 1
         if self._pending is not None:
             self._pending.cancelled.set()
