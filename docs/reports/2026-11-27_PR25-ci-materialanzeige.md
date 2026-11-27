@@ -19,3 +19,9 @@ macOS arm64, Python 3.14.5, temporäre App-Daten, Tk-Anzeige für die GUI-Suite 
 - `python3 scripts/ci_tests.py pytest` — 11/11, Exitcode 0. Struktur-, Link-, Policy-, Compile- und Headless-CLI-Prüfungen ebenfalls mit Exitcode 0.
 
 KI-unterstützte Korrektur. Der Patch betrifft ausschließlich Testzuordnung, Test-Fixture und Dokumentation.
+
+## Zweiter Befund im Engine-Dialog
+
+Der Push-Lauf für `fce085a` meldete unter macOS und Python 3.14 einen falschen Änderungsalarm beim UCI-Bereitschaftstest. Das GUI-Test-Fixture ersetzte vorübergehend die Klassenmethode `EngineConfig.from_path`. Der Hintergrundthread konnte dieselbe ersetzte Methode aufrufen und statt des aufgelösten Executable-Pfads den Python-Symlink aus dem Fixture erhalten. Die Korrektur ersetzt ausschließlich die Auswahl im Dialog. Der Worker verwendet die reguläre Auflösung und Fingerabdruckprüfung. [Fehlgeschlagener macOS-Job](https://github.com/n05a-design/chess-and-chains/actions/runs/46073138709/job/140754569607)
+
+Elf gezielte Tk- und Registry-Tests sowie eine separate Wiederholung des Dialogtests mit einem temporären Python-Symlink bestanden lokal unter macOS mit Python 3.14.5.

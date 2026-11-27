@@ -235,7 +235,9 @@ class BotVerticalSliceTests(AppTestCase):
         for mode, expected in (("normal", ENGINE_NAME), ("crash-on-ready", "Engine test failed")):
             with self.subTest(mode=mode):
                 dialog = EngineDialog(app)
-                with patch.object(EngineConfig, "from_path", return_value=EngineConfig.mock(mode)):
+                with patch("chess_and_chains.ui.app.EngineConfig") as dialog_config:
+                    # Replace the entry's executable choice without patching the registry worker.
+                    dialog_config.from_path.return_value = EngineConfig.mock(mode)
                     dialog.test()
                 self.assertEqual(dialog.test_button.cget("state"), tk.DISABLED)
                 self.pump_until(lambda: dialog.test_button.cget("state") == tk.NORMAL)
