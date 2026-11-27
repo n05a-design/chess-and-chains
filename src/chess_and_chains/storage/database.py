@@ -127,6 +127,10 @@ class StorageError(RuntimeError):
     """The database cannot be used safely."""
 
 
+class SessionConflict(StorageError):
+    """The active checkpoint changed since this instance last read it."""
+
+
 class _CorruptDatabase(sqlite3.DatabaseError):
     """An integrity check found damaged database data."""
 
@@ -390,17 +394,41 @@ class Database:
             (payload,),
         )
 
-    def load_session(self) -> tuple[GameSessionSnapshot, ChessGame] | None:
+    def compare_and_save_session(self, snapshot: GameSessionSnapshot, expected: str | None) -> str:
+        """Replace only the exact checkpoint this instance last observed."""
+        payload = snapshot.encode()
+        if expected is None:
+            changed = self._conn.execute(
+                "INSERT INTO active_session(slot, snapshot) VALUES (1, ?) ON CONFLICT(slot) DO NOTHING",
+                (payload,),
+            )
+        else:
+            changed = self._conn.execute(
+                "UPDATE active_session SET snapshot = ? WHERE slot = 1 AND snapshot = ?", (payload, expected),
+            )
+        if changed.rowcount != 1:
+            raise SessionConflict("The active game was changed by another window.")
+        return payload
+
+    def session_payload(self) -> str | None:
         row = self._conn.execute(
             "SELECT CASE WHEN length(CAST(snapshot AS BLOB)) <= ? THEN snapshot END "
             "FROM active_session WHERE slot = 1", (MAX_SNAPSHOT_BYTES,),
         ).fetchone()
         if row is None:
             return None
+        if not isinstance(row[0], str):
+            raise StorageError("Invalid session snapshot size or storage type.")
+        return row[0]
+
+    def load_session(self) -> tuple[GameSessionSnapshot, ChessGame] | None:
+        payload = self.session_payload()
+        return self.decode_session(payload) if payload is not None else None
+
+    @staticmethod
+    def decode_session(payload: str) -> tuple[GameSessionSnapshot, ChessGame]:
         try:
-            if not isinstance(row[0], str):
-                raise ValueError("Invalid session snapshot size or storage type.")
-            snapshot = GameSessionSnapshot.decode(row[0])
+            snapshot = GameSessionSnapshot.decode(payload)
             return snapshot, snapshot.restore_game()
         except (ValueError, RecursionError) as error:
             raise StorageError(f"Cannot read game session: {error}") from error

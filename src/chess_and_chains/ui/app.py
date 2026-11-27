@@ -68,7 +68,7 @@ from ..i18n import Translator
 from ..puzzles import DEMO_PACK_ID, PackError, PackLibrary, Puzzle, PuzzlePack, PuzzleSession, Verdict, load_demo_pack
 from ..puzzles.catalog import IndexedPuzzlePack, PuzzleSelection
 from ..puzzles.training import DEMO_MATE_CHAIN, TrainingCandidate, TrainingSession, demo_chain_catalog
-from ..storage import Database, DataLayout, SavedGame, Settings, SettingsError, StorageError, load_settings, save_settings
+from ..storage import Database, DataLayout, SavedGame, SessionConflict, Settings, SettingsError, StorageError, load_settings, save_settings
 from .analysis_dialog import AnalysisDialog
 from .appearance_dialog import AppearanceDialog
 from .atlas import PuzzleAtlas
@@ -322,6 +322,7 @@ class ChessApp:
         self._unsubscribe_view = self.controller.subscribe(self._on_view)
         self._session_game = self.game
         self._saved_session: GameSessionSnapshot | None = None
+        self._session_payload: str | None = None
         self._session_blocked = False
         self.orientation: Orientation = "white"
         self.active_panel = "play"
@@ -2171,7 +2172,7 @@ class ChessApp:
         if self.active_panel == "puzzles":
             self.tab_rail.set_active("play")
         view = self.controller.view()
-        if (self.game.moves or view.can_redo or self._session_blocked) and not messagebox.askyesno(
+        if (self.game.moves or view.can_redo or view.clock is not None or self._session_blocked) and not messagebox.askyesno(
             self.t("new_game.confirm_title"), self.t("new_game.confirm_body"), parent=self.root,
         ):
             return
@@ -2226,7 +2227,7 @@ class ChessApp:
         if not self._session_blocked:
             self.interaction_text.set(self.t("session.none"))
             return
-        if (self.game.can_undo or self.game.can_redo) and not messagebox.askyesno(
+        if (self.game.can_undo or self.game.can_redo or self.controller.clock_reading() is not None) and not messagebox.askyesno(
             self.t("session.resume"), self.t("library.replace"), parent=self.root,
         ):
             return
@@ -2236,7 +2237,8 @@ class ChessApp:
         if self.db is None:
             return None
         try:
-            saved = self.db.load_session()
+            self._session_payload = self.db.session_payload()
+            saved = self.db.decode_session(self._session_payload) if self._session_payload is not None else None
             if saved is None or saved[0].lifecycle is SessionLifecycle.FINISHED:
                 self._session_blocked = False
                 return None
@@ -2308,10 +2310,13 @@ class ChessApp:
             snapshot = self._session_snapshot(view)
             if snapshot is self._saved_session and not force:
                 return
-            self.db.save_session(snapshot)
+            self._session_payload = self.db.compare_and_save_session(snapshot, self._session_payload)
             self._session_game = self.game
             self._saved_session = snapshot
-        except (sqlite3.Error, OSError, ValueError) as error:
+        except SessionConflict:
+            self._session_blocked = True
+            self.interaction_text.set(self.t("session.conflict"))
+        except (StorageError, sqlite3.Error, OSError, ValueError) as error:
             self.interaction_text.set(self.t("session.error", error=error))
 
     def _on_move_requested(self, candidates: tuple[Move, ...]) -> None:
