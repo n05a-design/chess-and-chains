@@ -174,19 +174,22 @@ class PropertyTests(unittest.TestCase):
                 game = random_game(seed)
                 states = [game.initial_state]
                 for move in game.moves:
-                    states.append(RULES.apply(states[-1], move))
+                    before = states[-1]
+                    self.assertIn(move, RULES.legal_moves(before))
+                    after = RULES.apply(before, move)
+                    self.assertFalse(RULES.is_in_check(after, before.turn))
+                    states.append(after)
                 for state in states:
                     self.assertEqual(parse_fen(to_fen(state)), state)
                 doc = parse_pgn(export_pgn(game))
                 self.assertEqual(doc.moves, tuple(game.moves))
                 outcome = game.outcome()
-                count = len(game.moves)
-                for _ in range(count):
-                    game.undo()
+                for state in reversed(states[:-1]):
+                    self.assertEqual(game.undo(), state)
                 self.assertEqual(game.state, game.initial_state)
                 self.assertEqual(game.moves, [])
-                for _ in range(count):
-                    game.redo()
+                for state in states[1:]:
+                    self.assertEqual(game.redo(), state)
                 self.assertEqual(game.state, states[-1])
                 self.assertEqual(game.outcome(), outcome)
 
@@ -238,6 +241,22 @@ class TerminationRuleTests(unittest.TestCase):
                 game = ChessGame(parse_fen(fen))
                 self.assertEqual({move.to_uci() for move in game.rules.legal_moves(game.state)}, replies)
                 self.assertIs(game.outcome().status, status)
+
+    def test_two_legal_captures_both_force_stalemate_despite_remaining_material(self):
+        fen = "8/8/8/8/2Q5/k2B4/8/Kq6 w - - 0 1"
+        for position in (fen, mirror_fen(fen)):
+            with self.subTest(position=position):
+                state = parse_fen(position)
+                replies = RULES.legal_moves(state)
+                self.assertEqual(len(replies), 2)
+                for move in replies:
+                    child = RULES.apply(state, move)
+                    self.assertFalse(RULES.insufficient_material(child))
+                    self.assertFalse(RULES.legal_moves(child))
+                    self.assertFalse(RULES.is_in_check(child))
+                game = ChessGame(state)
+                self.assertIs(game.outcome().status, GameStatus.DRAW_DEAD_POSITION)
+                self.assertEqual(parse_pgn(export_pgn(game)).result, "1/2-1/2")
 
     def test_legacy_pgn_keeps_capture_and_still_validates_board_legality(self):
         header = '[SetUp "1"]\n[FEN "8/8/8/8/8/8/r1k5/K7 w - - 0 1"]\n\n'

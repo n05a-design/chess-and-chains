@@ -22,6 +22,7 @@ from chess_and_chains import DISPLAY_VERSION  # noqa: E402
 from chess_and_chains.chess import Color, DrawClaim, GameStatus, Move, Piece, PieceType, parse_square, to_fen  # noqa: E402
 from chess_and_chains.engines.bot import EngineConfig, UCIBot  # noqa: E402
 from chess_and_chains.engines.mock_engine import ENGINE_NAME  # noqa: E402
+from chess_and_chains.game.clock import TimeControl  # noqa: E402
 from chess_and_chains.game import BotStatus, GameSetup  # noqa: E402
 from chess_and_chains.puzzles import load_demo_pack, write_pack  # noqa: E402
 from chess_and_chains.storage import DataLayout, load_settings, update_settings  # noqa: E402
@@ -335,7 +336,111 @@ class BotVerticalSliceTests(AppTestCase):
         self.assertTrue(app._current_pgn().endswith("1/2-1/2"))
 
 
+class SessionRecoveryUiTests(AppTestCase):
+    def test_startup_resumes_autosave_with_redo_without_library_entry(self):
+        with tempfile.TemporaryDirectory() as folder:
+            layout = DataLayout(Path(folder))
+            app = self.make_app(data_layout=layout)
+            app.start_game("human-vs-human")
+            app._play_move(Move.from_uci("e2e4"))
+            app._play_move(Move.from_uci("e7e5"))
+            app._undo()
+            self.assertEqual(app.db.list_games(), [])
+            app.close()
+
+            resumed = self.make_app(data_layout=layout)
+            self.assertEqual(resumed.game.moves, [Move.from_uci("e2e4")])
+            self.assertTrue(resumed.controller.view().can_redo)
+            resumed._redo()
+            self.assertEqual(resumed.game.moves, [Move.from_uci("e2e4"), Move.from_uci("e7e5")])
+            resumed.close()
+
+
+    def test_bot_resume_preserves_color_and_does_not_fall_back_to_other_engine(self):
+        with tempfile.TemporaryDirectory() as folder:
+            layout = DataLayout(Path(folder))
+            factory = mock_factory()
+            app = self.make_app(data_layout=layout, provider_factory=factory)
+            app.start_game("human-vs-bot-black")
+            self.pump_until(lambda: len(app.game.moves) == 1)
+            saved, _ = app.db.load_session()
+            app.close()
+
+            # The app refuses the mismatched identity, then permits an explicit retry.
+            resumed = self.make_app(data_layout=layout, provider_factory=factory)
+            self.assertEqual(resumed.controller.setup.bot_color, Color.WHITE)
+            self.assertEqual(resumed.orientation, "black")
+            self.assertEqual(resumed.db.load_session()[0], saved)
+            self.assertEqual(resumed.game.timeline().moves, saved.timeline.moves)
+            resumed.close()
+            with patch.object(ChessApp, "_engine_reference", return_value="other engine"):
+                blocked = self.make_app(data_layout=layout, provider_factory=factory)
+            self.assertTrue(blocked._session_blocked)
+            self.assertEqual(blocked.game.moves, [])
+            self.assertEqual(blocked.db.load_session()[0], saved)
+            blocked._resume_session()
+            self.assertFalse(blocked._session_blocked)
+            self.assertEqual(blocked.controller.setup.bot_color, Color.WHITE)
+            blocked.close()
+
+    def test_library_continues_saved_bot_game_without_mutating_saved_record(self):
+        with tempfile.TemporaryDirectory() as folder:
+            layout = DataLayout(Path(folder))
+            factory = mock_factory()
+            app = self.make_app(data_layout=layout, provider_factory=factory)
+            app.start_game("human-vs-bot-white")
+            before = app.db.load_game(app._save_game())
+            app.start_game("human-vs-human")
+            app._continue_saved_game(before)
+            self.assertEqual(app.controller.setup.bot_color, Color.BLACK)
+            self.assertEqual(app.db.load_game(before.id), before)
+            app.close()
+
+
+    def test_timed_session_starts_paused_with_saved_times_after_reopen(self):
+        with tempfile.TemporaryDirectory() as folder:
+            layout = DataLayout(Path(folder))
+            app = self.make_app(data_layout=layout)
+            now = 1_000_000_000
+            app.controller._now = lambda: now
+            app.start_game("human-vs-human", time_control=TimeControl(60_000, 2000))
+            now += 1_250_000_000
+            app._play_move(Move.from_uci("e2e4"))
+            now += 3_500_000_000
+            app.close()
+
+            resumed = self.make_app(data_layout=layout)
+            reading = resumed.controller.clock_reading()
+            self.assertEqual((reading.remaining_ms(Color.WHITE), reading.remaining_ms(Color.BLACK)), (60_750, 56_500))
+            self.assertFalse(resumed.controller.view().clock_running)
+            self.assertEqual(resumed.game.moves, [Move.from_uci("e2e4")])
+            self.assertIn("Black 0:57", resumed.clock_text.get())
+            resumed.controller.toggle_clock()
+            self.assertTrue(resumed.controller.view().clock_running)
+            resumed.close()
+
+
 class PuzzleUiTests(AppTestCase):
+    def test_due_filter_reads_persisted_attempt_dates(self):
+        with tempfile.TemporaryDirectory() as folder:
+            layout = DataLayout(Path(folder))
+            app = self.make_app(data_layout=layout)
+            pack_id = app.pack.manifest.pack_id
+            due, future = app.pack.puzzles[:2]
+            for puzzle in (due, future):
+                app.db.record_puzzle_attempt(pack_id, puzzle.puzzle_id, solved=True, mistakes=0,
+                                             hints_used=0, duration_ms=1000)
+            app.db._conn.execute(
+                "UPDATE puzzle_attempts SET attempted_utc = ? WHERE pack_id = ? AND puzzle_id = ?",
+                ("2000-01-01", pack_id, due.puzzle_id),
+            )
+            app.tab_rail.set_active("puzzles")
+            app.puzzle_status_filter.current(3)
+            app._apply_puzzle_filters()
+            self.assertEqual(app._puzzle_selection, (due,))
+            self.assertEqual(app.puzzle.puzzle, due)
+            app.close()
+
     def test_staged_hints_and_retry_keep_completed_attempts_separate(self):
         with tempfile.TemporaryDirectory() as tmp:
             app = self.make_app(data_layout=DataLayout(Path(tmp) / "data"), locale="de")
