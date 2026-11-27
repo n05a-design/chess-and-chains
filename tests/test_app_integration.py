@@ -336,6 +336,111 @@ class BotVerticalSliceTests(AppTestCase):
         self.assertTrue(app._current_pgn().endswith("1/2-1/2"))
 
 
+class CapturedMaterialUiTests(AppTestCase):
+    def setUp(self) -> None:
+        self.make_app(locale="de")
+
+    def test_14_app_material_bars_initial_state(self) -> None:
+        """Beide Materialanzeigen sind im Brettbereich initial vorhanden und leer."""
+        self.assertTrue(hasattr(self.app, "top_material_bar"))
+        self.assertTrue(hasattr(self.app, "bottom_material_bar"))
+        self.assertEqual(self.app.top_material_bar.player_color, Color.BLACK)
+        self.assertEqual(self.app.bottom_material_bar.player_color, Color.WHITE)
+        top_mat = self.app.top_material_bar.material
+        bot_mat = self.app.bottom_material_bar.material
+        self.assertIsNotNone(top_mat)
+        self.assertIsNotNone(bot_mat)
+        assert top_mat is not None and bot_mat is not None
+        self.assertEqual(top_mat.captures, ())
+        self.assertEqual(bot_mat.captures, ())
+        self.assertIsNone(top_mat.advantage)
+        self.assertIsNone(bot_mat.advantage)
+
+    def test_15_app_material_bars_capture_and_orientation_flip(self) -> None:
+        """Schlagzug und Brettdrehung: Anzeigen tauschen ihre Positionen exakt."""
+        # 1. e4 d5 2. exd5
+        self.app.controller.play_human(Move.from_uci("e2e4"))
+        self.app.controller.play_human(Move.from_uci("d7d5"))
+        self.app.controller.play_human(Move.from_uci("e4d5"))
+        self.root.update_idletasks()
+
+        # Normal orientation ("white"):
+        # top = Black (0 captures, no advantage)
+        # bottom = White (captured black pawn, +1 advantage)
+        self.assertEqual(self.app.top_material_bar.player_color, Color.BLACK)
+        self.assertEqual(self.app.bottom_material_bar.player_color, Color.WHITE)
+        self.assertIsNone(self.app.top_material_bar.material.advantage)
+        self.assertEqual(self.app.bottom_material_bar.material.advantage, 1)
+        self.assertEqual(len(self.app.bottom_material_bar.material.captures), 1)
+
+        # Flip board
+        self.app._flip_board()
+        self.root.update_idletasks()
+        self.assertEqual(self.app.orientation, "black")
+        # In black orientation:
+        # top = White (captured black pawn, +1 advantage)
+        # bottom = Black (0 captures, no advantage)
+        self.assertEqual(self.app.top_material_bar.player_color, Color.WHITE)
+        self.assertEqual(self.app.bottom_material_bar.player_color, Color.BLACK)
+        self.assertEqual(self.app.top_material_bar.material.advantage, 1)
+        self.assertIsNone(self.app.bottom_material_bar.material.advantage)
+
+        # Flip back
+        self.app._flip_board()
+        self.root.update_idletasks()
+        self.assertEqual(self.app.top_material_bar.player_color, Color.BLACK)
+        self.assertEqual(self.app.bottom_material_bar.player_color, Color.WHITE)
+
+    def test_16_app_material_undo_and_redo(self) -> None:
+        """Undo und Redo im GUI aktualisieren die Materialanzeigen."""
+        self.app.controller.play_human(Move.from_uci("e2e4"))
+        self.app.controller.play_human(Move.from_uci("d7d5"))
+        self.app.controller.play_human(Move.from_uci("e4d5"))
+        self.root.update_idletasks()
+
+        self.assertEqual(self.app.bottom_material_bar.material.advantage, 1)
+
+        # Undo
+        self.app.controller.undo()
+        self.root.update_idletasks()
+        self.assertIsNone(self.app.bottom_material_bar.material.advantage)
+        self.assertEqual(self.app.bottom_material_bar.material.captures, ())
+
+        # Redo
+        self.app.controller.redo()
+        self.root.update_idletasks()
+        self.assertEqual(self.app.bottom_material_bar.material.advantage, 1)
+        self.assertEqual(len(self.app.bottom_material_bar.material.captures), 1)
+
+    def test_17_replay_dialog_material_tracking(self) -> None:
+        """ReplayDialog zeigt den Materialstand an jedem Zugschritt."""
+        self.app.controller.play_human(Move.from_uci("e2e4"))
+        self.app.controller.play_human(Move.from_uci("d7d5"))
+        self.app.controller.play_human(Move.from_uci("e4d5"))
+
+        dialog = ReplayDialog(
+            self.app.root,
+            self.app.game,
+            self.app.t,
+            self.app._board_artwork,
+            self.app.board.renderer,
+            self.app.orientation,
+            theme=self.app.theme,
+        )
+        try:
+            # At start (index 0)
+            dialog.show(0)
+            self.assertIsNone(dialog.bottom_material_bar.material.advantage)
+            self.assertEqual(dialog.bottom_material_bar.material.captures, ())
+
+            # At index 3 (after exd5)
+            dialog.show(3)
+            self.assertEqual(dialog.bottom_material_bar.material.advantage, 1)
+            self.assertEqual(len(dialog.bottom_material_bar.material.captures), 1)
+        finally:
+            dialog.destroy()
+
+
 class SessionRecoveryUiTests(AppTestCase):
     def test_startup_resumes_autosave_with_redo_without_library_entry(self):
         with tempfile.TemporaryDirectory() as folder:
