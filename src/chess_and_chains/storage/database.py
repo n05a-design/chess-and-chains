@@ -115,6 +115,10 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
             payload TEXT NOT NULL CHECK (length(CAST(payload AS BLOB)) <= 65536)
         );
     """),
+    (6, """
+        ALTER TABLE games ADD COLUMN session_snapshot TEXT
+            CHECK (session_snapshot IS NULL OR length(CAST(session_snapshot AS BLOB)) <= 262144);
+    """),
 )
 SCHEMA_VERSION = MIGRATIONS[-1][0]
 
@@ -161,6 +165,7 @@ class SavedGame:
     draw_claim: DrawClaim | None = None
     declared_move: Move | None = None
     engine_ref: str | None = None
+    session_snapshot: GameSessionSnapshot | None = None
 
     def to_game(self) -> ChessGame:
         game = ChessGame(parse_fen(self.initial_fen))
@@ -343,7 +348,7 @@ class Database:
                         candidate.backup(staged)
                         self._migrate(staged, version)
                         staged.execute("SELECT id, created_utc, initial_fen, moves_uci, pgn, result, mode, "
-                                       "bot_color, bot_name, bot_preset, resigned_by, draw_claim, declared_move, engine_ref, profile_id FROM games LIMIT 0")
+                                       "bot_color, bot_name, bot_preset, resigned_by, draw_claim, declared_move, engine_ref, profile_id, session_snapshot FROM games LIMIT 0")
                         staged.execute("SELECT id, pack_id, puzzle_id, attempted_utc, solved, mistakes, "
                                        "hints_used, duration_ms FROM puzzle_attempts LIMIT 0")
                         staged.execute("SELECT pack_id, puzzle_id, attempts, solved, clean_solves, "
@@ -401,6 +406,23 @@ class Database:
             raise StorageError(f"Cannot read game session: {error}") from error
 
     # ----- games -------------------------------------------------------
+    @staticmethod
+    def _validate_archive_snapshot(
+        snapshot: GameSessionSnapshot, game: ChessGame, result: str, *,
+        mode: str, bot_color: str | None, bot_preset: str | None, engine_ref: str | None,
+    ) -> None:
+        restored = snapshot.restore_game()
+        bot = snapshot.setup.bot_color
+        archive_mode = snapshot.setup.mode.value if bot is None else f"{snapshot.setup.mode.value}-{bot.opposite.name.lower()}"
+        if (mode, bot_color, bot_preset, engine_ref) != (
+            archive_mode, bot.value if bot else None, snapshot.bot_preset, snapshot.engine_ref,
+        ):
+            raise ValueError("Archive session differs from the recorded game setup.")
+        if (restored.initial_state != game.initial_state or restored.state != game.state
+                or restored.moves != game.moves or restored.outcome() != game.outcome()
+                or export_pgn(restored).rsplit(maxsplit=1)[-1] != result):
+            raise ValueError("Archive session differs from the recorded game.")
+
     def save_game(
         self,
         game: ChessGame,
@@ -412,6 +434,7 @@ class Database:
         engine_ref: str | None = None,
         headers: dict[str, str] | None = None,
         result: str | None = None,
+        session_snapshot: GameSessionSnapshot | None = None,
     ) -> int:
         outcome = game.outcome()
         has_termination = outcome.resigned_by is not None or outcome.claimed_draw is not None
@@ -421,33 +444,41 @@ class Database:
             game.record_result(result)
         pgn = export_pgn(game, headers, result)
         result = pgn.rsplit(maxsplit=1)[-1]
+        payload = None
+        if session_snapshot is not None:
+            payload = session_snapshot.encode()
+            self._validate_archive_snapshot(
+                GameSessionSnapshot.decode(payload), game, result,
+                mode=mode, bot_color=bot_color, bot_preset=bot_preset, engine_ref=engine_ref,
+            )
         cursor = self._conn.execute(
             "INSERT INTO games (created_utc, initial_fen, moves_uci, pgn, result, mode, bot_color, bot_name, bot_preset,"
-            " resigned_by, draw_claim, declared_move, engine_ref) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            " resigned_by, draw_claim, declared_move, engine_ref, session_snapshot) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (_now(), to_fen(game.initial_state), " ".join(m.to_uci() for m in game.moves), pgn, result,
              mode, bot_color, bot_name, bot_preset, outcome.resigned_by.value if outcome.resigned_by else None,
              outcome.claimed_draw.name if outcome.claimed_draw else None,
-             outcome.declared_move.to_uci() if outcome.declared_move else None, engine_ref),
+             outcome.declared_move.to_uci() if outcome.declared_move else None, engine_ref, payload),
         )
         return int(cursor.lastrowid)
 
     def load_game(self, game_id: int) -> SavedGame:
         row = self._conn.execute(
             "SELECT id, created_utc, initial_fen, moves_uci, pgn, result, mode, bot_color, bot_name, bot_preset,"
-            " resigned_by, draw_claim, declared_move, engine_ref FROM games WHERE id = ?", (game_id,)
+            " resigned_by, draw_claim, declared_move, engine_ref, session_snapshot FROM games WHERE id = ?", (game_id,)
         ).fetchone()
         if row is None:
             raise StorageError(f"No saved game with id {game_id}.")
         try:
             moves = tuple(Move.from_uci(token) for token in row[3].split())
             pgn = parse_pgn(row[4])
-            resigned_by, draw_claim, declared_move, engine_ref = row[10:]
+            resigned_by, draw_claim, declared_move, engine_ref, payload = row[10:]
             saved = SavedGame(
                 row[0], row[1], row[2], moves, *row[4:10], pgn_tags=pgn.tags,
                 resigned_by=Color(resigned_by) if resigned_by is not None else None,
                 draw_claim=DrawClaim[draw_claim] if draw_claim is not None else None,
                 declared_move=Move.from_uci(declared_move) if declared_move is not None else None,
                 engine_ref=engine_ref,
+                session_snapshot=GameSessionSnapshot.decode(payload) if payload is not None else None,
             )
             if (pgn.moves != saved.moves or pgn.initial_state != parse_fen(saved.initial_fen)
                     or pgn.result != saved.result):
@@ -458,7 +489,12 @@ class Database:
                 if saved.result == "*":
                     raise StorageError(f"Saved game {game_id}: termination requires a final result.")
                 saved.to_game()
-        except (ValueError, KeyError, AttributeError, TypeError) as error:
+            if saved.session_snapshot is not None:
+                self._validate_archive_snapshot(
+                    saved.session_snapshot, saved.to_game(), saved.result, mode=saved.mode,
+                    bot_color=saved.bot_color, bot_preset=saved.bot_preset, engine_ref=saved.engine_ref,
+                )
+        except (ValueError, KeyError, AttributeError, TypeError, RecursionError) as error:
             raise StorageError(f"Saved game {game_id} failed validation: {error}") from error
         return saved
 

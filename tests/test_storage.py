@@ -11,7 +11,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from chess_and_chains.chess import ChessGame, Color, DrawClaim, FenError, GameStatus, Move, PGNError, parse_fen, to_fen  # noqa: E402
+from chess_and_chains.chess import ChessGame, Color, DrawClaim, FenError, GameStatus, Move, PGNError, export_pgn, parse_fen, to_fen  # noqa: E402
 from chess_and_chains.storage import (  # noqa: E402
     SCHEMA_VERSION,
     DataLayout,
@@ -468,14 +468,19 @@ class DatabaseTests(TempDirTestCase):
             db = Database(conn, path, None, None)
             game = ChessGame()
             game.play_uci("e2e4")
-            game_id = db.save_game(game, mode="human-vs-human")
+            game_id = conn.execute(
+                "INSERT INTO games (created_utc, initial_fen, moves_uci, pgn, result, mode) VALUES (?, ?, ?, ?, ?, ?)",
+                ("2026-11-27T12:00:00+00:00", to_fen(game.initial_state), "e2e4", export_pgn(game), "*", "human-vs-human"),
+            ).lastrowid
             db.record_puzzle_attempt("demo", "ccBR01", solved=True, mistakes=0, hints_used=0, duration_ms=123)
             conn.commit()
         finally:
             conn.close()
         upgraded = self.open_db(path.name)
-        self.assertEqual(upgraded.schema_version, 5)
-        self.assertEqual(upgraded.load_game(game_id).moves, (Move.from_uci("e2e4"),))
+        self.assertEqual(upgraded.schema_version, SCHEMA_VERSION)
+        migrated = upgraded.load_game(game_id)
+        self.assertEqual(migrated.moves, (Move.from_uci("e2e4"),))
+        self.assertIsNone(migrated.session_snapshot)
         self.assertEqual(upgraded.puzzle_progress("demo", "ccBR01").best_duration_ms, 123)
         self.assertEqual(upgraded.analysis_reports(), ())
         self.assertIsNotNone(upgraded.migration_backup)

@@ -62,7 +62,7 @@ from ..engines.registry import EngineAvailability, EngineRegistry
 from ..engines.presets import BotPreset, load_presets
 from ..engines.uci import UCIEngineError
 from ..game import BotStatus, GameController, GameSetup, GameView, PlayMode
-from ..game.clock import TimeControl
+from ..game.clock import ClockTimeline, TimeControl
 from ..game.session import GameSessionSnapshot, SessionLifecycle
 from ..i18n import Translator
 from ..puzzles import DEMO_PACK_ID, PackError, PackLibrary, Puzzle, PuzzlePack, PuzzleSession, Verdict, load_demo_pack
@@ -2279,34 +2279,34 @@ class ChessApp:
             return "mock"
         raise ValueError("The session engine has no persistent reference.")
 
-    def _autosave_session(self, view: GameView) -> None:
+    def _session_snapshot(self, view: GameView) -> GameSessionSnapshot:
+        current = self._saved_session if self._session_game is self.game else None
+        lifecycle = SessionLifecycle.ACTIVE if view.outcome.status is GameStatus.ACTIVE else SessionLifecycle.FINISHED
+        now = datetime.now(timezone.utc).isoformat()
+        provider = self.controller.provider
+        bot = view.setup.bot_color
+        reference = None
+        preset = None
+        if bot is not None:
+            reference = current.engine_ref if current is not None else self._engine_reference(provider)
+            preset = provider.preset.id if isinstance(provider, UCIBot) else self._selected_preset().id
+        snapshot = GameSessionSnapshot(
+            current.session_id if current else str(uuid4()),
+            current.created_utc if current else now,
+            max(now, current.updated_utc) if current else now,
+            replace(view.setup, initial_fen=None), to_fen(self.game.initial_state), self.game.timeline(), lifecycle,
+            reference, preset, tuple(sorted(self._game_headers.items())), clock=self.controller.clock_timeline(),
+        )
+        return current if current is not None and snapshot == replace(current, updated_utc=snapshot.updated_utc) else snapshot
+
+    def _autosave_session(self, view: GameView, *, force: bool = False) -> None:
         if self.db is None or self._session_blocked:
             return
-        previous = self._saved_session
-        if self.game is self._session_game and previous is None and not self.game.can_undo:
+        if not force and self.game is self._session_game and self._saved_session is None and not self.game.can_undo:
             return  # The startup board alone is not a session.
-        lifecycle = (
-            SessionLifecycle.ACTIVE if view.outcome.status is GameStatus.ACTIVE else SessionLifecycle.FINISHED
-        )
-        now = datetime.now(timezone.utc).isoformat()
         try:
-            timeline = self.game.timeline()
-            provider = self.controller.provider
-            current = previous if self._session_game is self.game else None
-            bot = view.setup.bot_color
-            reference = None
-            preset = None
-            if bot is not None:
-                reference = current.engine_ref if current is not None else self._engine_reference(provider)
-                preset = provider.preset.id if isinstance(provider, UCIBot) else self._selected_preset().id
-            snapshot = GameSessionSnapshot(
-                current.session_id if current else str(uuid4()),
-                current.created_utc if current else now,
-                max(now, current.updated_utc) if current else now,
-                replace(view.setup, initial_fen=None), to_fen(self.game.initial_state), timeline, lifecycle,
-                reference, preset, tuple(sorted(self._game_headers.items())), clock=self.controller.clock_timeline(),
-            )
-            if current is not None and snapshot == replace(current, updated_utc=snapshot.updated_utc):
+            snapshot = self._session_snapshot(view)
+            if snapshot is self._saved_session and not force:
                 return
             self.db.save_session(snapshot)
             self._session_game = self.game
@@ -2784,6 +2784,11 @@ class ChessApp:
                 headers.update(White=view.bot_name, Black="Human")
             else:
                 headers.update(White="Human", Black=view.bot_name)
+        control = view.setup.time_control
+        if control is not None and control.initial_ms % 1000 == control.increment_ms % 1000 == 0:
+            headers["TimeControl"] = str(control.initial_ms // 1000)
+            if control.increment_ms:
+                headers["TimeControl"] += f"+{control.increment_ms // 1000}"
         if view.flagged is not None and view.outcome.status is GameStatus.RECORDED_RESULT:
             headers["Termination"] = "time forfeit"
         return headers
@@ -2793,24 +2798,19 @@ class ChessApp:
             self.interaction_text.set(self.t("save.unavailable"))
             return None
         view = self.controller.view()
-        provider = self.controller.provider
         mode = view.setup.mode.value
         if view.setup.bot_color is not None:
             mode += f"-{view.setup.bot_color.opposite.name.lower()}"
         try:
+            snapshot = self._session_snapshot(view)
             game_id = self.db.save_game(
                 self.game,
                 mode=mode,
                 bot_color=view.setup.bot_color.value if view.setup.bot_color else None,
                 bot_name=view.bot_name if view.setup.mode is PlayMode.HUMAN_VS_BOT else None,
-                bot_preset=(
-                    (provider.preset.id if isinstance(provider, UCIBot) else self._selected_preset().id)
-                    if view.setup.bot_color is not None else None
-                ),
-                engine_ref=(
-                    self._saved_session.engine_ref if self._saved_session and self._session_game is self.game
-                    else self._engine_reference(provider)
-                ) if view.setup.bot_color is not None else None,
+                bot_preset=snapshot.bot_preset,
+                engine_ref=snapshot.engine_ref,
+                session_snapshot=snapshot,
                 headers=self._pgn_headers(),
             )
         except (StorageError, sqlite3.Error, ValueError, OSError) as error:
@@ -2846,7 +2846,7 @@ class ChessApp:
                     (self.t("library.new_from_position"), lambda index: self._play_from_position(
                         to_fen(self.db.load_game(rows[index].id).to_game().state),
                     ) if index is not None else None, True),
-                    (self.t("replay.title"), lambda index: self._open_replay(self.db.load_game(rows[index].id).to_game())
+                    (self.t("replay.title"), lambda index: self._open_saved_replay(self.db.load_game(rows[index].id))
                      if index is not None else None, True),
                 ),
             )
@@ -2866,7 +2866,8 @@ class ChessApp:
             self.interaction_text.set(self.t("library.error", error=error))
 
     def _continue_saved_game(self, saved: SavedGame) -> None:
-        game = saved.to_game()
+        snapshot = saved.session_snapshot
+        game = snapshot.restore_game() if snapshot else saved.to_game()
         if game.outcome().status is not GameStatus.ACTIVE:
             self.interaction_text.set(self.t("library.finished"))
             return
@@ -2875,7 +2876,7 @@ class ChessApp:
         ):
             return
         mode = saved.mode
-        setup = self._setup_for_mode(mode)
+        setup = snapshot.setup if snapshot else self._setup_for_mode(mode)
         bot = setup.bot_color
         provider = None
         if bot is not None:
@@ -2894,9 +2895,13 @@ class ChessApp:
         else:
             mode = "human-vs-human"
         self.mode_var.set(mode)
-        self._game_headers = dict(saved.pgn_tags)
+        self._game_headers = dict(snapshot.headers if snapshot else saved.pgn_tags)
         self._session_blocked = False
-        self.controller.resume_game(game, setup, provider=provider)
+        self._session_game = game
+        self._saved_session = snapshot
+        self.controller.resume_game(game, setup, provider=provider, clock=snapshot.clock if snapshot else None)
+        if snapshot is not None and self._saved_session is snapshot:
+            self._autosave_session(self.controller.view(), force=True)
         self.interaction_text.set(self.t("library.continued", id=saved.id))
 
     def _import_pgn_file(self) -> None:
@@ -3490,12 +3495,15 @@ class ChessApp:
             self.tab_rail.set_active("play")
         self.controller.load_game(ChessGame(parse_fen(fen)))
 
-    def _open_replay(self, game: ChessGame) -> None:
+    def _open_saved_replay(self, saved: SavedGame) -> None:
+        self._open_replay(saved.to_game(), clock=saved.session_snapshot.clock if saved.session_snapshot else None)
+
+    def _open_replay(self, game: ChessGame, *, clock: ClockTimeline | None = None) -> None:
         replay_artwork = self.board._artwork
         if replay_artwork is None and self.board.board_design == "marble":
             replay_artwork = self.board._ensure_marble_2d_artwork()
         dialog = ReplayDialog(
-            self.root, game, self.t, replay_artwork, self.board.renderer, self.orientation, theme=self.theme,
+            self.root, game, self.t, replay_artwork, self.board.renderer, self.orientation, theme=self.theme, clock=clock,
         )
         modal_session.wait_modal(self.root, dialog)
 
