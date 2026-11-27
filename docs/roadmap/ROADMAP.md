@@ -1,16 +1,16 @@
 # Chess & Chains – Roadmap
 
-**V.0.3.0 · Stand 24.11.2026 · geprüfte Basis `main` = `8d5bcc6` (PR #21).** Der lokale Desktop-Prototyp ist als Entwicklungsstand versioniert und nicht veröffentlicht. Der [Merge-Lauf von PR #21](https://github.com/n05a-design/chess-and-chains/actions/runs/44972693793) bestand 14 von 14 Jobs auf Windows, macOS und Linux. Status und offene Gate-Punkte je Paket stehen in den [Work Packages](WORK_PACKAGES.md), die Anforderungen im [MVP-Vertrag](../product/MVP_CONTRACT.md).
+**V.0.3.0 · Stand 27.11.2026.** Die geprüfte Online-Basis ist GitHub-`main` bei `2c4a594`. Der Merge-Lauf von PR #24 meldet 14 von 14 erfolgreichen Jobs auf Windows, macOS und Linux. Der lokale Entwicklungsbranch ergänzt Spielstand und Uhr, Analyse und Wiederholtraining. [Funktionsinventar F01–F12](FUNCTIONAL_CORE.md) · [GitHub-Prüflauf](https://github.com/n05a-design/chess-and-chains/actions/runs/45899065995)
 
 ## Wo das Projekt steht
 
 | Bereich | Erreicht | Fehlt bis zur Abnahme |
 | --- | --- | --- |
 | Regeln (W05) | Legale Züge, FEN/SAN/PGN, Remisregeln, Perft, tote Stellungen bei kurzen Zwangsfolgen und geschlossenen Bauernsperren | Allgemeine Erkennung toter Stellungen, Owner-Abnahme |
-| Brett und Figuren (W06) | Tk-Brett auf Glide Shell `0.6.2` (`AppHost`, `AfterScope`, `modal_session`, Light/Dark/System-Themes), Figuren V.02 und Draufsicht, PNG-Fallback, SVG-Brettvorschau mit Cache | Finale Inhaber-Bretter, native Sicht- und High-DPI-Prüfung |
+| Brett und Figuren (W06) | Tk-Brett auf Glide Shell `0.6.2` (`AppHost`, `AfterScope`, `modal_session`, Light/Dark/System-Themes), Original V.06, Draufsicht V.04.2 und Klassisch V.05.1, PNG-Fallback, SVG-Brettvorschau mit Cache | Finale Inhaber-Bretter, native Sicht- und High-DPI-Prüfung |
 | Bot (W07) | UCI-Adapter, asynchroner Controller, sechs Presets, Bereitschaftstest | Echte Engine nach ADR-001, Kalibrierung, Offline-Partie |
 | Rätsel (W08) | Offline-Builder mit Rating ≥ 1000, Qualitätsfilter, Seed, lokale Pakete im Puzzle Lab | Realdaten nach Q-022, Paketgröße und Ratingbereich (Q-008/Q-009) |
-| Daten (W09) | SQLite v3, Bibliothek mit Suche, PGN- und FEN-Austausch, geprüfte Rücksicherung | Profile (Q-012), ADR-004, native Dialoge macOS/Linux |
+| Daten (W09) | SQLite v4 im Entwicklungsbranch, automatische Partiekopie, Bibliothek mit Suche, PGN/FEN und Rücksicherung | Profile (Q-012), ADR-004, native Dialoge macOS/Linux |
 | Bedienung (W10) | DE/EN, Tastaturwege, Brett als Text, Fokusrückgabe | Native Skalierung 150/200 %, Screenreader, Ziffernblock |
 | Qualität (W11) | 14-Job-Matrix nach jedem Merge, Policy-, Link- und Manifestprüfung | Installations-, Offline- und Artefaktabnahme |
 | Vertrieb (W12) | Strategie dokumentiert | BLOCKED durch ADR-001, ADR-005, ADR-006 |
@@ -46,13 +46,13 @@ Nur offene Arbeit. Erledigte Punkte stehen unten unter „Abgeschlossen“.
 
 ## Meilensteine bis 1.0 (PROPOSED)
 
-Vorschlag zur Fortschreibung der historischen Zielmarken. Die Nummern gelten erst nach Owner-Bestätigung; bis dahin bleibt die Entwicklungsnummer V.0.0.1 nach der [Versionspflege](../governance/GOVERNANCE.md#projektversion).
+Vorschlag zur Fortschreibung der historischen Zielmarken. Die Nummern gelten erst nach Owner-Bestätigung; der aktuelle Entwicklungsstand ist V.0.3.0 nach der [Versionspflege](../governance/GOVERNANCE.md#projektversion).
 
 | Meilenstein | Inhalt | Ausgangskriterium | Blockiert durch |
 | --- | --- | --- | --- |
 | 0.3.0 · Interner Prototyp | Regeln, Brett, Bibliothek, Demo-Rätsel, DE/EN | W05, W06, W09, W10 ohne offene native Prüfpunkte; Owner-Abnahme der Bedienung | Native Abnahme, finale Bretter (optional als 0.1.x nachziehen) |
-| 0.3.0 · Offline-Bot | Echte lokale Engine, kalibrierte Stufen | Vollständige Offline-Partie mit identifiziertem Binary; Kalibrierbericht | ADR-001, ADR-007, Q-021, Q-023 |
-| 0.3.0 · Puzzle-MVP | Mitgeliefertes Rätselpaket, Profile, Fortschritt | Realdatenimport mit Bericht; P-05/P-06 erfüllt | Q-008, Q-009, Q-012, Q-022, ADR-003, ADR-004 |
+| Offline-Bot · Zielmeilenstein | Echte lokale Engine, kalibrierte Stufen | Vollständige Offline-Partie mit identifiziertem Binary; Kalibrierbericht | ADR-001, ADR-007, Q-021, Q-023 |
+| Puzzle-MVP · Zielmeilenstein | Mitgeliefertes Rätselpaket, Profile, Fortschritt | Realdatenimport mit Bericht; P-05/P-06 erfüllt | Q-008, Q-009, Q-012, Q-022, ADR-003, ADR-004 |
 | 0.9.0 · Release Candidate | Installer Windows/macOS, Lizenzhinweise, SBOM | Installations-, Update-, Deinstallations- und Offline-Nachweise je Plattform | ADR-005, ADR-006, Q-007, Q-016 |
 | 1.0.0 · Release | GitHub Release und Software-Katalog | Ausdrückliches Owner-Release-Gate | Alle vorherigen |
 

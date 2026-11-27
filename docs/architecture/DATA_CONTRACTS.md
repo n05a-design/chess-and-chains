@@ -30,9 +30,9 @@ Ausgangsstellung. Verlustfreier Annotierungsaustausch bleibt eine
 mögliche Erweiterung nach Scope-Entscheidung.
 
 Der Regelkern erkennt tote Stellungen in Folgen von bis zu vier Halbzügen,
-wenn jeweils nur ein Zug legal ist und die Folge in Patt oder ungenügendem
-Material endet. Bei mehreren legalen Zügen gilt der Nachweis, wenn alle
-unmittelbare Schläge in Stellungen mit ungenügendem Material sind. Für
+wenn jeder betrachtete Zweig in Patt oder ungenügendem Material endet. Bei
+mehreren legalen Zügen verfolgt die Prüfung ausschließlich Stellungen, in
+denen sämtliche verfügbaren Züge Schläge auf besetzte Felder sind. Für
 geschlossene Bauernketten mit ausschließlich Königen und Bauern gibt
 es einen weiteren Nachweis. Alle Bauern sind dauerhaft blockiert,
 beide Könige bleiben in getrennten Bereichen und kein König erreicht
@@ -62,8 +62,11 @@ Endergebnis am letzten Halbzug angezeigt.
 `result`, `mode`, `bot_color`, `bot_name` und `bot_preset` sowie die ab
 Schema 3 ergänzten Endgründe. SQLite lädt eine Partie erst, wenn
 Ausgangs-FEN, UCI-Züge und Ergebnis mit dem validierten PGN übereinstimmen.
-Die Bibliothek öffnet Spiele lokal für zwei Personen. Aus dem Brett
-ableitbare Partieenden behalten ihren Grund.
+Die Bibliothek bietet Fortsetzen im ursprünglichen Modus, lokales Öffnen für
+zwei Personen, Wiedergabe, Analyse und eine neue Partie ab Stellung. Eine
+gespeicherte Bot-Partie braucht zum Fortsetzen die passende lokale
+Engine-Referenz. Ältere Bot-Datensätze bleiben für die anderen Aktionen
+verfügbar. Aus dem Brett ableitbare Partieenden behalten ihren Grund.
 
 SQLite v3 speichert bei einer lokalen Aufgabe die Farbe der aufgebenden
 Person. Bei einem Remisanspruch speichert es die Anspruchsregel und einen
@@ -78,6 +81,31 @@ Partie. Import akzeptiert UTF-8 mit optionalem BOM bis 256 KiB und 512
 Halbzügen und speichert erst nach der Validierung. Der Export übernimmt
 die gespeicherte Hauptvariante mit Tags und Ergebnis. Die Zieldatei wird
 erst nach vollständigem Schreiben im selben Verzeichnis ersetzt.
+
+## Automatische Partiekopie und Zeitkontrolle
+
+SQLite v4 legt genau einen Slot in `active_session` an. Das JSON-Schema 1
+enthält eine UUID, UTC-Zeitstempel, Profil, Spielmodus, Ausgangs-FEN, die
+vollständige Zugfolge einschließlich Redo, einen Aktionsindex und die
+Metadaten eines ausdrücklichen Spielendes. Der Decoder begrenzt Größe und
+Zugzahl und validiert alle Felder bei der Wiederherstellung. Ein unbekanntes
+Schema oder eine unpassende Engine lässt die Kopie zur späteren Fortsetzung
+vorliegen. Der gespeicherte Engine-Verweis enthält keine Befehlszeile.
+Der Dialog prüft Fingerabdrücke separat. Bibliotheksarchive und automatische
+Kopie haben unterschiedliche Lebensdauern.
+
+Mit Uhr gilt der vom Controller erfasste monotone Zeitpunkt für die
+Zugannahme. Genau null zählt als Zeitablauf. Ein legal angenommener Zug
+erhält Fischer-Inkrement. Umwandlung und Bot-Suche zählen zur laufenden Zeit.
+Anhalten, Neustart und Undo/Redo pausieren. Der nächste Spieler behält seine
+Restzeit aus dem passenden Zugcheckpoint. Beim ordentlichen Schließen
+speichert die App die aktuellen Zeiten. Bei einem Absturz gilt der letzte
+committete Checkpoint. Standby folgt dem Zeitverhalten der Host-Plattform.
+Der Zeitablauf gegen einen alleinstehenden König ergibt Remis. Andere Fälle
+mit unklarer Mattmöglichkeit bleiben für eine ausdrückliche Entscheidung
+angehalten. Die gespeicherte Bibliothek transportiert das Ergebnis im PGN,
+während Uhrstände an die automatische Kopie gebunden sind.
+[FIDE-Regeln ab 1. Januar 2023, Art. 5.2.2 und 6.9](https://handbook.fide.com/chapter/E012023)
 
 ## Puzzle
 
@@ -125,10 +153,12 @@ ist es ungültig, zeigt die App die Demo und meldet den Grund.
 Formats. Der Brett- und Figurenwechsel wird im aktuellen CLI-Aufruf
 gewählt. Der Datenpfad folgt der Plattform oder `CHESS_AND_CHAINS_DATA_DIR`.
 
-**Implementierungsvorschlag N02 (ADR-004 weiterhin PROPOSED)**. SQLite
-`PRAGMA user_version` = 3 (`games`, `puzzle_attempts`, View
-`puzzle_progress`), Settings-JSON `schema_version` 1 und Puzzle-Packs
-`schema` 1 (`manifest.json` mit SHA-256, `puzzles.jsonl` und
+**Implementierungsstand im Functional-Core-Branch (ADR-004 weiterhin PROPOSED)**. SQLite
+`PRAGMA user_version` = 4. Altdaten in `games` und `puzzle_attempts`
+erhalten die feste Kennung `local`. `training_candidates` speichert
+Stellungen mit Partiereferenz und Halbzug. Der Wiederholungsplan beruht
+auf den vorhandenen Versuchen. Einstellungen bleiben bei JSON `schema_version` 1
+und Puzzle-Packs bei `schema` 1 (`manifest.json` mit SHA-256, `puzzles.jsonl` und
 `import_report.json`). Migrationen sichern bestehende Datenbanken vorab
 unter `*.pre-vN-*.bak`. Die App lehnt neuere Schemata ab und benennt
 bestätigt beschädigte Dateien um. Wenn dabei eine neue Bibliothek
@@ -139,9 +169,8 @@ durch den Inhaber über ADR-004.
 Bei einer Wiederherstellung liest SQLite die Sicherung in eine temporäre
 Datenbank ein und migriert diese bei Bedarf. Anschließend validiert
 `Database.load_game()` dort jeden Partiedatensatz mit denselben Regeln
-wie beim Öffnen der Bibliothek. Nach erfolgreichen Prüfungen sichert die
+wie beim Öffnen der Bibliothek. Die Rücksicherung prüft auch die automatische
+Kopie und die referenzierten Trainingsstellungen. Nach erfolgreichen Prüfungen sichert die
 App den aktiven Stand unter `*.pre-restore-*.bak` und ersetzt ihn in
 einer SQLite-Backup-Transaktion.
 [W09-Prüfnachweis](../reports/2026-11-21_W09-sichere-wiederherstellung.md)
-
-Die Projektversion V.0.0.1 lässt diese Schemaversionen unverändert.

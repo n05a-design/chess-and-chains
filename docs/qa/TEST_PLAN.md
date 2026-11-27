@@ -18,9 +18,9 @@ Brettfokus ist separat dokumentiert.
 | UCI | `test_uci_engine` | Nur Mock-Engine; echte Engine NICHT getestet |
 | Bot/Controller | `test_game_controller`, `test_bot_presets` | Vertical Slice, Crash, Timeout, verworfene Suchaufträge, UCI-Partiewechsel, Undo, Shutdown mit Mock-Engine |
 | Puzzle | `test_puzzles`, `test_app_integration` | Rating ≥ 1000, Setup-Zug-Regression, Importgrenzen, Seed-Auswahl und Demo-Herkunft. Lokale Paketinstallation mit Prüfung von Zugfolgen, parallelen Importen, Fortschrittszuordnung und Neustart. [W08/W09-Prüfnachweis](../reports/2026-11-21_W08-W09-lokale-raetselpakete.md) |
-| Storage | `test_storage` | Migration v1/v2→v3, gespeicherte Partieenden, PGN- und FEN-Dateiaustausch, Importgrenzen und atomare Einstellungen. Rücksicherung prüft widersprüchliche Partien vor dem Austausch. Simulierte Schreibfehler und abgebrochener SQLite-Transfer erhalten den aktiven Stand. [FEN-Prüfnachweis](../reports/2026-11-21_W05-W09-fen-austausch.md) · [Rücksicherung](../reports/2026-11-21_W09-sichere-wiederherstellung.md) |
+| Storage | `test_storage` | Migration älterer Bibliotheken auf v4, automatische Sitzung, Uhrzustände und Trainingskandidaten, gespeicherte Partieenden, PGN- und FEN-Dateiaustausch, Importgrenzen und atomare Einstellungen. Rücksicherung prüft widersprüchliche Partien vor dem Austausch. Simulierte Schreibfehler und abgebrochener SQLite-Transfer erhalten den aktiven Stand. [FEN-Prüfnachweis](../reports/2026-11-21_W05-W09-fen-austausch.md) · [Rücksicherung](../reports/2026-11-21_W09-sichere-wiederherstellung.md) |
 | Windows-Dateiaustausch | Native Dialogprobe und `test_app_integration` | PGN importiert und exportiert, Züge und Event-Tag erneut geprüft, SQLite-Sicherung in ein zweites Testprofil wiederhergestellt. FEN aus isolierten Testdateien geöffnet und gespeichert, Zwischenablage, Bestätigungsabbruch und Spielfortsetzung geprüft. Die FEN-Tests ersetzen die Systemdialoge durch Dateipfade. |
-| UI | `test_board_ui`, `test_app_integration` | Brett, Umwandlung, Tastaturfokus, Partie/Rätsel, V.02 und Draufsicht, PNG-Fallback sowie UCI-Dialog. Nativ auf Windows/macOS und unter Xvfb auf Linux, jeweils Python 3.11 und 3.14 |
+| UI | `test_board_ui`, `test_app_integration` | Brett, Umwandlung, Tastaturfokus, Partie/Rätsel, Original V.06, Draufsicht V.04.2, Klassisch V.05.1, PNG-Fallback sowie UCI-Dialog. Nativ auf Windows/macOS und unter Xvfb auf Linux, jeweils Python 3.11 und 3.14 |
 | Marke und Logos | `test_brand_assets`, `scripts/build_brand_assets.py --check`, `test_app_integration.BrandingUiTests`, `test_final_audit`, `test_glide_shell_integration` (Test 26, 31) | Drei Logo-Master unverändert (SHA-256, LF), Rollenzuordnung, Pixelvergleich aller 41 Ableitungen, ICO/ICNS/Favicon vollständig, sichtbare Begrenzung von Logo 01, transparente Aussparungen, Einfärbung in allen Themes und Themenfarben, Logo 02/03 in Originalfarben, Apple-Icon-Raster. Negativfälle: fehlender, geänderter oder beschädigter Master, nicht unterstützte SVG-Funktionen, veraltete, fehlende und unerwartete Ausgaben. [Bericht](../reports/2026-11-26_logo-integration.md) |
 | i18n | `test_i18n` | Schlüssel-/Platzhalter-Parität, UI-Abdeckung, eindeutige DE/EN-Bezeichnungen aller Demo-Themen und Fallback für zusätzliche Kennungen |
 | Security | `scripts/check_policy.py` | Kein `shell=True`, keine Netzwerk-Imports, keine Engine-Binaries |
@@ -50,3 +50,17 @@ Marmorbrett bei 150 % (EN). Für die native Abnahme gilt das
    Inhaber-SVGs in beiden Brettorientierungen prüfen.
 
 Keine x/100-Testzahlen ohne tatsächlich gemessenen Lauf in einem datierten Bericht.
+
+## Suite-Zuordnung für CI
+
+`python scripts/ci_tests.py inventory` gleicht jedes Testmodul sowie die
+pytest-Kollektion mit den produktiven CI-Einträgen ab. Der Runner
+`headless` übernimmt unittest-Fachtests, `gui` die fünf nativen Tk-Suiten
+in der festgelegten Reihenfolge, und `pytest` die Figurensatz-Gruppe.
+Für Inventar und pytest muss pytest installiert sein. Diese Abhängigkeit
+gehört zur Entwicklung. Der Workflow startet Tk unter Linux mit Xvfb.
+Unerwartete unittest-Skips schlagen in der CI fehl. Seit F01 zugelassene
+Ausnahmen stehen direkt im Runner. Die separate native macOS-Panelprobe
+bleibt eine Plattformprobe im Workflow. App-Installation, System-Standby,
+reale UCI-Engine und physische Bedienhilfen brauchen eigene Abnahmen.
+[Prüfbericht zum Entwicklungsbranch](../reports/2026-11-27_F01-F12-functional-core.md)
