@@ -56,7 +56,7 @@ from ..chess import (
     to_fen,
     to_san,
 )
-from ..engines.analysis import AnalysisMode, AnalysisRequest, AnalysisResult, AnalysisService
+from ..engines.analysis import AnalysisMode, AnalysisProgress, AnalysisRequest, AnalysisResult, AnalysisService
 from ..engines.bot import EngineConfig, EngineConfigError, MoveProvider, UCIBot, resolve_engine_config
 from ..engines.registry import EngineAvailability, EngineRegistry
 from ..engines.presets import BotPreset, load_presets
@@ -66,7 +66,7 @@ from ..game.clock import TimeControl
 from ..game.session import GameSessionSnapshot, SessionLifecycle
 from ..i18n import Translator
 from ..puzzles import DEMO_PACK_ID, PackError, PackLibrary, Puzzle, PuzzlePack, PuzzleSession, Verdict, load_demo_pack
-from ..puzzles.training import TrainingCandidate
+from ..puzzles.training import DEMO_MATE_CHAIN, TrainingCandidate, TrainingSession, demo_chain_catalog
 from ..storage import Database, DataLayout, SavedGame, Settings, SettingsError, StorageError, load_settings, save_settings
 from .analysis_dialog import AnalysisDialog
 from .appearance_dialog import AppearanceDialog
@@ -333,6 +333,8 @@ class ChessApp:
         self.puzzle_index = 0
         self.puzzle: PuzzleSession | None = None
         self._puzzle_recorded = False
+        self._chain: TrainingSession | None = None
+        self._chain_revision = 0
         self._puzzle_hint_stage = 0
         self._solved_puzzle_ids: set[str] = set()
         self._review_puzzle_ids: set[str] = set()
@@ -650,8 +652,10 @@ class ChessApp:
                 (t("button.save_game"), self._save_game, "", "save_game"),
                 (t("button.library"), self._open_library, "", "open_library"),
                 (t("analysis.training_positions"), self._open_training_positions, "", "open_training_positions"),
+                (t("training.chain.demo_mate.name"), self._open_mate_chain, "", "open_mate_chain"),
                 (t("position.button"), self._open_position, "", "open_position"),
                 (t("analysis.position"), self._analyse_position, "", "analyse_position"),
+                (t("analysis.archive"), self._open_analysis_reports, "", "analysis_reports"),
                 None,
                 (t("button.engine"), self._open_engine_dialog, "", "engine_settings"),
                 None,
@@ -2127,6 +2131,8 @@ class ChessApp:
             self._update_puzzle_progress()
             self._refresh()
         elif previous == "puzzles" and name != "puzzles":
+            if self._chain is not None and self._save_mate_chain():
+                self._leave_mate_chain()
             self.board.set_orientation(self.orientation)
             self._refresh()
 
@@ -3012,7 +3018,112 @@ class ChessApp:
         else:
             self._activate_pack(result)
 
-    def _activate_pack(self, pack: PuzzlePack) -> None:
+    def _open_mate_chain(self) -> None:
+        if self.db is None:
+            self.interaction_text.set(self.t("save.unavailable"))
+            return
+        if self._pack_loading or self._chain is not None:
+            return
+        try:
+            pack = self.pack if self.pack.manifest.pack_id == DEMO_PACK_ID else load_demo_pack()
+            catalog = demo_chain_catalog(pack)
+            saved = self.db.load_training_checkpoint(DEMO_MATE_CHAIN.chain_id)
+            revision = 0
+            hint_stage = 0
+            if saved is None:
+                chain = DEMO_MATE_CHAIN.open(catalog)
+            else:
+                checkpoint, revision, hint_stage = saved
+                chain = DEMO_MATE_CHAIN.resume(catalog, checkpoint)
+                if chain.exhausted:
+                    if not messagebox.askyesno(
+                        self.t("training.chain.demo_mate.name"), self.t("training.chain.restart"),
+                        parent=self.root, default=messagebox.NO,
+                    ):
+                        return
+                    chain = DEMO_MATE_CHAIN.open(catalog)
+            puzzle = chain.current
+            if puzzle is None:
+                puzzle, _ = chain.start_next(datetime.now(timezone.utc))
+                hint_stage = 0
+            revision = self.db.save_training_checkpoint(
+                chain.checkpoint(), expected_revision=revision, hint_stage=hint_stage,
+            )
+        except (StorageError, sqlite3.Error, ValueError) as error:
+            self.interaction_text.set(self.t("training.chain.error", error=error))
+            return
+        if self.pack is not pack:
+            self._activate_pack(pack, persist=False)
+        self._chain = chain
+        self._chain_revision = revision
+        self._puzzle_selection = tuple(task.puzzle for task in chain.tasks)
+        self.puzzle = puzzle
+        self.puzzle_index = len(chain.attempts)
+        self._puzzle_hint_stage = hint_stage
+        self._puzzle_recorded = False
+        self.puzzle_feedback_text.set(self.t("training.chain.demo_mate.goal"))
+        self.board.set_orientation("white" if puzzle.player_color is Color.WHITE else "black")
+        self.tab_rail.set_active("puzzles")
+        self._set_chain_filters()
+        self._update_puzzle_history()
+        self._refresh()
+
+    def _save_mate_chain(self) -> bool:
+        if self._chain is None or self.db is None:
+            return False
+        try:
+            self._chain_revision = self.db.save_training_checkpoint(
+                self._chain.checkpoint(), expected_revision=self._chain_revision, hint_stage=self._puzzle_hint_stage,
+            )
+        except (StorageError, sqlite3.Error, ValueError) as error:
+            message = self.t("training.chain.error", error=error)
+            self.interaction_text.set(message)
+            self.puzzle_feedback_text.set(message)
+            return False
+        return True
+
+    def _advance_mate_chain(self) -> None:
+        chain = self._chain
+        if chain is None or self.puzzle is None or not self.puzzle.finished:
+            return
+        if not self._puzzle_recorded:
+            self._record_puzzle()
+            if not self._puzzle_recorded:
+                return
+        if chain.exhausted:
+            message = self.t("training.chain.passed" if chain.passed else "training.chain.incomplete")
+            self._leave_mate_chain()
+            self._start_puzzle(0)
+            self.puzzle_feedback_text.set(message)
+            return
+        self.puzzle_index = len(chain.attempts)
+        self.puzzle, _ = chain.start_next(datetime.now(timezone.utc))
+        self._puzzle_recorded = False
+        self._puzzle_hint_stage = 0
+        self.puzzle_feedback_text.set("")
+        self.board.set_orientation("white" if self.puzzle.player_color is Color.WHITE else "black")
+        self._save_mate_chain()
+        self._update_puzzle_history()
+        self._refresh()
+
+    def _set_chain_filters(self) -> None:
+        state = "disabled" if self._chain is not None else "readonly"
+        self.puzzle_theme_filter.configure(state=state)
+        self.puzzle_rating_filter.configure(state=state)
+        self.puzzle_status_filter.configure(state=state)
+
+    def _leave_mate_chain(self) -> None:
+        self._chain = None
+        self._puzzle_selection = self.pack.puzzles
+        self.puzzle_index = 0
+        self.puzzle = None
+        self._set_chain_filters()
+
+    def _activate_pack(self, pack: PuzzlePack, *, persist: bool = True) -> None:
+        if self._chain is not None:
+            if not self._save_mate_chain():
+                return
+            self._leave_mate_chain()
         self.pack = pack
         self._puzzle_selection = pack.puzzles
         self._puzzle_themes = sorted({theme for puzzle in pack.puzzles for theme in puzzle.themes})
@@ -3031,7 +3142,7 @@ class ChessApp:
         self._update_puzzle_progress()
         if self.active_panel == "puzzles":
             self._start_puzzle(0)
-        if self.settings.last_pack_id != pack.manifest.pack_id:
+        if persist and self.settings.last_pack_id != pack.manifest.pack_id:
             try:
                 self._store_settings(last_pack_id=pack.manifest.pack_id)
             except (OSError, SettingsError):
@@ -3059,6 +3170,8 @@ class ChessApp:
         )
 
     def _apply_puzzle_filters(self, _event: tk.Event | None = None) -> None:
+        if self._chain is not None:
+            return
         self._puzzle_selection = self._matching_puzzles()
         self._update_puzzle_progress()
         if self.puzzle is not None and self.puzzle.puzzle in self._puzzle_selection:
@@ -3082,6 +3195,9 @@ class ChessApp:
         self._refresh()
 
     def _next_puzzle(self) -> None:
+        if self._chain is not None:
+            self._advance_mate_chain()
+            return
         following = self.puzzle_index + 1
         if self.puzzle_status_filter.current() > 0 and self.puzzle_status_filter.instate(("!disabled",)):
             previous = self._puzzle_selection
@@ -3093,6 +3209,8 @@ class ChessApp:
         self._start_puzzle(following)
 
     def _retry_puzzle(self) -> None:
+        if self._chain is not None:
+            return
         session = self.puzzle
         if session is None:
             return
@@ -3114,7 +3232,7 @@ class ChessApp:
             return
         self._solved_puzzle_ids = solved
         self._review_puzzle_ids = review
-        self.puzzle_status_filter.configure(state="readonly")
+        self.puzzle_status_filter.configure(state="disabled" if self._chain is not None else "readonly")
         count = sum(puzzle.puzzle_id in solved for puzzle in self._puzzle_selection)
         self.puzzle_progress_text.set(
             self.t("puzzle.progress", solved=count, count=len(self._puzzle_selection)) if self._puzzle_selection else ""
@@ -3167,6 +3285,8 @@ class ChessApp:
             self.puzzle_feedback_text.set(self.t("puzzle.wrong"))
         else:
             self.puzzle_feedback_text.set(self.t("puzzle.illegal"))
+        if self._chain is not None and feedback.verdict in {Verdict.CORRECT, Verdict.WRONG}:
+            self._save_mate_chain()
         self._refresh()
 
     def _puzzle_hint(self) -> None:
@@ -3186,6 +3306,8 @@ class ChessApp:
             self.puzzle_feedback_text.set(self.t(key, **detail))
         else:
             self.puzzle_feedback_text.set(self.t("puzzle.hint", square=square_name(move.from_square)))
+        if self._chain is not None:
+            self._save_mate_chain()
         self._refresh()
 
     def _puzzle_reveal(self) -> None:
@@ -3205,6 +3327,14 @@ class ChessApp:
     def _record_puzzle(self) -> None:
         session = self.puzzle
         if session is None or self._puzzle_recorded or self.db is None:
+            return
+        if self._chain is not None:
+            if self._chain.current is not None:
+                self._chain.finish_current(datetime.now(timezone.utc))
+            if self._save_mate_chain():
+                self._puzzle_recorded = True
+                self._update_puzzle_progress()
+                self._update_puzzle_history()
             return
         try:
             self.db.record_puzzle_attempt(
@@ -3242,7 +3372,41 @@ class ChessApp:
             self.interaction_text.set(self.t("analysis.failed", error=error))
             return
         save_position = partial(self._save_training_position, source_game_id) if source_game_id is not None else None
-        dialog = AnalysisDialog(self.root, self.t, job, self.theme.acetate, save_position)
+        store_report = partial(self._store_analysis_report, source_game_id) if source_game_id is not None else None
+        dialog = AnalysisDialog(self.root, self.t, job, self.theme.acetate, save_position, store_report)
+        modal_session.wait_modal(self.root, dialog.window)
+
+    def _store_analysis_report(self, game_id: int, report: AnalysisProgress) -> str:
+        if self.db is None:
+            return self.t("save.unavailable")
+        try:
+            self.db.save_analysis_report(game_id, report)
+        except (StorageError, sqlite3.Error, ValueError) as error:
+            return self.t("analysis.archive_error", error=error)
+        return self.t("analysis.archive_saved")
+
+    def _open_analysis_reports(self) -> None:
+        if self.db is None:
+            return
+        try:
+            reports = self.db.analysis_reports()
+            if not reports:
+                self.interaction_text.set(self.t("analysis.archive_empty"))
+                return
+            selected = self._choose_item(
+                self.t("analysis.archive"),
+                [self.t("analysis.archive_entry", id=item.source_game_id, date=item.created_utc[:16].replace("T", " "),
+                        engine=item.engine_name, count=item.position_count) for item in reports],
+                self.t("analysis.archive_open"), searchable=True,
+            )
+            if selected is None:
+                return
+            game_id, report = self.db.load_analysis_report(reports[selected].run_id)
+        except (StorageError, sqlite3.Error) as error:
+            self.interaction_text.set(self.t("analysis.archive_error", error=error))
+            return
+        dialog = AnalysisDialog(self.root, self.t, report, self.theme.acetate,
+                                partial(self._save_training_position, game_id))
         modal_session.wait_modal(self.root, dialog.window)
 
     def _save_training_position(self, game_id: int, result: AnalysisResult) -> str:
@@ -3346,8 +3510,9 @@ class ChessApp:
     def _refresh_puzzle(self) -> None:
         session = self.puzzle
         self.header_mode_text.set(self.t("header.mode.puzzle", pack=self.pack.manifest.pack_id.upper()))
-        self.next_puzzle_button.configure(state=tk.NORMAL if session is not None else tk.DISABLED)
-        self.retry_puzzle_button.configure(state=tk.NORMAL if session is not None else tk.DISABLED)
+        next_allowed = session is not None and (self._chain is None or session.finished)
+        self.next_puzzle_button.configure(state=tk.NORMAL if next_allowed else tk.DISABLED)
+        self.retry_puzzle_button.configure(state=tk.NORMAL if session is not None and self._chain is None else tk.DISABLED)
         self.puzzle_atlas.update_route(self._puzzle_selection, self.puzzle_index, session, self._solved_puzzle_ids)
         if session is None:
             self.atlas_section.grid_remove()
@@ -3361,7 +3526,8 @@ class ChessApp:
             self.solution_button.configure(state=tk.DISABLED)
             return
         self.atlas_section.grid()
-        self.panel_text.set(self.t("puzzle.title", index=self.puzzle_index + 1, count=len(self._puzzle_selection)))
+        key = "training.chain.progress" if self._chain is not None else "puzzle.title"
+        self.panel_text.set(self.t(key, index=self.puzzle_index + 1, count=len(self._puzzle_selection)))
         self.puzzle_title_text.set(self.t("puzzle.prompt", side=self._side(session.player_color)))
         theme_labels = [self.t.puzzle_theme_label(theme) for theme in session.puzzle.themes[:3]]
         self.puzzle_meta_text.set(self.t("puzzle.meta", id=session.puzzle.puzzle_id, rating=session.puzzle.rating,
@@ -3491,6 +3657,8 @@ class ChessApp:
     def close(self) -> None:
         if self._closed:
             return
+        if self._chain is not None:
+            self._save_mate_chain()
         self.controller.pause_for_close()
         self._autosave_session(self.controller.view())
         self._closed = True

@@ -154,7 +154,7 @@ Formats. Der Brett- und Figurenwechsel wird im aktuellen CLI-Aufruf
 gewählt. Der Datenpfad folgt der Plattform oder `CHESS_AND_CHAINS_DATA_DIR`.
 
 **Implementierungsstand im Functional-Core-Branch (ADR-004 weiterhin PROPOSED)**. SQLite
-`PRAGMA user_version` = 4. Altdaten in `games` und `puzzle_attempts`
+`PRAGMA user_version` = 5. Altdaten in `games` und `puzzle_attempts`
 erhalten die feste Kennung `local`. `training_candidates` speichert
 Stellungen mit Partiereferenz und Halbzug. Der Wiederholungsplan beruht
 auf den vorhandenen Versuchen. Einstellungen bleiben bei JSON `schema_version` 1
@@ -170,7 +170,23 @@ Bei einer Wiederherstellung liest SQLite die Sicherung in eine temporäre
 Datenbank ein und migriert diese bei Bedarf. Anschließend validiert
 `Database.load_game()` dort jeden Partiedatensatz mit denselben Regeln
 wie beim Öffnen der Bibliothek. Die Rücksicherung prüft auch die automatische
-Kopie und die referenzierten Trainingsstellungen. Nach erfolgreichen Prüfungen sichert die
+Kopie, die referenzierten Trainingsstellungen, Analyseberichte und die Mattkette. Nach erfolgreichen Prüfungen sichert die
 App den aktiven Stand unter `*.pre-restore-*.bak` und ersetzt ihn in
 einer SQLite-Backup-Transaktion.
 [W09-Prüfnachweis](../reports/2026-11-21_W09-sichere-wiederherstellung.md)
+
+## Analyseberichte und Mattkette
+
+SQLite v5 speichert vollständige Bibliotheksanalysen in `analysis_reports`.
+Das begrenzte JSON-Format der Berichte hat Schema 1. Jede Position ist über
+ihren Index an die Zugfolge der Quellpartie gebunden. Die App prüft FEN,
+UCI-Varianten und Engine-Metadaten. Die Engine-Konfiguration im Bericht
+dient der Herkunft. Die Anzeige löst keinen Engine-Start aus.
+
+`training_checkpoints` enthält den zuletzt gesicherten Stand der kuratierten
+Mattkette. Das versionierte Format enthält die Ketten-ID, eine Signatur
+der Rätselreihenfolge und Lösungen, die Versuch-IDs und den laufenden
+Versuch mit Zugfolge, Zählern und verstrichener Spielzeit. Die Wiederaufnahme
+prüft die Züge mit dem installierten Demopaket. Der Revisionsvergleich und
+die Wertung abgeschlossener Versuche laufen in derselben SQLite-Transaktion.
+Die bestehende Fortschrittsansicht verwendet dieselben Puzzle-Versuche.

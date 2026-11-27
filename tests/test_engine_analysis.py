@@ -3,13 +3,15 @@
 SPDX-License-Identifier: MPL-2.0
 """
 from dataclasses import replace
+import json
+import sqlite3
 import sys
 import tempfile
 from pathlib import Path
 import time
 import unittest
 
-from chess_and_chains.chess import INITIAL_FEN, Color, Move
+from chess_and_chains.chess import INITIAL_FEN, ChessGame, Color, Move
 from chess_and_chains.engines.analysis import (
     AnalysisMode,
     AnalysisRequest,
@@ -22,6 +24,7 @@ from chess_and_chains.engines.analysis import (
     parse_info,
 )
 from chess_and_chains.engines.bot import EngineConfig
+from chess_and_chains.storage import Database, StorageError
 
 
 FIXTURE = """
@@ -163,6 +166,40 @@ class AnalysisServiceTests(unittest.TestCase):
         self.assertEqual((critical.ply, critical.played_move, critical.alternative, critical.centipawn_loss),
                          (1, move("e2e4"), move("d2d4"), 215))
         self.assertIn("position fen " + INITIAL_FEN + " moves e2e4 e7e5", self.commands())
+
+    def test_complete_report_roundtrips_and_invalid_backup_preserves_live_report(self):
+        path = self.log.with_suffix(".sqlite3")
+        moves = (move("e2e4"), move("e7e5"))
+        request = AnalysisRequest("archived", moves=moves, mode=AnalysisMode.GAME)
+        progress = self.run_job(self.service(), request)
+        self.assertIs(progress.status, JobStatus.COMPLETED, progress.error)
+        game = ChessGame()
+        for played_move in moves:
+            game.play(played_move)
+        backup = path.with_name("backup.sqlite3")
+        with Database.open(path) as db:
+            game_id = db.save_game(game, mode="human-vs-human")
+            original = db.load_game(game_id)
+            with self.assertRaises(ValueError):
+                db.save_analysis_report(game_id, replace(progress, status=JobStatus.CANCELLED))
+            db.save_analysis_report(game_id, progress)
+            db.save_analysis_report(game_id, progress)
+            self.assertEqual(len(db.analysis_reports()), 1)
+            self.assertEqual(db.load_game(game_id), original)
+            db.backup(backup)
+        with Database.open(path) as db:
+            self.assertEqual(db.load_analysis_report("archived"), (game_id, progress))
+            candidate = sqlite3.connect(backup)
+            try:
+                payload = json.loads(candidate.execute("SELECT report FROM analysis_reports").fetchone()[0])
+                payload["positions"][0]["lines"][0]["moves"] = ["e2e5"]
+                candidate.execute("UPDATE analysis_reports SET report = ?", (json.dumps(payload),))
+                candidate.commit()
+            finally:
+                candidate.close()
+            with self.assertRaises(StorageError):
+                db.restore(backup)
+            self.assertEqual(db.load_analysis_report("archived"), (game_id, progress))
 
     def test_selected_plies_snapshot_copies_input_and_returns_ordered_subset(self):
         moves = [move("e2e4"), move("e7e5")]

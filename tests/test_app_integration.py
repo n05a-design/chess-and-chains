@@ -420,7 +420,80 @@ class SessionRecoveryUiTests(AppTestCase):
             resumed.close()
 
 
+class AnalysisArchiveUiTests(AppTestCase):
+    def test_library_analysis_is_reopened_without_starting_an_engine(self):
+        from chess_and_chains.engines.analysis import AnalysisMode
+        from tests.test_engine_analysis import FIXTURE
+
+        with tempfile.TemporaryDirectory() as folder:
+            layout = DataLayout(Path(folder))
+            app = self.make_app(data_layout=layout)
+            app._play_move(Move.from_uci("e2e4"))
+            game_id = app._save_game()
+            original = app.db.load_game(game_id)
+            config = EngineConfig(
+                (sys.executable, "-u", "-c", FIXTURE, str(Path(folder) / "uci.log"), "normal"),
+                "Protocol fixture", False, "fixture",
+            )
+
+            def wait_for_report(_root, window):
+                self.pump_until(lambda: bool(app.db.analysis_reports()))
+                window.destroy()
+
+            with patch("chess_and_chains.ui.app.resolve_engine_config", return_value=(config, None)), patch(
+                "chess_and_chains.ui.app.modal_session.wait_modal", side_effect=wait_for_report,
+            ):
+                app._analyse_game(original.to_game(), AnalysisMode.GAME, source_game_id=game_id)
+            self.assertEqual(app.db.load_game(game_id), original)
+            app.close()
+
+            reopened = self.make_app(data_layout=layout)
+            displayed = []
+
+            def capture_output(_root, window):
+                text, = [item for frame in window.winfo_children() for item in frame.winfo_children()
+                         if isinstance(item, tk.Text)]
+                displayed.append(text.get("1.0", "end"))
+                window.destroy()
+
+            with patch.object(reopened, "_choose_item", return_value=0), patch(
+                "chess_and_chains.ui.app.modal_session.wait_modal", side_effect=capture_output,
+            ):
+                reopened._open_analysis_reports()
+            self.assertIsNone(reopened._analysis)
+            self.assertIn("Critical moments", displayed[0])
+            self.assertIn("d2d4", displayed[0])
+            reopened.close()
+
+
 class PuzzleUiTests(AppTestCase):
+    def test_mate_chain_resumes_a_hint_and_grades_once_after_reopening(self):
+        with tempfile.TemporaryDirectory() as folder:
+            layout = DataLayout(Path(folder))
+            app = self.make_app(data_layout=layout)
+            app._open_mate_chain()
+            self.assertIn("1/3", app.panel_text.get())
+            first = app.puzzle.puzzle
+            app._puzzle_hint()
+            app.close()
+
+            resumed = self.make_app(data_layout=layout)
+            resumed._open_mate_chain()
+            self.assertEqual(resumed.puzzle.puzzle, first)
+            self.assertEqual(resumed.puzzle.hints_used, 1)
+            self.assertEqual(resumed._puzzle_hint_stage, 1)
+            while resumed.puzzle.expected_move is not None:
+                resumed._play_move(resumed.puzzle.expected_move)
+            self.assertEqual(resumed.db.puzzle_progress(resumed.pack.manifest.pack_id, first.puzzle_id).attempts, 1)
+            resumed.close()
+
+            following = self.make_app(data_layout=layout)
+            following._open_mate_chain()
+            self.assertEqual(following.puzzle_index, 1)
+            self.assertNotEqual(following.puzzle.puzzle, first)
+            self.assertEqual(following.db.puzzle_progress(following.pack.manifest.pack_id, first.puzzle_id).attempts, 1)
+            following.close()
+
     def test_due_filter_reads_persisted_attempt_dates(self):
         with tempfile.TemporaryDirectory() as folder:
             layout = DataLayout(Path(folder))

@@ -4,16 +4,20 @@ SPDX-License-Identifier: MPL-2.0
 """
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import StrEnum
-from uuid import uuid4
+from hashlib import sha256
+import json
+from time import monotonic
+from uuid import UUID, uuid4
 
-from ..chess import parse_fen, to_fen
+from ..chess import Move, parse_fen, to_fen
+from .importer import MAX_SOLUTION_PLIES
 from .model import Puzzle, ValidationStatus
-from .pack import DEMO_PACK_ID
-from .session import PuzzleSession
+from .pack import DEMO_PACK_ID, PuzzlePack
+from .session import PuzzleSession, Verdict
 
 
 def _utc(value: datetime) -> datetime:
@@ -247,6 +251,158 @@ class ChainCompletion(StrEnum):
     CLEAN = "clean"
 
 
+MAX_TRAINING_CHECKPOINT_BYTES = 64 * 1024
+_TRAINING_CHECKPOINT_VERSION = 1
+
+
+@dataclass(frozen=True, slots=True)
+class ActivePuzzleCheckpoint:
+    started: TrainingAttempt
+    moves: tuple[Move, ...]
+    status: AttemptStatus
+    mistakes: int
+    hints_used: int
+    elapsed_ms: int
+
+    def __post_init__(self) -> None:
+        if self.started.status is not AttemptStatus.STARTED or any(
+            (self.started.mistakes, self.started.hints_used, self.started.duration_ms is not None)
+        ):
+            raise ValueError("The active puzzle needs an ungraded starting attempt.")
+        if not 1 <= len(self.moves) <= MAX_SOLUTION_PLIES:
+            raise ValueError("Invalid saved puzzle moves.")
+        if self.status not in {AttemptStatus.STARTED, AttemptStatus.SOLVED, AttemptStatus.REVEALED}:
+            raise ValueError("Invalid active puzzle status.")
+        _checkpoint_integer(self.mistakes)
+        _checkpoint_integer(self.hints_used)
+        _checkpoint_integer(self.elapsed_ms)
+
+
+@dataclass(frozen=True, slots=True)
+class TrainingCheckpoint:
+    """Serializable progress for a single run of a curated chain."""
+
+    chain_id: str
+    session_id: str
+    signature: str
+    attempts: tuple[TrainingAttempt, ...]
+    active: ActivePuzzleCheckpoint | None = None
+
+    def __post_init__(self) -> None:
+        if not self.chain_id or not _is_uuid(self.session_id) or (
+            len(self.signature) != 64 or any(char not in "0123456789abcdef" for char in self.signature)
+        ):
+            raise ValueError("Invalid chain checkpoint identity.")
+        if any(attempt.status in {AttemptStatus.STARTED, AttemptStatus.UNSOLVED} for attempt in self.attempts):
+            raise ValueError("Invalid completed chain attempt status.")
+        attempts = self.attempts + ((self.active.started,) if self.active else ())
+        if any(not _is_uuid(attempt.attempt_id) for attempt in attempts):
+            raise ValueError("Invalid chain attempt ID.")
+        if len({attempt.attempt_id for attempt in attempts}) != len(attempts):
+            raise ValueError("A chain checkpoint cannot repeat an attempt ID.")
+        if len({attempt.key for attempt in attempts}) != len(attempts):
+            raise ValueError("A chain checkpoint cannot repeat a task.")
+
+    def encode(self) -> str:
+        active = self.active
+        payload = json.dumps({
+            "version": _TRAINING_CHECKPOINT_VERSION,
+            "chain_id": self.chain_id,
+            "session_id": self.session_id,
+            "signature": self.signature,
+            "attempts": [_attempt_record(attempt) for attempt in self.attempts],
+            "active": {
+                "started": _attempt_record(active.started),
+                "moves": [move.to_uci() for move in active.moves],
+                "status": active.status,
+                "mistakes": active.mistakes,
+                "hints_used": active.hints_used,
+                "elapsed_ms": active.elapsed_ms,
+            } if active else None,
+        }, ensure_ascii=True, separators=(",", ":"))
+        if len(payload) > MAX_TRAINING_CHECKPOINT_BYTES:
+            raise ValueError("The chain checkpoint exceeds its size limit.")
+        return payload
+
+    @classmethod
+    def decode(cls, payload: str) -> TrainingCheckpoint:
+        """Decode bounded data. Resume against the catalog to validate the game."""
+        if len(payload) > MAX_TRAINING_CHECKPOINT_BYTES or len(payload.encode("utf-8")) > MAX_TRAINING_CHECKPOINT_BYTES:
+            raise ValueError("The chain checkpoint exceeds its size limit.")
+        try:
+            data = json.loads(payload)
+            if not isinstance(data, dict) or type(data.get("version")) is not int or (
+                data["version"] != _TRAINING_CHECKPOINT_VERSION
+            ):
+                raise ValueError("Unsupported chain checkpoint version.")
+            if not isinstance(data["attempts"], list):
+                raise ValueError("Invalid chain attempt list.")
+            record = data["active"]
+            active = None
+            if record is not None:
+                if not isinstance(record["moves"], list):
+                    raise ValueError("Invalid saved puzzle moves.")
+                active = ActivePuzzleCheckpoint(
+                    _read_attempt(record["started"]),
+                    tuple(Move.from_uci(_checkpoint_text(text)) for text in record["moves"]),
+                    AttemptStatus(record["status"]),
+                    _checkpoint_integer(record["mistakes"]),
+                    _checkpoint_integer(record["hints_used"]),
+                    _checkpoint_integer(record["elapsed_ms"]),
+                )
+            return cls(
+                _checkpoint_text(data["chain_id"]), _checkpoint_text(data["session_id"]),
+                _checkpoint_text(data["signature"]), tuple(_read_attempt(record) for record in data["attempts"]),
+                active,
+            )
+        except (KeyError, TypeError, RecursionError) as error:
+            raise ValueError("Invalid chain checkpoint data.") from error
+
+
+def _checkpoint_integer(value: object) -> int:
+    if type(value) is not int or not 0 <= value <= 2**63 - 1:
+        raise ValueError("Invalid chain checkpoint counter.")
+    return value
+
+
+def _checkpoint_text(value: object) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError("Invalid chain checkpoint text.")
+    return value
+
+
+def _is_uuid(value: str) -> bool:
+    try:
+        return str(UUID(value)) == value
+    except ValueError:
+        return False
+
+
+def _attempt_record(attempt: TrainingAttempt) -> dict[str, object]:
+    return {
+        "id": attempt.attempt_id,
+        "pack": attempt.key.pack_id,
+        "puzzle": attempt.key.puzzle_id,
+        "recorded_at": attempt.recorded_at.isoformat(),
+        "status": attempt.status,
+        "mistakes": attempt.mistakes,
+        "hints_used": attempt.hints_used,
+        "duration_ms": attempt.duration_ms,
+    }
+
+
+def _read_attempt(record: dict[str, object]) -> TrainingAttempt:
+    duration = record["duration_ms"]
+    return TrainingAttempt(
+        _checkpoint_text(record["id"]),
+        PuzzleKey(_checkpoint_text(record["pack"]), _checkpoint_text(record["puzzle"])),
+        datetime.fromisoformat(_checkpoint_text(record["recorded_at"])),
+        AttemptStatus(record["status"]),
+        _checkpoint_integer(record["mistakes"]), _checkpoint_integer(record["hints_used"]),
+        _checkpoint_integer(duration) if duration is not None else None,
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class TrainingChain:
     chain_id: str
@@ -265,6 +421,7 @@ class TrainingChain:
 
     def open(
         self, catalog: Mapping[PuzzleKey, TrainingTask], *, completed_chains: Iterable[str] = (),
+        clock: Callable[[], float] = monotonic,
     ) -> TrainingSession:
         if set(self.prerequisites).difference(completed_chains):
             raise ValueError(f"Prerequisites are missing for chain {self.chain_id}.")
@@ -274,7 +431,24 @@ class TrainingChain:
             raise ValueError(f"Missing catalog task for chain {self.chain_id}: {error}") from error
         if tuple(task.key for task in tasks) != self.tasks:
             raise ValueError(f"Catalog identity mismatch for chain {self.chain_id}.")
-        return TrainingSession(tasks, completion=self.completion)
+        signature = self._signature(tasks)
+        return TrainingSession(tasks, completion=self.completion, chain_id=self.chain_id, signature=signature, clock=clock)
+
+    def resume(
+        self, catalog: Mapping[PuzzleKey, TrainingTask], checkpoint: TrainingCheckpoint,
+        *, completed_chains: Iterable[str] = (), clock: Callable[[], float] = monotonic,
+    ) -> TrainingSession:
+        session = self.open(catalog, completed_chains=completed_chains, clock=clock)
+        session._restore(checkpoint)
+        return session
+
+    def _signature(self, tasks: tuple[TrainingTask, ...]) -> str:
+        puzzle_lines = [
+            (task.key.pack_id, task.key.puzzle_id, to_fen(task.puzzle.initial_state()), task.puzzle.setup_move.to_uci(),
+             [move.to_uci() for move in task.puzzle.solution])
+            for task in tasks
+        ]
+        return sha256(json.dumps((self.chain_id, self.completion, self.prerequisites, puzzle_lines)).encode()).hexdigest()
 
 
 class TrainingSession:
@@ -286,14 +460,86 @@ class TrainingSession:
 
     def __init__(
         self, tasks: Iterable[TrainingTask], *, completion: ChainCompletion = ChainCompletion.SOLVED,
+        chain_id: str | None = None, signature: str | None = None, clock: Callable[[], float] = monotonic,
     ) -> None:
         self.tasks = tuple(tasks)
         if len({task.key for task in self.tasks}) != len(self.tasks):
             raise ValueError("A training session cannot repeat a puzzle.")
         self._completion = completion
+        self._chain_id = chain_id
+        self._signature = signature
+        self._session_id = str(uuid4())
+        self._clock = clock
+        self._elapsed: Callable[[], float] | None = None
         self._attempts: list[TrainingAttempt] = []
         self._current: PuzzleSession | None = None
         self._started_attempt: TrainingAttempt | None = None
+
+    @property
+    def current(self) -> PuzzleSession | None:
+        return self._current
+
+    def checkpoint(self) -> TrainingCheckpoint:
+        if self._chain_id is None or self._signature is None:
+            raise ValueError("Only curated chains can be checkpointed.")
+        active = None
+        current, started, elapsed = self._current, self._started_attempt, self._elapsed
+        if current is not None and started is not None and elapsed is not None:
+            status = AttemptStatus.STARTED
+            if current.solved:
+                status = AttemptStatus.SOLVED
+            elif current.revealed:
+                status = AttemptStatus.REVEALED
+            time_ms = current.duration_ms if current.duration_ms is not None else int(elapsed() * 1000)
+            active = ActivePuzzleCheckpoint(
+                started, tuple(current.game.moves), status, current.mistakes, current.hints_used, time_ms,
+            )
+        return TrainingCheckpoint(self._chain_id, self._session_id, self._signature, self.attempts, active)
+
+    def _restore(self, checkpoint: TrainingCheckpoint) -> None:
+        if (checkpoint.chain_id, checkpoint.signature) != (self._chain_id, self._signature):
+            raise ValueError("The saved chain differs from the installed chain.")
+        active = checkpoint.active
+        saved_keys = tuple(attempt.key for attempt in checkpoint.attempts)
+        if active is not None:
+            saved_keys += (active.started.key,)
+        if saved_keys != tuple(task.key for task in self.tasks[:len(saved_keys)]):
+            raise ValueError("The saved attempts do not match the chain order.")
+        self._session_id = checkpoint.session_id
+        self._attempts.extend(checkpoint.attempts)
+        if active is not None:
+            self._open_puzzle(active.started, checkpoint=active)
+
+    def _open_puzzle(
+        self, started: TrainingAttempt, *, checkpoint: ActivePuzzleCheckpoint | None = None,
+    ) -> PuzzleSession:
+        task = self.tasks[len(self._attempts)]
+        origin = None
+        offset = checkpoint.elapsed_ms / 1000 if checkpoint else 0.0
+
+        def elapsed() -> float:
+            # During setup and replay, the clock still reads zero.
+            return 0.0 if origin is None else offset + self._clock() - origin
+
+        puzzle = PuzzleSession(task.puzzle, clock=elapsed)
+        if checkpoint is not None:
+            if checkpoint.status is AttemptStatus.REVEALED:
+                puzzle.reveal()
+            else:
+                for move in checkpoint.moves[1::2]:
+                    if puzzle.finished or puzzle.submit(move).verdict not in {Verdict.CORRECT, Verdict.SOLVED}:
+                        raise ValueError("Illegal move in the saved puzzle.")
+            if tuple(puzzle.game.moves) != checkpoint.moves or puzzle.solved != (checkpoint.status is AttemptStatus.SOLVED):
+                raise ValueError("The saved moves do not match the puzzle state.")
+            puzzle.mistakes = checkpoint.mistakes
+            puzzle.hints_used = checkpoint.hints_used
+            if puzzle.finished:
+                puzzle.duration_ms = checkpoint.elapsed_ms
+        origin = self._clock()
+        self._elapsed = elapsed
+        self._current = puzzle
+        self._started_attempt = started
+        return puzzle
 
     @property
     def attempts(self) -> tuple[TrainingAttempt, ...]:
@@ -315,11 +561,8 @@ class TrainingSession:
         if self._current is not None or self.exhausted:
             raise ValueError("Training has no unstarted next task.")
         task = self.tasks[len(self._attempts)]
-        puzzle_session = PuzzleSession(task.puzzle)
         attempt = TrainingAttempt(str(uuid4()), task.key, at, AttemptStatus.STARTED)
-        self._current = puzzle_session
-        self._started_attempt = attempt
-        return puzzle_session, attempt
+        return self._open_puzzle(attempt), attempt
 
     def finish_current(self, at: datetime, *, unfinished: AttemptStatus | None = None) -> TrainingAttempt:
         current, started = self._current, self._started_attempt
@@ -341,6 +584,7 @@ class TrainingSession:
         self._attempts.append(attempt)
         self._current = None
         self._started_attempt = None
+        self._elapsed = None
         return attempt
 
 
@@ -365,3 +609,14 @@ DEMO_MATE_CHAIN = TrainingChain(
     tasks=tuple(PuzzleKey(DEMO_PACK_ID, puzzle_id) for puzzle_id in ("ccBR01", "ccQB01", "ccSM02")),
     themes=("mate",),
 )
+
+
+def demo_chain_catalog(pack: PuzzlePack) -> dict[PuzzleKey, TrainingTask]:
+    """Use the bundled demo's validated tasks for curated chain play and restore."""
+    if pack.manifest.pack_id != DEMO_PACK_ID:
+        raise ValueError("The curated demo chain requires the demo puzzle pack.")
+    tasks = (TrainingTask(PuzzleKey(DEMO_PACK_ID, puzzle.puzzle_id), puzzle) for puzzle in pack.puzzles)
+    catalog = {task.key: task for task in tasks}
+    if len(catalog) != len(pack.puzzles):
+        raise ValueError("The demo puzzle pack repeats a puzzle ID.")
+    return catalog

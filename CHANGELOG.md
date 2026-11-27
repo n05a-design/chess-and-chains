@@ -5,7 +5,7 @@
 - Lokale Partien samt Undo/Redo und optionaler Fischer-Uhr automatisch sichern und fortsetzen.
 - Konfigurierte UCI-Engines prüfen und Stellungen oder Bibliothekspartien analysieren.
 - Validierte Trainingsstellungen aus der Analyse speichern und fällige Puzzle-Wiederholungen anzeigen.
-- SQLite-Schema v4 migriert vorhandene Bibliotheken zum Standardprofil. Die Rücksicherung prüft die neuen Sitzungstypen.
+- SQLite-Schema v5 speichert vollständige Bibliotheksanalysen und die fortsetzbare Matt-Trainingskette. Die Rücksicherung prüft Berichte, Sitzungen und Fortschritt.
 - Streaming für lokale Rätselpakete und automatische CI-Zuordnung einschließlich Figurensatztests ergänzen.
 
 [Funktionsumfang und Prüfnachweise](docs/roadmap/FUNCTIONAL_CORE.md)

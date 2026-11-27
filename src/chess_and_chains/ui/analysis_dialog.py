@@ -10,17 +10,19 @@ from tkinter import ttk
 
 from glide_shell import modal_session, window_lifetime
 
-from ..engines.analysis import AnalysisJob, AnalysisResult, CriticalMoment, EvaluationKind, JobStatus, ScoreBound, critical_moments
+from ..engines.analysis import AnalysisJob, AnalysisProgress, AnalysisResult, CriticalMoment, EvaluationKind, JobStatus, ScoreBound, critical_moments
 from ..i18n import Translator
 
 
 class AnalysisDialog:
     def __init__(
-        self, root: tk.Tk, translate: Translator, job: AnalysisJob, background: str,
+        self, root: tk.Tk, translate: Translator, analysis: AnalysisJob | AnalysisProgress, background: str,
         save_position: Callable[[AnalysisResult], str] | None = None,
+        store_report: Callable[[AnalysisProgress], str] | None = None,
     ) -> None:
         self.t = translate
-        self.job = job
+        self.job = analysis if isinstance(analysis, AnalysisJob) else None
+        self.store_report = store_report
         self.save_position = save_position
         self.window = modal_session.create_dialog(root, translate("analysis.title"), background=background)
         self.scope = window_lifetime.scope_for(self.window)
@@ -42,25 +44,35 @@ class AnalysisDialog:
         self.window.bind("<Escape>", lambda _event: self.window.destroy())
         self.window.bind("<Destroy>", self._on_destroy, add="+")
         self.cancel.focus_set()
-        self._poll()
+        if isinstance(analysis, AnalysisProgress):
+            self._show_results(analysis)
+        else:
+            self._poll()
 
     def _cancel(self) -> None:
-        if self.job.progress().status is JobStatus.RUNNING:
+        if self.job is not None and self.job.progress().status is JobStatus.RUNNING:
             self.job.cancel()
             self.cancel.state(["disabled"])
         else:
             self.window.destroy()
 
     def _on_destroy(self, event: tk.Event) -> None:
-        if event.widget is self.window:
+        if event.widget is self.window and self.job is not None:
             self.job.cancel()
 
     def _poll(self) -> None:
+        if self.job is None:
+            return
         progress = self.job.progress()
         if progress.status is JobStatus.RUNNING:
             self.status.set(self.t("analysis.progress", done=len(progress.results), total=progress.total))
             self.scope.after(100, self._poll)
             return
+        self._show_results(progress)
+        if progress.status is JobStatus.COMPLETED and self.store_report is not None:
+            self.status.set(self.store_report(progress))
+
+    def _show_results(self, progress: AnalysisProgress) -> None:
         self.status.set(self.t("analysis.failed", error=progress.error) if progress.status is JobStatus.FAILED
                         else self.t(f"analysis.{progress.status.value}"))
         lines = []
@@ -94,7 +106,6 @@ class AnalysisDialog:
         self.output.configure(state="disabled")
         self.cancel.configure(text=self.t("button.close"))
         self.cancel.state(["!disabled"])
-
 
     def _add_candidate_picker(
         self, moments: tuple[CriticalMoment, ...], results: tuple[AnalysisResult, ...],

@@ -1,4 +1,5 @@
 """Storage tests. Every test writes only inside a temporary directory."""
+from datetime import datetime, timezone
 import json
 import sqlite3
 import sys
@@ -456,6 +457,58 @@ class DatabaseTests(TempDirTestCase):
                 Database.open(path)
         self.assertEqual(path.read_bytes(), before)
         self.assertEqual(list(path.parent.glob("*.corrupt-*")), [])
+
+    def test_v4_migration_preserves_games_and_progress(self):
+        path = self.tmp / "v4.sqlite3"
+        conn = sqlite3.connect(path)
+        try:
+            for version, script in MIGRATIONS[:4]:
+                conn.executescript(script)
+                conn.execute(f"PRAGMA user_version = {version}")
+            db = Database(conn, path, None, None)
+            game = ChessGame()
+            game.play_uci("e2e4")
+            game_id = db.save_game(game, mode="human-vs-human")
+            db.record_puzzle_attempt("demo", "ccBR01", solved=True, mistakes=0, hints_used=0, duration_ms=123)
+            conn.commit()
+        finally:
+            conn.close()
+        upgraded = self.open_db(path.name)
+        self.assertEqual(upgraded.schema_version, 5)
+        self.assertEqual(upgraded.load_game(game_id).moves, (Move.from_uci("e2e4"),))
+        self.assertEqual(upgraded.puzzle_progress("demo", "ccBR01").best_duration_ms, 123)
+        self.assertEqual(upgraded.analysis_reports(), ())
+        self.assertIsNotNone(upgraded.migration_backup)
+
+    def test_chain_save_is_transactional_and_stale_writer_cannot_duplicate_attempts(self):
+        from chess_and_chains.puzzles import load_demo_pack
+        from chess_and_chains.puzzles.training import DEMO_MATE_CHAIN, demo_chain_catalog
+
+        pack = load_demo_pack()
+        chain = DEMO_MATE_CHAIN.open(demo_chain_catalog(pack))
+        at = datetime(2026, 11, 27, tzinfo=timezone.utc)
+        puzzle, _ = chain.start_next(at)
+        db = self.open_db()
+        active = chain.checkpoint()
+        revision = db.save_training_checkpoint(active, expected_revision=0, hint_stage=0)
+        self.assertIsNone(db.puzzle_progress(pack.manifest.pack_id, puzzle.puzzle.puzzle_id))
+        while puzzle.expected_move is not None:
+            puzzle.submit(puzzle.expected_move)
+        chain.finish_current(at)
+        finished = chain.checkpoint()
+        revision = db.save_training_checkpoint(finished, expected_revision=revision, hint_stage=0)
+        with self.assertRaises(StorageError):
+            db.save_training_checkpoint(active, expected_revision=revision - 1, hint_stage=0)
+        with self.assertRaises(sqlite3.IntegrityError):
+            db.save_training_checkpoint(finished, expected_revision=revision, hint_stage=3)
+        self.assertEqual(db.load_training_checkpoint(active.chain_id), (finished, revision, 0))
+        db.save_training_checkpoint(finished, expected_revision=revision, hint_stage=0)
+        self.assertEqual(db.puzzle_progress(pack.manifest.pack_id, puzzle.puzzle.puzzle_id).attempts, 1)
+        copied = self.tmp / "training-chain.sqlite3"
+        db.backup(copied)
+        db.restore(copied)
+        self.assertEqual(db.load_training_checkpoint(active.chain_id), (finished, revision + 1, 0))
+        self.assertEqual(db.puzzle_progress(pack.manifest.pack_id, puzzle.puzzle.puzzle_id).attempts, 1)
 
     def test_training_candidate_is_validated_deduplicated_and_restored(self):
         from chess_and_chains.puzzles.training import TrainingCandidate
