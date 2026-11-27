@@ -1,7 +1,9 @@
 """Storage tests. Every test writes only inside a temporary directory."""
 from datetime import datetime, timezone
 import json
+import os
 import sqlite3
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -630,6 +632,47 @@ class BackupBundleTests(TempDirTestCase):
         with Database.open(target.database) as db:
             self.assertEqual(db.load_game(saved).moves, (Move.from_uci("d2d4"),))
         self.assertEqual(len(list(target.backups.glob("pre-profile-restore-*.zip"))), 1)
+
+    def test_process_abort_during_restore_leaves_a_complete_recovery_bundle(self):
+        incoming = DataLayout(self.tmp / "incoming")
+        target = DataLayout(self.tmp / "target")
+        save_settings(incoming.settings, Settings(locale="de"))
+        save_settings(target.settings, Settings(locale="en"))
+        with Database.open(incoming.database) as db:
+            db.import_pgn("1. e4 *")
+        with Database.open(target.database) as db:
+            db.import_pgn("1. d4 *")
+        archive = write_backup(incoming, self.tmp / "incoming.zip")
+        process = """
+import os
+import sys
+from pathlib import Path
+from unittest.mock import patch
+from chess_and_chains.storage import DataLayout, save_settings
+from chess_and_chains.storage.backup_bundle import restore_backup
+layout = DataLayout(Path(sys.argv[1]))
+
+def abort_before_settings_swap(path, settings):
+    if path == layout.settings:
+        os._exit(17)
+    save_settings(path, settings)
+
+with patch("chess_and_chains.storage.backup_bundle.save_settings", side_effect=abort_before_settings_swap):
+    restore_backup(layout, Path(sys.argv[2]))
+"""
+        interrupted = subprocess.run(
+            [sys.executable, "-c", process, str(target.root), str(archive)],
+            env={**os.environ, "PYTHONPATH": str(ROOT / "src")}, capture_output=True, timeout=15,
+        )
+        self.assertEqual(interrupted.returncode, 17, interrupted.stderr)
+        with Database.open(target.database) as db:
+            self.assertEqual(db.load_game(1).moves, (Move.from_uci("e2e4"),))
+        self.assertEqual(load_settings(target.settings)[0].locale, "en")
+        recovery, = target.backups.glob("pre-profile-restore-*.zip")
+        restore_backup(target, recovery)
+        with Database.open(target.database) as db:
+            self.assertEqual(db.load_game(1).moves, (Move.from_uci("d2d4"),))
+        self.assertEqual(load_settings(target.settings)[0].locale, "en")
 
     def test_invalid_bundle_is_rejected_without_touching_current_profile(self):
         layout = DataLayout(self.tmp / "profile")
