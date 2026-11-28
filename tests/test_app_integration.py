@@ -218,6 +218,19 @@ class DrawClaimTests(AppTestCase):
 
 
 class BotVerticalSliceTests(AppTestCase):
+    def test_default_product_path_does_not_start_mock_without_development_selection(self):
+        app = self.make_app()
+        app.mode_var.set("human-vs-bot-white")
+        with patch("chess_and_chains.ui.app.resolve_engine_config", return_value=(EngineConfig.mock(), None)):
+            app._new_game()
+            self.assertIsNotNone(app.interaction_text.get())
+            self.assertIsNone(app.controller.provider)
+            dialog = EngineDialog(app)
+            dialog.use_mock()
+            app._new_game()
+        self.assertTrue(app.settings.development_mock)
+        self.assertTrue(app.controller.provider.is_mock)
+
     def test_closing_engine_dialog_cancels_pending_tk_poll(self):
         app = self.make_app()
         dialog = EngineDialog(app)

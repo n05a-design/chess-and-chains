@@ -69,6 +69,7 @@ class Settings:
     hints_visible: bool = True
     registered_engine_paths: tuple[str, ...] = ()
     engine_profile_id: str | None = None
+    development_mock: bool = False
 
     def validate(self) -> Settings:
         if self.schema_version != SETTINGS_SCHEMA:
@@ -91,7 +92,7 @@ class Settings:
             value = getattr(self, name)
             if not isinstance(value, str) or not value or len(value) > 64:
                 raise SettingsError(f"Invalid {name}.")
-        for name in ("sidebar_visible", "sidebar_narrow", "animations_enabled", "hints_visible"):
+        for name in ("sidebar_visible", "sidebar_narrow", "animations_enabled", "hints_visible", "development_mock"):
             if not isinstance(getattr(self, name), bool):
                 raise SettingsError(f"Invalid {name}.")
         if self.background_choice not in BACKGROUND_CHOICES:

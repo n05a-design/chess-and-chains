@@ -2197,8 +2197,8 @@ class ChessApp:
                 raise EngineConfigError("The selected engine registration is unavailable.") from error
         if settings.engine_path is None:
             config, warning = resolve_engine_config(None)
-            if warning:
-                raise EngineConfigError(warning)
+            if warning or (config.is_mock and not settings.development_mock):
+                raise EngineConfigError(warning or self.t("engine.missing"))
             return config
         path = Path(settings.engine_path).expanduser().absolute()
         profile = self.engine_registry.profile_for_command(path)
@@ -3644,6 +3644,9 @@ class ChessApp:
         self, game: ChessGame, mode: AnalysisMode, *, source_game_id: int | None = None,
     ) -> None:
         try:
+            if self.controller.view().bot_status is BotStatus.THINKING:
+                self.interaction_text.set(self.t("analysis.bot_busy"))
+                return
             config = self._configured_engine(self.settings)
             if config.is_mock:
                 self.interaction_text.set(self.t("analysis.engine_required"))
@@ -4096,9 +4099,9 @@ class EngineDialog:
 
     def use_mock(self) -> None:
         self.path_var.set("")
-        self.save()
+        self.save(development_mock=True)
 
-    def save(self) -> None:
+    def save(self, *, development_mock: bool = False) -> None:
         path = self.path_var.get().strip() or None
         profile_id = None
         if path is not None:
@@ -4111,7 +4114,7 @@ class EngineDialog:
         if path is not None:
             path = str(Path(path).expanduser().absolute())
         try:
-            self.app._store_settings(engine_path=path, engine_profile_id=profile_id)
+            self.app._store_settings(engine_path=path, engine_profile_id=profile_id, development_mock=development_mock)
         except (OSError, SettingsError) as error:
             self.status_var.set(self.app.t("engine.test_failed", error=error))
             return

@@ -51,3 +51,15 @@ einer freigegebenen Dritt-Engine stehen für Auftrag IV-A aus.
 Die SQLite-Partiedatenbank bleibt bei Version 7. Neue Snapshotfelder sind
 additiv. Der Backup-ZIP-Vertrag hält seine bisherigen Komponenten.
 [Erweiterter Datenvertrag](../architecture/DATA_CONTRACTS.md)
+
+## Gate III-3 – Laufzeit und Benchmark
+
+Die produktive Auswahl zeigt eine fehlende Engine an. Der gekennzeichnete
+Entwicklungsmock wird erst über den Engine-Dialog aktiviert. Die Analyse
+wartet auf einen bereits laufenden Bot-Zug. Die UCI-Grenze begrenzt
+Ausgabezeilen und Warteschlange und unterstützt begrenzte Knotensuchen.
+
+Ein manueller Smoke-Lauf mit `--max-plies 4 --nodes 128` ergab zwei
+ungewertete Partien mit Farbtausch und Exit 0. Der Ausgabevertrag trennt
+reguläre Ergebnisse, technische Niederlagen und Abbrüche. Die reale
+Kalibrierung wartet auf Auftrag IV-A. [Benchmark-Aufruf](../qa/BOT_CALIBRATION_PLAN.md)

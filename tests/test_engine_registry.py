@@ -4,8 +4,11 @@ SPDX-License-Identifier: MPL-2.0
 """
 from concurrent.futures import ThreadPoolExecutor
 import hashlib
+import json
 import os
 from pathlib import Path
+import subprocess
+import sys
 from tempfile import TemporaryDirectory
 import threading
 import unittest
@@ -77,6 +80,20 @@ class EngineRegistryTests(unittest.TestCase):
                 with self.assertRaisesRegex(EngineLaunchError, "executable"):
                     bot.ensure_started()
                 spawn.assert_not_called()
+
+    def test_benchmark_smoke_keeps_color_pairs_and_ply_limits_unrated(self):
+        runner = Path(__file__).resolve().parents[1] / "scripts" / "benchmark_engines.py"
+        with TemporaryDirectory() as directory:
+            output = Path(directory) / "results.json"
+            completed = subprocess.run(
+                [sys.executable, str(runner), "--smoke", "--max-plies", "2", "--nodes", "32", "--output", str(output)],
+                capture_output=True, text=True, timeout=25,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            saved = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual([(item["white"], item["black"]) for item in saved["games"]], [(0, 1), (1, 0)])
+            self.assertTrue(all(item["kind"] == "ply-limit" and item["result"] == "*" for item in saved["games"]))
+            self.assertEqual(output.with_suffix(".pgn").read_text(encoding="utf-8").count('[Result "*"]'), 2)
 
     def test_registration_is_explicit_and_does_not_launch_programs(self):
         config = EngineConfig.mock()

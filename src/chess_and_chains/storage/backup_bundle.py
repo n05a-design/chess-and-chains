@@ -288,7 +288,7 @@ def _restore_locked(layout: DataLayout, source: Path) -> BackupRestoration:
             incoming, pack_refs = _read_bundle(source, directory)
             candidate = directory / DATABASE
             restored = replace(incoming, engine_path=current.engine_path, engine_profile_id=current.engine_profile_id,
-                               registered_engine_paths=current.registered_engine_paths)
+                               registered_engine_paths=current.registered_engine_paths, development_mock=current.development_mock)
             missing = tuple(sorted(set(pack_refs) - set(PackLibrary(layout.packs).ids())))
         transaction_id = uuid4().hex
         recovery = layout.backups / f"pre-profile-restore-{transaction_id}.zip"

@@ -19,6 +19,9 @@ from typing import Callable, Sequence
 from ..chess import Move, parse_fen
 
 _EOF = object()
+_OUTPUT_LIMIT = object()
+_MAX_OUTPUT_LINES = 1024
+_MAX_LINE = 16384
 _OPTION = re.compile(
     r"^option name (.+?) type (check|spin|combo|button|string)(?:\s|$)"
 )
@@ -90,7 +93,7 @@ class UCIEngine:
         self._command_timeout = command_timeout
         self._shutdown_timeout = shutdown_timeout
         self._process: subprocess.Popen[str] | None = None
-        self._output: queue.Queue[str | object] = queue.Queue()
+        self._output: queue.Queue[str | object] = queue.Queue(maxsize=_MAX_OUTPUT_LINES)
         self._name: str | None = None
         self.author: str | None = None
         self.version: str | None = None
@@ -129,7 +132,7 @@ class UCIEngine:
             self._name = None
             self.author = self.version = None
             self._options.clear()
-            self._output = queue.Queue()
+            self._output = queue.Queue(maxsize=_MAX_OUTPUT_LINES)
             try:
                 if self._before_launch is not None:
                     self._before_launch()
@@ -251,6 +254,7 @@ class UCIEngine:
         *,
         cancelled: threading.Event | None = None,
         on_info: Callable[[str], None] | None = None,
+        search_moves: Sequence[Move] = (),
     ) -> Move | None:
         """Search for one move; analysis callbacks also poll for cancellation.
 
@@ -263,7 +267,19 @@ class UCIEngine:
             or milliseconds <= 0
         ):
             raise ValueError("Move time must be a positive integer in milliseconds.")
-        return self._search(f"go movetime {milliseconds}", legal_moves, timeout, cancelled, on_info)
+        command = f"go movetime {milliseconds}"
+        if search_moves:
+            if any(not isinstance(move, Move) or move not in legal_moves for move in search_moves):
+                raise ValueError("Search moves must be legal in the supplied position.")
+            command += " searchmoves " + " ".join(move.to_uci() for move in search_moves)
+        return self._search(command, search_moves or legal_moves, timeout, cancelled, on_info)
+
+    def go_nodes(
+        self, nodes: int, legal_moves: Sequence[Move], *, timeout: float | None = None,
+    ) -> Move | None:
+        if type(nodes) is not int or nodes < 1:
+            raise ValueError("Node limit must be a positive integer.")
+        return self._search(f"go nodes {nodes}", legal_moves, timeout, None, None)
 
     def go_clock(
         self,
@@ -316,7 +332,7 @@ class UCIEngine:
                         f"Engine returned illegal move {move.to_uci()!r}."
                     )
                 return move
-            except EngineTimeoutError:
+            except (EngineTimeoutError, EngineProtocolError):
                 self._terminate()
                 raise
             finally:
@@ -366,14 +382,30 @@ class UCIEngine:
         self.close()
 
     def _read_output(self, process: subprocess.Popen[str]) -> None:
+        terminal = _EOF
+        output = self._output
         try:
             assert process.stdout is not None
-            for line in process.stdout:
-                self._output.put(line.rstrip("\r\n"))
+            while line := process.stdout.readline(_MAX_LINE + 1):
+                if len(line) > _MAX_LINE:
+                    terminal = _OUTPUT_LIMIT
+                    break
+                try:
+                    output.put_nowait(line.rstrip("\r\n"))
+                except queue.Full:
+                    terminal = _OUTPUT_LIMIT
+                    break
         except (OSError, ValueError):
             pass
         finally:
-            self._output.put(_EOF)
+            try:
+                output.put_nowait(terminal)
+            except queue.Full:
+                try:
+                    output.get_nowait()
+                except queue.Empty:
+                    pass
+                output.put_nowait(terminal)
 
     def _read_until(self, expected: str, timeout: float) -> str:
         return self._read_until_matching(lambda line: line == expected, timeout)
@@ -397,6 +429,8 @@ class UCIEngine:
                 output = self._output.get(timeout=min(remaining, 0.05) if cancelled is not None else remaining)
             except queue.Empty:
                 continue
+            if output is _OUTPUT_LIMIT:
+                raise EngineProtocolError("Engine output exceeded the protocol limit.")
             if output is _EOF:
                 process = self._process
                 code = process.poll() if process is not None else None
