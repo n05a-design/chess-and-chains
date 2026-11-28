@@ -51,6 +51,8 @@ Neue Berichte bitte in der passenden Gruppe ergänzen. `scripts/verify_document_
 
 ## W08 · Rätsel
 
+- 2026-11-28 · [IV-B – Lichess-Produktdaten, Katalog und Offline-Abnahme](2026-11-28_W08-IV-B-lichess-produktdaten.md)
+
 - 2026-11-21 · [W08/W09 · Wiederholtraining und Versuchsverlauf](2026-11-21_W08-W09-wiederholtraining.md)
 
 - 2026-11-21 · [W08 – Reproduzierbare Auswahl der Rätsel](2026-11-21_W08-puzzle-seed.md)

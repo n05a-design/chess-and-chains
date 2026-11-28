@@ -158,6 +158,17 @@ einschließlich Aufbauzug gleich, damit die Fortschrittszuordnung stabil
 bleibt. Die vorherigen Paketgenerationen bleiben lokal verfügbar. Ein aktiver
 Verweis wird erst nach erfolgreicher Validierung der neuen Generation ersetzt.
 
+Das lokale Produktpaket `lichess-core-20k` verwendet Pack- und Katalogschema 1.
+Der Offline-Builder verarbeitet den gesamten CC0-Quellstream und versieht
+`import_report.json` mit komprimierter und entpackter SHA-256, Profil,
+Qualitätsfiltern, Seed und Verteilung. Der Builder hält eine begrenzte
+Vorauswahl je Ratingband und prüft die aufgenommenen Zeilen im Schachkern.
+Für die Auswahl zählt die kanonische spielbare Position nach dem Aufbauzug
+mit ihrer Lösungsfolge als Inhaltsidentität. Der Katalog behält zusätzlich
+den versionskompatiblen Fingerabdruck über die Ausgangsstellung und die
+gesamte Zugfolge. Der Fortschritt bleibt über `pack_id` und `puzzle_id`
+zugeordnet. Manifest und Nutzdaten liegen getrennt vom Build-Bericht.
+
 ## Einstellungen
 
 Die aktuelle Settings-Datei enthält `schema_version`, `locale`, `theme_id`,

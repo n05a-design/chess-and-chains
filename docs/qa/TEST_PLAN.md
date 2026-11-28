@@ -86,3 +86,15 @@ reale UCI-Engine und physische Bedienhilfen brauchen eigene Abnahmen.
 Die bestehende Actions-Matrix umfasst Windows, macOS und Linux mit
 Python 3.11 und 3.14. Lokale Ergebnisse und offene Plattformabnahme
 sind im [Auftragsbericht](../reports/2026-11-28_phase-a-completion-phase-b-engine-analysis.md) getrennt.
+
+## Auftrag IV-B – Realdaten für das Puzzle Lab
+
+`scripts/build_lichess_core_pack.py` bindet den Build an eine bekannte
+komprimierte SHA-256 und erzeugt außerhalb des Repositories das Paket
+samt vollständigem Profil. Der gezielte Regressionstest prüft
+Nachrücker und semantische Duplikate. `scripts/verify_lichess_core_pack.py`
+führt die Abnahme mit einem frisch installierten Paket und einer
+isolierten nativen Tk-Instanz aus. Geprüft werden Aufbauzug, Rating bis
+3000+, kombinierte Filter, Versuche, Hinweise, Review und
+Sicherungswiederherstellung. Messwerte und Plattformvermerk stehen im
+[IV-B-Prüfbericht](../reports/2026-11-28_W08-IV-B-lichess-produktdaten.md).

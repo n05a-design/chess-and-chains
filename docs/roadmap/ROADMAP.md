@@ -9,7 +9,7 @@
 | Regeln (W05) | Legale Züge, FEN/SAN/PGN, Remisregeln, Perft, tote Stellungen bei kurzen Zwangsfolgen und geschlossenen Bauernsperren | Allgemeine Erkennung toter Stellungen, Owner-Abnahme |
 | Brett und Figuren (W06) | Tk-Brett auf Glide Shell `0.6.2` (`AppHost`, `AfterScope`, `modal_session`, Light/Dark/System-Themes), Original V.06, Draufsicht V.04.2 und Klassisch V.05.1, PNG-Fallback, SVG-Brettvorschau mit Cache | Finale Inhaber-Bretter, native Sicht- und High-DPI-Prüfung |
 | Bot (W07) | UCI-Adapter, asynchroner Controller, sechs Presets, Bereitschaftstest | Echte Engine nach ADR-001, Kalibrierung, Offline-Partie |
-| Rätsel (W08) | Offline-Builder mit Rating ≥ 1000, Qualitätsfilter, Seed, lokale Pakete im Puzzle Lab | Realdaten nach Q-022, Paketgröße und Ratingbereich (Q-008/Q-009) |
+| Rätsel (W08) | Lokal verarbeitetes `lichess-core-20k` mit Seed, Ratingbändern bis 3000+ und SQLite-Index | Bündelung und Vertriebsweg separat freigeben. [IV-B](../reports/2026-11-28_W08-IV-B-lichess-produktdaten.md) |
 | Daten (W09) | SQLite v8 im Engine-Analysis-Branch, archivierte Uhrdaten, automatische Restore-Recovery und eigenständige Trainingskandidaten | Profile (Q-012), ADR-004, native Dialoge macOS/Linux |
 | Bedienung (W10) | DE/EN, Tastaturwege, Brett als Text, Fokusrückgabe | Native Skalierung 150/200 %, Screenreader, Ziffernblock |
 | Qualität (W11) | 14-Job-Matrix nach jedem Merge, Policy-, Link- und Manifestprüfung | Installations-, Offline- und Artefaktabnahme |
@@ -22,7 +22,7 @@ Diese Owner-Entscheidungen geben die meiste blockierte Arbeit frei. Antwortforma
 | Rang | Entscheidung | Gibt frei | Referenz |
 | --- | --- | --- | --- |
 | 1 | Engine- und Vertriebslizenz (Weg A: GPL-konformer Gesamtvertrieb, oder Alternative) | Echte Offline-Engine, Bot-Kalibrierung, jeder Installer | [ADR-001](../decisions/ADR-001_ENGINE_LICENSE.md), Q-001 |
-| 2 | Opt-in für den lokalen Download des Lichess-Exports (CC0) zu Prüfzwecken | Realdatenprüfung des Rätselimports | Q-022, [ADR-003](../decisions/ADR-003_PUZZLE_POLICY.md) |
+| 2 | Lokal geprüfte Datenbasis für Connected Learning verwenden | Der Download und die lokale Realdatenverarbeitung sind für IV-B freigegeben | Q-022, [ADR-003](../decisions/ADR-003_PUZZLE_POLICY.md) |
 | 3 | Ratingbereich und Paketgröße | Zuschnitt des mitgelieferten Rätselpakets | Q-008, Q-009 |
 | 4 | Profilmodell (ein oder mehrere Profile) | Abschluss von W09, ADR-004 | Q-012, [ADR-004](../decisions/ADR-004_STORAGE.md) |
 | 5 | Mock-Bot in Vorschau-Builds sichtbar oder ausgeblendet | Verhalten des Bot-Modus ohne echte Engine | Q-021 |
@@ -41,7 +41,7 @@ Nur offene Arbeit. Erledigte Punkte stehen unten unter „Abgeschlossen“.
 | 3 | W05 · Tote Stellungen allgemein | Weitere verblockte Materialkombinationen und längere oder verzweigte Zwangsfolgen. Golden-Fixtures mit Quelle. [Bauernsperren](../reports/2026-11-21_W05-bauernsperren.md) |
 | 4 | W09 · Native Dialoge | FEN-, PGN- und Ordnerdialoge auf macOS und Linux nativ prüfen. Profile nach Q-012. [FEN-Austausch](../reports/2026-11-21_W05-W09-fen-austausch.md) |
 | Nach ADR-001 | W02/W07 · Echte Offline-Engine | Identifiziertes Binary mit Hash, vollständige Partie ohne Netz, Abbruch- und Absturzverhalten, Kalibrierplan für die sechs Stufen. |
-| Nach Q-022 | W08 · Produktiver Rätselkatalog | Realer Export außerhalb des Repos, Datenprofil, Stichprobe, Prüfsumme und Importbericht. [Lokale Pakete](../reports/2026-11-21_W08-W09-lokale-raetselpakete.md) |
+| Nach IV-B | W08 · Connected Learning | Wiederhol- und Themenpfade auf stabilen IDs und dem lokalen Produktpaket aufbauen. [IV-B](../reports/2026-11-28_W08-IV-B-lichess-produktdaten.md) |
 | Danach | W12 · Distribution | Installer, Lizenz- und Quellenbelege, Signaturen, Upgrade- und Offline-Tests, Inhaberfreigabe. Danach GitHub Releases und Software-Katalog. [Vertriebsstrategie](../release/RELEASE_STRATEGY.md) |
 
 ## Meilensteine bis 1.0 (PROPOSED)

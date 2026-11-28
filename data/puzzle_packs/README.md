@@ -24,8 +24,8 @@ Die optionale Prüfdatei `import_report.json` bleibt im Build-Ordner.
 Der Offline-Builder liest lokale CSV-Dateien im Lichess-Layout. Python ab
 3.14 unterstützt im Builder auch `.csv.zst`. Aus der projekteigenen
 [Demo-CSV](../source/demo_puzzles.csv) entstand die mitgelieferte
-Paketversion 2. Ein produktiver Datensatz steht zur Prüfung nach
-Owner-Opt-in Q-022 aus. [ADR-003](../../docs/decisions/ADR-003_PUZZLE_POLICY.md)
+Paketversion 2. Das lokale Produktpaket aus dem offiziellen CC0-Export ist unter
+IV-B dokumentiert. [Datenbericht](../../docs/reports/2026-11-28_W08-IV-B-lichess-produktdaten.md). [ADR-003](../../docs/decisions/ADR-003_PUZZLE_POLICY.md)
 
 Beispiel mit den [projekteigenen Testdaten](../../tests/fixtures/puzzles_sample.csv).
 Ein absolutes temporäres Ziel hält das Prüfartefakt außerhalb des Repos.
@@ -82,3 +82,12 @@ Stichprobengröße auf. `accepted` zählt alle passenden, validierten Zeilen.
 Ohne Seed nimmt der Builder Aufgaben in Quellreihenfolge und stoppt beim
 gesetzten Limit. In diesem Fall kennzeichnet der Bericht den vorzeitigen
 Abbruch und enthält keine Prüfsumme für die gesamte Quelle.
+
+## Geschichteter Produktbuild IV-B
+
+`scripts/build_lichess_core_pack.py` erwartet das lokale Originalarchiv,
+die bekannte SHA-256, ein Versionsdatum und ein neues Build-Ziel
+außerhalb des Repositories. Der Builder lädt keine Daten herunter.
+`scripts/verify_lichess_core_pack.py` prüft das Paket in einem neu
+angelegten Testprofil. Reale Paket- und Katalogdateien gehören in
+lokale Nutzerdaten. [IV-B-Abnahme](../../docs/reports/2026-11-28_W08-IV-B-lichess-produktdaten.md)
