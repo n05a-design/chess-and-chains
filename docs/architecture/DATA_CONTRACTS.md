@@ -158,6 +158,17 @@ einschließlich Aufbauzug gleich, damit die Fortschrittszuordnung stabil
 bleibt. Die vorherigen Paketgenerationen bleiben lokal verfügbar. Ein aktiver
 Verweis wird erst nach erfolgreicher Validierung der neuen Generation ersetzt.
 
+Das lokale Produktpaket `lichess-core-20k` verwendet Pack- und Katalogschema 1.
+Der Offline-Builder verarbeitet den gesamten CC0-Quellstream und versieht
+`import_report.json` mit komprimierter und entpackter SHA-256, Profil,
+Qualitätsfiltern, Seed und Verteilung. Der Builder hält eine begrenzte
+Vorauswahl je Ratingband und prüft die aufgenommenen Zeilen im Schachkern.
+Für die Auswahl zählt die kanonische spielbare Position nach dem Aufbauzug
+mit ihrer Lösungsfolge als Inhaltsidentität. Der Katalog behält zusätzlich
+den versionskompatiblen Fingerabdruck über die Ausgangsstellung und die
+gesamte Zugfolge. Der Fortschritt bleibt über `pack_id` und `puzzle_id`
+zugeordnet. Manifest und Nutzdaten liegen getrennt vom Build-Bericht.
+
 ## Einstellungen
 
 Die aktuelle Settings-Datei enthält `schema_version`, `locale`, `theme_id`,
@@ -171,7 +182,7 @@ Formats. Der Brett- und Figurenwechsel wird im aktuellen CLI-Aufruf
 gewählt. Der Datenpfad folgt der Plattform oder `CHESS_AND_CHAINS_DATA_DIR`.
 
 **Implementierungsstand im Functional-Completion-Branch (ADR-004 weiterhin PROPOSED).** SQLite
-`PRAGMA user_version` = 7. Altdaten in `games` und `puzzle_attempts`
+`PRAGMA user_version` = 8. Altdaten in `games` und `puzzle_attempts`
 erhalten die feste Kennung `local`. `training_candidates` speichert
 Stellungen mit Partiereferenz und Halbzug. Der Wiederholungsplan beruht
 auf den vorhandenen Versuchen. Einstellungen bleiben bei JSON `schema_version` 1
@@ -258,3 +269,51 @@ Versuch mit Zugfolge, Zählern und verstrichener Spielzeit. Die Wiederaufnahme
 prüft die Züge mit dem installierten Demopaket. Der Revisionsvergleich und
 die Wertung abgeschlossener Versuche laufen in derselben SQLite-Transaktion.
 Die bestehende Fortschrittsansicht verwendet dieselben Puzzle-Versuche.
+
+## Sitzungsphasen und Wiederherstellung
+
+Der Partiekern erhält Zugfolge, Cursor und Ergebnis. Das optionale Feld
+`phase` des Sitzungsformats unterscheidet erstellt, aktiv, pausiert,
+unterbrochen, wiederhergestellt, ausstehende Zeitablaufentscheidung,
+abgeschlossen und verworfen. Ältere Snapshots lassen sich laden. Erstellt
+oder wiederhergestellt wird bei Zug oder laufender Uhr aktiv. Nur eine
+laufende Uhr kann pausieren. Das Schließen pausiert die Uhr und sichert die
+Unterbrechung. Ein Zeitablauf mit offenem Ergebnis sperrt weitere Züge.
+Bestätigtes Verwerfen beendet die Wiederaufnahme dieser Kopie. Bei CAS-
+Konflikt kann das Fenster seine Partie separat in die Bibliothek schreiben,
+den neueren Stand laden oder mit pausierter Autosicherung geöffnet bleiben.
+
+Für einen bestätigten Engine-Wechsel stehen alte und neue Referenz,
+Wechselzeit, Halbzug und Grund im Snapshot. Verifizierte historische
+Metadaten werden eingebettet. Sie bleiben beim Entfernen der lokalen
+Registrierung lesbar. Eine zeitgesteuerte Wiederaufnahme beginnt pausiert.
+
+Uhrannotationen `[%clk ...]` erhalten die Restzeit der ziehenden Seite
+nach ihrem Halbzug. Eingelesen werden Annotationen der Hauptvariante.
+Der lokale Snapshot hält zusätzlich beide Uhrstände, die finale Lesung
+und bei neuen Zeitpartien die monoton gemessene aktive Spielzeit sowie explizite
+Pausen fest. Ein Zeitraum bei beendeter App zählt dabei als Unterbrechung.
+
+Das Restore-Journal `.profile-restore.json` enthält eine
+Transaktions-ID, Prüfsummen des Eingangspakets, der Sicherheitskopie und
+des Profils sowie die aktuelle Phase. Vor normalem Öffnen muss die App
+einen ausstehenden Restore abschließen oder den vorherigen Profilstand
+wiederherstellen. Die SQLite-basierte Profilsperre erlaubt mehrere
+lesende Desktop-Leases und exklusiven Restore. Die Betriebssystem-Sperre
+endet beim Prozessabbruch. Portable Backups führen unveränderliche Registry-Referenzen im Manifest.
+Die Auswahl und Ausführungsfreigabe stammen ausschließlich aus dem Zielprofil.
+
+SQLite v8 ergänzt `analysis_training_candidates` mit formatversionierten,
+regelvalidierten Datensätzen. Die optionalen Fremdschlüssel auf Partie und
+Analyse verwenden `ON DELETE SET NULL`. Historische Quellenkennungen und
+der für freies Stellungstraining benötigte Inhalt bleiben eingebettet.
+Bestehende stellungsgebundene Trainingskandidaten behalten ihren Vertrag.
+
+Der konsolidierte Stand III / IV-B hält portable SQLite-v8-Nutzerdaten,
+lokale Engine-Freigaben, Analyse-Cache und Katalogdateien getrennt.
+`scripts/verify_integration_gate.py` öffnet eine Kopie des vorhandenen
+validierten Katalogs. Im selben frischen Profil prüft der Ablauf einen
+Analysebericht mit neu gestarteter Registry, Cache-Treffer, einen von
+der Partie entkoppelten Trainingskandidaten, reale Rätselversuche und
+die anschließende Wiederherstellung. Die Paketpfade und Prüfsummen
+sind im [Integrationsbericht](../reports/2026-11-28_Integration-Gate-III-IV-B.md) verzeichnet.

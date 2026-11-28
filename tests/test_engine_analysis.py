@@ -2,9 +2,11 @@
 
 SPDX-License-Identifier: MPL-2.0
 """
+from contextlib import closing
 from dataclasses import replace
 import json
 import sqlite3
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -24,6 +26,7 @@ from chess_and_chains.engines.analysis import (
     parse_info,
 )
 from chess_and_chains.engines.bot import EngineConfig
+from chess_and_chains.engines.registry import EngineRegistry
 from chess_and_chains.storage import Database, StorageError
 
 
@@ -56,7 +59,12 @@ for raw in sys.stdin:
             continue
         if sys.argv[2] == "crash" and moves:
             sys.exit(3)
-        if board == "7k/P7/8/8/8/8/8/K7":
+        if " searchmoves " in line and sys.argv[2] == "restricted":
+            root = line.partition(" searchmoves ")[2].split()[0]
+            score = 350 if root in ("d2d4", "e7e5") else 20
+            say(f"info depth 12 score cp {score} pv {root}")
+            say(f"bestmove {root}")
+        elif board == "7k/P7/8/8/8/8/8/K7":
             say("info depth 10 score cp 20 pv a7a8n")
             say("info depth 11 score cp 20 pv a7a8n h8g8")
             say("bestmove a7a8n")
@@ -134,6 +142,68 @@ class AnalysisServiceTests(unittest.TestCase):
     def commands(self):
         return self.log.read_text(encoding="utf-8").splitlines()
 
+    def test_persistent_cache_survives_service_restart_and_checks_budget_and_corruption(self):
+        registry = EngineRegistry(self.log.with_suffix(".registry"))
+        fixture = self.log.with_suffix(".py")
+        fixture.write_text(FIXTURE, encoding="utf-8")
+        profile = registry.register(sys.executable, arguments=("-u", str(fixture), str(self.log), "normal"),
+                                    resources=(fixture,))
+        registry.probe(profile.engine_id)
+        config = registry.launch_configuration(profile.engine_id)
+        cache_path = self.log.with_suffix(".cache")
+
+        def run(budget):
+            service = AnalysisService(config, engine_id=config.session_reference(), cache_path=cache_path)
+            return self.run_job(service, AnalysisRequest("persistent", movetime_ms=budget)).results[0]
+
+        self.assertFalse(run(100).cached)
+        self.assertTrue(run(100).cached)
+        self.assertEqual(self.commands().count("go movetime 100"), 1)
+        self.assertFalse(run(175).cached)
+        with closing(sqlite3.connect(cache_path)) as connection, connection:
+            connection.execute("UPDATE results SET payload = '{}'")
+        self.assertFalse(run(100).cached)
+        self.assertEqual(self.commands().count("go movetime 100"), 2)
+
+    def test_analysis_cli_uses_disk_cache_across_processes(self):
+        fixture = self.log.with_suffix(".py")
+        fixture.write_text(FIXTURE, encoding="utf-8")
+        path = self.log.with_suffix(".registry")
+        registry = EngineRegistry(path)
+        profile = registry.register(sys.executable, arguments=("-u", str(fixture), str(self.log), "normal"),
+                                    resources=(fixture,))
+        registry.probe(profile.engine_id)
+        module_root = Path(__file__).resolve().parents[1] / "src"
+        command = [sys.executable, "-m", "chess_and_chains.engines.analysis", "--registry", str(path),
+                   "--engine-id", profile.engine_id, "--cache", str(self.log.with_suffix(".cache"))]
+        hits = []
+        for _ in range(2):
+            result = subprocess.run(command, cwd=module_root, capture_output=True, text=True, timeout=15)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            hits.append(json.loads(result.stdout)["results"][0]["cached"])
+        self.assertEqual(hits, [False, True])
+        self.assertEqual(self.commands().count("go movetime 100"), 1)
+
+    def test_same_position_searchmoves_compares_white_and_black(self):
+        fixture = self.log.with_suffix(".py")
+        fixture.write_text(FIXTURE, encoding="utf-8")
+        registry = EngineRegistry(self.log.with_suffix(".registry"))
+        profile = registry.register(sys.executable, arguments=("-u", str(fixture), str(self.log), "restricted"),
+                                    resources=(fixture,))
+        registry.probe(profile.engine_id)
+        config = registry.launch_configuration(profile.engine_id)
+        service = AnalysisService(config, engine_id=config.session_reference())
+        request = AnalysisRequest("compared", moves=(move("e2e4"), move("d7d5")), mode=AnalysisMode.GAME)
+        progress = self.run_job(service, request)
+        self.assertIs(progress.status, JobStatus.COMPLETED, progress.error)
+        moments = critical_moments(progress.results)
+        self.assertEqual([(moment.ply, moment.centipawn_loss, moment.comparison) for moment in moments],
+                         [(1, 330, "same-position"), (2, 330, "same-position")])
+        for move_text in ("d2d4", "e2e4", "e7e5", "d7d5"):
+            self.assertIn(f"go movetime 100 searchmoves {move_text}", self.commands())
+        self.assertEqual(progress.results[1].comparison[0].evaluation.raw_value, 350)
+        self.assertEqual(progress.results[1].comparison[0].evaluation.value, -350)
+
     def test_fixture_multivariant_analysis_and_illegal_pv(self):
         progress = self.run_job(self.service(), AnalysisRequest("start", multipv=3))
         self.assertIs(progress.status, JobStatus.COMPLETED, progress.error)
@@ -166,6 +236,32 @@ class AnalysisServiceTests(unittest.TestCase):
         self.assertEqual((critical.ply, critical.played_move, critical.alternative, critical.centipawn_loss),
                          (1, move("e2e4"), move("d2d4"), 215))
         self.assertIn("position fen " + INITIAL_FEN + " moves e2e4 e7e5", self.commands())
+
+    def test_candidate_reopens_without_its_original_game_or_report(self):
+        path = self.log.with_suffix(".sqlite3")
+        game = ChessGame()
+        game.play_uci("e2e4")
+        game.play_uci("e7e5")
+        progress = self.run_job(self.service(), AnalysisRequest("training", moves=tuple(game.moves), mode=AnalysisMode.GAME))
+        with Database.open(path) as db:
+            game_id = db.save_game(game, mode="human-vs-human")
+            db.save_analysis_report(game_id, progress)
+            candidate = db.save_analysis_training_candidate(progress.job_id, 0)
+            duplicate = db.save_analysis_training_candidate(progress.job_id, 0)
+            self.assertEqual(candidate, duplicate)
+            second_report = replace(progress, job_id="another-training-report")
+            db.save_analysis_report(game_id, second_report)
+            self.assertEqual(db.save_analysis_training_candidate(second_report.job_id, 0), candidate)
+            self.assertEqual([row.id for row in db.game_summaries(has_training=True)], [game_id])
+            db.delete_game(game_id)
+        with Database.open(path) as db:
+            self.assertEqual(db.analysis_reports(), ())
+            item, = db.analysis_training_candidates()
+            self.assertEqual(item, candidate)
+            self.assertEqual((item.status.value, item.fen, item.played_move), ("legal-position", INITIAL_FEN, move("e2e4")))
+            backup = db.backup(path.with_suffix(".backup"))
+            db.restore(backup)
+            self.assertEqual(db.analysis_training_candidates(), (candidate,))
 
     def test_complete_report_roundtrips_and_invalid_backup_preserves_live_report(self):
         path = self.log.with_suffix(".sqlite3")

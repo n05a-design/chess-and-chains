@@ -79,6 +79,48 @@ def ask_time_control(parent: tk.Tk, t: Translator, theme: ThemePalette) -> TimeC
     return result
 
 
+def ask_archive_tag(parent: tk.Tk, t: Translator, theme: ThemePalette) -> str | None:
+    dialog = modal_session.create_dialog(
+        parent, t("library.add_tag"), background=theme.acetate, transient=bool(parent.winfo_viewable()),
+    )
+    focus = modal_session.remember_focus(parent, dialog, parent)
+    content = ttk.Frame(dialog, padding=16, style="Glide.TFrame")
+    content.pack(fill="both", expand=True)
+    value, feedback = tk.StringVar(dialog), tk.StringVar(dialog)
+    ttk.Label(content, text=t("library.tag"), style="Glide.TLabel").grid(row=0, column=0, sticky="w")
+    entry = ttk.Entry(content, textvariable=value, style="Glide.TEntry")
+    entry.grid(row=1, column=0, columnspan=2, sticky="ew")
+    ttk.Label(content, textvariable=feedback, style="Glide.TLabel").grid(row=2, column=0, columnspan=2, sticky="w")
+    result = None
+
+    def accept(_event: tk.Event | None = None) -> str:
+        nonlocal result
+        tag = value.get().strip()
+        if not 1 <= len(tag) <= 64 or any(ord(char) < 32 for char in tag):
+            feedback.set(t("library.invalid_tag"))
+            return "break"
+        result = tag
+        dialog.destroy()
+        return "break"
+
+    save = ttk.Button(content, text=t("button.save"), command=accept, style="Glide.New.TButton")
+    save.grid(row=3, column=0, sticky="e", padx=4)
+    cancel = ttk.Button(content, text=t("button.cancel"), command=dialog.destroy, style="Glide.TButton")
+    cancel.grid(row=3, column=1, sticky="e")
+    entry.bind("<Return>", accept)
+    entry.bind("<KP_Enter>", accept)
+    bind_button_enter(save)
+    bind_button_enter(cancel)
+    dialog.bind("<Escape>", lambda _event: dialog.destroy())
+    modal_session.ensure_min_width(dialog)
+    entry.focus_set()
+    try:
+        modal_session.wait_modal(parent, dialog)
+    finally:
+        modal_session.return_focus(parent, dialog, focus)
+    return result
+
+
 class PositionDialog(tk.Toplevel):
     """Edit or export one FEN. Only an accepted position reaches the game."""
 

@@ -96,11 +96,15 @@ class AnalysisDialog:
             if self.save_position is not None:
                 self._add_candidate_picker(moments, progress.results)
             lines.append(self.t("analysis.critical"))
-            lines.extend(
-                self.t("analysis.moment", ply=item.ply, move=item.played_move.to_uci(),
-                       alternative=item.alternative.to_uci(), loss=item.centipawn_loss)
-                for item in moments
-            )
+            for item in moments:
+                category = self.t(f"analysis.moment.{item.category}")
+                if item.centipawn_loss is not None:
+                    amount = self.t("analysis.moment.loss", loss=item.centipawn_loss)
+                    if item.comparison != "same-position":
+                        amount = self.t("analysis.moment.estimate", loss=amount)
+                    category += f" · {amount}"
+                lines.append(self.t("analysis.moment_summary", ply=item.ply, move=item.played_move.to_uci(),
+                                    alternative=item.alternative.to_uci(), category=category))
         self.output.configure(state="normal")
         self.output.insert("1.0", "\n".join(lines))
         self.output.configure(state="disabled")

@@ -8,6 +8,8 @@ Neue Berichte bitte in der passenden Gruppe ergänzen. `scripts/verify_document_
 
 ## Übergreifend (W00–W12)
 
+- 2026-11-28 · [Integrationsgate III / IV-B](2026-11-28_Integration-Gate-III-IV-B.md)
+
 - 2026-11-26 · [Logo-Integration der drei Inhaber-Master (W06)](2026-11-26_logo-integration.md)
 - 2026-11-21 · [W00–W12 – Abgleich der Arbeitspakete](2026-11-21_W00-W12-paketabgleich.md)
 
@@ -50,6 +52,8 @@ Neue Berichte bitte in der passenden Gruppe ergänzen. `scripts/verify_document_
 - 2026-11-20 · [W07 – UCI-Prozessadapter-Grundlage](2026-11-20_W07_uci.md)
 
 ## W08 · Rätsel
+
+- 2026-11-28 · [IV-B – Lichess-Produktdaten, Katalog und Offline-Abnahme](2026-11-28_W08-IV-B-lichess-produktdaten.md)
 
 - 2026-11-21 · [W08/W09 · Wiederholtraining und Versuchsverlauf](2026-11-21_W08-W09-wiederholtraining.md)
 

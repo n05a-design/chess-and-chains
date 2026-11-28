@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from chess_and_chains.chess import ChessGame, Color, DrawClaim, FenError, GameStatus, Move, PGNError, export_pgn, parse_fen, to_fen  # noqa: E402
+from chess_and_chains.engines.registry import EngineRegistry  # noqa: E402
 from chess_and_chains.game.clock import TimeControl  # noqa: E402
 from chess_and_chains.storage import (  # noqa: E402
     SCHEMA_VERSION,
@@ -29,7 +30,7 @@ from chess_and_chains.storage import (  # noqa: E402
     save_settings,
     update_settings,
 )
-from chess_and_chains.storage.backup_bundle import restore_backup, write_backup  # noqa: E402
+from chess_and_chains.storage.backup_bundle import RESTORE_JOURNAL, open_profile, restore_backup, write_backup  # noqa: E402
 from chess_and_chains.storage.database import MAX_PGN_FILE_BYTES, MIGRATIONS  # noqa: E402
 from chess_and_chains.storage.exchange import (  # noqa: E402
     MAX_FEN_FILE_BYTES, parse_fen_text, read_fen_file, write_fen_file,
@@ -128,6 +129,29 @@ class DatabaseTests(TempDirTestCase):
         game.redo()
         game.redo()
         self.assertIs(game.outcome().status, GameStatus.STALEMATE)
+
+    def test_all_supported_legacy_database_versions_migrate_to_current(self):
+        for old_version in range(1, SCHEMA_VERSION):
+            with self.subTest(old_version=old_version):
+                path = self.tmp / f"previous-v{old_version}.sqlite3"
+                connection = sqlite3.connect(path)
+                try:
+                    for applied, statements in MIGRATIONS[:old_version]:
+                        connection.executescript(statements)
+                        connection.execute(f"PRAGMA user_version={applied}")
+                    game = ChessGame()
+                    game.play_uci("e2e4")
+                    connection.execute(
+                        "INSERT INTO games(created_utc, initial_fen, moves_uci, pgn, result, mode) VALUES (?, ?, ?, ?, ?, ?)",
+                        ("2026-11-28T00:00:00+00:00", to_fen(game.initial_state), "e2e4", export_pgn(game), "*", "imported"),
+                    )
+                    connection.commit()
+                finally:
+                    connection.close()
+                with Database.open(path) as upgraded:
+                    self.assertEqual(upgraded.schema_version, SCHEMA_VERSION)
+                    self.assertEqual(upgraded.load_game(1).moves, (Move.from_uci("e2e4"),))
+                    self.assertTrue(upgraded.migration_backup.is_file())
 
     def test_migration_from_v1_creates_backup_and_keeps_data(self):
         path = self.tmp / "old.sqlite3"
@@ -335,6 +359,20 @@ class DatabaseTests(TempDirTestCase):
                 db.export_pgn_file(game_id, target)
         self.assertEqual(target.read_text(encoding="utf-8"), "Keep this")
         self.assertEqual(list(self.tmp.glob(".pgn-*")), [])
+
+    def test_pgn_roundtrip_keeps_mainline_clock_comments_for_a_black_first_game(self):
+        db = self.open_db()
+        initial = "r3k2r/8/8/8/3pP3/8/8/R3K2R b KQkq e3 0 17"
+        pgn = (
+            f'[SetUp "1"]\n[FEN "{initial}"]\n[TimeControl "60+2"]\n\n'
+            "17... dxe3 {[%clk 0:01:00.250]} (17... Kd7 {[%clk 0:00:01]}) 18. Rh2 {[%clk 0:00:58]} *"
+        )
+        saved = db.load_game(db.import_pgn(pgn))
+        self.assertEqual(saved.clock_annotations, (60250, 58000))
+        self.assertIsNone(saved.session_snapshot)
+        again = db.load_game(db.import_pgn(saved.pgn))
+        self.assertEqual((again.moves, again.clock_annotations), (saved.moves, saved.clock_annotations))
+        self.assertNotIn("0:00:01]", saved.pgn)
 
     def test_archive_summaries_filter_by_recorded_time_control_and_result(self):
         db = self.open_db()
@@ -588,6 +626,7 @@ class BackupBundleTests(TempDirTestCase):
         target = DataLayout(self.tmp / "target")
         engine_import = str(self.tmp / "other" / "engine")
         engine_local = str(self.tmp / "local" / "engine")
+        external_profile = EngineRegistry(source.engine_registry).register(engine_import)
         save_settings(source.settings, Settings(locale="de", last_pack_id="club-mate", engine_path=engine_import,
                                                 registered_engine_paths=(engine_import,)))
         save_settings(target.settings, Settings(locale="en", engine_path=engine_local,
@@ -599,6 +638,8 @@ class BackupBundleTests(TempDirTestCase):
         archive = write_backup(source, self.tmp / "profile.zip")
         result = restore_backup(target, archive)
         self.assertEqual(result.missing_packs, ("club-mate",))
+        self.assertEqual(result.missing_engine_profiles, (external_profile.engine_id,))
+        self.assertFalse(target.engine_registry.exists())
         restored, _ = load_settings(target.settings)
         self.assertEqual((restored.locale, restored.last_pack_id), ("de", "club-mate"))
         self.assertEqual((restored.engine_path, restored.registered_engine_paths), (engine_local, (engine_local,)))
@@ -673,6 +714,70 @@ with patch("chess_and_chains.storage.backup_bundle.save_settings", side_effect=a
         with Database.open(target.database) as db:
             self.assertEqual(db.load_game(1).moves, (Move.from_uci("d2d4"),))
         self.assertEqual(load_settings(target.settings)[0].locale, "en")
+
+    def test_recovery_handles_crash_before_database_marker_and_during_rollback(self):
+        incoming = DataLayout(self.tmp / "incoming")
+        target = DataLayout(self.tmp / "target")
+        save_settings(incoming.settings, Settings(locale="de"))
+        save_settings(target.settings, Settings(locale="en"))
+        with Database.open(incoming.database) as db:
+            db.import_pgn("1. e4 *")
+        with Database.open(target.database) as db:
+            db.import_pgn("1. d4 *")
+        archive = write_backup(incoming, self.tmp / "incoming.zip")
+        process = """
+import os
+import sys
+from pathlib import Path
+from unittest.mock import patch
+from chess_and_chains.storage import DataLayout
+from chess_and_chains.storage import backup_bundle as storage
+layout = DataLayout(Path(sys.argv[1]))
+if sys.argv[3] == "restore":
+    record = storage._record_phase
+
+    def abort_before_database_marker(journal, state, phase, **kwargs):
+        if phase == "DATABASE_APPLIED":
+            os._exit(17)
+        record(journal, state, phase, **kwargs)
+
+    with patch.object(storage, "_record_phase", side_effect=abort_before_database_marker):
+        storage.restore_backup(layout, Path(sys.argv[2]))
+else:
+    def abort_before_rollback_settings(path, data):
+        os._exit(18)
+
+    original = storage.write_atomic_export
+    with patch.object(storage, "write_atomic_export", side_effect=lambda path, data:
+                      abort_before_rollback_settings(path, data) if path == layout.settings else original(path, data)):
+        storage.open_profile(layout)
+"""
+        for phase, code in (("restore", 17), ("recover", 18)):
+            interrupted = subprocess.run(
+                [sys.executable, "-c", process, str(target.root), str(archive), phase],
+                env={**os.environ, "PYTHONPATH": str(ROOT / "src")}, capture_output=True, timeout=15,
+            )
+            self.assertEqual(interrupted.returncode, code, interrupted.stderr)
+            self.assertTrue((target.root / RESTORE_JOURNAL).is_file())
+        lock = open_profile(target)
+        self.addCleanup(lock.close)
+        self.assertFalse((target.root / RESTORE_JOURNAL).exists())
+        self.assertEqual(load_settings(target.settings)[0].locale, "en")
+        with Database.open(target.database) as db:
+            self.assertEqual(db.load_game(1).moves, (Move.from_uci("d2d4"),))
+
+    def test_profile_lease_allows_two_windows_and_prevents_restore(self):
+        layout = DataLayout(self.tmp / "profile")
+        candidate = write_backup(layout, self.tmp / "baseline.zip")
+        first = open_profile(layout)
+        second = open_profile(layout)
+        try:
+            with self.assertRaisesRegex(StorageError, "Profile locked"):
+                restore_backup(layout, candidate)
+        finally:
+            first.close()
+            second.close()
+        self.assertTrue(restore_backup(layout, candidate).recovery_bundle.is_file())
 
     def test_invalid_bundle_is_rejected_without_touching_current_profile(self):
         layout = DataLayout(self.tmp / "profile")

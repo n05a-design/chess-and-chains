@@ -1,5 +1,13 @@
 # Changelog
 
+## Unveröffentlicht – Engine- und Analyseintegration (2026-11-28)
+
+- Persistente UCI-Registry mit lokaler Freigabe, Binär- und Ressourcenprüfung vor dem Start sowie historischer Konfigurationsreferenz.
+- Sitzungsphasen, getrennte Konfliktkopien, bestätigte Engine-Wechsel und Wiederherstellung unterbrochener Profilimporte.
+- PGN-Uhrannotationen, getrennte aktive und explizite Pausenzeiten, Favoriten und Tags in der Bibliothek.
+- Headless-Benchmark, persistenter Analyse-Cache und Vergleiche kritischer Momente aus derselben Stellung.
+- SQLite v8 bewahrt eigenständige, regelvalidierte Analyse-Trainingskandidaten nach dem Löschen ihrer Quellen.
+
 ## Unveröffentlicht – Sitzung, Uhr, Analyse und Training (2026-11-27)
 
 - Lokale Partien samt Undo/Redo und konfigurierbarer Fischer-Uhr automatisch sichern und fortsetzen. Beweisbare Ergebnisse nach Zeitablauf automatisch werten.

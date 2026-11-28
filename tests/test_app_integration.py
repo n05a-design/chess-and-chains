@@ -3,6 +3,7 @@
 Runs a real Tk root (withdrawn). The bot is the project-owned mock UCI
 engine in a subprocess; this is not a test against a real chess engine.
 """
+from dataclasses import replace
 import sys
 import tempfile
 import threading
@@ -217,6 +218,19 @@ class DrawClaimTests(AppTestCase):
 
 
 class BotVerticalSliceTests(AppTestCase):
+    def test_default_product_path_does_not_start_mock_without_development_selection(self):
+        app = self.make_app()
+        app.mode_var.set("human-vs-bot-white")
+        with patch("chess_and_chains.ui.app.resolve_engine_config", return_value=(EngineConfig.mock(), None)):
+            app._new_game()
+            self.assertIsNotNone(app.interaction_text.get())
+            self.assertIsNone(app.controller.provider)
+            dialog = EngineDialog(app)
+            dialog.use_mock()
+            app._new_game()
+        self.assertTrue(app.settings.development_mock)
+        self.assertTrue(app.controller.provider.is_mock)
+
     def test_closing_engine_dialog_cancels_pending_tk_poll(self):
         app = self.make_app()
         dialog = EngineDialog(app)
@@ -453,6 +467,101 @@ class SessionRecoveryUiTests(AppTestCase):
             app._offer_draw()
         self.assertEqual(app.panel_text.get(), "Remis durch Vereinbarung.")
 
+    def test_autosave_conflict_keeps_both_lines_after_local_archive_and_resume(self):
+        with tempfile.TemporaryDirectory() as folder:
+            layout = DataLayout(Path(folder))
+            app = self.make_app(data_layout=layout)
+            app.start_game("human-vs-human")
+            app._play_move(Move.from_uci("e2e4"))
+            with type(app.db).open(layout.database) as other:
+                base, newer = other.load_session()
+                newer.play_uci("e7e5")
+                other.compare_and_save_session(replace(base, timeline=newer.timeline()), other.session_payload())
+            app._play_move(Move.from_uci("d7d5"))
+            self.assertTrue(app._session_conflict)
+            with patch("chess_and_chains.ui.app.messagebox.askyesnocancel", return_value=None):
+                app._resume_session()
+            self.assertEqual(app.game.moves[-1], Move.from_uci("d7d5"))
+            with patch("chess_and_chains.ui.app.messagebox.askyesnocancel", return_value=True):
+                app._resume_session()
+            self.assertFalse(app._session_conflict)
+            self.assertEqual(app.game.moves[-1], Move.from_uci("e7e5"))
+            game_id, *_ = app.db.list_games()[0]
+            self.assertEqual(app.db.load_game(game_id).moves[-1], Move.from_uci("d7d5"))
+            app.close()
+
+    def test_replacing_unavailable_engine_requires_confirmation_and_archives_history(self):
+        with tempfile.TemporaryDirectory() as folder:
+            layout = DataLayout(Path(folder))
+            app = self.make_app(data_layout=layout)
+            registrations = []
+            for seed in (1, 2):
+                fixture = EngineConfig.mock(seed=seed)
+                profile = app.engine_registry.register(
+                    fixture.command[0], arguments=fixture.command[1:], display_name=f"Fixture {seed}", origin="fixture",
+                )
+                registrations.append((profile.engine_id, app.engine_registry.probe(profile.engine_id).reference()))
+            first, replacement = registrations
+            app._store_settings(engine_profile_id=first[0])
+            app.start_game("human-vs-bot-white", time_control=TimeControl(60_000))
+            app._play_move(Move.from_uci("e2e4"))
+            self.pump_until(lambda: len(app.game.moves) == 2)
+            app.engine_registry.remove(first[0])
+            app._store_settings(engine_profile_id=replacement[0])
+            app.close()
+
+            resumed = self.make_app(data_layout=layout)
+            self.assertTrue(resumed._session_blocked)
+            with patch("chess_and_chains.ui.app.messagebox.askyesno", return_value=False):
+                resumed._resume_session()
+            self.assertEqual(resumed.db.load_session()[0].engine_ref, first[1])
+            with patch("chess_and_chains.ui.app.messagebox.askyesno", return_value=True):
+                resumed._resume_session()
+            saved = resumed.db.load_game(resumed._save_game())
+            change, = saved.session_snapshot.engine_changes
+            self.assertEqual(saved.session_snapshot.engine_provenance.engine_id, replacement[0])
+            self.assertEqual(change.previous_engine.engine_id, first[0])
+            self.assertTrue(change.previous_engine.effective_options)
+            self.assertEqual((change.previous, change.replacement, change.ply), (first[1], replacement[1], 2))
+            self.assertEqual(saved.bot_color, "b")
+            self.assertFalse(resumed.controller.view().clock_running)
+            resumed.close()
+
+    def test_confirmed_discard_remains_inactive_after_reopening(self):
+        with tempfile.TemporaryDirectory() as folder:
+            layout = DataLayout(Path(folder))
+            app = self.make_app(data_layout=layout)
+            app._play_move(Move.from_uci("e2e4"))
+            with patch("chess_and_chains.ui.app.messagebox.askyesno", return_value=True):
+                app._discard_session()
+            self.assertEqual(app.db.load_session()[0].session_phase.value, "discarded")
+            self.assertEqual(app.game.moves, [])
+            app.close()
+            reopened = self.make_app(data_layout=layout)
+            self.assertEqual(reopened.game.moves, [])
+            self.assertEqual(reopened.db.load_session()[0].session_phase.value, "discarded")
+            reopened.close()
+
+    def test_registry_profile_restarts_timed_bot_session_with_same_reference(self):
+        with tempfile.TemporaryDirectory() as folder:
+            layout = DataLayout(Path(folder))
+            app = self.make_app(data_layout=layout)
+            fixture = EngineConfig.mock()
+            profile = app.engine_registry.register(fixture.command[0], arguments=fixture.command[1:], origin="fixture")
+            checked = app.engine_registry.probe(profile.engine_id)
+            app._store_settings(engine_profile_id=profile.engine_id)
+            app.start_game("human-vs-bot-white", time_control=TimeControl(60_000, 2000))
+            app._play_move(Move.from_uci("e2e4"))
+            self.pump_until(lambda: len(app.game.moves) == 2)
+            app.close()
+
+            reopened = self.make_app(data_layout=layout)
+            self.assertEqual(reopened.db.load_session()[0].engine_ref, checked.reference())
+            self.assertEqual(reopened.controller.setup.bot_color, Color.BLACK)
+            self.assertFalse(reopened.controller.view().clock_running)
+            self.assertEqual(len(reopened.game.moves), 2)
+            reopened.close()
+
     def test_startup_resumes_autosave_with_redo_without_library_entry(self):
         with tempfile.TemporaryDirectory() as folder:
             layout = DataLayout(Path(folder))
@@ -479,8 +588,10 @@ class SessionRecoveryUiTests(AppTestCase):
             app = self.make_app(data_layout=layout, provider_factory=factory)
             app.start_game("human-vs-bot-black")
             self.pump_until(lambda: len(app.game.moves) == 1)
-            saved, _ = app.db.load_session()
             app.close()
+            with type(app.db).open(layout.database) as db:
+                saved, _ = db.load_session()
+                self.assertEqual(saved.session_phase.value, "interrupted")
 
             # The app refuses the mismatched identity, then permits an explicit retry.
             resumed = self.make_app(data_layout=layout, provider_factory=factory)
@@ -572,6 +683,8 @@ class SessionRecoveryUiTests(AppTestCase):
             archived = app.db.load_game(app._save_game())
             self.assertEqual(dict(archived.pgn_tags)["TimeControl"], "60+2")
             self.assertEqual(archived.session_snapshot.clock.positions[2].remaining_ms(Color.BLACK), 58_500)
+            self.assertEqual(archived.clock_annotations, (60_750,))
+            self.assertEqual(archived.timed_play_duration.total_seconds(), 4.75)
             with patch.object(app, "_open_replay") as replay:
                 app._open_saved_replay(archived)
             (game,), kwargs = replay.call_args
@@ -642,6 +755,9 @@ class AnalysisArchiveUiTests(AppTestCase):
             ):
                 app._analyse_game(original.to_game(), AnalysisMode.GAME, source_game_id=game_id)
             self.assertEqual(app.db.load_game(game_id), original)
+            run_id = app.db.analysis_reports()[0].run_id
+            _, report = app.db.load_analysis_report(run_id)
+            self.assertEqual(app._save_training_position(run_id, report.results[0]), app.t("analysis.position_saved"))
             app.close()
 
             reopened = self.make_app(data_layout=layout)
@@ -660,6 +776,13 @@ class AnalysisArchiveUiTests(AppTestCase):
             self.assertIsNone(reopened._analysis)
             self.assertIn("Critical moments", displayed[0])
             self.assertIn("d2d4", displayed[0])
+            reopened.db.delete_game(game_id)
+            with patch.object(reopened, "_choose_item", return_value=0), patch(
+                "chess_and_chains.ui.app.messagebox.askyesno", return_value=True,
+            ):
+                reopened._open_training_positions()
+            self.assertEqual(to_fen(reopened.game.state), original.initial_fen)
+            self.assertEqual(len(reopened.db.analysis_training_candidates()), 1)
             reopened.close()
 
 
@@ -690,6 +813,19 @@ class PuzzleUiTests(AppTestCase):
             self.assertNotEqual(following.puzzle.puzzle, first)
             self.assertEqual(following.db.puzzle_progress(following.pack.manifest.pack_id, first.puzzle_id).attempts, 1)
             following.close()
+
+    def test_rating_ranges_separate_2500_band_and_3000_plus(self):
+        from chess_and_chains.puzzles import load_demo_pack
+        from chess_and_chains.ui.app import PUZZLE_RATING_RANGES
+
+        demo = load_demo_pack()
+        samples = tuple(replace(puzzle, rating=rating) for puzzle, rating in zip(
+            demo.puzzles, (2499, 2500, 2999, 3000, 3250), strict=True,
+        ))
+        app = self.make_app(puzzle_pack=replace(demo, puzzles=samples))
+        for band, expected in (((2500, 2999), (2500, 2999)), ((3000, None), (3000, 3250))):
+            app.puzzle_rating_filter.current(PUZZLE_RATING_RANGES.index(band) + 1)
+            self.assertEqual(tuple(puzzle.rating for puzzle in app._matching_puzzles()), expected)
 
     def test_due_filter_reads_persisted_attempt_dates(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -1358,6 +1494,27 @@ class PositionExchangeUiTests(AppTestCase):
 
 
 class StorageAndLocaleUiTests(AppTestCase):
+    def test_archive_label_actions_save_unicode_and_apply_favorite_filter(self):
+        with tempfile.TemporaryDirectory() as folder:
+            app = self.make_app(data_layout=DataLayout(Path(folder)))
+            game_id = app.db.import_pgn("1. e4 *")
+            with patch.object(app, "_choose_item", side_effect=(0, 1, 1)), patch(
+                "chess_and_chains.ui.app.ask_archive_tag", return_value="Échecs ♞",
+            ):
+                app._edit_archive_labels(game_id)
+                app._edit_archive_labels(game_id)
+                app._filter_library()
+            self.assertTrue(app._library_favorites)
+            labels = app.db.archive_labels(game_id)
+            self.assertEqual(labels.tags, ("Échecs ♞",))
+            self.assertTrue(labels.favorite)
+            with patch.object(app, "_choose_item", side_effect=(2, 0, 0)):
+                app._edit_archive_labels(game_id)
+                app._edit_archive_labels(game_id)
+            self.assertEqual(app.db.archive_labels(game_id).tags, ())
+            self.assertFalse(app.db.archive_labels(game_id).favorite)
+            app.close()
+
     def test_marble_switch_preserves_game_and_uses_projected_move_targets(self):
         app = self.make_app(locale="de")
         self.root.deiconify()

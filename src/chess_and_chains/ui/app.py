@@ -58,16 +58,17 @@ from ..chess import (
 )
 from ..engines.analysis import AnalysisMode, AnalysisProgress, AnalysisRequest, AnalysisResult, AnalysisService
 from ..engines.bot import EngineConfig, EngineConfigError, MoveProvider, UCIBot, resolve_engine_config
-from ..engines.registry import EngineAvailability, EngineRegistry
+from ..engines.registry import EngineAvailability, EngineProfile, EngineRegistry
 from ..engines.presets import BotPreset, load_presets
 from ..engines.uci import UCIEngineError
 from ..game import BotStatus, GameController, GameSetup, GameView, PlayMode
 from ..game.clock import ClockTimeline, TimeControl
-from ..game.session import GameSessionSnapshot, SessionLifecycle
+from ..game.session import EngineChange, GameSessionSnapshot, SessionLifecycle, SessionPhase
 from ..i18n import Translator
 from ..puzzles import DEMO_PACK_ID, PackError, PackLibrary, Puzzle, PuzzlePack, PuzzleSession, Verdict, load_demo_pack
 from ..puzzles.catalog import IndexedPuzzlePack, PuzzleSelection
-from ..puzzles.training import DEMO_MATE_CHAIN, TrainingCandidate, TrainingSession, demo_chain_catalog
+from ..puzzles.training import DEMO_MATE_CHAIN, TrainingSession, demo_chain_catalog
+from ..storage.backup_bundle import open_profile
 from ..storage import Database, DataLayout, SavedGame, SessionConflict, Settings, SettingsError, StorageError, load_settings, save_settings
 from .analysis_dialog import AnalysisDialog
 from .appearance_dialog import AppearanceDialog
@@ -76,7 +77,7 @@ from .board import Orientation
 from .board_artwork import BoardArtwork, BoardArtworkError, BoardDesign
 from .branding import apply_window_icon, draw_signet_canvas, emblem_image
 from .captured_material import CapturedMaterialBar
-from .dialogs import PositionDialog, ask_time_control, bind_button_enter as _bind_button_enter
+from .dialogs import PositionDialog, ask_archive_tag, ask_time_control, bind_button_enter as _bind_button_enter
 from .marble_board import MarbleBoardCanvas
 from .pieces import OwnerSvgPieces, PieceRenderer, get_piece_set
 from .replay import ReplayDialog
@@ -133,7 +134,7 @@ from .theme import (
 POLL_MS = 40
 PANEL_GAP = SPACING[12]  # 12 px uniform outer margin and inter-card gap (Glide layout parity)
 PUZZLE_RATING_RANGES: tuple[tuple[int, int | None], ...] = (
-    (1000, 1199), (1200, 1599), (1600, 1999), (2000, None),
+    (1000, 1199), (1200, 1599), (1600, 1999), (2000, None), (2500, 2999), (3000, None),
 )
 ProviderFactory = Callable[[BotPreset, Settings], MoveProvider]
 
@@ -280,6 +281,7 @@ class ChessApp:
         self.layout = data_layout
         self.settings_warning: str | None = None
         database_warning: str | None = None
+        self._profile_lock = open_profile(data_layout) if data_layout is not None else None
         if data_layout is not None:
             self.settings, self.settings_warning = load_settings(data_layout.settings)
             try:
@@ -315,8 +317,22 @@ class ChessApp:
         self._height_density: str = "full"
         self.t = Translator(locale or self.settings.locale)
         self.presets = load_presets()
-        self._provider_factory = provider_factory
-        self.engine_registry = EngineRegistry()
+        self._provider_factory = self._create_provider if provider_factory is default_provider_factory else provider_factory
+        engine_warning = None
+        try:
+            self.engine_registry = EngineRegistry(data_layout.engine_registry if data_layout else None)
+            legacy_paths = {Path(path).expanduser().absolute() for path in self.settings.registered_engine_paths}
+            selected = self.settings.engine_profile_id
+            if selected is None and self.settings.engine_path:
+                path = Path(self.settings.engine_path).expanduser().absolute()
+                selected = self._register_engine_path(path).engine_id
+            for path in sorted(legacy_paths):
+                self._register_engine_path(path)
+            if legacy_paths or selected != self.settings.engine_profile_id:
+                self._store_settings(engine_profile_id=selected, registered_engine_paths=())
+        except (EngineConfigError, OSError) as error:
+            self.engine_registry = EngineRegistry()
+            engine_warning = str(error)
         self._analysis: tuple[str, AnalysisService] | None = None
         self.controller = GameController()
         self._unsubscribe_view = self.controller.subscribe(self._on_view)
@@ -324,6 +340,10 @@ class ChessApp:
         self._saved_session: GameSessionSnapshot | None = None
         self._session_payload: str | None = None
         self._session_blocked = False
+        self._session_conflict = False
+        self._restoring_checkpoint = False
+        self._library_favorites = False
+        self._library_tag: str | None = None
         self.orientation: Orientation = "white"
         self.active_panel = "play"
         self._pack_library = PackLibrary(data_layout.packs) if data_layout is not None else None
@@ -381,7 +401,7 @@ class ChessApp:
         if self.db is not None and self.db.recovered_from is not None:
             database_warning = self.t("library.recovered", file=self.db.recovered_from.name)
         session_message = self._restore_session()
-        startup_messages = (database_warning, self.settings_warning, session_message)
+        startup_messages = (database_warning, self.settings_warning, engine_warning, session_message)
         self.interaction_text.set("\n".join(message for message in startup_messages if message))
         saved_pack = self.settings.last_pack_id
         if puzzle_pack is None and self._pack_library is not None and saved_pack not in (None, DEMO_PACK_ID):
@@ -652,6 +672,7 @@ class ChessApp:
                 (t("clock.decide"), self._decide_timeout, "", "decide_timeout"),
                 (t("draw.offer"), self._offer_draw, "", "offer_draw"),
                 (t("session.resume"), self._resume_session, "", "resume_session"),
+                (t("session.discard"), self._discard_session, "", "discard_session"),
                 (t("button.save_game"), self._save_game, "", "save_game"),
                 (t("button.library"), self._open_library, "", "open_library"),
                 (t("analysis.training_positions"), self._open_training_positions, "", "open_training_positions"),
@@ -2161,6 +2182,33 @@ class ChessApp:
             save_settings(self.layout.settings, updated)
         self.settings = updated
 
+    def _register_engine_path(
+        self, executable: Path, arguments: tuple[str, ...] = (), display_name: str | None = None,
+    ) -> EngineProfile:
+        path = executable.expanduser().absolute()
+        existing = self.engine_registry.profile_for_command(path, arguments)
+        return existing or self.engine_registry.register(path, arguments=arguments, display_name=display_name)
+
+    def _configured_engine(self, settings: Settings) -> EngineConfig:
+        if settings.engine_profile_id is not None:
+            try:
+                return self.engine_registry.launch_configuration(settings.engine_profile_id)
+            except KeyError as error:
+                raise EngineConfigError("The selected engine registration is unavailable.") from error
+        if settings.engine_path is None:
+            config, warning = resolve_engine_config(None)
+            if warning or (config.is_mock and not settings.development_mock):
+                raise EngineConfigError(warning or self.t("engine.missing"))
+            return config
+        path = Path(settings.engine_path).expanduser().absolute()
+        profile = self.engine_registry.profile_for_command(path)
+        if profile is None:
+            raise EngineConfigError("Register and test the selected engine before use.")
+        return self.engine_registry.launch_configuration(profile.engine_id)
+
+    def _create_provider(self, preset: BotPreset, settings: Settings) -> MoveProvider:
+        return UCIBot(self._configured_engine(settings), preset)
+
     def _setup_for_mode(self, mode: str) -> GameSetup:
         if mode == "human-vs-bot-white":
             return GameSetup.against_bot(Color.WHITE)
@@ -2176,11 +2224,16 @@ class ChessApp:
     def _new_game(self, time_control: TimeControl | None = None) -> None:
         if self.active_panel == "puzzles":
             self.tab_rail.set_active("play")
-        if self._has_game_to_replace() and not messagebox.askyesno(
+        if self._session_conflict and not self._confirm_conflict_departure():
+            return
+        if not self._session_conflict and self._has_game_to_replace() and not messagebox.askyesno(
             self.t("new_game.confirm_title"), self.t("new_game.confirm_body"), parent=self.root,
         ):
             return
-        self.start_game(self.mode_var.get(), time_control=time_control)
+        try:
+            self.start_game(self.mode_var.get(), time_control=time_control)
+        except EngineConfigError as error:
+            self.interaction_text.set(self.t("engine.test_failed", error=error))
 
     def _new_timed_game(self) -> None:
         controls = ((1, 0), (2, 1), (3, 0), (3, 2), (5, 0), (5, 3), (10, 0), (10, 5), (15, 10), (30, 0), (60, 0))
@@ -2224,29 +2277,96 @@ class ChessApp:
         self.mode_var.set(mode)
         self._store_settings(play_mode=mode)
         self._game_headers.clear()
-        self._session_blocked = False
+        self._session_blocked = self._session_conflict
         self.controller.new_game(setup)
+
+    def _discard_session(self) -> None:
+        if self._session_blocked or self._saved_session is None or self.db is None:
+            self.interaction_text.set(self.t("session.none"))
+            return
+        if not messagebox.askyesno(
+            self.t("session.discard"), self.t("session.discard_confirm"), parent=self.root, default=messagebox.NO,
+        ):
+            return
+        self.controller.pause_for_close()
+        self._autosave_session(self.controller.view(), force=True, phase=SessionPhase.DISCARDED)
+        if self._saved_session.session_phase is not SessionPhase.DISCARDED:
+            return
+        self._restoring_checkpoint = True
+        try:
+            self._game_headers.clear()
+            self.mode_var.set("human-vs-human")
+            self.controller.new_game(GameSetup.two_players())
+        finally:
+            self._restoring_checkpoint = False
+        self._session_game = self.game
+        self._saved_session = None
+        self.interaction_text.set(self.t("session.discarded"))
+
+    def _confirm_conflict_departure(self) -> bool:
+        choice = messagebox.askyesnocancel(
+            self.t("session.conflict_title"), self.t("session.conflict_copy"), parent=self.root,
+            default=messagebox.CANCEL,
+        )
+        if choice is None:
+            return False
+        return not choice or self._save_game() is not None
 
     def _resume_session(self) -> None:
         if not self._session_blocked:
             self.interaction_text.set(self.t("session.none"))
             return
-        if (self.game.can_undo or self.game.can_redo or self.controller.clock_reading() is not None) and not messagebox.askyesno(
+        if self._session_conflict:
+            if not self._confirm_conflict_departure():
+                return
+        elif (self.game.can_undo or self.game.can_redo or self.controller.clock_reading() is not None) and not messagebox.askyesno(
             self.t("session.resume"), self.t("library.replace"), parent=self.root,
         ):
             return
-        self.interaction_text.set(self._restore_session() or self.t("session.none"))
+        self.interaction_text.set(self._restore_session(allow_engine_change=True) or self.t("session.none"))
 
-    def _restore_session(self) -> str | None:
+    def _resume_provider(self, preset: BotPreset, reference: str | None) -> MoveProvider:
+        if reference and reference.startswith("uci1:") and self._provider_factory == self._create_provider:
+            _, engine_id, *_ = reference.split(":")
+            try:
+                config = self.engine_registry.launch_configuration(engine_id)
+                if config.registry_reference == reference:
+                    return UCIBot(config, preset)
+            except (EngineConfigError, KeyError):
+                pass
+        return self._provider_factory(preset, self.settings)
+
+    def _confirm_engine_change(
+        self, snapshot: GameSessionSnapshot, game: ChessGame, provider: MoveProvider,
+    ) -> GameSessionSnapshot | None:
+        if not isinstance(provider, UCIBot) or provider.config.registry_reference is None or provider.is_mock:
+            return None
+        if not messagebox.askyesno(
+            self.t("session.engine_change_title"), self.t("session.engine_change", name=provider.display_name),
+            parent=self.root, default=messagebox.NO,
+        ):
+            return None
+        assert snapshot.engine_ref is not None
+        reference = provider.config.registry_reference
+        now = max(snapshot.updated_utc, datetime.now(timezone.utc).isoformat())
+        change = EngineChange(
+            snapshot.engine_ref, reference, now, len(game.moves), "user-confirmed-replacement",
+            previous_engine=snapshot.engine_provenance,
+        )
+        return replace(snapshot, engine_ref=reference, updated_utc=now,
+                       engine_provenance=provider.config.provenance, engine_changes=(*snapshot.engine_changes, change))
+
+    def _restore_session(self, *, allow_engine_change: bool = False) -> str | None:
         if self.db is None:
             return None
         try:
             self._session_payload = self.db.session_payload()
             saved = self.db.decode_session(self._session_payload) if self._session_payload is not None else None
-            if saved is None or saved[0].lifecycle is SessionLifecycle.FINISHED:
+            if saved is None or saved[0].session_phase in (SessionPhase.FINISHED, SessionPhase.DISCARDED):
                 self._session_blocked = False
                 return None
             snapshot, game = saved
+            engine_changed = False
             bot = snapshot.setup.bot_color
             provider = None
             if bot is not None:
@@ -2254,11 +2374,15 @@ class ChessApp:
                 if preset is None:
                     self._session_blocked = True
                     return self.t("session.engine")
-                provider = self._provider_factory(preset, self.settings)
-                if self._engine_reference(provider) != snapshot.engine_ref:
-                    provider.close()
-                    self._session_blocked = True
-                    return self.t("session.engine")
+                provider = self._resume_provider(preset, snapshot.engine_ref)
+                if not self._matches_engine_reference(provider, snapshot.engine_ref):
+                    replacement = self._confirm_engine_change(snapshot, game, provider) if allow_engine_change else None
+                    if replacement is None:
+                        provider.close()
+                        self._session_blocked = True
+                        return self.t("session.engine")
+                    snapshot = replacement
+                    engine_changed = True
                 self.preset_var.set(self._preset_label(preset.id))
                 self.orientation = "black" if bot is Color.WHITE else "white"
                 self.board.set_orientation(self.orientation)
@@ -2268,9 +2392,15 @@ class ChessApp:
             self._game_headers = dict(snapshot.headers)
             self._session_game = game
             self._saved_session = snapshot
-            self._session_blocked = False
-            self.controller.resume_game(game, snapshot.setup, provider=provider, clock=snapshot.clock)
-            return self.t("session.restored")
+            self._session_blocked = self._session_conflict = False
+            self._restoring_checkpoint = True
+            try:
+                self.controller.resume_game(game, snapshot.setup, provider=provider, clock=snapshot.clock)
+            finally:
+                self._restoring_checkpoint = False
+            if engine_changed or allow_engine_change:
+                self._autosave_session(self.controller.view(), force=True, phase=SessionPhase.RESTORED)
+            return self.t("session.conflict" if self._session_conflict else "session.restored")
         except (StorageError, sqlite3.Error, OSError, ValueError) as error:
             self._session_blocked = True
             return self.t("session.error", error=error)
@@ -2285,7 +2415,15 @@ class ChessApp:
             return "mock"
         raise ValueError("The session engine has no persistent reference.")
 
-    def _session_snapshot(self, view: GameView) -> GameSessionSnapshot:
+    def _matches_engine_reference(self, provider: MoveProvider, reference: str | None) -> bool:
+        if self._engine_reference(provider) == reference:
+            return True
+        return (isinstance(provider, UCIBot) and provider.config.registry_reference is not None
+                and reference == provider.config.legacy_reference())
+
+    def _session_snapshot(
+        self, view: GameView, *, phase: SessionPhase | None = None,
+    ) -> GameSessionSnapshot:
         current = self._saved_session if self._session_game is self.game else None
         lifecycle = SessionLifecycle.ACTIVE if view.outcome.status is GameStatus.ACTIVE else SessionLifecycle.FINISHED
         now = datetime.now(timezone.utc).isoformat()
@@ -2293,32 +2431,53 @@ class ChessApp:
         bot = view.setup.bot_color
         reference = None
         preset = None
+        provenance = current.engine_provenance if current is not None else None
         if bot is not None:
             reference = current.engine_ref if current is not None else self._engine_reference(provider)
             preset = provider.preset.id if isinstance(provider, UCIBot) else self._selected_preset().id
+            if isinstance(provider, UCIBot) and provider.config.registry_reference == reference:
+                if provider.config.provenance is not None:
+                    if provenance is None:
+                        provenance = provider.config.provenance
+                    if provider.last_plan is not None:
+                        options = {name.casefold(): value for name, value in provider.config.approved_options}
+                        options.update((name.casefold(), value) for name, value in provider.last_plan.apply)
+                        provenance = replace(provenance, effective_options=tuple(sorted(options.items())))
+        if lifecycle is SessionLifecycle.FINISHED:
+            phase = SessionPhase.FINISHED
+        elif view.flagged is not None and phase is not SessionPhase.DISCARDED:
+            phase = SessionPhase.TIMEOUT_PENDING
+        elif phase is None:
+            if view.clock is not None and not view.clock_running:
+                phase = SessionPhase.PAUSED
+            else:
+                phase = SessionPhase.ACTIVE if self.game.timeline().moves else SessionPhase.CREATED
         snapshot = GameSessionSnapshot(
             current.session_id if current else str(uuid4()),
             current.created_utc if current else now,
             max(now, current.updated_utc) if current else now,
             replace(view.setup, initial_fen=None), to_fen(self.game.initial_state), self.game.timeline(), lifecycle,
             reference, preset, tuple(sorted(self._game_headers.items())), clock=self.controller.clock_timeline(),
+            engine_changes=current.engine_changes if current else (), engine_provenance=provenance, phase=phase,
         )
         return current if current is not None and snapshot == replace(current, updated_utc=snapshot.updated_utc) else snapshot
 
-    def _autosave_session(self, view: GameView, *, force: bool = False) -> None:
-        if self.db is None or self._session_blocked:
+    def _autosave_session(
+        self, view: GameView, *, force: bool = False, phase: SessionPhase | None = None,
+    ) -> None:
+        if self.db is None or self._session_blocked or self._restoring_checkpoint:
             return
         if not force and self.game is self._session_game and self._saved_session is None and not self.game.can_undo:
             return  # The startup board alone is not a session.
         try:
-            snapshot = self._session_snapshot(view)
+            snapshot = self._session_snapshot(view, phase=phase)
             if snapshot is self._saved_session and not force:
                 return
             self._session_payload = self.db.compare_and_save_session(snapshot, self._session_payload)
             self._session_game = self.game
             self._saved_session = snapshot
         except SessionConflict:
-            self._session_blocked = True
+            self._session_blocked = self._session_conflict = True
             self.interaction_text.set(self.t("session.conflict"))
         except (StorageError, sqlite3.Error, OSError, ValueError) as error:
             self.interaction_text.set(self.t("session.error", error=error))
@@ -2843,11 +3002,57 @@ class ChessApp:
         self.interaction_text.set(self.t("save.done", id=game_id))
         return game_id
 
+    def _filter_library(self) -> None:
+        if self.db is None:
+            return
+        tags = self.db.archive_tags()
+        selected = self._choose_item(
+            self.t("library.filters"),
+            [self.t("library.all_games"), self.t("library.favorites"), *tags],
+            self.t("library.filters"), searchable=True,
+        )
+        if selected is not None:
+            self._library_favorites = selected == 1
+            self._library_tag = tags[selected - 2] if selected >= 2 else None
+
+    def _edit_archive_labels(self, game_id: int) -> None:
+        if self.db is None:
+            return
+        labels = self.db.archive_labels(game_id)
+        selected = self._choose_item(
+            self.t("library.labels"), [
+                self.t("library.unfavorite" if labels.favorite else "library.favorite"),
+                self.t("library.add_tag"),
+                *([self.t("library.remove_tag")] if labels.tags else []),
+            ], self.t("button.save"),
+        )
+        if selected is None:
+            return
+        favorite, tags = labels.favorite, labels.tags
+        if selected == 0:
+            favorite = not favorite
+        elif selected == 1:
+            tag = ask_archive_tag(self.root, self.t, self.theme)
+            if tag is None:
+                return
+            if tag not in tags:
+                tags = (*tags, tag)
+        else:
+            remove = self._choose_item(self.t("library.remove_tag"), tags, self.t("library.remove_tag"))
+            if remove is None:
+                return
+            tags = tuple(tag for index, tag in enumerate(tags) if index != remove)
+        self.db.set_archive_labels(game_id, favorite=favorite, tags=tags)
+        self.interaction_text.set(self.t("library.labels_saved"))
+
     def _open_library(self) -> None:
         if self.db is None:
             return
         try:
-            rows = self.db.game_summaries()
+            rows = self.db.game_summaries(favorite=True if self._library_favorites else None, tag=self._library_tag)
+            title = self.t("button.library")
+            if self._library_favorites or self._library_tag:
+                title += f" · {self._library_tag or self.t('library.favorites')}"
             labels = []
             for game in rows:
                 label = self.t("library.entry", id=game.id, date=game.created_utc[:10], result=game.result)
@@ -2855,9 +3060,9 @@ class ChessApp:
                     label += "  ·  " + self.t("library.players", white=game.white, black=game.black)
                 if game.event and game.event not in ("*", "?"):
                     label += "  ·  " + game.event
-                labels.append(label)
+                labels.append(f"★ {label}" if game.favorite else label)
             chosen = self._choose_item(
-                self.t("button.library"), labels, self.t("library.open"), empty=self.t("library.empty"), searchable=True,
+                title, labels, self.t("library.open"), empty=self.t("library.empty"), searchable=True,
                 actions=(
                     (self.t("library.import"), lambda _index: self._import_pgn_file(), False),
                     (self.t("library.export"), lambda index: self._export_pgn_file(rows[index].id)
@@ -2872,6 +3077,9 @@ class ChessApp:
                     ) if index is not None else None, True),
                     (self.t("replay.title"), lambda index: self._open_saved_replay(self.db.load_game(rows[index].id))
                      if index is not None else None, True),
+                    (self.t("library.labels"), lambda index: self._edit_archive_labels(rows[index].id)
+                     if index is not None else None, True),
+                    (self.t("library.filters"), lambda _index: self._filter_library(), False),
                 ),
             )
             if chosen is None:
@@ -2908,11 +3116,14 @@ class ChessApp:
             if saved.bot_color != bot.value or not saved.engine_ref or preset is None:
                 self.interaction_text.set(self.t("library.engine"))
                 return
-            provider = self._provider_factory(preset, self.settings)
-            if self._engine_reference(provider) != saved.engine_ref:
-                provider.close()
-                self.interaction_text.set(self.t("library.engine"))
-                return
+            provider = self._resume_provider(preset, saved.engine_ref)
+            if not self._matches_engine_reference(provider, saved.engine_ref):
+                replacement = self._confirm_engine_change(snapshot, game, provider) if snapshot is not None else None
+                if replacement is None:
+                    provider.close()
+                    self.interaction_text.set(self.t("library.engine"))
+                    return
+                snapshot = replacement
             self.preset_var.set(self._preset_label(preset.id))
             self.orientation = "black" if bot is Color.WHITE else "white"
             self.board.set_orientation(self.orientation)
@@ -2962,7 +3173,9 @@ class ChessApp:
         self.interaction_text.set(self.t("library.exported", id=game_id))
 
     def _current_pgn(self) -> str:
-        return export_pgn(self.game, self._pgn_headers())
+        clock = self.controller.clock_timeline()
+        annotations = clock.move_annotations(len(self.game.moves)) if clock else ()
+        return export_pgn(self.game, self._pgn_headers(), clock_annotations=annotations)
 
     def _copy_pgn(self) -> None:
         desktop_adapter.copy_to_clipboard(self.root, self._current_pgn())
@@ -3431,20 +3644,26 @@ class ChessApp:
         self, game: ChessGame, mode: AnalysisMode, *, source_game_id: int | None = None,
     ) -> None:
         try:
-            config, _warning = resolve_engine_config(self.settings.engine_path)
+            if self.controller.view().bot_status is BotStatus.THINKING:
+                self.interaction_text.set(self.t("analysis.bot_busy"))
+                return
+            config = self._configured_engine(self.settings)
             if config.is_mock:
                 self.interaction_text.set(self.t("analysis.engine_required"))
                 return
             reference = config.session_reference()
             if self._analysis is None or self._analysis[0] != reference:
-                self._analysis = (reference, AnalysisService(config, engine_id=reference))
+                self._analysis = (reference, AnalysisService(
+                    config, engine_id=reference, engine_version=config.verified_version,
+                    cache_path=self.layout.analysis_cache if self.layout else None,
+                ))
             job = self._analysis[1].start(AnalysisRequest(
                 str(uuid4()), to_fen(game.initial_state), tuple(game.moves), mode, multipv=3,
             ))
         except (OSError, RuntimeError, ValueError) as error:
             self.interaction_text.set(self.t("analysis.failed", error=error))
             return
-        save_position = partial(self._save_training_position, source_game_id) if source_game_id is not None else None
+        save_position = partial(self._save_training_position, job.progress().job_id) if source_game_id is not None else None
         store_report = partial(self._store_analysis_report, source_game_id) if source_game_id is not None else None
         dialog = AnalysisDialog(self.root, self.t, job, self.theme.acetate, save_position, store_report)
         modal_session.wait_modal(self.root, dialog.window)
@@ -3474,19 +3693,19 @@ class ChessApp:
             )
             if selected is None:
                 return
-            game_id, report = self.db.load_analysis_report(reports[selected].run_id)
+            _, report = self.db.load_analysis_report(reports[selected].run_id)
         except (StorageError, sqlite3.Error) as error:
             self.interaction_text.set(self.t("analysis.archive_error", error=error))
             return
         dialog = AnalysisDialog(self.root, self.t, report, self.theme.acetate,
-                                partial(self._save_training_position, game_id))
+                                partial(self._save_training_position, report.job_id))
         modal_session.wait_modal(self.root, dialog.window)
 
-    def _save_training_position(self, game_id: int, result: AnalysisResult) -> str:
+    def _save_training_position(self, report_id: str, result: AnalysisResult) -> str:
         if self.db is None:
             return self.t("save.unavailable")
         try:
-            self.db.save_training_candidate(TrainingCandidate(game_id, len(result.history), result.fen))
+            self.db.save_analysis_training_candidate(report_id, len(result.history))
         except (StorageError, sqlite3.Error, ValueError) as error:
             return self.t("analysis.failed", error=error)
         return self.t("analysis.position_saved")
@@ -3495,7 +3714,7 @@ class ChessApp:
         if self.db is None:
             return
         try:
-            positions = self.db.training_candidates()
+            positions = (*self.db.analysis_training_candidates(), *self.db.training_candidates())
         except (StorageError, sqlite3.Error) as error:
             self.interaction_text.set(self.t("library.error", error=error))
             return
@@ -3520,14 +3739,20 @@ class ChessApp:
         self.controller.load_game(ChessGame(parse_fen(fen)))
 
     def _open_saved_replay(self, saved: SavedGame) -> None:
-        self._open_replay(saved.to_game(), clock=saved.session_snapshot.clock if saved.session_snapshot else None)
+        if saved.session_snapshot is not None:
+            self._open_replay(saved.to_game(), clock=saved.session_snapshot.clock)
+        else:
+            self._open_replay(saved.to_game(), clock_annotations=saved.clock_annotations)
 
-    def _open_replay(self, game: ChessGame, *, clock: ClockTimeline | None = None) -> None:
+    def _open_replay(
+        self, game: ChessGame, *, clock: ClockTimeline | None = None, clock_annotations: tuple[int | None, ...] = (),
+    ) -> None:
         replay_artwork = self.board._artwork
         if replay_artwork is None and self.board.board_design == "marble":
             replay_artwork = self.board._ensure_marble_2d_artwork()
         dialog = ReplayDialog(
             self.root, game, self.t, replay_artwork, self.board.renderer, self.orientation, theme=self.theme, clock=clock,
+            clock_annotations=clock_annotations,
         )
         modal_session.wait_modal(self.root, dialog)
 
@@ -3739,7 +3964,9 @@ class ChessApp:
         if self._chain is not None:
             self._save_mate_chain()
         self.controller.pause_for_close()
-        self._autosave_session(self.controller.view())
+        self._autosave_session(self.controller.view(), phase=SessionPhase.INTERRUPTED)
+        if self._session_conflict and not self._confirm_conflict_departure():
+            return
         self._closed = True
         self._unsubscribe_view()
         del self._unsubscribe_view
@@ -3749,6 +3976,8 @@ class ChessApp:
         self.controller.shutdown()
         if self.db is not None:
             self.db.close()
+        if self._profile_lock is not None:
+            self._profile_lock.close()
         try:
             self.root.destroy()
         except tk.TclError:
@@ -3804,13 +4033,15 @@ class EngineDialog:
             highlightbackground=theme.input_border, highlightcolor=theme.brand_blue,
         )
         self.entry.grid(row=2, column=0, columnspan=2, sticky="ew", padx=(0, 6))
-        if app.settings.registered_engine_paths:
+        registered = tuple(dict.fromkeys(str(profile.executable) for profile in app.engine_registry.profiles()
+                                         if not profile.arguments))
+        if registered:
             saved = ttk.Combobox(
-                self.window, state="readonly", values=app.settings.registered_engine_paths, width=48,
+                self.window, state="readonly", values=registered, width=48,
                 style="Glide.TCombobox",
             )
             saved.grid(row=1, column=1, columnspan=2, sticky="ew", pady=(12, 2))
-            if app.settings.engine_path in app.settings.registered_engine_paths:
+            if app.settings.engine_path in registered:
                 saved.set(app.settings.engine_path)
             saved.bind("<<ComboboxSelected>>", lambda _event: self.path_var.set(saved.get()))
         app._button(self.window, t("button.browse"), self._browse, stretch=False).grid(row=2, column=2, padx=(6, 0))
@@ -3839,10 +4070,7 @@ class EngineDialog:
             path = Path(config.command[0]).absolute()
             arguments = config.command[1:]
             registry = self.app.engine_registry
-            profile = next((item for item in registry.profiles()
-                            if item.executable == path and item.arguments == arguments), None)
-            if profile is None:
-                profile = registry.register(path, arguments=arguments, display_name=config.display_name)
+            profile = self.app._register_engine_path(path, arguments, config.display_name)
         except (OSError, EngineConfigError) as error:
             self.status_var.set(self.app.t("engine.test_failed", error=error))
             return
@@ -3874,22 +4102,22 @@ class EngineDialog:
 
     def use_mock(self) -> None:
         self.path_var.set("")
-        self.save()
+        self.save(development_mock=True)
 
-    def save(self) -> None:
+    def save(self, *, development_mock: bool = False) -> None:
         path = self.path_var.get().strip() or None
+        profile_id = None
         if path is not None:
             try:
-                EngineConfig.from_path(path)
-            except EngineConfigError as error:
+                config = EngineConfig.from_path(path)
+                profile_id = self.app._register_engine_path(Path(config.command[0]), display_name=config.display_name).engine_id
+            except (OSError, EngineConfigError) as error:
                 self.status_var.set(self.app.t("engine.test_failed", error=error))
                 return
-        paths = self.app.settings.registered_engine_paths
         if path is not None:
             path = str(Path(path).expanduser().absolute())
-            paths = (path, *(previous for previous in paths if previous != path))[:20]
         try:
-            self.app._store_settings(engine_path=path, registered_engine_paths=paths)
+            self.app._store_settings(engine_path=path, engine_profile_id=profile_id, development_mock=development_mock)
         except (OSError, SettingsError) as error:
             self.status_var.set(self.app.t("engine.test_failed", error=error))
             return
@@ -3944,6 +4172,11 @@ def launch(
         chosen_set = piece_set if piece_set is not None else ("top" if top_pieces else None)
         renderer = OwnerSvgPieces(piece_set=chosen_set) if chosen_set is not None else None
         layout = DataLayout.default() if data_layout is None else data_layout
-        return ChessApp(root, data_layout=layout, board_artwork=artwork, piece_renderer=renderer)
+        try:
+            return ChessApp(root, data_layout=layout, board_artwork=artwork, piece_renderer=renderer)
+        except StorageError as error:
+            messagebox.showerror("Chess & Chains", str(error), parent=root)
+            root.destroy()
+            raise
 
     return host.run(build_app, mainloop=mainloop)

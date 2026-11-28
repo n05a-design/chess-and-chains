@@ -4,13 +4,18 @@ SPDX-License-Identifier: MPL-2.0
 """
 from concurrent.futures import ThreadPoolExecutor
 import hashlib
+import json
+import os
 from pathlib import Path
+import subprocess
+import sys
 from tempfile import TemporaryDirectory
 import threading
 import unittest
 from unittest.mock import patch
 
-from chess_and_chains.engines.bot import EngineConfig, EngineConfigError
+from chess_and_chains.engines.bot import EngineConfig, EngineConfigError, UCIBot
+from chess_and_chains.engines.uci import EngineLaunchError
 from chess_and_chains.engines.mock_engine import ENGINE_NAME, OPTIONS
 from chess_and_chains.engines.registry import (
     EngineAvailability,
@@ -21,6 +26,75 @@ from chess_and_chains.engines.registry import (
 
 
 class EngineRegistryTests(unittest.TestCase):
+    def test_registration_and_approval_survive_restart_and_removal_revokes_launch(self):
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "registry.sqlite3"
+            config = EngineConfig.mock()
+            registry = EngineRegistry(path)
+            profile = registry.register(config.command[0], arguments=config.command[1:],
+                                        options=(("Threads", 1),))
+            approval = registry.probe(profile.engine_id)
+            self.assertIs(approval.status, EngineAvailability.READY)
+            self.assertIn("Chess & Chains", approval.advertised_author)
+            self.assertIsNone(approval.advertised_version)
+            reopened = EngineRegistry(path)
+            self.assertEqual(reopened.profiles(), (profile,))
+            self.assertEqual(reopened.last_success(profile.engine_id), approval)
+            selected = reopened.launch_configuration(profile.engine_id)
+            self.assertEqual(selected.session_reference(), approval.reference())
+            bot = UCIBot(selected)
+            try:
+                self.assertEqual(bot.ensure_started().name, ENGINE_NAME)
+            finally:
+                bot.close()
+            registry.remove(profile.engine_id)
+            with patch("chess_and_chains.engines.uci.subprocess.Popen") as spawn:
+                with self.assertRaisesRegex(EngineLaunchError, "approval changed"):
+                    bot.ensure_started()
+                spawn.assert_not_called()
+            self.assertTrue(Path(config.command[0]).exists())
+            self.assertEqual(EngineRegistry(path).profiles(), ())
+
+    def test_guard_blocks_same_size_binary_replacement_and_changed_resource(self):
+        with TemporaryDirectory() as directory:
+            folder = Path(directory)
+            engine = folder / "fixture.exe"
+            resource = folder / "model.dat"
+            engine.write_bytes(b"original")
+            engine.chmod(0o700)
+            resource.write_bytes(b"original")
+            registry = EngineRegistry(folder / "registry.sqlite3")
+            profile = registry.register(engine, resources=(resource,))
+            with patch("chess_and_chains.engines.registry.UCIEngine"):
+                registry.probe(profile.engine_id)
+            choice = registry.launch_configuration(profile.engine_id)
+            bot = UCIBot(choice)
+            with patch("chess_and_chains.engines.uci.subprocess.Popen") as spawn:
+                resource.write_bytes(b"modified")
+                with self.assertRaisesRegex(EngineLaunchError, "resources changed"):
+                    bot.ensure_started()
+                resource.write_bytes(b"original")
+                previous = engine.stat()
+                engine.write_bytes(b"modified")
+                os.utime(engine, ns=(previous.st_atime_ns, previous.st_mtime_ns))
+                with self.assertRaisesRegex(EngineLaunchError, "executable"):
+                    bot.ensure_started()
+                spawn.assert_not_called()
+
+    def test_benchmark_smoke_keeps_color_pairs_and_ply_limits_unrated(self):
+        runner = Path(__file__).resolve().parents[1] / "scripts" / "benchmark_engines.py"
+        with TemporaryDirectory() as directory:
+            output = Path(directory) / "results.json"
+            completed = subprocess.run(
+                [sys.executable, str(runner), "--smoke", "--max-plies", "2", "--nodes", "32", "--output", str(output)],
+                capture_output=True, text=True, timeout=25,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            saved = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual([(item["white"], item["black"]) for item in saved["games"]], [(0, 1), (1, 0)])
+            self.assertTrue(all(item["kind"] == "ply-limit" and item["result"] == "*" for item in saved["games"]))
+            self.assertEqual(output.with_suffix(".pgn").read_text(encoding="utf-8").count('[Result "*"]'), 2)
+
     def test_registration_is_explicit_and_does_not_launch_programs(self):
         config = EngineConfig.mock()
         registry = EngineRegistry()

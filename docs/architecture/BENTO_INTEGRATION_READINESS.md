@@ -15,3 +15,11 @@ Die Präsentation ruft Spielbefehle und `poll` auf ihrem Owner-Thread auf. `subs
 Der Wechsel in die Bibliothekswiedergabe oder Analyse lässt die aktive Partie als Datenquelle verfügbar. Die Bibliotheksanalyse arbeitet mit einer geladenen Kopie. Die Schachdomäne, der Controller, die Rätseldomäne und die Engine-Adapter lassen sich ohne Tk importieren. Der Foundation-Test prüft die Importgrenze statisch. Headless- und native Tests prüfen Spielfortsetzung, Analyse, Zeitgrenzen und Puzzle-Übergänge mit lokalen Testdaten.
 
 Offen bleiben stabile gemeinsame Ansichtsdaten für Bibliothek, Training und Dashboard, eine Abstraktion der verbleibenden Desktop-Orchestrierung sowie die spätere Abnahme mit Glide Bento.
+
+Auftrag III ergänzt fachliche Schnittstellen außerhalb der Tk-Schicht.
+`GameSessionSnapshot` liefert Phase und Engine-Herkunft. `EngineRegistry`
+liefert geprüfte Startkonfigurationen. `AnalysisService` liefert fortlaufend
+Analyseergebnisse mit Cache-Nachweis und optionaler Vergleichsbewertung.
+`Database.analysis_training_candidates()` liefert eigenständige
+Trainingskandidaten. Bento kann diese Daten über Anwendungsadapter beziehen.
+Die lokale Bedienung verwendet die bestehenden Glide-Dialoge.

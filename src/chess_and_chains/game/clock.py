@@ -46,6 +46,13 @@ class ClockReading:
 class ClockTimeline:
     current: ClockReading
     positions: tuple[ClockReading, ...]
+    active_ns: int | None = None
+    paused_ns: int | None = None
+
+    def move_annotations(self, plies: int) -> tuple[int, ...]:
+        """PGN holds the remaining time of the player who just moved."""
+        return tuple(after.remaining_ms(before.turn) for before, after
+                     in zip(self.positions[:plies], self.positions[1:plies + 1]))
 
 
 class GameClock:
@@ -61,6 +68,9 @@ class GameClock:
         initial_ns = control.initial_ms * 1_000_000
         self._reading = ClockReading(initial_ns, initial_ns, turn)
         self._started_at: int | None = None
+        self._active_ns: int | None = 0
+        self._paused_ns: int | None = 0
+        self._explicit_pause_since: int | None = None
 
     @property
     def running(self) -> bool:
@@ -77,15 +87,41 @@ class GameClock:
         elapsed = max(0, at_ns - self._started_at)
         return self._with_time(turn, max(0, self._reading.remaining_ns(turn) - elapsed), turn)
 
+    def active_time(self, at_ns: int | None = None) -> int | None:
+        if self._active_ns is None:
+            return None
+        turn = self._reading.turn
+        return self._active_ns + self._reading.remaining_ns(turn) - self.reading(at_ns).remaining_ns(turn)
+
+    def paused_time(self, at_ns: int | None = None) -> int | None:
+        if self._paused_ns is None or self._explicit_pause_since is None:
+            return self._paused_ns
+        now = self.sample_time() if at_ns is None else at_ns
+        return self._paused_ns + max(0, now - self._explicit_pause_since)
+
+    def restore_timeline(self, timeline: ClockTimeline) -> None:
+        self.restore_paused(timeline.current)
+        self._active_ns = timeline.active_ns
+        self._paused_ns = timeline.paused_ns
+
     def restore_paused(self, reading: ClockReading) -> None:
+        self.pause()
         self._reading = reading
-        self._started_at = None
 
     def resume(self, at_ns: int | None = None) -> None:
         if not self.running and self._reading.remaining_ns(self._reading.turn) > 0:
             self._started_at = self.sample_time() if at_ns is None else at_ns
+            self._paused_ns = self.paused_time(self._started_at)
+            self._explicit_pause_since = None
 
-    def pause(self, at_ns: int | None = None) -> ClockReading:
+    def pause(self, at_ns: int | None = None, *, explicit: bool = False) -> ClockReading:
+        at_ns = self.sample_time() if at_ns is None else at_ns
+        if explicit and self.running:
+            self._explicit_pause_since = at_ns
+        elif not explicit:
+            self._paused_ns = self.paused_time(at_ns)
+            self._explicit_pause_since = None
+        self._active_ns = self.active_time(at_ns)
         self._reading = self.reading(at_ns)
         self._started_at = None
         return self._reading
@@ -94,6 +130,7 @@ class GameClock:
         """Commit the active side's time and switch turns at a sampled instant."""
         if not self.running:
             raise ValueError("The clock is paused.")
+        self._active_ns = self.active_time(at_ns)
         self._reading = self.reading(at_ns)
         turn = self._reading.turn
         remaining = self._reading.remaining_ns(turn)

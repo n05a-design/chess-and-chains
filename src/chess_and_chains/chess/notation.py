@@ -46,6 +46,7 @@ class PGNDocument:
     initial_state: GameState
     moves: tuple[Move, ...]
     result: str
+    clock_annotations: tuple[int | None, ...] = ()
 
     def new_game(self, rules: ChessRules | None = None) -> ChessGame:
         from .game import ChessGame
@@ -312,7 +313,21 @@ def read_pgn_headers(text: str) -> dict[str, str]:
     return _split_pgn_headers(iter(text.splitlines()))[0]
 
 
+_CLOCK_COMMENT = re.compile(r"\[%clk\s+([0-9]{1,6}):([0-5][0-9]):([0-5][0-9])(?:\.([0-9]{1,3}))?\s*\]")
+_MAX_CLOCK_ANNOTATION_MS = 3_600_000_000_000
+
+
+def _clock_comment(milliseconds: int) -> str:
+    seconds, fraction = divmod(milliseconds, 1000)
+    minutes, seconds = divmod(seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+    decimals = f".{fraction:03d}" if fraction else ""
+    return f"{{[%clk {hours}:{minutes:02d}:{seconds:02d}{decimals}]}}"
+
+
 def parse_pgn(text: str, rules: ChessRules | None = None, *, max_plies: int | None = None) -> PGNDocument:
+    if "\0" in text:
+        raise PGNError("PGN must not contain NUL characters.")
     chess_rules = rules or ChessRules()
     lines = iter(text.splitlines())
     tag_map, first_move_line = _split_pgn_headers(lines)
@@ -331,22 +346,35 @@ def parse_pgn(text: str, rules: ChessRules | None = None, *, max_plies: int | No
 
     game = ChessGame(initial, rules=chess_rules)
     result_token: str | None = None
+    clocks: list[int | None] = []
+    clock_target = False
     with game.replay_record():
         for token_index, raw_token in enumerate(tokens):
+            if raw_token.startswith("\0"):
+                if clock_target:
+                    value = int(raw_token[1:])
+                    if clocks[-1] is not None and clocks[-1] != value:
+                        raise PGNError("Conflicting clock annotations for one move.")
+                    clocks[-1] = value
+                continue
             token = re.sub(r"^\d+\.(?:\.\.)?", "", raw_token)
             if not token or token == "...":
+                clock_target = False
                 continue
             if token.startswith("$") and token[1:].isdigit():
                 continue
             if token in _RESULTS:
                 result_token = token
-                if any(re.sub(r"^\d+\.(?:\.\.)?", "", trailing) for trailing in tokens[token_index + 1 :]):
+                if any(re.sub(r"^\d+\.(?:\.\.)?", "", trailing) for trailing in tokens[token_index + 1 :]
+                       if not trailing.startswith("\0")):
                     raise PGNError("Unexpected movetext after the game result.")
                 break
             if max_plies is not None and len(game.moves) >= max_plies:
                 raise PGNError(f"PGN exceeds the limit of {max_plies} half-moves.")
             try:
                 game.play(parse_san(game.state, token, chess_rules))
+                clocks.append(None)
+                clock_target = True
             except ChessError as exc:
                 raise PGNError(f"Invalid PGN move {token!r}: {exc}") from exc
         tag_result = tag_map.get("Result")
@@ -365,7 +393,8 @@ def parse_pgn(text: str, rules: ChessRules | None = None, *, max_plies: int | No
                 raise PGNError(
                     f"PGN result {result} contradicts the final position ({final.status.name.lower()})."
                 )
-    return PGNDocument(tuple(tag_map.items()), initial, tuple(game.moves), result)
+    return PGNDocument(tuple(tag_map.items()), initial, tuple(game.moves), result,
+                       tuple(clocks) if any(value is not None for value in clocks) else ())
 
 
 def export_pgn(
@@ -373,6 +402,7 @@ def export_pgn(
     headers: Mapping[str, str] | None = None,
     result: str | None = None,
     rules: ChessRules | None = None,
+    *, clock_annotations: tuple[int | None, ...] = (),
 ) -> str:
     chess_rules = rules or game.rules
     tag_map = {
@@ -402,14 +432,23 @@ def export_pgn(
         escaped_value = value.replace("\\", "\\\\").replace('"', '\\"')
         header_lines.append(f'[{key} "{escaped_value}"]')
     header_text = "\n".join(header_lines)
+    if clock_annotations and (len(clock_annotations) != len(game.moves) or any(
+        value is not None and (type(value) is not int or not 0 <= value < _MAX_CLOCK_ANNOTATION_MS)
+        for value in clock_annotations
+    )):
+        raise PGNError("Invalid PGN clock annotations.")
     state = game.initial_state
     san_tokens: list[str] = []
-    for move in game.moves:
+    for index, move in enumerate(game.moves):
         if state.turn is Color.WHITE:
             san_tokens.append(f"{state.fullmove_number}.")
         elif not san_tokens:
             san_tokens.append(f"{state.fullmove_number}...")
         san_tokens.append(to_san(state, move, chess_rules))
+        if clock_annotations and clock_annotations[index] is not None:
+            clock = clock_annotations[index]
+            assert clock is not None
+            san_tokens.append(_clock_comment(clock))
         state = chess_rules.apply(state, move)
     san_tokens.append(final_result)
     return f"{header_text}\n\n{' '.join(san_tokens)}"
@@ -418,27 +457,32 @@ def export_pgn(
 def _remove_comments_and_variations(text: str) -> str:
     output: list[str] = []
     variation_depth = 0
-    brace_comment = False
+    comment_start = None
     line_comment = False
-    for character in text:
+    for index, character in enumerate(text):
         if line_comment:
             if character == "\n":
                 line_comment = False
-                if variation_depth == 0 and not brace_comment:
+                if variation_depth == 0 and comment_start is None:
                     output.append(character)
             continue
-        if brace_comment:
+        if comment_start is not None:
             if character == "}":
-                brace_comment = False
                 if variation_depth == 0:
+                    for match in _CLOCK_COMMENT.finditer(text, comment_start, index):
+                        hours, minutes, seconds, fraction = match.groups()
+                        value = ((int(hours) * 60 + int(minutes)) * 60 + int(seconds)) * 1000
+                        value += int((fraction or "").ljust(3, "0"))
+                        output.append(f" \0{value} ")
                     output.append(" ")
+                comment_start = None
             continue
         if character == ";":
             line_comment = True
             if variation_depth == 0:
                 output.append(" ")
         elif character == "{":
-            brace_comment = True
+            comment_start = index + 1
             if variation_depth == 0:
                 output.append(" ")
         elif character == "}":
@@ -455,7 +499,7 @@ def _remove_comments_and_variations(text: str) -> str:
                 output.append(" ")
         elif variation_depth == 0:
             output.append(character)
-    if brace_comment:
+    if comment_start is not None:
         raise PGNError("Unterminated PGN brace comment.")
     if variation_depth:
         raise PGNError("Unterminated PGN variation.")

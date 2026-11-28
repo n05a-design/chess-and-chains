@@ -34,6 +34,19 @@ class GameClockTests(unittest.TestCase):
         self.clock.resume()
         self.assertFalse(self.clock.running)
 
+    def test_explicit_pause_time_is_separate_from_active_time(self):
+        self.clock.resume()
+        self.time += 100_000_000
+        self.clock.pause(explicit=True)
+        self.time += 2_000_000_000
+        self.assertEqual(self.clock.active_time(), 100_000_000)
+        self.assertEqual(self.clock.paused_time(), 2_000_000_000)
+        self.clock.resume()
+        self.time += 50_000_000
+        self.clock.pause()
+        self.assertEqual(self.clock.active_time(), 150_000_000)
+        self.assertEqual(self.clock.paused_time(), 2_000_000_000)
+
     def test_resume_holds_saved_times_until_explicit_start(self):
         self.clock.resume()
         self.time = 300_000_000

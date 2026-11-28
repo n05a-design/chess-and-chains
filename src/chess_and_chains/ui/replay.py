@@ -55,6 +55,7 @@ class ReplayDialog(tk.Toplevel):
     def __init__(
         self, parent: tk.Tk, game: ChessGame, t: Translator, artwork, renderer, orientation,
         *, theme: ThemePalette | None = None, clock: ClockTimeline | None = None,
+        clock_annotations: tuple[int | None, ...] = (),
     ) -> None:
         super().__init__(parent)
         self.withdraw()
@@ -70,6 +71,7 @@ class ReplayDialog(tk.Toplevel):
         self._rules = game.rules
         self._end = game.outcome()
         self._clock = clock
+        self._clock_annotations = clock_annotations
         self.index = 0
 
         panel = ttk.Frame(self, padding=12, style="Glide.TFrame")
@@ -192,18 +194,28 @@ class ReplayDialog(tk.Toplevel):
                 saved = self.t("replay.saved_clock", clock=self._format_reading(self._clock.current))
                 text += f" · {saved}"
             self.status.configure(text=text)
+        elif self.index and self._clock_annotations:
+            annotation = self._clock_annotations[self.index - 1]
+            if annotation is not None:
+                mover = self._positions[self.index - 1].turn
+                side = self.t("side.white" if mover is Color.WHITE else "side.black")
+                time = self.t("replay.pgn_clock", side=side, time=self._format_time(annotation))
+                self.status.configure(text=f"{self.status.cget('text')} · {time}")
         for button in (self._first, self._previous):
             button.configure(state="normal" if self.index else "disabled")
         for button in (self._last, self._next):
             button.configure(state="normal" if self.index < len(self._moves) else "disabled")
 
-    def _format_reading(self, reading: ClockReading) -> str:
-        def format_time(color: Color) -> str:
-            seconds, milliseconds = divmod(reading.remaining_ms(color), 1000)
-            minutes, seconds = divmod(seconds, 60)
-            return f"{minutes}:{seconds:02d}.{milliseconds:03d}"
+    @staticmethod
+    def _format_time(milliseconds: int) -> str:
+        seconds, milliseconds = divmod(milliseconds, 1000)
+        minutes, seconds = divmod(seconds, 60)
+        return f"{minutes}:{seconds:02d}.{milliseconds:03d}"
 
-        return self.t("clock.reading", white=format_time(Color.WHITE), black=format_time(Color.BLACK))
+    def _format_reading(self, reading: ClockReading) -> str:
+        white = self._format_time(reading.remaining_ms(Color.WHITE))
+        black = self._format_time(reading.remaining_ms(Color.BLACK))
+        return self.t("clock.reading", white=white, black=black)
 
     def _close(self, _event: tk.Event | None = None) -> str:
         if not getattr(self, modal_session.ACTIVE_ATTRIBUTE, False):

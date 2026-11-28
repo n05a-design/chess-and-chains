@@ -67,3 +67,45 @@ Ausnahmen stehen direkt im Runner. Die separate native macOS-Panelprobe
 bleibt eine Plattformprobe im Workflow. App-Installation, System-Standby,
 reale UCI-Engine und physische Bedienhilfen brauchen eigene Abnahmen.
 [Prüfbericht zum Entwicklungsbranch](../reports/2026-11-27_F01-F12-functional-core.md)
+
+## Auftrag III – Integrationsnachweise
+
+- `test_engine_registry` prüft lokale Freigaben über Neustarts,
+  Binär- und Ressourcenänderungen, Widerruf und Benchmark-Smoketest.
+- `test_game_session`, `test_game_clock` und die native Session-Suite
+  prüfen Zeitkontrolle, aktive und pausierte Zeit, Konfliktzweige,
+  bewusstes Verwerfen und bestätigten Wechsel der Engine.
+- `test_storage` prüft Migrationen aus v1–v7, ZIP-Kompatibilität,
+  isolierte Engine-Referenzen, Prozessabbruch und unterbrochene Recovery.
+- `test_engine_analysis` zählt reale UCI-Befehle des Projekt-Fixtures
+  für Cache-Treffer und geänderte Budgets. Separate
+  `searchmoves`-Anfragen prüfen beide Zugfarben.
+- Die native Archivsuite prüft Labels, Fortsetzung und das Laden
+  eines Analyse-Trainingskandidaten nach dem Löschen seiner Quellen.
+
+Die bestehende Actions-Matrix umfasst Windows, macOS und Linux mit
+Python 3.11 und 3.14. Lokale Ergebnisse und offene Plattformabnahme
+sind im [Auftragsbericht](../reports/2026-11-28_phase-a-completion-phase-b-engine-analysis.md) getrennt.
+
+## Auftrag IV-B – Realdaten für das Puzzle Lab
+
+`scripts/build_lichess_core_pack.py` bindet den Build an eine bekannte
+komprimierte SHA-256 und erzeugt außerhalb des Repositories das Paket
+samt vollständigem Profil. Der gezielte Regressionstest prüft
+Nachrücker und semantische Duplikate. `scripts/verify_lichess_core_pack.py`
+führt die Abnahme mit einem frisch installierten Paket und einer
+isolierten nativen Tk-Instanz aus. Geprüft werden Aufbauzug, Rating bis
+3000+, kombinierte Filter, Versuche, Hinweise, Review und
+Sicherungswiederherstellung. Messwerte und Plattformvermerk stehen im
+[IV-B-Prüfbericht](../reports/2026-11-28_W08-IV-B-lichess-produktdaten.md).
+
+## Integrationsgate III / IV-B
+
+Die vollständigen Headless-, nativen und pytest-Suiten werden einmal auf
+der konsolidierten Basis ausgeführt. Die Einzelauftragszahlen dienen
+weiterhin ihren historischen Berichten. Zusätzlich verwendet
+`scripts/verify_integration_gate.py` den lokal vorhandenen validierten
+Katalog bei gesperrtem Netzwerk in einem frischen Profil. Die Prüfung
+umfasst Engine-Registry, UCI-Protokoll-Fixture, Cache, Analysebericht,
+Trainingskandidat, reales Puzzle Lab, Fortschritt und Profilwiederherstellung.
+[Integrationsbericht](../reports/2026-11-28_Integration-Gate-III-IV-B.md)

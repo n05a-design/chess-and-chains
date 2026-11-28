@@ -43,6 +43,32 @@ def parse(text: str, **kwargs):
     return puzzles, report
 
 
+class ProductPackSelectionTests(unittest.TestCase):
+    def test_product_selection_backfills_illegal_and_semantic_duplicate_rows(self):
+        from scripts.build_lichess_core_pack import LABELS, select
+
+        sample = load_demo_pack().puzzles[0]
+        another = load_demo_pack().puzzles[1]
+
+        def row(puzzle, puzzle_id, priority, *, fen=None, moves=None):
+            values = (puzzle_id, fen or puzzle.fen, moves or " ".join(
+                move.to_uci() for move in (puzzle.setup_move, *puzzle.solution)
+            ), "1250", "80", "90", "100", "mate", "https://lichess.org/example", "")
+            return priority, puzzle_id, 0, values
+
+        revised_fen = " ".join((*sample.fen.split()[:4], "1", "20"))
+        order = [
+            row(sample, "First", 0),
+            row(sample, "Dup1", -1, fen=revised_fen),
+            row(sample, "Bad1", -2, moves="a1a8 a2a4"),
+            row(another, "Next1", -3),
+        ]
+        selected, stats = select([order, *([] for _ in LABELS[1:])], "Fixture", (2, 0, 0, 0, 0, 0, 0))
+        self.assertEqual([puzzle.puzzle_id for puzzle in selected], ["First", "Next1"])
+        self.assertEqual(stats["bands"][LABELS[0]]["rejected"],
+                         {"duplicate_playable_position_and_solution": 1, "illegal_move": 1})
+
+
 class ImporterTests(unittest.TestCase):
     def test_fixture_import_accepts_valid_and_reports_each_rejection(self):
         puzzles, report = import_lichess_file(FIXTURE)
