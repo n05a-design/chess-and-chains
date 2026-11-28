@@ -1,6 +1,11 @@
 # Chess & Chains – Roadmap
 
-**V.0.3.0 · Stand 27.11.2026.** Die geprüfte Online-Basis ist GitHub-`main` bei `2c4a594`. Der Merge-Lauf von PR #24 meldet 14 von 14 erfolgreichen Jobs auf Windows, macOS und Linux. Der lokale Entwicklungsbranch ergänzt Spielstand und Uhr, Analyse und Wiederholtraining. [Funktionsinventar F01–F12](FUNCTIONAL_CORE.md) · [GitHub-Prüflauf](https://github.com/n05a-design/chess-and-chains/actions/runs/45899065995)
+**V.0.3.0 · Stand 28.11.2026.** GitHub-`main` steht bei `6dcd12f` mit
+14 erfolgreichen Jobs des Merge-Laufs von PR #26. Der lokale
+Integrationsbranch enthält Auftrag III und IV-B. Als Nächstes stehen
+IV-A für die Engine-Abnahme und V für Connected Learning an.
+[Funktionsinventar F01–F26](FUNCTIONAL_CORE.md) ·
+[Integrationsbericht](../reports/2026-11-28_Integration-Gate-III-IV-B.md)
 
 ## Wo das Projekt steht
 

@@ -308,3 +308,12 @@ regelvalidierten Datensätzen. Die optionalen Fremdschlüssel auf Partie und
 Analyse verwenden `ON DELETE SET NULL`. Historische Quellenkennungen und
 der für freies Stellungstraining benötigte Inhalt bleiben eingebettet.
 Bestehende stellungsgebundene Trainingskandidaten behalten ihren Vertrag.
+
+Der konsolidierte Stand III / IV-B hält portable SQLite-v8-Nutzerdaten,
+lokale Engine-Freigaben, Analyse-Cache und Katalogdateien getrennt.
+`scripts/verify_integration_gate.py` öffnet eine Kopie des vorhandenen
+validierten Katalogs. Im selben frischen Profil prüft der Ablauf einen
+Analysebericht mit neu gestarteter Registry, Cache-Treffer, einen von
+der Partie entkoppelten Trainingskandidaten, reale Rätselversuche und
+die anschließende Wiederherstellung. Die Paketpfade und Prüfsummen
+sind im [Integrationsbericht](../reports/2026-11-28_Integration-Gate-III-IV-B.md) verzeichnet.

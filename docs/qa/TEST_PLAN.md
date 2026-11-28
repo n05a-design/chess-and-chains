@@ -98,3 +98,14 @@ isolierten nativen Tk-Instanz aus. Geprüft werden Aufbauzug, Rating bis
 3000+, kombinierte Filter, Versuche, Hinweise, Review und
 Sicherungswiederherstellung. Messwerte und Plattformvermerk stehen im
 [IV-B-Prüfbericht](../reports/2026-11-28_W08-IV-B-lichess-produktdaten.md).
+
+## Integrationsgate III / IV-B
+
+Die vollständigen Headless-, nativen und pytest-Suiten werden einmal auf
+der konsolidierten Basis ausgeführt. Die Einzelauftragszahlen dienen
+weiterhin ihren historischen Berichten. Zusätzlich verwendet
+`scripts/verify_integration_gate.py` den lokal vorhandenen validierten
+Katalog bei gesperrtem Netzwerk in einem frischen Profil. Die Prüfung
+umfasst Engine-Registry, UCI-Protokoll-Fixture, Cache, Analysebericht,
+Trainingskandidat, reales Puzzle Lab, Fortschritt und Profilwiederherstellung.
+[Integrationsbericht](../reports/2026-11-28_Integration-Gate-III-IV-B.md)

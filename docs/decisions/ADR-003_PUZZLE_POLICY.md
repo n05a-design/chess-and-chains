@@ -12,7 +12,8 @@ Der [Offline-Builder](../../data/puzzle_packs/README.md) implementiert die
 optionalen Qualitätsgrenzen und eine reproduzierbare Auswahl mit Seed.
 Die Inhaberfreigabe Q-022 vom 28.11.2026 umfasst den lokalen offiziellen
 CC0-Export, die Verarbeitung, ein privates Produktpaket und isolierte
-Abnahme. Eine Veröffentlichung oder Bündelung ist ein eigener Auftrag.
+Abnahme. Q-022 ist lokal umgesetzt. Öffentliche Distribution und
+Bündelung sind ausdrücklich nicht freigegeben.
 
 Für `lichess-core-20k` gelten mindestens 1000 Puzzle-Rating, Popularität
 ≥ 60, Ratingabweichung ≤ 125 und mindestens 10 Versuche. Sieben feste

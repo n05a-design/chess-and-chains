@@ -8,6 +8,8 @@ Neue Berichte bitte in der passenden Gruppe ergänzen. `scripts/verify_document_
 
 ## Übergreifend (W00–W12)
 
+- 2026-11-28 · [Integrationsgate III / IV-B](2026-11-28_Integration-Gate-III-IV-B.md)
+
 - 2026-11-26 · [Logo-Integration der drei Inhaber-Master (W06)](2026-11-26_logo-integration.md)
 - 2026-11-21 · [W00–W12 – Abgleich der Arbeitspakete](2026-11-21_W00-W12-paketabgleich.md)
 
