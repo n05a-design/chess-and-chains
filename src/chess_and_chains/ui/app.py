@@ -134,7 +134,7 @@ from .theme import (
 POLL_MS = 40
 PANEL_GAP = SPACING[12]  # 12 px uniform outer margin and inter-card gap (Glide layout parity)
 PUZZLE_RATING_RANGES: tuple[tuple[int, int | None], ...] = (
-    (1000, 1199), (1200, 1599), (1600, 1999), (2000, None),
+    (1000, 1199), (1200, 1599), (1600, 1999), (2000, None), (2500, 2999), (3000, None),
 )
 ProviderFactory = Callable[[BotPreset, Settings], MoveProvider]
 

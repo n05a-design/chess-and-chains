@@ -814,6 +814,19 @@ class PuzzleUiTests(AppTestCase):
             self.assertEqual(following.db.puzzle_progress(following.pack.manifest.pack_id, first.puzzle_id).attempts, 1)
             following.close()
 
+    def test_rating_ranges_separate_2500_band_and_3000_plus(self):
+        from chess_and_chains.puzzles import load_demo_pack
+        from chess_and_chains.ui.app import PUZZLE_RATING_RANGES
+
+        demo = load_demo_pack()
+        samples = tuple(replace(puzzle, rating=rating) for puzzle, rating in zip(
+            demo.puzzles, (2499, 2500, 2999, 3000, 3250), strict=True,
+        ))
+        app = self.make_app(puzzle_pack=replace(demo, puzzles=samples))
+        for band, expected in (((2500, 2999), (2500, 2999)), ((3000, None), (3000, 3250))):
+            app.puzzle_rating_filter.current(PUZZLE_RATING_RANGES.index(band) + 1)
+            self.assertEqual(tuple(puzzle.rating for puzzle in app._matching_puzzles()), expected)
+
     def test_due_filter_reads_persisted_attempt_dates(self):
         with tempfile.TemporaryDirectory() as folder:
             layout = DataLayout(Path(folder))
