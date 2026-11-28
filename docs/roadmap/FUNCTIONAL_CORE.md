@@ -39,3 +39,9 @@ Die zweite Ausbaustufe ergänzt Sitzungsphasen, getrennte Archivierung von
 Konfliktständen, bestätigte Engine-Wechsel, Hauptvarianten-Uhrannotationen,
 Bibliothekslabels und automatische Rückkehr nach einem unterbrochenen
 Profil-Restore.
+
+Die Engine-Laufzeit startet den Entwicklungsmock nach ausdrücklicher
+Auswahl. Die Analyse verwendet einen versions- und konfigurationsgebundenen
+SQLite-Cache und getrennte Same-Position-Suchen. SQLite v8 hält
+eigenständige Kandidaten auch nach dem Löschen ihrer Ursprungspartie.
+Die reale Engine- und Lichess-Abnahme folgt in den Aufträgen IV-A und IV-B.

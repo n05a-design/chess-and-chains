@@ -109,4 +109,3 @@ class AnalysisTrainingCandidate:
             return candidate
         except (TypeError, KeyError, AttributeError, RecursionError) as error:
             raise ValueError("Invalid training candidate data.") from error
-

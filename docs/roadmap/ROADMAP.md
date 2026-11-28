@@ -10,7 +10,7 @@
 | Brett und Figuren (W06) | Tk-Brett auf Glide Shell `0.6.2` (`AppHost`, `AfterScope`, `modal_session`, Light/Dark/System-Themes), Original V.06, Draufsicht V.04.2 und Klassisch V.05.1, PNG-Fallback, SVG-Brettvorschau mit Cache | Finale Inhaber-Bretter, native Sicht- und High-DPI-Prüfung |
 | Bot (W07) | UCI-Adapter, asynchroner Controller, sechs Presets, Bereitschaftstest | Echte Engine nach ADR-001, Kalibrierung, Offline-Partie |
 | Rätsel (W08) | Offline-Builder mit Rating ≥ 1000, Qualitätsfilter, Seed, lokale Pakete im Puzzle Lab | Realdaten nach Q-022, Paketgröße und Ratingbereich (Q-008/Q-009) |
-| Daten (W09) | SQLite v7 im Functional-Completion-Branch, automatische Partiekopie mit Konfliktschutz, Archivuhren und Profilbackup | Profile (Q-012), ADR-004, native Dialoge macOS/Linux |
+| Daten (W09) | SQLite v8 im Engine-Analysis-Branch, archivierte Uhrdaten, automatische Restore-Recovery und eigenständige Trainingskandidaten | Profile (Q-012), ADR-004, native Dialoge macOS/Linux |
 | Bedienung (W10) | DE/EN, Tastaturwege, Brett als Text, Fokusrückgabe | Native Skalierung 150/200 %, Screenreader, Ziffernblock |
 | Qualität (W11) | 14-Job-Matrix nach jedem Merge, Policy-, Link- und Manifestprüfung | Installations-, Offline- und Artefaktabnahme |
 | Vertrieb (W12) | Strategie dokumentiert | BLOCKED durch ADR-001, ADR-005, ADR-006 |
@@ -124,3 +124,5 @@ Die Aufwandswerte stammen aus der ursprünglichen Planung. Die Tabelle bildet Ab
 Die Zielmarken sind frühere Planungswerte. Die aktuelle Entwicklungsnummer wird gemäß [Versionspflege](../governance/GOVERNANCE.md#projektversion) fortgeführt. Der Umfang richtet sich nach den [Work Packages](WORK_PACKAGES.md).
 
 Den Stand der Folgephase dokumentiert der [Bericht F13–F26](../reports/2026-11-27_F13-F26-functional-completion.md).
+
+Den Stand von Auftrag III dokumentiert der [Bericht zur Engine- und Analyseintegration](../reports/2026-11-28_phase-a-completion-phase-b-engine-analysis.md).

@@ -280,7 +280,8 @@ Registrierung lesbar. Eine zeitgesteuerte Wiederaufnahme beginnt pausiert.
 Uhrannotationen `[%clk ...]` erhalten die Restzeit der ziehenden Seite
 nach ihrem Halbzug. Eingelesen werden Annotationen der Hauptvariante.
 Der lokale Snapshot hält zusätzlich beide Uhrstände, die finale Lesung
-und bei neuen Zeitpartien die monoton gemessene aktive Spielzeit fest.
+und bei neuen Zeitpartien die monoton gemessene aktive Spielzeit sowie explizite
+Pausen fest. Ein Zeitraum bei beendeter App zählt dabei als Unterbrechung.
 
 Das Restore-Journal `.profile-restore.json` enthält eine
 Transaktions-ID, Prüfsummen des Eingangspakets, der Sicherheitskopie und
@@ -288,8 +289,8 @@ des Profils sowie die aktuelle Phase. Vor normalem Öffnen muss die App
 einen ausstehenden Restore abschließen oder den vorherigen Profilstand
 wiederherstellen. Die SQLite-basierte Profilsperre erlaubt mehrere
 lesende Desktop-Leases und exklusiven Restore. Die Betriebssystem-Sperre
-endet beim Prozessabbruch. Portable Backups enthalten keine lokale
-Ausführungsfreigabe der Engine-Registry.
+endet beim Prozessabbruch. Portable Backups führen unveränderliche Registry-Referenzen im Manifest.
+Die Auswahl und Ausführungsfreigabe stammen ausschließlich aus dem Zielprofil.
 
 SQLite v8 ergänzt `analysis_training_candidates` mit formatversionierten,
 regelvalidierten Datensätzen. Die optionalen Fremdschlüssel auf Partie und

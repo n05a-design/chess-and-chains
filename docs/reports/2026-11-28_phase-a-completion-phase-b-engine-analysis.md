@@ -48,8 +48,8 @@ einer freigegebenen Dritt-Engine stehen für Auftrag IV-A aus.
   Restore. Tests unterbrechen den Prozess sowohl zwischen
   Datenbankoperation und Journalstatus als auch während der Rücksetzung.
 
-Die SQLite-Partiedatenbank bleibt bei Version 7. Neue Snapshotfelder sind
-additiv. Der Backup-ZIP-Vertrag hält seine bisherigen Komponenten.
+Gate III-2 verwendet weiterhin Partiedatenbank v7. Gate III-5 migriert auf v8.
+Neue Snapshotfelder sind additiv. Der Backup-ZIP-Vertrag hält seine bisherigen Komponenten.
 [Erweiterter Datenvertrag](../architecture/DATA_CONTRACTS.md)
 
 ## Gate III-3 – Laufzeit und Benchmark
@@ -85,3 +85,82 @@ IDs bleiben im Datensatz, wenn der Benutzer diese Quellen löscht.
 Der Inhaltsfingerabdruck verhindert identische Kandidaten. Der Kandidat
 startet freies Stellungstraining. Die automatische Umwandlung in
 bewertete Übungen gehört zu den folgenden Trainingspaketen.
+
+## Gate III-6 – QA, Grenzen und Übergabe
+
+Geprüfter fachlicher Code-Commit ist `224128440fc5fa9774dfbae794b910f5ab7aac1d`.
+Die vollständige native Prüfung lief auf `265b9e7` vor der ausschließlich
+CLI-seitigen Korrektur. Die gezielte native Offline-Prüfung lief danach.
+Arbeitsumgebung ist macOS 27.2.1 (26B131), arm64 mit Python 3.14.5 und
+Tk 9.0. Neue Integrationsläufe nutzen temporäre Profile und
+projekteigene UCI-Protokoll-Fixtures. Der Worktree enthält
+KI-unterstützte Implementierung. Der Referenzstand in GitHub bleibt
+`6dcd12f`. Die 14 erfolgreichen GitHub-Jobs beziehen sich auf diesen
+Referenzcommit. Windows und Linux mit Python 3.11 sowie 3.14 sind für
+den neuen Branch ausstehend.
+
+| Prüfung | Beobachtetes Ergebnis |
+| --- | --- |
+| `PYTHONPATH=src python3 scripts/ci_tests.py inventory` | 485 Tests erfasst, Exit 0 |
+| `PYTHONPATH=src python3 scripts/ci_tests.py headless` | 315 erfolgreich, Exit 0 |
+| `CHESS_AND_CHAINS_REQUIRE_DISPLAY=1 PYTHONPATH=src python3 scripts/ci_tests.py gui` | 159 native Tests erfolgreich, Exit 0 |
+| `PYTHONPATH=src python3 scripts/ci_tests.py pytest` | 11 Figurensatztests erfolgreich, Exit 0 |
+| `sandbox-exec` mit `(deny network*)` für Engine-Registry, Analyse, Backup und native Sitzung/Archiv/Puzzle Lab | 61 Tests erfolgreich, Exit 0 |
+| Analyse-CLI mit temporärer Registry und Cache bei gesperrtem Netzwerk | Zwei Prozesse, ein UCI-Suchbefehl, zweiter Aufruf Cache-Treffer, je Exit 0 |
+| Backup- und Restore-CLI bei gesperrtem Netzwerk | ZIP-Rundlauf im temporären Profil, je Exit 0 |
+| `python3 scripts/verify_starter.py`, `verify_document_links.py`, `check_policy.py` | Je Exit 0 |
+| `python3 -B scripts/build_brand_assets.py --check` | 41 konsistente Brand-Ausgaben, Exit 0 |
+| `PYTHONPATH=src python3 -m glide_shell.selftest` und Wiederholung mit `-O` | Je 13/13, Exit 0 |
+| `python3 -m compileall -q src app scripts tests`, CLI-Status und Versionsausgabe | Exit 0, V.0.3.0 |
+
+Der erste native Volltest fand einen Test, der noch den automatischen
+Mock-Fallback voraussetzte. Der Test verwendet jetzt eine explizite
+Fixture und behält seine ursprünglichen UI-Prüfungen. Der separate
+CLI-Neustarttest deckte einen zusätzlichen Cache-Miss auf. Für den
+Kommandozeilenpfad wurde der Modulimport vereinheitlicht und der
+prozedurübergreifende Aufruf erneut geprüft.
+
+### CLI- und Storage-Schnittstellen
+
+```bash
+python3 scripts/benchmark_engines.py --smoke --max-plies 4 --nodes 128
+PYTHONPATH=src python3 -m chess_and_chains.engines.analysis --help
+PYTHONPATH=src python3 -m chess_and_chains --create-backup /absoluter/pfad/profil.zip
+PYTHONPATH=src python3 -m chess_and_chains --restore-backup /absoluter/pfad/profil.zip
+```
+
+Für eine freigegebene lokale Registrierung nimmt die Analyse
+`--registry`, `--engine-id` und optional `--cache` entgegen. Die
+Engine-Auswahl in der Desktop-App und der Runner verwenden denselben
+Registry-Vertrag. Ein erfolgreicher Handshake attestiert
+UCI-Bereitschaft. Die Herkunft und Vertrauenswürdigkeit einer
+Dritt-Engine entscheidet der Betreiber separat.
+
+- IV-A übernimmt eine vom Owner freigegebene reale Engine mit Herkunft,
+  Version, Ressourcen, Optionen und Plattformnachweis. Für
+  Kalibrierungsdaten den Benchmark mit dokumentierten festen
+  Startstellungen und Ressourcenlimits ausführen. Q-001/ADR-001
+  regeln den Vertrieb, Q-002 das spätere Offline-Produktziel
+  und Q-023 die Kalibrierungsbeschriftung.
+- IV-B benötigt für den offiziellen Lichess-Datensatz Q-022. Den
+  validierten Katalogimport und die Fortschrittszuordnung nach
+  Paketrevision mit realen Daten erneut prüfen.
+- Archive halten historische Referenzen auch ohne lokale Engine-Datei.
+  Fehlende ältere Versions- oder Optionswerte bleiben unbekannt.
+  Ressourcen und manuelle UCI-Optionen sind über die Registry-API bei
+  der Registrierung konfigurierbar. Die App bietet Pfadauswahl und
+  Bereitschaftstest. Ressourcen werden erfasst, wenn sie ausdrücklich
+  angegeben wurden. Eine automatische Erkennung beliebiger
+  Engine-Ressourcen ist offen.
+- Die Vergleichsscores entstehen aus begrenzten Suchen. Die
+  Regelvalidierung belegt die Legalität der Varianten. Die
+  endgültige Beurteilung allgemeiner Mattmöglichkeiten bleibt
+  durch die bestehenden Grenzen des Regelkerns beschränkt.
+  Eine externe Regelreferenz wurde in diesem Auftrag nicht hinzugefügt.
+- PGN mit `[%clk …]` erhält die Hauptvarianten-Uhrwerte. Ein
+  vollständiger Studieneditor mit übrigen Varianten und Kommentaren
+  gehört zu F23. Für das Trainingssystem stehen die weiteren Schritte
+  vom freien Stellungstraining zur bewerteten Übung aus.
+
+Verwaltete Shell, Brand-Master, Figurensets und Starter wurden gegen
+den Ausgangscommit verglichen. Die Anwendungsversion bleibt V.0.3.0.
