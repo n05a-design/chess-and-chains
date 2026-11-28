@@ -381,7 +381,7 @@ class AnalysisService:
                 engine_fingerprint=self._config.provenance.configuration_fingerprint,
                 binary=self._config.provenance.binary_sha256, position=fen, requested_mode=request.mode,
                 search_mode="movetime", approved_options=self._config.approved_options, version=ANALYSIS_SCHEMA,
-                played=played.to_uci() if played is not None else None, comparison_schema=1,
+                played=played.to_uci() if played is not None else None, comparison_schema=2,
             )
             cached = persistent.load(persistent_key, game, configuration)
             if cached is not None:
@@ -432,15 +432,21 @@ def _compare_root_moves(
         for root_move in (best, played):
             if job._cancel.is_set():
                 return None
-            candidate = None
+            candidate = exact = None
 
             def receive(text: str) -> None:
-                nonlocal candidate
+                nonlocal candidate, exact
                 line = parse_info(text, game.state.turn)
-                if (line is not None and line.rank == 1 and line.moves[0] == root_move
-                        and _valid_line(game, line.moves)
-                        and (candidate is None or (line.depth or 0) >= (candidate.depth or 0))):
+                if (line is None or line.rank != 1 or line.moves[0] != root_move
+                        or not _valid_line(game, line.moves)):
+                    return
+                if candidate is None or (line.depth or 0) >= (candidate.depth or 0):
                     candidate = line
+                # A timed search can end on an aspiration-window bound.
+                # Keep the deepest completed exact score for this root move.
+                if (line.evaluation is not None and line.evaluation.bound is ScoreBound.EXACT
+                        and (exact is None or (line.depth or 0) >= (exact.depth or 0))):
+                    exact = line
 
             engine.new_game()
             engine.set_position(initial_fen, game.moves)
@@ -450,7 +456,7 @@ def _compare_root_moves(
             )
             if selected != root_move or candidate is None:
                 return None
-            candidates.append(candidate)
+            candidates.append(exact or candidate)
     except (UCIEngineError, ValueError):
         engine.close()
         return None

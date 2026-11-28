@@ -63,6 +63,7 @@ for raw in sys.stdin:
             root = line.partition(" searchmoves ")[2].split()[0]
             score = 350 if root in ("d2d4", "e7e5") else 20
             say(f"info depth 12 score cp {score} pv {root}")
+            say(f"info depth 13 score cp {score + 20} upperbound pv {root}")
             say(f"bestmove {root}")
         elif board == "7k/P7/8/8/8/8/8/K7":
             say("info depth 10 score cp 20 pv a7a8n")
