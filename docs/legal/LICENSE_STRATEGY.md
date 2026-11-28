@@ -141,3 +141,19 @@ Copyright-Inhaberschaft, GPL-Anzeige in der UI sowie die Abgrenzung
 Rechtsberatung zu prüfen. Die offizielle kostenlose Preisgestaltung beseitigt
 keine GPL-Pflichten. Es wurden weder Stockfish-Dateien noch GPL-Komponenten
 heruntergeladen oder hinzugefügt. `ADR-001` bleibt OPEN/RELEASE BLOCKER.
+
+## Tatsächlicher lokaler IV-A-Bestand (28.11.2026)
+
+Stockfish 19 wurde aus dem unveränderten offiziellen macOS-Universalarchiv
+isoliert installiert. Das Archiv enthält `Copying.txt`, `AUTHORS`, den
+Quellbaum einschließlich Makefile und Skripte. Das im Binary eingebettete
+SFNNv16-Netz wurde lokal exportiert und als geprüfte Ressource registriert.
+Die offizielle README nennt ODbL für die bereitgestellten LCZero-Trainingsdaten.
+Vor konkreter Weitergabe sind NNUE-Provenienz, passender Corresponding
+Source und Buildkette, GPLv3 §§ 5–6 sowie gegebenenfalls MPL 2.0 § 3.3 zu
+prüfen. Ein getrennter, austauschbarer UCI-Prozess belegt die technische
+Grenze. Die rechtliche Einordnung eines kombinierten oder getrennten
+Installers bleibt Teil von Q-001.
+
+[Offizieller Release](https://github.com/official-stockfish/Stockfish/releases/tag/sf_19) ·
+[Abnahme und Prüfsummen](../reports/2026-11-28_IV-A-stockfish-integration-compliance.md)
