@@ -67,7 +67,7 @@ from ..game.session import EngineChange, GameSessionSnapshot, SessionLifecycle, 
 from ..i18n import Translator
 from ..puzzles import DEMO_PACK_ID, PackError, PackLibrary, Puzzle, PuzzlePack, PuzzleSession, Verdict, load_demo_pack
 from ..puzzles.catalog import IndexedPuzzlePack, PuzzleSelection
-from ..puzzles.training import DEMO_MATE_CHAIN, TrainingCandidate, TrainingSession, demo_chain_catalog
+from ..puzzles.training import DEMO_MATE_CHAIN, TrainingSession, demo_chain_catalog
 from ..storage.backup_bundle import open_profile
 from ..storage import Database, DataLayout, SavedGame, SessionConflict, Settings, SettingsError, StorageError, load_settings, save_settings
 from .analysis_dialog import AnalysisDialog
@@ -3663,7 +3663,7 @@ class ChessApp:
         except (OSError, RuntimeError, ValueError) as error:
             self.interaction_text.set(self.t("analysis.failed", error=error))
             return
-        save_position = partial(self._save_training_position, source_game_id) if source_game_id is not None else None
+        save_position = partial(self._save_training_position, job.progress().job_id) if source_game_id is not None else None
         store_report = partial(self._store_analysis_report, source_game_id) if source_game_id is not None else None
         dialog = AnalysisDialog(self.root, self.t, job, self.theme.acetate, save_position, store_report)
         modal_session.wait_modal(self.root, dialog.window)
@@ -3693,19 +3693,19 @@ class ChessApp:
             )
             if selected is None:
                 return
-            game_id, report = self.db.load_analysis_report(reports[selected].run_id)
+            _, report = self.db.load_analysis_report(reports[selected].run_id)
         except (StorageError, sqlite3.Error) as error:
             self.interaction_text.set(self.t("analysis.archive_error", error=error))
             return
         dialog = AnalysisDialog(self.root, self.t, report, self.theme.acetate,
-                                partial(self._save_training_position, game_id))
+                                partial(self._save_training_position, report.job_id))
         modal_session.wait_modal(self.root, dialog.window)
 
-    def _save_training_position(self, game_id: int, result: AnalysisResult) -> str:
+    def _save_training_position(self, report_id: str, result: AnalysisResult) -> str:
         if self.db is None:
             return self.t("save.unavailable")
         try:
-            self.db.save_training_candidate(TrainingCandidate(game_id, len(result.history), result.fen))
+            self.db.save_analysis_training_candidate(report_id, len(result.history))
         except (StorageError, sqlite3.Error, ValueError) as error:
             return self.t("analysis.failed", error=error)
         return self.t("analysis.position_saved")
@@ -3714,7 +3714,7 @@ class ChessApp:
         if self.db is None:
             return
         try:
-            positions = self.db.training_candidates()
+            positions = (*self.db.analysis_training_candidates(), *self.db.training_candidates())
         except (StorageError, sqlite3.Error) as error:
             self.interaction_text.set(self.t("library.error", error=error))
             return

@@ -74,3 +74,14 @@ Kritische Momente verwenden bei geprüften Registry-Engines zwei
 suchbeschränkte Läufe an derselben Wurzelstellung und die Perspektive
 des ziehenden Spielers. Unabhängige Fixtures prüfen beide Farben.
 Ältere Archivberichte behalten lesbare Schätzwerte.
+
+## Gate III-5 – Trainingskandidaten
+
+SQLite v8 speichert eigenständige Analyse-Trainingskandidaten. Der
+Datensatz enthält die regelgeprüfte Stellung samt Historie, Partiezug,
+Alternativen, Bewertungen, kritischer Kategorie und Engine-Referenz.
+Ursprungspartie und Bericht sind optionale Fremdschlüssel. Ihre historischen
+IDs bleiben im Datensatz, wenn der Benutzer diese Quellen löscht.
+Der Inhaltsfingerabdruck verhindert identische Kandidaten. Der Kandidat
+startet freies Stellungstraining. Die automatische Umwandlung in
+bewertete Übungen gehört zu den folgenden Trainingspaketen.

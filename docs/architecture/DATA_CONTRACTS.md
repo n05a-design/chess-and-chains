@@ -171,7 +171,7 @@ Formats. Der Brett- und Figurenwechsel wird im aktuellen CLI-Aufruf
 gewählt. Der Datenpfad folgt der Plattform oder `CHESS_AND_CHAINS_DATA_DIR`.
 
 **Implementierungsstand im Functional-Completion-Branch (ADR-004 weiterhin PROPOSED).** SQLite
-`PRAGMA user_version` = 7. Altdaten in `games` und `puzzle_attempts`
+`PRAGMA user_version` = 8. Altdaten in `games` und `puzzle_attempts`
 erhalten die feste Kennung `local`. `training_candidates` speichert
 Stellungen mit Partiereferenz und Halbzug. Der Wiederholungsplan beruht
 auf den vorhandenen Versuchen. Einstellungen bleiben bei JSON `schema_version` 1
@@ -290,3 +290,9 @@ wiederherstellen. Die SQLite-basierte Profilsperre erlaubt mehrere
 lesende Desktop-Leases und exklusiven Restore. Die Betriebssystem-Sperre
 endet beim Prozessabbruch. Portable Backups enthalten keine lokale
 Ausführungsfreigabe der Engine-Registry.
+
+SQLite v8 ergänzt `analysis_training_candidates` mit formatversionierten,
+regelvalidierten Datensätzen. Die optionalen Fremdschlüssel auf Partie und
+Analyse verwenden `ON DELETE SET NULL`. Historische Quellenkennungen und
+der für freies Stellungstraining benötigte Inhalt bleiben eingebettet.
+Bestehende stellungsgebundene Trainingskandidaten behalten ihren Vertrag.

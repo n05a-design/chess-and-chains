@@ -217,6 +217,29 @@ class AnalysisServiceTests(unittest.TestCase):
                          (1, move("e2e4"), move("d2d4"), 215))
         self.assertIn("position fen " + INITIAL_FEN + " moves e2e4 e7e5", self.commands())
 
+    def test_candidate_reopens_without_its_original_game_or_report(self):
+        path = self.log.with_suffix(".sqlite3")
+        game = ChessGame()
+        game.play_uci("e2e4")
+        game.play_uci("e7e5")
+        progress = self.run_job(self.service(), AnalysisRequest("training", moves=tuple(game.moves), mode=AnalysisMode.GAME))
+        with Database.open(path) as db:
+            game_id = db.save_game(game, mode="human-vs-human")
+            db.save_analysis_report(game_id, progress)
+            candidate = db.save_analysis_training_candidate(progress.job_id, 0)
+            duplicate = db.save_analysis_training_candidate(progress.job_id, 0)
+            self.assertEqual(candidate.candidate_id, duplicate.candidate_id)
+            self.assertEqual([row.id for row in db.game_summaries(has_training=True)], [game_id])
+            db.delete_game(game_id)
+        with Database.open(path) as db:
+            self.assertEqual(db.analysis_reports(), ())
+            item, = db.analysis_training_candidates()
+            self.assertEqual(item, candidate)
+            self.assertEqual((item.status.value, item.fen, item.played_move), ("legal-position", INITIAL_FEN, move("e2e4")))
+            backup = db.backup(path.with_suffix(".backup"))
+            db.restore(backup)
+            self.assertEqual(db.analysis_training_candidates(), (candidate,))
+
     def test_complete_report_roundtrips_and_invalid_backup_preserves_live_report(self):
         path = self.log.with_suffix(".sqlite3")
         moves = (move("e2e4"), move("e7e5"))

@@ -755,6 +755,9 @@ class AnalysisArchiveUiTests(AppTestCase):
             ):
                 app._analyse_game(original.to_game(), AnalysisMode.GAME, source_game_id=game_id)
             self.assertEqual(app.db.load_game(game_id), original)
+            run_id = app.db.analysis_reports()[0].run_id
+            _, report = app.db.load_analysis_report(run_id)
+            self.assertEqual(app._save_training_position(run_id, report.results[0]), app.t("analysis.position_saved"))
             app.close()
 
             reopened = self.make_app(data_layout=layout)
@@ -773,6 +776,13 @@ class AnalysisArchiveUiTests(AppTestCase):
             self.assertIsNone(reopened._analysis)
             self.assertIn("Critical moments", displayed[0])
             self.assertIn("d2d4", displayed[0])
+            reopened.db.delete_game(game_id)
+            with patch.object(reopened, "_choose_item", return_value=0), patch(
+                "chess_and_chains.ui.app.messagebox.askyesno", return_value=True,
+            ):
+                reopened._open_training_positions()
+            self.assertEqual(to_fen(reopened.game.state), original.initial_fen)
+            self.assertEqual(len(reopened.db.analysis_training_candidates()), 1)
             reopened.close()
 
 

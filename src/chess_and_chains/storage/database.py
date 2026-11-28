@@ -35,6 +35,7 @@ from ..puzzles.training import (
     DEMO_MATE_CHAIN, MAX_TRAINING_CHECKPOINT_BYTES, AttemptStatus, TrainingAttempt, TrainingCandidate,
     TrainingCheckpoint, demo_chain_catalog, summarize_attempts,
 )
+from .analysis_candidate import AnalysisTrainingCandidate, MAX_CANDIDATE_BYTES
 from .exchange import write_atomic_export
 
 MAX_PGN_FILE_BYTES = 256 * 1024
@@ -129,6 +130,16 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
             PRIMARY KEY (game_id, tag)
         ) WITHOUT ROWID;
         CREATE INDEX game_tags_tag ON game_tags(tag, game_id);
+    """),
+    (8, """
+        CREATE TABLE analysis_training_candidates (
+            candidate_id TEXT PRIMARY KEY,
+            source_game_id INTEGER REFERENCES games(id) ON DELETE SET NULL,
+            source_report_id TEXT REFERENCES analysis_reports(run_id) ON DELETE SET NULL,
+            payload TEXT NOT NULL CHECK (length(CAST(payload AS BLOB)) <= 262144)
+        );
+        CREATE INDEX training_from_game ON analysis_training_candidates(source_game_id);
+        CREATE INDEX training_from_report ON analysis_training_candidates(source_report_id);
     """),
 )
 SCHEMA_VERSION = MIGRATIONS[-1][0]
@@ -425,6 +436,7 @@ class Database:
                                 raise StorageError(f"Invalid saved training chain: {error}") from error
                         for report in staged_db.analysis_reports():
                             staged_db.load_analysis_report(report.run_id)
+                        staged_db.analysis_training_candidates()
                         safety = self.path.with_name(f"{self.path.name}.pre-restore-{_stamp()}.bak")
                         self._copy(self._conn, safety)
                         staged.backup(self._conn)
@@ -621,6 +633,10 @@ class Database:
         for table, required in (("analysis_reports", has_analysis), ("training_candidates", has_training)):
             if required is not None:
                 condition = f"EXISTS (SELECT 1 FROM {table} WHERE source_game_id = g.id)"
+                if table == "training_candidates":
+                    condition = (
+                        f"({condition} OR EXISTS (SELECT 1 FROM analysis_training_candidates WHERE source_game_id = g.id))"
+                    )
                 clauses.append(condition if required else f"NOT {condition}")
         if tag is not None:
             clauses.append("EXISTS (SELECT 1 FROM game_tags WHERE game_id = g.id AND tag = ?)")
@@ -768,6 +784,36 @@ class Database:
         except ValueError as error:
             raise StorageError(f"Invalid saved analysis: {error}") from error
         return game_id, report
+
+    def save_analysis_training_candidate(self, report_id: str, ply: int) -> AnalysisTrainingCandidate:
+        game_id, report = self.load_analysis_report(report_id)
+        candidate = AnalysisTrainingCandidate.from_report(game_id, report, ply)
+        payload = candidate.encode()
+        AnalysisTrainingCandidate.decode(payload)
+        self._conn.execute(
+            "INSERT INTO analysis_training_candidates VALUES (?, ?, ?, ?) ON CONFLICT(candidate_id) DO NOTHING",
+            (candidate.candidate_id, game_id, report_id, payload),
+        )
+        return candidate
+
+    def analysis_training_candidates(self) -> tuple[AnalysisTrainingCandidate, ...]:
+        rows = self._conn.execute(
+            "SELECT candidate_id, source_game_id, source_report_id, "
+            "CASE WHEN length(CAST(payload AS BLOB)) <= ? THEN payload END "
+            "FROM analysis_training_candidates ORDER BY rowid DESC", (MAX_CANDIDATE_BYTES,),
+        )
+        candidates = []
+        try:
+            for identity, game_id, report_id, payload in rows:
+                candidate = AnalysisTrainingCandidate.decode(payload)
+                if (identity != candidate.candidate_id
+                        or (game_id is not None and game_id != candidate.source_game_id)
+                        or (report_id is not None and report_id != candidate.report_id)):
+                    raise ValueError("Training candidate index differs from its provenance.")
+                candidates.append(candidate)
+        except (ValueError, TypeError) as error:
+            raise StorageError(f"Invalid analysis training candidate: {error}") from error
+        return tuple(candidates)
 
     def _validate_training_candidate(self, candidate: TrainingCandidate) -> None:
         positions = self.load_game(candidate.source_game_id).to_game().played_positions()

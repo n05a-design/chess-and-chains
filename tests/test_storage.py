@@ -129,6 +129,29 @@ class DatabaseTests(TempDirTestCase):
         game.redo()
         self.assertIs(game.outcome().status, GameStatus.STALEMATE)
 
+    def test_all_supported_legacy_database_versions_migrate_to_current(self):
+        for old_version in range(1, SCHEMA_VERSION):
+            with self.subTest(old_version=old_version):
+                path = self.tmp / f"previous-v{old_version}.sqlite3"
+                connection = sqlite3.connect(path)
+                try:
+                    for applied, statements in MIGRATIONS[:old_version]:
+                        connection.executescript(statements)
+                        connection.execute(f"PRAGMA user_version={applied}")
+                    game = ChessGame()
+                    game.play_uci("e2e4")
+                    connection.execute(
+                        "INSERT INTO games(created_utc, initial_fen, moves_uci, pgn, result, mode) VALUES (?, ?, ?, ?, ?, ?)",
+                        ("2026-11-28T00:00:00+00:00", to_fen(game.initial_state), "e2e4", export_pgn(game), "*", "imported"),
+                    )
+                    connection.commit()
+                finally:
+                    connection.close()
+                with Database.open(path) as upgraded:
+                    self.assertEqual(upgraded.schema_version, SCHEMA_VERSION)
+                    self.assertEqual(upgraded.load_game(1).moves, (Move.from_uci("e2e4"),))
+                    self.assertTrue(upgraded.migration_backup.is_file())
+
     def test_migration_from_v1_creates_backup_and_keeps_data(self):
         path = self.tmp / "old.sqlite3"
         conn = sqlite3.connect(path)
