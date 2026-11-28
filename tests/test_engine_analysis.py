@@ -248,7 +248,10 @@ class AnalysisServiceTests(unittest.TestCase):
             db.save_analysis_report(game_id, progress)
             candidate = db.save_analysis_training_candidate(progress.job_id, 0)
             duplicate = db.save_analysis_training_candidate(progress.job_id, 0)
-            self.assertEqual(candidate.candidate_id, duplicate.candidate_id)
+            self.assertEqual(candidate, duplicate)
+            second_report = replace(progress, job_id="another-training-report")
+            db.save_analysis_report(game_id, second_report)
+            self.assertEqual(db.save_analysis_training_candidate(second_report.job_id, 0), candidate)
             self.assertEqual([row.id for row in db.game_summaries(has_training=True)], [game_id])
             db.delete_game(game_id)
         with Database.open(path) as db:

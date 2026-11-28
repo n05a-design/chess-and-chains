@@ -795,11 +795,21 @@ class Database:
         candidate = AnalysisTrainingCandidate.from_report(game_id, report, ply)
         payload = candidate.encode()
         AnalysisTrainingCandidate.decode(payload)
-        self._conn.execute(
+        inserted = self._conn.execute(
             "INSERT INTO analysis_training_candidates VALUES (?, ?, ?, ?) ON CONFLICT(candidate_id) DO NOTHING",
             (candidate.candidate_id, game_id, report_id, payload),
         )
-        return candidate
+        if inserted.rowcount:
+            return candidate
+        stored = self._conn.execute(
+            "SELECT payload FROM analysis_training_candidates WHERE candidate_id = ?", (candidate.candidate_id,),
+        ).fetchone()
+        if stored is None:
+            raise StorageError("The duplicate training candidate is no longer available.")
+        try:
+            return AnalysisTrainingCandidate.decode(stored[0])
+        except (TypeError, ValueError) as error:
+            raise StorageError(f"Invalid analysis training candidate: {error}") from error
 
     def analysis_training_candidates(self) -> tuple[AnalysisTrainingCandidate, ...]:
         rows = self._conn.execute(
