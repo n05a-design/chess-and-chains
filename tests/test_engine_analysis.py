@@ -6,6 +6,7 @@ from contextlib import closing
 from dataclasses import replace
 import json
 import sqlite3
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -163,6 +164,25 @@ class AnalysisServiceTests(unittest.TestCase):
             connection.execute("UPDATE results SET payload = '{}'")
         self.assertFalse(run(100).cached)
         self.assertEqual(self.commands().count("go movetime 100"), 2)
+
+    def test_analysis_cli_uses_disk_cache_across_processes(self):
+        fixture = self.log.with_suffix(".py")
+        fixture.write_text(FIXTURE, encoding="utf-8")
+        path = self.log.with_suffix(".registry")
+        registry = EngineRegistry(path)
+        profile = registry.register(sys.executable, arguments=("-u", str(fixture), str(self.log), "normal"),
+                                    resources=(fixture,))
+        registry.probe(profile.engine_id)
+        module_root = Path(__file__).resolve().parents[1] / "src"
+        command = [sys.executable, "-m", "chess_and_chains.engines.analysis", "--registry", str(path),
+                   "--engine-id", profile.engine_id, "--cache", str(self.log.with_suffix(".cache"))]
+        hits = []
+        for _ in range(2):
+            result = subprocess.run(command, cwd=module_root, capture_output=True, text=True, timeout=15)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            hits.append(json.loads(result.stdout)["results"][0]["cached"])
+        self.assertEqual(hits, [False, True])
+        self.assertEqual(self.commands().count("go movetime 100"), 1)
 
     def test_same_position_searchmoves_compares_white_and_black(self):
         fixture = self.log.with_suffix(".py")

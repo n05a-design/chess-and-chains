@@ -620,4 +620,6 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    from chess_and_chains.engines.analysis import main as cli_main
+
+    raise SystemExit(cli_main())
