@@ -69,6 +69,7 @@ class UCIEngine:
         startup_timeout: float = 5.0,
         command_timeout: float = 5.0,
         shutdown_timeout: float = 1.0,
+        before_launch: Callable[[], None] | None = None,
     ) -> None:
         if isinstance(command, (str, bytes)) or not command:
             raise ValueError("Engine command must be a non-empty argument sequence.")
@@ -84,12 +85,15 @@ class UCIEngine:
                 raise ValueError("Engine timeouts must be positive.")
 
         self._command = tuple(str(part) for part in command)
+        self._before_launch = before_launch
         self._startup_timeout = startup_timeout
         self._command_timeout = command_timeout
         self._shutdown_timeout = shutdown_timeout
         self._process: subprocess.Popen[str] | None = None
         self._output: queue.Queue[str | object] = queue.Queue()
         self._name: str | None = None
+        self.author: str | None = None
+        self.version: str | None = None
         self._options: dict[str, UCIOption] = {}
         self._reader: threading.Thread | None = None
         self._transaction_lock = threading.RLock()
@@ -123,9 +127,12 @@ class UCIEngine:
                 self._release_process(self._process)
             self._process = None
             self._name = None
+            self.author = self.version = None
             self._options.clear()
             self._output = queue.Queue()
             try:
+                if self._before_launch is not None:
+                    self._before_launch()
                 process = subprocess.Popen(
                     self._command,
                     stdin=subprocess.PIPE,
@@ -137,7 +144,7 @@ class UCIEngine:
                     bufsize=1,
                     shell=False,
                 )
-            except OSError as error:
+            except (OSError, ValueError) as error:
                 raise EngineLaunchError(
                     f"Could not start configured engine {self._command[0]!r}: {error}"
                 ) from error
@@ -403,6 +410,10 @@ class UCIEngine:
                 on_info(output)
             elif output.startswith("id name "):
                 self._name = output.removeprefix("id name ").strip() or None
+            elif output.startswith("id author "):
+                self.author = output.removeprefix("id author ").strip() or None
+            elif output.startswith("id version "):
+                self.version = output.removeprefix("id version ").strip() or None
             elif output.startswith("option "):
                 self._record_option(output)
 

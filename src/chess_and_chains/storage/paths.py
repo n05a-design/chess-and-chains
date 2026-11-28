@@ -90,6 +90,7 @@ class DataLayout:
         self.root = ensure_safe_data_dir(root)
         self.database = self.root / "chess_and_chains.sqlite3"
         self.settings = self.root / "settings.json"
+        self.engine_registry = self.root / "engine_registry.sqlite3"
         self.packs = self.root / "puzzle_packs"
         self.backups = self.root / "backups"
         self.import_reports = self.root / "import_reports"

@@ -157,7 +157,7 @@ def restore_backup(layout: DataLayout, source: Path) -> BackupRestoration:
             else:
                 incoming, pack_refs = _read_bundle(source, directory)
                 candidate = directory / DATABASE
-                restored = replace(incoming, engine_path=current.engine_path,
+                restored = replace(incoming, engine_path=current.engine_path, engine_profile_id=current.engine_profile_id,
                                    registered_engine_paths=current.registered_engine_paths)
                 missing = tuple(sorted(set(pack_refs) - set(PackLibrary(layout.packs).ids())))
             recovery = layout.backups / f"pre-profile-restore-{uuid4().hex}.zip"

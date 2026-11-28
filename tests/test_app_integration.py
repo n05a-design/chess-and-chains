@@ -453,6 +453,26 @@ class SessionRecoveryUiTests(AppTestCase):
             app._offer_draw()
         self.assertEqual(app.panel_text.get(), "Remis durch Vereinbarung.")
 
+    def test_registry_profile_restarts_timed_bot_session_with_same_reference(self):
+        with tempfile.TemporaryDirectory() as folder:
+            layout = DataLayout(Path(folder))
+            app = self.make_app(data_layout=layout)
+            fixture = EngineConfig.mock()
+            profile = app.engine_registry.register(fixture.command[0], arguments=fixture.command[1:], origin="fixture")
+            checked = app.engine_registry.probe(profile.engine_id)
+            app._store_settings(engine_profile_id=profile.engine_id)
+            app.start_game("human-vs-bot-white", time_control=TimeControl(60_000, 2000))
+            app._play_move(Move.from_uci("e2e4"))
+            self.pump_until(lambda: len(app.game.moves) == 2)
+            app.close()
+
+            reopened = self.make_app(data_layout=layout)
+            self.assertEqual(reopened.db.load_session()[0].engine_ref, checked.reference())
+            self.assertEqual(reopened.controller.setup.bot_color, Color.BLACK)
+            self.assertFalse(reopened.controller.view().clock_running)
+            self.assertEqual(len(reopened.game.moves), 2)
+            reopened.close()
+
     def test_startup_resumes_autosave_with_redo_without_library_entry(self):
         with tempfile.TemporaryDirectory() as folder:
             layout = DataLayout(Path(folder))

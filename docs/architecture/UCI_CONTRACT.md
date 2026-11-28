@@ -23,3 +23,21 @@ Programm startet explizit konfigurierte lokale Engine als separaten Prozess, sen
 - `engines/mock_engine.py`: projekteigener Test-Prozess, keine Schach-KI.
 
 Norm-/Softwarequellen über `docs/research/SOURCES.md` dokumentieren. UCI-Details je Stockfish-Version erneut verifizieren.
+
+## Lokale Engine-Freigabe
+
+`EngineRegistry` speichert Registrierungen und Bereitschaftsnachweise in
+`engine_registry.sqlite3` im Nutzerdatenprofil. Registry-Schema 1 ist von der
+Partiedatenbank unabhängig. Die logische UUID bleibt bei einer erneuten
+Prüfung bestehen. Der Konfigurationsfingerabdruck bindet Binary-SHA-256,
+Argumente, konfigurierte UCI-Optionen und explizit angegebene Ressourcen.
+Name, Autor, angekündigte Fähigkeiten und ein gegebenenfalls ausdrücklich
+gemeldeter Versionswert werden beim Handshake erfasst. Ohne Versionsmeldung
+bleibt der Wert unbekannt.
+
+Ein expliziter erfolgreicher Bereitschaftstest gibt diese Konfiguration für
+das lokale Profil frei. Der Worker kontrolliert die Freigabe und die Bytes
+unmittelbar vor dem Start. Spiel und Analyse verwenden dieselbe Registry.
+Bestehende Engine-Pfade werden als ungetestete Registrierungen übernommen.
+Frühere Session-Referenzen bleiben als Legacy-Werte erhalten. Portable
+Sicherungen übernehmen die Auswahl ausschließlich vom Zielprofil.

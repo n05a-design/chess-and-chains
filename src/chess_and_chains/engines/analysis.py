@@ -306,7 +306,7 @@ class AnalysisService:
                     return
                 game.play(move)
         game = ChessGame(initial)
-        engine = UCIEngine(self._config.command)
+        engine = UCIEngine(self._config.command, before_launch=self._config.before_launch)
         try:
             for ply in request.plies:
                 if job._cancel.is_set():
@@ -336,6 +336,8 @@ class AnalysisService:
             return AnalysisResult(initial_fen, history, fen, game.state.turn, details, (), None, 0, outcome.name.lower())
         if not engine.running:
             engine.start()
+            for name, value in self._config.approved_options:
+                engine.set_option(name, value)
         legal = game.rules.legal_moves(game.state)
         variants = min(len(legal), request.multipv)
         applied = _set_analysis_options(engine, variants)

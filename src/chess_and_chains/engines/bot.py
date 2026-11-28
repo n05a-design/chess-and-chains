@@ -18,7 +18,7 @@ import sys
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Mapping, Protocol, Sequence
+from typing import Callable, Mapping, Protocol, Sequence
 
 from ..chess import Move
 from .presets import BotPreset, OptionPlan, load_presets, plan_options
@@ -77,10 +77,18 @@ class EngineConfig:
     is_mock: bool
     source: str  # "mock", "settings", "environment"
 
+    registry_reference: str | None = None
+    verified_version: str | None = None
+    approved_options: tuple[tuple[str, str | int | bool], ...] = ()
+    before_launch: Callable[[], None] | None = field(default=None, repr=False, compare=False)
+
     def session_reference(self) -> str:
         """Identify a configuration without persisting executable commands."""
         if self.is_mock:
             return "mock"
+        return self.registry_reference or self.legacy_reference()
+
+    def legacy_reference(self) -> str:
         path = Path(self.command[0]).resolve(strict=True)
         stat = path.stat()
         identity = (str(path), stat.st_size, stat.st_mtime_ns, *self.command[1:])
@@ -190,11 +198,14 @@ class UCIBot:
                     startup_timeout=self.startup_timeout,
                     command_timeout=self.startup_timeout,
                     shutdown_timeout=1.0,
+                    before_launch=self.config.before_launch,
                 )
                 self._engine = engine
                 self._applied_preset = None
                 self._game_id = None
                 engine.start()
+                for name, value in self.config.approved_options:
+                    engine.set_option(name, value)
             if self._applied_preset != preset.id:
                 plan = plan_options(preset, engine.options)
                 for name, value in plan.apply:

@@ -58,7 +58,7 @@ from ..chess import (
 )
 from ..engines.analysis import AnalysisMode, AnalysisProgress, AnalysisRequest, AnalysisResult, AnalysisService
 from ..engines.bot import EngineConfig, EngineConfigError, MoveProvider, UCIBot, resolve_engine_config
-from ..engines.registry import EngineAvailability, EngineRegistry
+from ..engines.registry import EngineAvailability, EngineProfile, EngineRegistry
 from ..engines.presets import BotPreset, load_presets
 from ..engines.uci import UCIEngineError
 from ..game import BotStatus, GameController, GameSetup, GameView, PlayMode
@@ -315,8 +315,22 @@ class ChessApp:
         self._height_density: str = "full"
         self.t = Translator(locale or self.settings.locale)
         self.presets = load_presets()
-        self._provider_factory = provider_factory
-        self.engine_registry = EngineRegistry()
+        self._provider_factory = self._create_provider if provider_factory is default_provider_factory else provider_factory
+        engine_warning = None
+        try:
+            self.engine_registry = EngineRegistry(data_layout.engine_registry if data_layout else None)
+            legacy_paths = {Path(path).expanduser().absolute() for path in self.settings.registered_engine_paths}
+            selected = self.settings.engine_profile_id
+            if selected is None and self.settings.engine_path:
+                path = Path(self.settings.engine_path).expanduser().absolute()
+                selected = self._register_engine_path(path).engine_id
+            for path in sorted(legacy_paths):
+                self._register_engine_path(path)
+            if legacy_paths or selected != self.settings.engine_profile_id:
+                self._store_settings(engine_profile_id=selected, registered_engine_paths=())
+        except (EngineConfigError, OSError) as error:
+            self.engine_registry = EngineRegistry()
+            engine_warning = str(error)
         self._analysis: tuple[str, AnalysisService] | None = None
         self.controller = GameController()
         self._unsubscribe_view = self.controller.subscribe(self._on_view)
@@ -381,7 +395,7 @@ class ChessApp:
         if self.db is not None and self.db.recovered_from is not None:
             database_warning = self.t("library.recovered", file=self.db.recovered_from.name)
         session_message = self._restore_session()
-        startup_messages = (database_warning, self.settings_warning, session_message)
+        startup_messages = (database_warning, self.settings_warning, engine_warning, session_message)
         self.interaction_text.set("\n".join(message for message in startup_messages if message))
         saved_pack = self.settings.last_pack_id
         if puzzle_pack is None and self._pack_library is not None and saved_pack not in (None, DEMO_PACK_ID):
@@ -2161,6 +2175,33 @@ class ChessApp:
             save_settings(self.layout.settings, updated)
         self.settings = updated
 
+    def _register_engine_path(
+        self, executable: Path, arguments: tuple[str, ...] = (), display_name: str | None = None,
+    ) -> EngineProfile:
+        path = executable.expanduser().absolute()
+        existing = self.engine_registry.profile_for_command(path, arguments)
+        return existing or self.engine_registry.register(path, arguments=arguments, display_name=display_name)
+
+    def _configured_engine(self, settings: Settings) -> EngineConfig:
+        if settings.engine_profile_id is not None:
+            try:
+                return self.engine_registry.launch_configuration(settings.engine_profile_id)
+            except KeyError as error:
+                raise EngineConfigError("The selected engine registration is unavailable.") from error
+        if settings.engine_path is None:
+            config, warning = resolve_engine_config(None)
+            if warning:
+                raise EngineConfigError(warning)
+            return config
+        path = Path(settings.engine_path).expanduser().absolute()
+        profile = self.engine_registry.profile_for_command(path)
+        if profile is None:
+            raise EngineConfigError("Register and test the selected engine before use.")
+        return self.engine_registry.launch_configuration(profile.engine_id)
+
+    def _create_provider(self, preset: BotPreset, settings: Settings) -> MoveProvider:
+        return UCIBot(self._configured_engine(settings), preset)
+
     def _setup_for_mode(self, mode: str) -> GameSetup:
         if mode == "human-vs-bot-white":
             return GameSetup.against_bot(Color.WHITE)
@@ -2180,7 +2221,10 @@ class ChessApp:
             self.t("new_game.confirm_title"), self.t("new_game.confirm_body"), parent=self.root,
         ):
             return
-        self.start_game(self.mode_var.get(), time_control=time_control)
+        try:
+            self.start_game(self.mode_var.get(), time_control=time_control)
+        except EngineConfigError as error:
+            self.interaction_text.set(self.t("engine.test_failed", error=error))
 
     def _new_timed_game(self) -> None:
         controls = ((1, 0), (2, 1), (3, 0), (3, 2), (5, 0), (5, 3), (10, 0), (10, 5), (15, 10), (30, 0), (60, 0))
@@ -2255,7 +2299,7 @@ class ChessApp:
                     self._session_blocked = True
                     return self.t("session.engine")
                 provider = self._provider_factory(preset, self.settings)
-                if self._engine_reference(provider) != snapshot.engine_ref:
+                if not self._matches_engine_reference(provider, snapshot.engine_ref):
                     provider.close()
                     self._session_blocked = True
                     return self.t("session.engine")
@@ -2284,6 +2328,12 @@ class ChessApp:
         if provider.is_mock:
             return "mock"
         raise ValueError("The session engine has no persistent reference.")
+
+    def _matches_engine_reference(self, provider: MoveProvider, reference: str | None) -> bool:
+        if self._engine_reference(provider) == reference:
+            return True
+        return (isinstance(provider, UCIBot) and provider.config.registry_reference is not None
+                and reference == provider.config.legacy_reference())
 
     def _session_snapshot(self, view: GameView) -> GameSessionSnapshot:
         current = self._saved_session if self._session_game is self.game else None
@@ -2909,7 +2959,7 @@ class ChessApp:
                 self.interaction_text.set(self.t("library.engine"))
                 return
             provider = self._provider_factory(preset, self.settings)
-            if self._engine_reference(provider) != saved.engine_ref:
+            if not self._matches_engine_reference(provider, saved.engine_ref):
                 provider.close()
                 self.interaction_text.set(self.t("library.engine"))
                 return
@@ -3431,13 +3481,13 @@ class ChessApp:
         self, game: ChessGame, mode: AnalysisMode, *, source_game_id: int | None = None,
     ) -> None:
         try:
-            config, _warning = resolve_engine_config(self.settings.engine_path)
+            config = self._configured_engine(self.settings)
             if config.is_mock:
                 self.interaction_text.set(self.t("analysis.engine_required"))
                 return
             reference = config.session_reference()
             if self._analysis is None or self._analysis[0] != reference:
-                self._analysis = (reference, AnalysisService(config, engine_id=reference))
+                self._analysis = (reference, AnalysisService(config, engine_id=reference, engine_version=config.verified_version))
             job = self._analysis[1].start(AnalysisRequest(
                 str(uuid4()), to_fen(game.initial_state), tuple(game.moves), mode, multipv=3,
             ))
@@ -3804,13 +3854,15 @@ class EngineDialog:
             highlightbackground=theme.input_border, highlightcolor=theme.brand_blue,
         )
         self.entry.grid(row=2, column=0, columnspan=2, sticky="ew", padx=(0, 6))
-        if app.settings.registered_engine_paths:
+        registered = tuple(dict.fromkeys(str(profile.executable) for profile in app.engine_registry.profiles()
+                                         if not profile.arguments))
+        if registered:
             saved = ttk.Combobox(
-                self.window, state="readonly", values=app.settings.registered_engine_paths, width=48,
+                self.window, state="readonly", values=registered, width=48,
                 style="Glide.TCombobox",
             )
             saved.grid(row=1, column=1, columnspan=2, sticky="ew", pady=(12, 2))
-            if app.settings.engine_path in app.settings.registered_engine_paths:
+            if app.settings.engine_path in registered:
                 saved.set(app.settings.engine_path)
             saved.bind("<<ComboboxSelected>>", lambda _event: self.path_var.set(saved.get()))
         app._button(self.window, t("button.browse"), self._browse, stretch=False).grid(row=2, column=2, padx=(6, 0))
@@ -3839,10 +3891,7 @@ class EngineDialog:
             path = Path(config.command[0]).absolute()
             arguments = config.command[1:]
             registry = self.app.engine_registry
-            profile = next((item for item in registry.profiles()
-                            if item.executable == path and item.arguments == arguments), None)
-            if profile is None:
-                profile = registry.register(path, arguments=arguments, display_name=config.display_name)
+            profile = self.app._register_engine_path(path, arguments, config.display_name)
         except (OSError, EngineConfigError) as error:
             self.status_var.set(self.app.t("engine.test_failed", error=error))
             return
@@ -3878,18 +3927,18 @@ class EngineDialog:
 
     def save(self) -> None:
         path = self.path_var.get().strip() or None
+        profile_id = None
         if path is not None:
             try:
-                EngineConfig.from_path(path)
-            except EngineConfigError as error:
+                config = EngineConfig.from_path(path)
+                profile_id = self.app._register_engine_path(Path(config.command[0]), display_name=config.display_name).engine_id
+            except (OSError, EngineConfigError) as error:
                 self.status_var.set(self.app.t("engine.test_failed", error=error))
                 return
-        paths = self.app.settings.registered_engine_paths
         if path is not None:
             path = str(Path(path).expanduser().absolute())
-            paths = (path, *(previous for previous in paths if previous != path))[:20]
         try:
-            self.app._store_settings(engine_path=path, registered_engine_paths=paths)
+            self.app._store_settings(engine_path=path, engine_profile_id=profile_id)
         except (OSError, SettingsError) as error:
             self.status_var.set(self.app.t("engine.test_failed", error=error))
             return

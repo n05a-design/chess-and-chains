@@ -11,6 +11,7 @@ import tempfile
 from dataclasses import asdict, dataclass, fields, replace
 from datetime import datetime, timezone
 from pathlib import Path
+from uuid import UUID
 
 from glide_shell import window_geometry
 
@@ -67,6 +68,7 @@ class Settings:
     animations_enabled: bool = True
     hints_visible: bool = True
     registered_engine_paths: tuple[str, ...] = ()
+    engine_profile_id: str | None = None
 
     def validate(self) -> Settings:
         if self.schema_version != SETTINGS_SCHEMA:
@@ -104,6 +106,12 @@ class Settings:
             raise SettingsError(f"Unsupported font weight {self.font_weight_choice!r}.")
         if self.engine_path is not None and (not isinstance(self.engine_path, str) or "\n" in self.engine_path):
             raise SettingsError("Invalid engine path.")
+        if self.engine_profile_id is not None:
+            try:
+                if not isinstance(self.engine_profile_id, str) or str(UUID(self.engine_profile_id)) != self.engine_profile_id:
+                    raise ValueError("Invalid engine profile ID.")
+            except ValueError as error:
+                raise SettingsError("Invalid engine profile ID.") from error
         paths = self.registered_engine_paths
         if not isinstance(paths, tuple) or len(paths) > 20 or any(
             not isinstance(path, str) or not 0 < len(path) <= 4096

@@ -28,3 +28,9 @@
 
 Der Umsetzungs- und Prüfstand der nachfolgenden Arbeitspakete steht im
 [Bericht zur Produktintegration](../reports/2026-11-27_F13-F26-functional-completion.md).
+
+## Auftrag III – Engine und Analyse
+
+Spiel und Analyse verwenden die persistente lokale Engine-Registry mit
+gemeinsamem Konfigurationsfingerabdruck und erneuter Prüfung beim Start.
+[Auftragsbericht](../reports/2026-11-28_phase-a-completion-phase-b-engine-analysis.md)
