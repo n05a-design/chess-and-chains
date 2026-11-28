@@ -34,3 +34,8 @@ Der Umsetzungs- und Prüfstand der nachfolgenden Arbeitspakete steht im
 Spiel und Analyse verwenden die persistente lokale Engine-Registry mit
 gemeinsamem Konfigurationsfingerabdruck und erneuter Prüfung beim Start.
 [Auftragsbericht](../reports/2026-11-28_phase-a-completion-phase-b-engine-analysis.md)
+
+Die zweite Ausbaustufe ergänzt Sitzungsphasen, getrennte Archivierung von
+Konfliktständen, bestätigte Engine-Wechsel, Hauptvarianten-Uhrannotationen,
+Bibliothekslabels und automatische Rückkehr nach einem unterbrochenen
+Profil-Restore.

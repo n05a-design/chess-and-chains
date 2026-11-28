@@ -284,7 +284,7 @@ class GameController:
                     self._clock.resume()
             else:
                 self._clock_positions.extend(clock.positions)
-                self._clock.restore_paused(clock.current)
+                self._clock.restore_timeline(clock)
                 if clock.current.remaining_ns(clock.current.turn) == 0:
                     self._flagged = clock.current.turn
         self._initial_fen = to_fen(self._game.initial_state)
@@ -410,7 +410,8 @@ class GameController:
     def clock_timeline(self) -> ClockTimeline | None:
         if self._clock is None:
             return None
-        return ClockTimeline(self._clock.reading(), tuple(self._clock_positions))
+        now = self._clock.sample_time()
+        return ClockTimeline(self._clock.reading(now), tuple(self._clock_positions), self._clock.active_time(now))
 
     def toggle_clock(self) -> None:
         self._ensure_open()

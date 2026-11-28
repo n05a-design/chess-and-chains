@@ -258,3 +258,35 @@ Versuch mit Zugfolge, Zählern und verstrichener Spielzeit. Die Wiederaufnahme
 prüft die Züge mit dem installierten Demopaket. Der Revisionsvergleich und
 die Wertung abgeschlossener Versuche laufen in derselben SQLite-Transaktion.
 Die bestehende Fortschrittsansicht verwendet dieselben Puzzle-Versuche.
+
+## Sitzungsphasen und Wiederherstellung
+
+Der Partiekern erhält Zugfolge, Cursor und Ergebnis. Das optionale Feld
+`phase` des Sitzungsformats unterscheidet erstellt, aktiv, pausiert,
+unterbrochen, wiederhergestellt, ausstehende Zeitablaufentscheidung,
+abgeschlossen und verworfen. Ältere Snapshots lassen sich laden. Erstellt
+oder wiederhergestellt wird bei Zug oder laufender Uhr aktiv. Nur eine
+laufende Uhr kann pausieren. Das Schließen pausiert die Uhr und sichert die
+Unterbrechung. Ein Zeitablauf mit offenem Ergebnis sperrt weitere Züge.
+Bestätigtes Verwerfen beendet die Wiederaufnahme dieser Kopie. Bei CAS-
+Konflikt kann das Fenster seine Partie separat in die Bibliothek schreiben,
+den neueren Stand laden oder mit pausierter Autosicherung geöffnet bleiben.
+
+Für einen bestätigten Engine-Wechsel stehen alte und neue Referenz,
+Wechselzeit, Halbzug und Grund im Snapshot. Verifizierte historische
+Metadaten werden eingebettet. Sie bleiben beim Entfernen der lokalen
+Registrierung lesbar. Eine zeitgesteuerte Wiederaufnahme beginnt pausiert.
+
+Uhrannotationen `[%clk ...]` erhalten die Restzeit der ziehenden Seite
+nach ihrem Halbzug. Eingelesen werden Annotationen der Hauptvariante.
+Der lokale Snapshot hält zusätzlich beide Uhrstände, die finale Lesung
+und bei neuen Zeitpartien die monoton gemessene aktive Spielzeit fest.
+
+Das Restore-Journal `.profile-restore.json` enthält eine
+Transaktions-ID, Prüfsummen des Eingangspakets, der Sicherheitskopie und
+des Profils sowie die aktuelle Phase. Vor normalem Öffnen muss die App
+einen ausstehenden Restore abschließen oder den vorherigen Profilstand
+wiederherstellen. Die SQLite-basierte Profilsperre erlaubt mehrere
+lesende Desktop-Leases und exklusiven Restore. Die Betriebssystem-Sperre
+endet beim Prozessabbruch. Portable Backups enthalten keine lokale
+Ausführungsfreigabe der Engine-Registry.

@@ -33,3 +33,21 @@ Autor, Konfigurationsoptionen und geschützten Prozessstart. Ersetztes Binary
 bei unveränderten Dateimetadaten, veränderte Ressource und widerrufene
 Registrierung unterbinden den Prozessstart. Ausführung und Kalibrierung
 einer freigegebenen Dritt-Engine stehen für Auftrag IV-A aus.
+
+## Gate III-2 – Sitzung, Archiv und Profil
+
+- A1 ergänzt explizite Sitzungsphasen, bewussten Abbruch, die Bibliothekskopie
+  bei CAS-Konflikt und die ausdrückliche Bestätigung eines Engine-Wechsels
+  bei unverändertem Spielmodus. Engine-Wechsel werden im Snapshot belegt.
+- A2 ergänzt Hauptvarianten-Uhrannotationen und native Anzeige importierter
+  Werte, monotone aktive Spielzeit und historische Registry-Metadaten.
+  Favoriten und Tags sind aus der Bibliothek bearbeit- und filterbar.
+- A3 sichert jede Restore-Transaktion mit einem journalisierten,
+  prüfsummengebundenen Rücksetzpunkt. Der Start validiert das Journal unter
+  exklusiver Profil-Sperre. Zwei Desktop-Leases blockieren gemeinsam den
+  Restore. Tests unterbrechen den Prozess sowohl zwischen
+  Datenbankoperation und Journalstatus als auch während der Rücksetzung.
+
+Die SQLite-Partiedatenbank bleibt bei Version 7. Neue Snapshotfelder sind
+additiv. Der Backup-ZIP-Vertrag hält seine bisherigen Komponenten.
+[Erweiterter Datenvertrag](../architecture/DATA_CONTRACTS.md)

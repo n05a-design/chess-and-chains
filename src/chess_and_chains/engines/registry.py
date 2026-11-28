@@ -18,7 +18,7 @@ from enum import StrEnum
 from pathlib import Path
 from uuid import UUID, uuid4
 
-from .bot import EngineConfig, EngineConfigError
+from .bot import EngineConfig, EngineConfigError, EngineProvenance
 from .uci import EngineTimeoutError, UCIEngine, UCIEngineError, UCIOption
 
 
@@ -172,9 +172,9 @@ def inspect_engine(profile: EngineProfile, *, timeout: float = 5.0) -> EnginePro
                 for option, value in profile.configured_options:
                     engine.set_option(option, value)
                 engine.is_ready()
-                name = engine.name if isinstance(engine.name, str) else None
-                author = engine.author if isinstance(engine.author, str) else None
-                version = engine.version if isinstance(engine.version, str) else None
+                name = engine.name[:512] if isinstance(engine.name, str) else None
+                author = engine.author[:512] if isinstance(engine.author, str) else None
+                version = engine.version[:512] if isinstance(engine.version, str) else None
                 options = tuple(sorted(engine.options.values(), key=lambda option: option.name.casefold()))
         except EngineTimeoutError as exc:
             status = EngineAvailability.UNRESPONSIVE
@@ -393,9 +393,14 @@ class EngineRegistry:
             if not matches:
                 raise EngineConfigError("The registered executable or its resources changed. Test it again before use.")
 
+        assert result.binary_sha256 is not None
         return EngineConfig(
             (str(executable), *profile.arguments), profile.display_name, profile.is_mock, profile.origin,
             registry_reference=result.reference(), verified_version=result.advertised_version,
+            provenance=EngineProvenance(
+                result.reference(), result.binary_sha256, result.advertised_name,
+                result.advertised_author, result.advertised_version,
+            ),
             approved_options=profile.configured_options, before_launch=recheck,
         )
 

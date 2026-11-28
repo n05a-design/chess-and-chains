@@ -12,6 +12,7 @@ engine is used and labelled as such.
 from __future__ import annotations
 
 import os
+import re
 import hashlib
 import shlex
 import sys
@@ -71,6 +72,39 @@ class EngineConfigError(ValueError):
 
 
 @dataclass(frozen=True, slots=True)
+class EngineProvenance:
+    reference: str
+    binary_sha256: str
+    name: str | None = None
+    author: str | None = None
+    version: str | None = None
+    effective_options: tuple[tuple[str, str | int | bool], ...] | None = None
+
+    def __post_init__(self) -> None:
+        if (not re.fullmatch(r"uci1:[0-9a-f-]{36}:[0-9a-f]{64}", self.reference)
+                or not re.fullmatch(r"[0-9a-f]{64}", self.binary_sha256)
+                or any(value is not None and (not isinstance(value, str) or len(value) > 512)
+                       for value in (self.name, self.author, self.version))):
+            raise ValueError("Invalid historical engine identity.")
+        if self.effective_options is not None:
+            options = tuple(tuple(entry) for entry in self.effective_options)
+            if len(options) > 128 or any(
+                not isinstance(name, str) or not name or len(name) > 256 or type(value) not in (str, int, bool)
+                for name, value in options
+            ):
+                raise ValueError("Invalid historical UCI options.")
+            object.__setattr__(self, "effective_options", options)
+
+    @property
+    def engine_id(self) -> str:
+        return self.reference.split(":")[1]
+
+    @property
+    def configuration_fingerprint(self) -> str:
+        return self.reference.split(":")[2]
+
+
+@dataclass(frozen=True, slots=True)
 class EngineConfig:
     command: tuple[str, ...]
     display_name: str
@@ -78,6 +112,7 @@ class EngineConfig:
     source: str  # "mock", "settings", "environment"
 
     registry_reference: str | None = None
+    provenance: EngineProvenance | None = None
     verified_version: str | None = None
     approved_options: tuple[tuple[str, str | int | bool], ...] = ()
     before_launch: Callable[[], None] | None = field(default=None, repr=False, compare=False)

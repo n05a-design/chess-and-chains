@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import sqlite3
 import tempfile
+import unicodedata
 from contextlib import closing
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -180,6 +181,7 @@ class SavedGame:
     declared_move: Move | None = None
     engine_ref: str | None = None
     session_snapshot: GameSessionSnapshot | None = None
+    clock_annotations: tuple[int | None, ...] = ()
 
     @property
     def started_utc(self) -> datetime | None:
@@ -196,6 +198,11 @@ class SavedGame:
     def wall_duration(self) -> timedelta | None:
         start, end = self.started_utc, self.ended_utc
         return end - start if start is not None and end is not None else None
+
+    @property
+    def timed_play_duration(self) -> timedelta | None:
+        clock = self.session_snapshot.clock if self.session_snapshot else None
+        return timedelta(microseconds=clock.active_ns // 1000) if clock and clock.active_ns is not None else None
 
     def to_game(self) -> ChessGame:
         game = ChessGame(parse_fen(self.initial_fen))
@@ -222,6 +229,7 @@ class GameSummary:
     white: str
     black: str
     event: str
+    favorite: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -501,6 +509,7 @@ class Database:
         headers: dict[str, str] | None = None,
         result: str | None = None,
         session_snapshot: GameSessionSnapshot | None = None,
+        clock_annotations: tuple[int | None, ...] = (),
     ) -> int:
         outcome = game.outcome()
         has_termination = outcome.resigned_by is not None or outcome.claimed_draw is not None
@@ -508,7 +517,9 @@ class Database:
             if result == "*":
                 raise ChessError("An explicit termination requires a final PGN result.")
             game.record_result(result)
-        pgn = export_pgn(game, headers, result)
+        if session_snapshot is not None and session_snapshot.clock is not None:
+            clock_annotations = session_snapshot.clock.move_annotations(len(game.moves))
+        pgn = export_pgn(game, headers, result, clock_annotations=clock_annotations)
         result = pgn.rsplit(maxsplit=1)[-1]
         payload = None
         if session_snapshot is not None:
@@ -534,8 +545,7 @@ class Database:
         with self._conn:
             self._conn.execute("BEGIN IMMEDIATE")
             prior = self._conn.execute(
-                "SELECT id FROM games WHERE session_snapshot = ? AND pgn = ? ORDER BY id LIMIT 1",
-                (payload, pgn),
+                "SELECT id FROM games WHERE session_snapshot = ? ORDER BY id LIMIT 1", (payload,),
             ).fetchone()
             if prior is not None:
                 return int(prior[0])
@@ -559,6 +569,7 @@ class Database:
                 declared_move=Move.from_uci(declared_move) if declared_move is not None else None,
                 engine_ref=engine_ref,
                 session_snapshot=GameSessionSnapshot.decode(payload) if payload is not None else None,
+                clock_annotations=pgn.clock_annotations,
             )
             if (pgn.moves != saved.moves or pgn.initial_state != parse_fen(saved.initial_fen)
                     or pgn.result != saved.result):
@@ -570,6 +581,10 @@ class Database:
                     raise StorageError(f"Saved game {game_id}: termination requires a final result.")
                 saved.to_game()
             if saved.session_snapshot is not None:
+                clock = saved.session_snapshot.clock
+                if saved.clock_annotations and (clock is None
+                        or clock.move_annotations(len(saved.moves)) != saved.clock_annotations):
+                    raise StorageError(f"Saved game {game_id}: PGN and stored clock data disagree.")
                 self._validate_archive_snapshot(
                     saved.session_snapshot, saved.to_game(), saved.result, mode=saved.mode,
                     bot_color=saved.bot_color, bot_preset=saved.bot_preset, engine_ref=saved.engine_ref,
@@ -590,7 +605,7 @@ class Database:
         has_analysis: bool | None = None, has_training: bool | None = None,
         favorite: bool | None = None, tag: str | None = None,
     ) -> list[GameSummary]:
-        query = "SELECT id, created_utc, result, pgn"
+        query = "SELECT id, created_utc, result, pgn, favorite"
         if time_control is not None:
             query += ", session_snapshot"
         clauses = []
@@ -609,11 +624,11 @@ class Database:
                 clauses.append(condition if required else f"NOT {condition}")
         if tag is not None:
             clauses.append("EXISTS (SELECT 1 FROM game_tags WHERE game_id = g.id AND tag = ?)")
-            parameters.append(tag)
+            parameters.append(unicodedata.normalize("NFC", tag))
         where = " WHERE " + " AND ".join(clauses) if clauses else ""
         query += f" FROM games AS g{where} ORDER BY id DESC"
         summaries = []
-        for game_id, created, game_result, pgn, *snapshot in self._conn.execute(query, parameters):
+        for game_id, created, game_result, pgn, is_favorite, *snapshot in self._conn.execute(query, parameters):
             try:
                 tags = read_pgn_headers(pgn)
             except (ChessError, AttributeError, TypeError):
@@ -635,8 +650,12 @@ class Database:
                         continue
             summaries.append(GameSummary(
                 game_id, created, game_result, tags.get("White", ""), tags.get("Black", ""), tags.get("Event", ""),
+                bool(is_favorite),
             ))
         return summaries
+
+    def archive_tags(self) -> tuple[str, ...]:
+        return tuple(row[0] for row in self._conn.execute("SELECT DISTINCT tag FROM game_tags ORDER BY tag"))
 
     def archive_labels(self, game_id: int) -> ArchiveLabels:
         fields = self._conn.execute(
@@ -664,7 +683,7 @@ class Database:
 
     def set_archive_labels(self, game_id: int, *, favorite: bool, tags: tuple[str, ...] = ()) -> None:
         self._check_archive_labels(favorite, tags)
-        tags = tuple(sorted(set(tags)))
+        tags = tuple(sorted({unicodedata.normalize("NFC", tag) for tag in tags}))
         with self._conn:
             self._conn.execute("BEGIN IMMEDIATE")
             cursor = self._conn.execute("UPDATE games SET favorite = ? WHERE id = ?", (favorite, game_id))
@@ -680,7 +699,10 @@ class Database:
     def import_pgn(self, text: str, *, mode: str = "imported", max_plies: int | None = None) -> int:
         document = parse_pgn(text, max_plies=max_plies)
         tags = {k: v for k, v in document.tags if k not in ("SetUp", "FEN", "Result")}
-        return self.save_game(document.new_game(), mode=mode, headers=tags, result=document.result)
+        return self.save_game(
+            document.new_game(), mode=mode, headers=tags, result=document.result,
+            clock_annotations=document.clock_annotations,
+        )
 
     def import_pgn_file(self, source: Path) -> int:
         """Import one UTF-8 PGN game after size, text and move validation."""
