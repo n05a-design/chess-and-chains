@@ -76,3 +76,14 @@ Q-001 bleibt offen, weil die Auswahl zwischen A und B noch nicht abgeschlossen
 ist. Q-002 ist als Produktanforderung entschieden; der Umsetzungsweg bleibt
 offen. Der Regelkern wird separat bewertet; ADR-001 bleibt Release-Gate und
 blockiert eine gebündelte GPL-Auslieferung.
+
+## IV-A – lokale Ausführung (28.11.2026)
+
+Der Owner hat den offiziellen Stockfish-19-Release `sf_19`, Commit
+`edb0d9db6731067ec50ce619ff372b463bc4dd5d`, für Download, isolierte
+Installation und lokale Ausführung freigegeben. Der lokale Engine-Prozess
+wird über die vorhandene UCI-Registry mit geprüfter Binary und NNUE-Ressource
+gestartet. Das App-Repository und sein Installer enthalten diese Dateien
+weiterhin nicht. Q-001 bleibt das Gate für Vertrieb und Installer.
+
+[Technische IV-A-Abnahme](../reports/2026-11-28_IV-A-stockfish-integration-compliance.md)

@@ -89,7 +89,8 @@
       "status": "IN_PROGRESS",
       "status_evidence": [
         "docs/reports/2026-11-20_W02_license.md",
-        "docs/legal/LICENSE_STRATEGY.md"
+        "docs/legal/LICENSE_STRATEGY.md",
+        "docs/reports/2026-11-28_IV-A-stockfish-integration-compliance.md"
       ],
       "open_gate_items": [
         "ADR-001 engine distribution decision and concrete delivery inventory"
@@ -198,7 +199,7 @@
       "gate": "UCI-Lifecycle, Fehlerbehandlung, dokumentierte Skills, physischer Offline-Test",
       "phase": "F2",
       "status": "TESTED",
-      "scope": "UCI adapter, GameController, async worker, bot presets and the local engine readiness probe, tested with the project-owned mock engine; no real engine tested",
+      "scope": "UCI adapter, GameController, persistent registry and six bot presets tested with fixtures and locally with Stockfish 19 on macOS arm64",
       "status_evidence": [
         "docs/reports/2026-11-20_W07_uci.md",
         "docs/reports/2026-11-21_W07-uci-verbindungstest.md",
@@ -208,10 +209,11 @@
         "tests/test_uci_engine.py",
         "tests/test_game_controller.py",
         "tests/test_bot_presets.py",
-        "docs/reports/2026-11-20_N02-follow-up.md"
+        "docs/reports/2026-11-20_N02-follow-up.md",
+        "docs/reports/2026-11-28_IV-A-stockfish-integration-compliance.md"
       ],
       "open_gate_items": [
-        "Real third-party engine offline test (ADR-001)",
+        "Native Stockfish acceptance on Windows, Intel macOS and Linux, and engine distribution decision (ADR-001)",
         "Bot strength calibration (ADR-007)",
         "Manual native UI acceptance of bot mode on the release targets"
       ]

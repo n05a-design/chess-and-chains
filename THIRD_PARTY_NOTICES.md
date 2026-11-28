@@ -4,7 +4,7 @@
 
 | Component / source | Current status | License reported by source | Release obligation |
 | --- | --- | --- | --- |
-| Stockfish 19 (`sf_19`) | Research candidate; no binary downloaded or bundled | GPLv3 per official README/Copying | Exact binary/source/NNUE inventory and legal review before redistribution |
+| Stockfish 19 (`sf_19`) | Owner-approved isolated local installation; external UCI process; excluded from repository and installer | GPLv3 per official README/Copying | Exact binary/source/NNUE inventory and legal review before redistribution |
 | python-chess | Candidate; NOT installed | GPLv3 or later per source | Incompatible with simply assuming own-only MPL terms |
 | Chessnut | Candidate; NOT installed | Unlicense | Functional qualification plus provenance |
 | Lichess puzzle CSV | Candidate; NOT downloaded | CC0 | Preserve dataset source/date and apply rules carefully |
