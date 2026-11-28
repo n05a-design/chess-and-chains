@@ -144,16 +144,45 @@ heruntergeladen oder hinzugefügt. `ADR-001` bleibt OPEN/RELEASE BLOCKER.
 
 ## Tatsächlicher lokaler IV-A-Bestand (28.11.2026)
 
-Stockfish 19 wurde aus dem unveränderten offiziellen macOS-Universalarchiv
-isoliert installiert. Das Archiv enthält `Copying.txt`, `AUTHORS`, den
-Quellbaum einschließlich Makefile und Skripte. Das im Binary eingebettete
-SFNNv16-Netz wurde lokal exportiert und als geprüfte Ressource registriert.
-Die offizielle README nennt ODbL für die bereitgestellten LCZero-Trainingsdaten.
-Vor konkreter Weitergabe sind NNUE-Provenienz, passender Corresponding
-Source und Buildkette, GPLv3 §§ 5–6 sowie gegebenenfalls MPL 2.0 § 3.3 zu
-prüfen. Ein getrennter, austauschbarer UCI-Prozess belegt die technische
-Grenze. Die rechtliche Einordnung eines kombinierten oder getrennten
-Installers bleibt Teil von Q-001.
+Stockfish 19 stammt aus dem offiziellen macOS-Universalarchiv
+`stockfish-macos-universal.tar.gz` für `sf_19`, Commit
+`edb0d9db6731067ec50ce619ff372b463bc4dd5d`. Das lokal freigegebene Binary
+ist unverändert. Das Inventar und die SHA-256-Werte wurden am lokal
+vorhandenen Archiv und an den extrahierten Dateien geprüft.
+
+| Bestandteil | Lokale Identität und Herkunft | Lizenz- und Quellenbezug |
+| --- | --- | --- |
+| Engine | `binary/stockfish`, arm64/x86_64, SHA-256 `8eed61129d1493c5d1f2fd9323f0c54c47ac49319911fbde18c6b9c87e8b13c5` | Stockfish nennt GPLv3. Der Quellenstand ist der obige Commit. Der Quellbaum im Archiv enthält `src/Makefile` mit `macos-lipo` und die Skripte zum Netzbezug und zur Einbettung. |
+| Eingebettetes NNUE | Ein SFNNv16-Netz. `src/evaluate.h` und der UCI-Standardwert identifizieren `nn-1a298aa575a0.nnue`. Das macOS-Buildziel bindet das Netz für den Universal-Build ein. | Die Ressource gehört zur Stockfish-Distribution. `scripts/net.sh` nennt den Stockfish-Netzwerkdienst und das offizielle Netzarchiv als Quellen. |
+| Exportiertes NNUE | `binary/exported.nnue`, über `export_net` aus genau dieser Binary gewonnen, SHA-256 `1a298aa575a085434d29027978dc36867fe9c5bcea9376654b7a8eba1e52dfc2`. Der Präfix stimmt mit dem Upstream-Dateinamen überein. Die Registry prüft den vollständigen Hash für `EvalFile`. | Separat als Lieferbestandteil erfassen, falls die Ressource als eigene Datei weitergegeben wird. Die Upstream-README nennt ODbL für LCZero-Trainingsdaten. Für die Netzdatei und deren Trainingsmaterial bleibt eine gesonderte Rechteprüfung offen. |
+| Lizenz, Autoren und Herkunft | `licenses/Copying.txt` `3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986`, `licenses/AUTHORS` `59c7a457f0665f26453ad90f474db7cd328f0983a7e8031cded5d6f25e1a1eb6`, `licenses/README.md` `ae3ef5c2282400d643c6e923d0b8b8d8fe35cf98762701f0379c79bde16c3a26` | Lizenztext, Autoren- und Copyright-Hinweise bei Weitergabe erhalten. |
+
+Für eine etwaige Online-Weitergabe von Objektcode kommen die Pflichten
+aus GPLv3 §§ 4–6 und insbesondere der Quellenzugang gemäß § 6(d) in
+Betracht. Dazu das genaue Lieferbinary mit maschinenlesbarem
+Corresponding Source verknüpfen, den gleichwertigen Zugang ohne
+Zusatzkosten gewährleisten und Quellenzugang sowie Lizenz- und
+Urheberhinweise am Download ausweisen. Der Quellumfang umfasst das
+zugehörige Netz und alle benötigten Build- und Installationsskripte.
+Anwendbare Installationsinformationen nach § 6 für ein User Product
+und gegebenenfalls § 5(d) für interaktive Oberflächen sind am konkreten
+Liefermodell zu prüfen. Die Quellen und Bauregeln des Releases sind
+identifiziert. Der Release-Build wurde lokal weder nachgebaut noch
+bitweise reproduziert.
+
+Für **A** bleibt zu prüfen, ob die konkrete gemeinsame Distribution
+unter GPLv3 erfolgen kann und wie MPL § 3.3 auf die betroffenen
+Dateien anzuwenden ist. Für **B** sind getrennte Beschaffung,
+Installergrenzen und die Pflichten bei jeder Weitergabe eigener
+Engine-Artefakte zu prüfen. **C** erfordert eine vom Nutzer bereitgestellte
+Engine. Die Pflicht aus Q-002 zur Offline-Spielbereitschaft direkt nach
+Installation bleibt für B und C eine offene Produktfrage. ADR-001 und
+Q-001 bleiben das Gate für die Auswahl. IV-A betrifft die genehmigte
+lokale Nutzung. Die Projektlizenz bleibt MPL-2.0.
 
 [Offizieller Release](https://github.com/official-stockfish/Stockfish/releases/tag/sf_19) ·
+[Quellcommit](https://github.com/official-stockfish/Stockfish/commit/edb0d9db6731067ec50ce619ff372b463bc4dd5d) ·
+[NNUE-Bezug im Upstream-Skript](https://github.com/official-stockfish/Stockfish/blob/sf_19/scripts/net.sh) ·
+[GPLv3-Lizenztext des Releases](https://github.com/official-stockfish/Stockfish/blob/sf_19/Copying.txt) ·
+[Mozilla-Leitfaden zu MPL und GPL](https://www.mozilla.org/en-US/MPL/2.0/combining-mpl-and-gpl/) ·
 [Abnahme und Prüfsummen](../reports/2026-11-28_IV-A-stockfish-integration-compliance.md)
