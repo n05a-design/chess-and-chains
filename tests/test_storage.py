@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from chess_and_chains.chess import ChessGame, Color, DrawClaim, FenError, GameStatus, Move, PGNError, export_pgn, parse_fen, to_fen  # noqa: E402
+from chess_and_chains.engines.registry import EngineRegistry  # noqa: E402
 from chess_and_chains.game.clock import TimeControl  # noqa: E402
 from chess_and_chains.storage import (  # noqa: E402
     SCHEMA_VERSION,
@@ -625,6 +626,7 @@ class BackupBundleTests(TempDirTestCase):
         target = DataLayout(self.tmp / "target")
         engine_import = str(self.tmp / "other" / "engine")
         engine_local = str(self.tmp / "local" / "engine")
+        external_profile = EngineRegistry(source.engine_registry).register(engine_import)
         save_settings(source.settings, Settings(locale="de", last_pack_id="club-mate", engine_path=engine_import,
                                                 registered_engine_paths=(engine_import,)))
         save_settings(target.settings, Settings(locale="en", engine_path=engine_local,
@@ -636,6 +638,8 @@ class BackupBundleTests(TempDirTestCase):
         archive = write_backup(source, self.tmp / "profile.zip")
         result = restore_backup(target, archive)
         self.assertEqual(result.missing_packs, ("club-mate",))
+        self.assertEqual(result.missing_engine_profiles, (external_profile.engine_id,))
+        self.assertFalse(target.engine_registry.exists())
         restored, _ = load_settings(target.settings)
         self.assertEqual((restored.locale, restored.last_pack_id), ("de", "club-mate"))
         self.assertEqual((restored.engine_path, restored.registered_engine_paths), (engine_local, (engine_local,)))

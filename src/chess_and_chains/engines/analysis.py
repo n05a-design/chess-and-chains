@@ -8,7 +8,6 @@ import argparse
 from collections import OrderedDict
 from dataclasses import asdict, dataclass, field, replace
 from enum import StrEnum
-import hashlib
 import json
 from pathlib import Path
 import threading
@@ -568,7 +567,11 @@ def _comparable_cp(first: Evaluation | None, second: Evaluation | None) -> bool:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--engine", type=Path, required=True, help="Explicit path to the local UCI executable.")
+    selection = parser.add_mutually_exclusive_group(required=True)
+    selection.add_argument("--engine", type=Path, help="Explicit local engine to test for this invocation.")
+    selection.add_argument("--engine-id", help="Use an already approved local engine registration.")
+    parser.add_argument("--registry", type=Path, help="Existing local registry for --engine-id.")
+    parser.add_argument("--cache", type=Path, help="Optional local SQLite cache path.")
     parser.add_argument("--fen", default=INITIAL_FEN)
     parser.add_argument("--moves", nargs="*", default=(), help="Played UCI moves in order.")
     mode = parser.add_mutually_exclusive_group()
@@ -578,10 +581,19 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--multipv", type=int, default=1)
     args = parser.parse_args(argv)
     try:
-        executable_path = args.engine.resolve()
-        config = EngineConfig.from_path(executable_path)
-        with executable_path.open("rb") as executable:
-            digest = hashlib.file_digest(executable, "sha256").hexdigest()
+        from .registry import EngineAvailability, EngineRegistry
+
+        if args.engine_id:
+            if args.registry is None or not args.registry.is_file():
+                raise ValueError("--engine-id requires an existing --registry.")
+            config = EngineRegistry(args.registry).launch_configuration(args.engine_id)
+        else:
+            registry = EngineRegistry()
+            profile = registry.register(args.engine.resolve())
+            approval = registry.probe(profile.engine_id)
+            if approval.status is not EngineAvailability.READY:
+                raise ValueError(approval.error or approval.status.value)
+            config = registry.launch_configuration(profile.engine_id)
         analysis_mode = AnalysisMode.POSITION
         if args.game:
             analysis_mode = AnalysisMode.GAME
@@ -591,9 +603,11 @@ def main(argv: list[str] | None = None) -> int:
             uuid4().hex, args.fen, tuple(Move.from_uci(move) for move in args.moves), analysis_mode,
             tuple(args.plies or ()), movetime_ms=args.movetime_ms, multipv=args.multipv,
         )
-    except (ValueError, OSError) as exc:
+    except (ValueError, OSError, KeyError) as exc:
         parser.error(str(exc))
-    service = AnalysisService(config, engine_id=config.display_name, engine_version=digest)
+    service = AnalysisService(
+        config, engine_id=config.session_reference(), engine_version=config.verified_version, cache_path=args.cache,
+    )
     job = service.start(request)
     try:
         job.wait()

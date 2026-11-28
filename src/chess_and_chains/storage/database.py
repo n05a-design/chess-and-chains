@@ -215,6 +215,11 @@ class SavedGame:
         clock = self.session_snapshot.clock if self.session_snapshot else None
         return timedelta(microseconds=clock.active_ns // 1000) if clock and clock.active_ns is not None else None
 
+    @property
+    def explicit_pause_duration(self) -> timedelta | None:
+        clock = self.session_snapshot.clock if self.session_snapshot else None
+        return timedelta(microseconds=clock.paused_ns // 1000) if clock and clock.paused_ns is not None else None
+
     def to_game(self) -> ChessGame:
         game = ChessGame(parse_fen(self.initial_fen))
         with game.replay_record():

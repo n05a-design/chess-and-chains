@@ -62,6 +62,8 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"Recovery backup: {result.recovery_bundle}")
                 if result.missing_packs:
                     print(f"Missing puzzle packs: {', '.join(result.missing_packs)}")
+                if result.missing_engine_profiles:
+                    print(f"Missing local engine profiles: {', '.join(result.missing_engine_profiles)}")
         except (OSError, StorageError, UnsafeDataPathError) as error:
             parser.error(str(error))
         return 0

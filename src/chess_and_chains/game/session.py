@@ -129,6 +129,8 @@ class GameSessionSnapshot:
             }
             if self.clock.active_ns is not None:
                 data["clock"]["active_ns"] = self.clock.active_ns
+            if self.clock.paused_ns is not None:
+                data["clock"]["paused_ns"] = self.clock.paused_ns
         return json.dumps(data, ensure_ascii=True, separators=(",", ":"))
 
     @classmethod
@@ -198,11 +200,12 @@ class GameSessionSnapshot:
                 if not isinstance(payload["positions"], list) or len(payload["positions"]) != len(moves) + 1:
                     raise ValueError("Invalid clock history length.")
                 active_ns = payload.get("active_ns")
-                if active_ns is not None and (type(active_ns) is not int or active_ns < 0):
-                    raise ValueError("Invalid active play duration.")
+                paused_ns = payload.get("paused_ns")
+                if any(value is not None and (type(value) is not int or value < 0) for value in (active_ns, paused_ns)):
+                    raise ValueError("Invalid active or paused play duration.")
                 clock = ClockTimeline(
                     _decode_reading(payload["current"]),
-                    tuple(_decode_reading(reading) for reading in payload["positions"]), active_ns,
+                    tuple(_decode_reading(reading) for reading in payload["positions"]), active_ns, paused_ns,
                 )
             provenance_data = data.get("engine_provenance")
             provenance = EngineProvenance(**provenance_data) if provenance_data is not None else None

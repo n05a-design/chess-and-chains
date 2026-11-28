@@ -965,7 +965,10 @@ class GlideShellIntegrationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             layout = DataLayout(Path(tmp) / "data")
             root = create_root(self)
-            app = ChessApp(root, data_layout=layout, locale="de")
+            app = ChessApp(
+                root, data_layout=layout, locale="de",
+                provider_factory=lambda preset, _settings: UCIBot(EngineConfig.mock(), preset),
+            )
             try:
                 root.geometry("1180x820")
                 root.deiconify()

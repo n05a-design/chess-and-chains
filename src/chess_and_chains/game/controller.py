@@ -411,7 +411,9 @@ class GameController:
         if self._clock is None:
             return None
         now = self._clock.sample_time()
-        return ClockTimeline(self._clock.reading(now), tuple(self._clock_positions), self._clock.active_time(now))
+        return ClockTimeline(
+            self._clock.reading(now), tuple(self._clock_positions), self._clock.active_time(now), self._clock.paused_time(now),
+        )
 
     def toggle_clock(self) -> None:
         self._ensure_open()
@@ -419,7 +421,7 @@ class GameController:
             return
         if not self._check_timeout():
             if self._clock.running:
-                self._pause_clock()
+                self._clock.pause(explicit=True)
                 self._invalidate()
             else:
                 self._clock.resume()

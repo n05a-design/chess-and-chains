@@ -68,9 +68,12 @@ def play_game(initial: str, bots: tuple[UCIBot, UCIBot], args: argparse.Namespac
                     raise ChessError("The engine returned no move for an active position.")
                 game.play(move)
             except (RuntimeError, OSError, ValueError) as error:
-                kind = "technical-loss"
-                result = "0-1" if game.state.turn is Color.WHITE else "1-0"
-                detail = str(error)
+                if monotonic() - started >= args.game_seconds:
+                    kind, detail = "aborted", "game-time-limit"
+                else:
+                    kind = "technical-loss"
+                    result = "0-1" if game.state.turn is Color.WHITE else "1-0"
+                    detail = str(error)
                 current.close()
                 break
     except KeyboardInterrupt:

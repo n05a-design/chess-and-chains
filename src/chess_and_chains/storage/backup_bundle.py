@@ -13,10 +13,11 @@ import sqlite3
 import tempfile
 from dataclasses import dataclass, replace
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 from zipfile import BadZipFile, ZIP_DEFLATED, ZIP_STORED, ZipFile
 from zlib import error as CompressionError
 
+from ..engines.registry import EngineRegistry
 from ..puzzles import DEMO_PACK_ID, PackError, PackLibrary
 from .database import Database, StorageError
 from .exchange import write_atomic_export
@@ -41,6 +42,7 @@ PACK_REFERENCE = re.compile(r"[a-z0-9][a-z0-9-]{1,63}")
 class BackupRestoration:
     recovery_bundle: Path
     missing_packs: tuple[str, ...]
+    missing_engine_profiles: tuple[str, ...] = ()
 
 
 def _read_settings(path: Path) -> Settings:
@@ -70,6 +72,38 @@ def _validate_packs(values: object) -> tuple[str, ...]:
     return tuple(values)
 
 
+def _engine_references(layout: DataLayout) -> list[dict[str, str | None]]:
+    if not layout.engine_registry.is_file():
+        return []
+    registry = EngineRegistry(layout.engine_registry)
+    references = []
+    for profile in registry.profiles():
+        probe = registry.last_success(profile.engine_id)
+        references.append({
+            "id": profile.engine_id, "name": profile.display_name[:256],
+            "reference": probe.reference() if probe else None,
+        })
+    return references
+
+
+def _read_engine_references(manifest: dict) -> tuple[str, ...]:
+    references = manifest.get("engine_profiles", [])
+    if not isinstance(references, list) or len(references) > 500:
+        raise StorageError("Invalid backup engine profile references.")
+    engine_ids = set()
+    for item in references:
+        if not isinstance(item, dict) or item.keys() != {"id", "name", "reference"}:
+            raise StorageError("Invalid backup engine profile reference.")
+        engine_id, name, reference = item["id"], item["name"], item["reference"]
+        if (not isinstance(engine_id, str) or str(UUID(engine_id)) != engine_id or engine_id in engine_ids
+                or not isinstance(name, str) or not 1 <= len(name) <= 256
+                or (reference is not None and (not isinstance(reference, str)
+                    or not re.fullmatch(rf"uci1:{engine_id}:[0-9a-f]{{64}}", reference)))):
+            raise StorageError("Invalid backup engine profile reference.")
+        engine_ids.add(engine_id)
+    return tuple(sorted(engine_ids))
+
+
 def _write_bundle(database: Database, layout: DataLayout, settings: Settings, destination: Path) -> Path:
     reserved = (layout.database, layout.settings, layout.engine_registry, layout.analysis_cache,
                 layout.root / RESTORE_JOURNAL, layout.root / ".profile-lock.sqlite3")
@@ -90,10 +124,14 @@ def _write_bundle(database: Database, layout: DataLayout, settings: Settings, de
             with path.open("rb") as handle:
                 checksums[name] = hashlib.file_digest(handle, "sha256").hexdigest()
         manifest = {"schema": BUNDLE_SCHEMA, "profile": "local", "sha256": checksums,
-                    "puzzle_packs": list(_pack_ids(layout, settings))}
+                    "puzzle_packs": list(_pack_ids(layout, settings)), "engine_profiles": _engine_references(layout)}
+        _read_engine_references(manifest)
+        manifest_data = json.dumps(manifest, sort_keys=True)
+        if len(manifest_data) > LIMITS[MANIFEST]:
+            raise StorageError("Backup manifest exceeds its size limit.")
         archive = directory / "profile.zip"
         with ZipFile(archive, "w", compression=ZIP_DEFLATED) as bundle:
-            bundle.writestr(MANIFEST, json.dumps(manifest, sort_keys=True))
+            bundle.writestr(MANIFEST, manifest_data)
             for name, path in paths.items():
                 bundle.write(path, name)
         archive.chmod(0o600)
@@ -115,7 +153,7 @@ def write_backup(layout: DataLayout, destination: Path) -> Path:
         raise StorageError(f"Cannot create profile backup: {error}") from error
 
 
-def _read_bundle(source: Path, directory: Path) -> tuple[Settings, tuple[str, ...]]:
+def _read_bundle(source: Path, directory: Path) -> tuple[Settings, tuple[str, ...], tuple[str, ...]]:
     if not source.is_file() or source.stat().st_size > sum(LIMITS.values()) + 1024 * 1024:
         raise StorageError("Choose a regular profile backup within the size limit.")
     with ZipFile(source) as bundle:
@@ -131,6 +169,7 @@ def _read_bundle(source: Path, directory: Path) -> tuple[Settings, tuple[str, ..
                 or manifest["schema"] != BUNDLE_SCHEMA or manifest.get("profile") != "local"):
             raise StorageError("Unsupported profile backup schema.")
         references = _validate_packs(manifest.get("puzzle_packs"))
+        engine_ids = _read_engine_references(manifest)
         hashes = manifest.get("sha256")
         if not isinstance(hashes, dict) or hashes.keys() != {DATABASE, SETTINGS}:
             raise StorageError("Missing backup checksums.")
@@ -146,7 +185,7 @@ def _read_bundle(source: Path, directory: Path) -> tuple[Settings, tuple[str, ..
                     digest.update(chunk)
             if digest.hexdigest() != hashes[name]:
                 raise StorageError(f"Backup integrity check failed for {name}.")
-    return _read_settings(directory / SETTINGS), references
+    return _read_settings(directory / SETTINGS), references, engine_ids
 
 
 def _file_hash(path: Path) -> str | None:
@@ -283,13 +322,14 @@ def _restore_locked(layout: DataLayout, source: Path) -> BackupRestoration:
                 raise StorageError("The database backup exceeds the size limit.")
             candidate = source
             restored = current
-            missing = ()
+            missing = missing_engines = ()
         else:
-            incoming, pack_refs = _read_bundle(source, directory)
+            incoming, pack_refs, engine_refs = _read_bundle(source, directory)
             candidate = directory / DATABASE
             restored = replace(incoming, engine_path=current.engine_path, engine_profile_id=current.engine_profile_id,
                                registered_engine_paths=current.registered_engine_paths, development_mock=current.development_mock)
             missing = tuple(sorted(set(pack_refs) - set(PackLibrary(layout.packs).ids())))
+            missing_engines = tuple(sorted(set(engine_refs) - {item["id"] for item in _engine_references(layout)}))
         transaction_id = uuid4().hex
         recovery = layout.backups / f"pre-profile-restore-{transaction_id}.zip"
         journal = layout.root / RESTORE_JOURNAL
@@ -315,4 +355,4 @@ def _restore_locked(layout: DataLayout, source: Path) -> BackupRestoration:
             raise StorageError(f"Restore failed; database rolled back. Recovery bundle: {recovery}. {error}") from error
         journal.unlink()
         _sync_directory(layout.root)
-        return BackupRestoration(recovery, missing)
+        return BackupRestoration(recovery, missing, missing_engines)
