@@ -3653,7 +3653,10 @@ class ChessApp:
                 return
             reference = config.session_reference()
             if self._analysis is None or self._analysis[0] != reference:
-                self._analysis = (reference, AnalysisService(config, engine_id=reference, engine_version=config.verified_version))
+                self._analysis = (reference, AnalysisService(
+                    config, engine_id=reference, engine_version=config.verified_version,
+                    cache_path=self.layout.analysis_cache if self.layout else None,
+                ))
             job = self._analysis[1].start(AnalysisRequest(
                 str(uuid4()), to_fen(game.initial_state), tuple(game.moves), mode, multipv=3,
             ))

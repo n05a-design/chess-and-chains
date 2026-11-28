@@ -24,20 +24,26 @@ def encode_report(progress: AnalysisProgress, source: ChessGame) -> str:
     for ply, result in enumerate(progress.results):
         if result.history != tuple(source.moves[:ply]) or result.initial_fen != to_fen(source.initial_state):
             raise ValueError("Analysis history differs from the saved game.")
-        variants = []
-        for line in result.lines:
-            row = asdict(line)
-            row["moves"] = [move.to_uci() for move in line.moves]
-            variants.append(row)
-        rows.append({
-            "fen": result.fen, "configuration": asdict(result.configuration), "lines": variants,
-            "best_move": result.best_move.to_uci() if result.best_move else None,
-            "elapsed_ms": result.elapsed_ms, "outcome": result.outcome, "cached": result.cached,
-        })
+        rows.append(encode_position(result))
     text = json.dumps({"schema": REPORT_SCHEMA, "job_id": progress.job_id, "positions": rows},
                       ensure_ascii=True, separators=(",", ":"))
     decode_report(text, source)
     return text
+
+
+def encode_position(result: AnalysisResult) -> dict:
+    def line_record(line: AnalysisLine) -> dict:
+        row = asdict(line)
+        row["moves"] = [move.to_uci() for move in line.moves]
+        return row
+
+    variants = [line_record(line) for line in result.lines]
+    return {
+        "fen": result.fen, "configuration": asdict(result.configuration), "lines": variants,
+        "best_move": result.best_move.to_uci() if result.best_move else None,
+        "elapsed_ms": result.elapsed_ms, "outcome": result.outcome, "cached": result.cached,
+        "comparison": [line_record(line) for line in result.comparison] if result.comparison else None,
+    }
 
 
 def _nonnegative(value: int) -> int:
@@ -63,7 +69,14 @@ def _read_line(item: dict, game: ChessGame, variants: int) -> AnalysisLine:
         value = score["value"]
         if type(value) is not int or abs(value) > 2**31 - 1 or score["perspective"] != Color.WHITE:
             raise ValueError("Invalid saved analysis score.")
-        evaluation = Evaluation(EvaluationKind(score["kind"]), value, ScoreBound(score["bound"]))
+        raw_value = score.get("raw_value")
+        if raw_value is not None and (type(raw_value) is not int or abs(raw_value) > 2**31 - 1):
+            raise ValueError("Invalid raw saved analysis score.")
+        raw_bound = score.get("raw_bound")
+        evaluation = Evaluation(
+            EvaluationKind(score["kind"]), value, ScoreBound(score["bound"]),
+            raw_value=raw_value, raw_bound=ScoreBound(raw_bound) if raw_bound is not None else None,
+        )
     metrics = [None if item[key] is None else _nonnegative(item[key])
                for key in ("depth", "selective_depth", "nodes", "nodes_per_second", "time_ms")]
     return AnalysisLine(rank, moves, evaluation, *metrics)
@@ -106,33 +119,46 @@ def decode_report(text: str, source: ChessGame) -> AnalysisProgress:
             raise ValueError("Invalid analysis run identifier.")
         if not isinstance(rows, list) or len(rows) != len(source.moves) + 1 or len(rows) > MAX_PLIES + 1:
             raise ValueError("Analysis report does not cover the saved game.")
-        initial_fen = to_fen(source.initial_state)
-        outcomes = {status.name.lower() for status in GameStatus}
         game = ChessGame(source.initial_state)
         results = []
         for ply, row in enumerate(rows):
             if ply:
                 with game.replay_record():
                     game.play(source.moves[ply - 1])
-            if row["fen"] != to_fen(game.state) or row["outcome"] not in outcomes:
-                raise ValueError("Analysis position differs from the saved game.")
-            configuration = _read_configuration(row["configuration"])
-            variants = row["lines"]
-            if (not isinstance(variants, list) or len(variants) > configuration.multipv
-                    or (row["outcome"] != "active" and variants)):
-                raise ValueError("Invalid saved analysis variations.")
-            lines = tuple(_read_line(item, game, configuration.multipv) for item in variants)
-            if tuple(line.rank for line in lines) != tuple(sorted({line.rank for line in lines})):
-                raise ValueError("Invalid saved analysis variation order.")
-            best_move = Move.from_uci(row["best_move"]) if row["best_move"] is not None else None
-            if best_move is not None and (row["outcome"] != "active" or best_move not in game.rules.legal_moves(game.state)):
-                raise ValueError("Invalid best move in saved analysis.")
-            if type(row["cached"]) is not bool:
-                raise ValueError("Invalid saved analysis cache flag.")
-            results.append(AnalysisResult(
-                initial_fen, tuple(source.moves[:ply]), row["fen"], game.state.turn, configuration,
-                lines, best_move, _nonnegative(row["elapsed_ms"]), row["outcome"], row["cached"],
-            ))
+            results.append(decode_position(row, game))
         return AnalysisProgress(job_id, JobStatus.COMPLETED, len(results), tuple(results), None)
     except (KeyError, TypeError, AttributeError, RecursionError) as error:
         raise ValueError("Invalid saved analysis report.") from error
+
+
+def decode_position(row: dict, game: ChessGame) -> AnalysisResult:
+    outcomes = {status.name.lower() for status in GameStatus}
+    if row["fen"] != to_fen(game.state) or row["outcome"] not in outcomes:
+        raise ValueError("Analysis position differs from the saved game.")
+    configuration = _read_configuration(row["configuration"])
+    variants = row["lines"]
+    if (not isinstance(variants, list) or len(variants) > configuration.multipv
+            or (row["outcome"] != "active" and variants)):
+        raise ValueError("Invalid saved analysis variations.")
+    lines = tuple(_read_line(item, game, configuration.multipv) for item in variants)
+    if tuple(line.rank for line in lines) != tuple(sorted({line.rank for line in lines})):
+        raise ValueError("Invalid saved analysis variation order.")
+    best_move = Move.from_uci(row["best_move"]) if row["best_move"] is not None else None
+    if best_move is not None and (row["outcome"] != "active" or best_move not in game.rules.legal_moves(game.state)):
+        raise ValueError("Invalid best move in saved analysis.")
+    if type(row["cached"]) is not bool:
+        raise ValueError("Invalid saved analysis cache flag.")
+    comparison = row.get("comparison")
+    if comparison is not None:
+        if not isinstance(comparison, list) or len(comparison) != 2:
+            raise ValueError("Invalid saved same-position evaluation.")
+        alternative, played = (_read_line(item, game, 1) for item in comparison)
+        if alternative.moves[0] != best_move:
+            raise ValueError("Saved comparison does not describe the best move.")
+        if played.moves[0] == best_move:
+            raise ValueError("Saved comparison must contain two moves.")
+        comparison = (alternative, played)
+    return AnalysisResult(
+        to_fen(game.initial_state), tuple(game.moves), row["fen"], game.state.turn, configuration,
+        lines, best_move, _nonnegative(row["elapsed_ms"]), row["outcome"], row["cached"], comparison,
+    )

@@ -63,3 +63,14 @@ Ein manueller Smoke-Lauf mit `--max-plies 4 --nodes 128` ergab zwei
 ungewertete Partien mit Farbtausch und Exit 0. Der Ausgabevertrag trennt
 reguläre Ergebnisse, technische Niederlagen und Abbrüche. Die reale
 Kalibrierung wartet auf Auftrag IV-A. [Benchmark-Aufruf](../qa/BOT_CALIBRATION_PLAN.md)
+
+## Gate III-4 – Analyse
+
+Der analyseseitige SQLite-LRU bleibt außerhalb des Analyse-Archivs und
+wird bei inkompatiblen oder beschädigten Ergebnissen wie ein Cache-Miss
+behandelt. Der Fixture-Test startet den Dienst neu und zählt die
+tatsächlichen UCI-Suchbefehle für identisches und geändertes Budget.
+Kritische Momente verwenden bei geprüften Registry-Engines zwei
+suchbeschränkte Läufe an derselben Wurzelstellung und die Perspektive
+des ziehenden Spielers. Unabhängige Fixtures prüfen beide Farben.
+Ältere Archivberichte behalten lesbare Schätzwerte.

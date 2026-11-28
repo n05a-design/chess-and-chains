@@ -71,7 +71,7 @@ def _validate_packs(values: object) -> tuple[str, ...]:
 
 
 def _write_bundle(database: Database, layout: DataLayout, settings: Settings, destination: Path) -> Path:
-    reserved = (layout.database, layout.settings, layout.engine_registry,
+    reserved = (layout.database, layout.settings, layout.engine_registry, layout.analysis_cache,
                 layout.root / RESTORE_JOURNAL, layout.root / ".profile-lock.sqlite3")
     if destination.resolve() in {path.resolve() for path in reserved}:
         raise StorageError("A backup cannot replace the active database or settings.")

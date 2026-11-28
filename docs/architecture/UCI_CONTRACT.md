@@ -41,3 +41,17 @@ unmittelbar vor dem Start. Spiel und Analyse verwenden dieselbe Registry.
 Bestehende Engine-Pfade werden als ungetestete Registrierungen übernommen.
 Frühere Session-Referenzen bleiben als Legacy-Werte erhalten. Portable
 Sicherungen übernehmen die Auswahl ausschließlich vom Zielprofil.
+
+## Analyse und Cache
+
+Für freigegebene Registry-Konfigurationen speichert der Worker abgeschlossene
+Positionsanalysen in `analysis_cache.sqlite3`. Der Schlüssel enthält FEN,
+Zughistorie, Fingerabdruck, effektive und angeforderte Suchparameter sowie
+Formatversion. Auf einen Treffer folgt keine neue Suche. Der Cache ist
+begrenzt, neu berechenbar und vom dauerhaften Analysearchiv getrennt.
+
+Der Vergleich kritischer Momente sucht beste Fortsetzung und Partiezug
+von derselben Position aus einzeln mit vergleichbaren Budgets über
+`searchmoves`. Unvollständige Vergleichssuchen erzeugen keine genaue
+Verlustzahl. Alte Berichte behalten gekennzeichnete Stellungsschätzungen.
+Mattwerte und Schranken bleiben eigene Bewertungskategorien.
